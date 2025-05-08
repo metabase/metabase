@@ -341,7 +341,7 @@
      (let [mbql-query      (data/mbql-query nil
                              {:source-table (data/id table)
                               :expressions  {:custom [:value 1337 {:base_type :type/Integer}]}
-                              :fields       [[:field (data/id table :id)] [:expression :custom]]
+                              :fields       [[:expression :custom]]
                               :order-by     [[:asc [:field (data/id table :id)]]]
                               :limit        3})
            {:keys [query]} (qp.compile/compile mbql-query)

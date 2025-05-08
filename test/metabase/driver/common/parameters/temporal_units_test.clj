@@ -1,15 +1,22 @@
 (ns ^:mb/driver-tests metabase.driver.common.parameters.temporal-units-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
+(defn- ->local-date [t]
+  (cond-> t
+    (str/includes? t "T") (t/zoned-date-time)
+    true t/local-date))
+
 (defn- run-sample-query [query]
   (->> query
        qp/process-query
-       (mt/formatted-rows [int str])))
+       (mt/formatted-rows [->local-date])))
 
 (deftest can-compile-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
@@ -33,14 +40,14 @@
                                              :target [:dimension [:template-tag "time-unit"]]
                                              :value  "month"}])]
         (mt/with-native-query-testing-context year-query
-          (is (= [[1 "2019-01-01T00:00:00Z"]
-                  [2 "2018-01-01T00:00:00Z"]
-                  [3 "2019-01-01T00:00:00Z"]]
+          (is (= [[#t "2019-01-01"]
+                  [#t "2018-01-01"]
+                  [#t "2019-01-01"]]
                  (run-sample-query year-query))))
         (mt/with-native-query-testing-context month-query
-          (is (= [[1 "2019-02-01T00:00:00Z"]
-                  [2 "2018-05-01T00:00:00Z"]
-                  [3 "2019-12-01T00:00:00Z"]]
+          (is (= [[#t "2019-02-01"]
+                  [#t "2018-05-01"]
+                  [#t "2019-12-01"]]
                  (run-sample-query month-query))))))))
 
 (deftest bad-function-names-throw-errors-test
