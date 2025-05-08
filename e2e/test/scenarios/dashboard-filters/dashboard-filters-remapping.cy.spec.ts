@@ -19,7 +19,7 @@ describe("scenarios > dashboard > filters > remapping", () => {
 
   it("should work in dashboards", () => {
     setupDashboard();
-    testDashboardFilterWidgets();
+    testDashboardWidgets();
   });
 });
 
@@ -53,15 +53,6 @@ function setupDashboard() {
       "source-table": ORDERS_ID,
     },
   };
-  const getMbqlQuestionDetails = (
-    modelId: CardId,
-  ): StructuredQuestionDetails => ({
-    name: "Question",
-    type: "question",
-    query: {
-      "source-table": `card__${modelId}`,
-    },
-  });
   const nativeQuestionDetails: NativeQuestionDetails = {
     native: {
       query: "SELECT * FROM ORDERS WHERE {{product_id}}",
@@ -76,70 +67,96 @@ function setupDashboard() {
       },
     },
   };
+  const getMbqlQuestionDetails = (
+    modelId: CardId,
+  ): StructuredQuestionDetails => ({
+    name: "Question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+    },
+  });
   H.createQuestion(modelDetails).then(({ body: card }) => {
     H.createDashboardWithQuestions({
-      questions: [getMbqlQuestionDetails(card.id), nativeQuestionDetails],
+      questions: [
+        nativeQuestionDetails,
+        getMbqlQuestionDetails(card.id),
+        getMbqlQuestionDetails(card.id),
+      ],
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
     });
   });
 
   H.editDashboard();
-  H.setFilter("Number", undefined, "Quantity");
-  H.selectDashboardFilter(H.getDashboardCard(), "Quantity");
-  H.setFilter("ID", undefined, "Product ID FK");
-  H.selectDashboardFilter(H.getDashboardCard(1), "Product ID");
-  H.setFilter("ID", undefined, "User ID PK");
-  H.getDashboardCard().findByText("Select…").click();
+
+  H.setFilter("Number", undefined, "Internal");
+  H.selectDashboardFilter(H.getDashboardCard(1), "Quantity");
+
+  H.setFilter("ID", undefined, "External");
+  H.selectDashboardFilter(H.getDashboardCard(0), "Product ID");
+
+  H.setFilter("ID", undefined, "PK->Name");
+  H.getDashboardCard(1).findByText("Select…").click();
   H.popover().findAllByText("ID").should("have.length", 3).last().click();
-  H.setFilter("ID", undefined, "User ID FK");
-  H.selectDashboardFilter(H.getDashboardCard(), "User ID");
+
+  H.setFilter("ID", undefined, "FK->Name");
+  H.selectDashboardFilter(H.getDashboardCard(1), "User ID");
+
+  H.setFilter("ID", undefined, "PK+FK pair->Name");
+  H.selectDashboardFilter(H.getDashboardCard(1), "User ID");
+  H.getDashboardCard(2).findByText("Select…").click({ force: true });
+  H.popover().findAllByText("ID").should("have.length", 3).last().click();
+
   H.saveDashboard();
 }
 
-const RATING_INDEX = 0;
-const PRODUCT_ID_FK_INDEX = 1;
-const USER_ID_PK_INDEX = 2;
-const USER_ID_FK_INDEX = 3;
-const WIDGET_COUNT = 4;
-
-function findWidget(index: number) {
-  return H.filterWidget().should("have.length", WIDGET_COUNT).eq(index);
+function findWidget(name: string) {
+  return H.filterWidget().filter(`:contains("${name}")`);
 }
 
-function testDashboardFilterWidgets() {
+function testDashboardWidgets() {
   cy.log("internal remapping");
-  findWidget(RATING_INDEX).click();
+  findWidget("Internal").click();
   H.popover().within(() => {
     cy.findByText("N5").click();
     cy.button("Add filter").click();
   });
-  findWidget(RATING_INDEX).should("contain.text", "N5");
+  findWidget("Internal").should("contain.text", "N5");
 
-  cy.log("FK remapping");
-  findWidget(PRODUCT_ID_FK_INDEX).click();
+  cy.log("external remapping");
+  findWidget("External").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Rustic Paper Wallet").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget(PRODUCT_ID_FK_INDEX).should("contain.text", "Rustic Paper Wallet");
+  findWidget("External").should("contain.text", "Rustic Paper Wallet");
 
   cy.log("PK->Name remapping");
-  findWidget(USER_ID_PK_INDEX).click();
+  findWidget("PK->Name").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Hudson Borer").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget(USER_ID_PK_INDEX).should("contain.text", "Hudson Borer");
+  findWidget("PK->Name").should("contain.text", "Hudson Borer");
 
-  cy.log("FK->PK->Name remapping");
-  findWidget(USER_ID_FK_INDEX).click();
+  cy.log("FK->Name remapping");
+  findWidget("FK->Name").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("2,");
     cy.findByText("Domenica Williamson").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget(USER_ID_FK_INDEX).should("contain.text", "Domenica Williamson");
+  findWidget("FK->Name").should("contain.text", "Domenica Williamson");
+
+  cy.log("PK+FK->Name remapping");
+  findWidget("PK+FK pair->Name").click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("2,");
+    cy.findByText("Domenica Williamson").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget("PK+FK pair").should("contain.text", "Domenica Williamson");
 }
