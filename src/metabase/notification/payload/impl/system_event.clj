@@ -7,6 +7,7 @@
    [metabase.models.table :as table]
    [metabase.models.user :as user]
    [metabase.notification.condition :as notification.condition]
+   [metabase.notification.events.notification :as notification.events]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.sample :as payload.sample]
    [metabase.notification.send :as notification.send]
@@ -320,15 +321,20 @@
     {:record   (or ?after ?before)
      :table_id ?table-id}))
 
-(defmethod event-info->condition-context :event/row.created
+(mr/def ::condition.row.mutated
+  [:map {:closed true}
+   [:record :map]
+   [:table_id pos-int?]])
+
+(mu/defmethod event-info->condition-context :event/row.created :- ::condition.row.mutated
   [_event-topic event-info]
   (default-row-action-transformation event-info))
 
-(defmethod event-info->condition-context :event/row.updated
+(mu/defmethod event-info->condition-context :event/row.updated :- ::condition.row.mutated
   [_event-topic event-info]
   (default-row-action-transformation event-info))
 
-(defmethod event-info->condition-context :event/row.deleted
+(mu/defmethod event-info->condition-context :event/row.deleted :- ::condition.row.mutated
   [_event-topic event-info]
   (default-row-action-transformation event-info))
 
