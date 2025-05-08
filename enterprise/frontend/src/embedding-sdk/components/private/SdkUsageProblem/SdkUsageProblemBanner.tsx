@@ -7,16 +7,7 @@ import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { originalColors } from "metabase/lib/colors";
-import {
-  Button,
-  Card,
-  Flex,
-  Icon,
-  Popover,
-  Stack,
-  Text,
-  useMantineTheme,
-} from "metabase/ui";
+import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
 import S from "./SdkUsageProblemBanner.module.css";
 
@@ -32,8 +23,6 @@ const unthemedTextDark = originalColors["text-dark"];
 export const SdkUsageProblemBanner = ({
   problem,
 }: SdkUsageProblemBannerProps) => {
-  const theme = useMantineTheme();
-
   const [expanded, setExpanded] = useState(false);
 
   if (!problem) {
@@ -45,7 +34,7 @@ export const SdkUsageProblemBanner = ({
   // When the font family cannot be loaded from the MB instance,
   // due to MB instance outage or missing CORS header,
   // we fall back to the system font.
-  const fontFamily = `${theme.fontFamily}, ${DEFAULT_FONT}, sans-serif`;
+  const fontFamily = `${DEFAULT_FONT}, sans-serif`;
 
   // eslint-disable-next-line no-literal-metabase-strings -- shown in development
   const pillTitle = "Metabase SDK";
