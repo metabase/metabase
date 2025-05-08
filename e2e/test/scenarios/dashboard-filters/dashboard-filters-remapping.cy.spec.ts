@@ -150,14 +150,14 @@ function testDashboardWidgets() {
   });
   findWidget("PK->Name").should("contain.text", "Hudson Borer");
 
-  // cy.log("FK->Name remapping");
-  // findWidget("FK->Name").click();
-  // H.popover().within(() => {
-  //   cy.findByPlaceholderText("Enter an ID").type("2,");
-  //   cy.findByText("Domenica Williamson").should("exist");
-  //   cy.button("Add filter").click();
-  // });
-  // findWidget("FK->Name").should("contain.text", "Domenica Williamson");
+  cy.log("FK->Name remapping");
+  findWidget("FK->Name").click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("2,");
+    cy.findByText("Domenica Williamson").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget("FK->Name").should("contain.text", "Domenica Williamson");
 
   cy.log("PK+FK->Name remapping");
   findWidget("PK+FK pair->Name").click();
