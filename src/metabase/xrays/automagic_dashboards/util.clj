@@ -38,13 +38,16 @@
   [tablespec tables]
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
-(def ^{:arglists '([metric]) :doc "Is metric a saved metric?"} saved-metric?
+(def ^{:arglists '([metric])} saved-metric?
+  "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
   (partial mbql.u/is-clause? :metric))
 
-(def ^{:arglists '([metric]) :doc "Is this a custom expression?"} custom-expression?
+(def ^{:arglists '([metric])} custom-expression?
+  "Is this a custom expression?"
   (partial mbql.u/is-clause? :aggregation-options))
 
-(def ^{:arglists '([metric]) :doc "Is this an adhoc metric?"} adhoc-metric?
+(def ^{:arglists '([metric])} adhoc-metric?
+  "Is this an adhoc metric?"
   (complement (some-fn saved-metric? custom-expression?)))
 
 (def ^{:arglists '([x]) :doc "Base64 encode"} encode-base64-json

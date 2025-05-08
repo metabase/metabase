@@ -11,7 +11,6 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -212,7 +211,6 @@ function setup({
 
 describe("Notebook Editor > Join Step", () => {
   beforeAll(() => {
-    mockScrollBy();
     mockGetBoundingClientRect();
   });
 

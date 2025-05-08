@@ -3,7 +3,7 @@ import { c } from "ttag";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { Flex, Stack, Text, Title } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 export const ExistingDatabaseHeader = ({
   database,
@@ -16,7 +16,7 @@ export const ExistingDatabaseHeader = ({
   return (
     <Flex mb="2.75rem" gap="1.25rem" data-testid="database-header-section">
       <Stack gap="sm">
-        <Title>{database?.name}</Title>
+        <Title order={2}>{database?.name}</Title>
         <Flex gap="sm">
           {driverName && (
             <Text size="sm" c="text-medium">

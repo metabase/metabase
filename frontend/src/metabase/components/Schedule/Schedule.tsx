@@ -27,7 +27,7 @@ import {
   SelectWeekday,
   SelectWeekdayOfMonth,
 } from "./components";
-import { minuteIntervals } from "./strings";
+import { byTheMinuteIntervals } from "./strings";
 import type { UpdateSchedule } from "./types";
 import { getScheduleDefaults } from "./utils";
 
@@ -150,7 +150,7 @@ export const Schedule = ({
         key="minute"
         schedule_minute={schedule_minute}
         updateSchedule={updateSchedule}
-        range={minuteIntervals}
+        range={byTheMinuteIntervals}
       />
     );
 

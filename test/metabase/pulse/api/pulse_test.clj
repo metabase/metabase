@@ -8,9 +8,9 @@
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
+   [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.integrations.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -33,7 +33,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :collection_id :name :description :display])
@@ -172,6 +172,19 @@
    :schedule_hour 12
    :schedule_day  nil
    :recipients    []})
+
+(def pulse-channel-email-default
+  {:enabled        true
+   :channel_type   "email"
+   :channel_id     nil
+   :schedule_type  "hourly"})
+
+(def pulse-channel-slack-test
+  {:enabled        true
+   :channel_type   "slack"
+   :channel_id     nil
+   :schedule_type  "hourly"
+   :details        {:channels "#general"}})
 
 (deftest create-test
   (testing "POST /api/pulse"
@@ -373,6 +386,59 @@
                   (is (= nil
                          (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name))))))))))))
 
+(deftest validate-email-domains-test
+  (mt/when-ee-evailable
+   (mt/with-model-cleanup [:model/Pulse]
+     (mt/with-premium-features #{:email-allow-list}
+       (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
+         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                        :model/Card      {card-id :id} {}]
+           (let [pulse {:name          "Test Pulse"
+                        :dashboard_id  dashboard-id
+                        :cards         [{:id                card-id
+                                         :include_csv       false
+                                         :include_xls       false
+                                         :dashboard_card_id nil}]
+                        :channels      [{:channel_type  "email"
+                                         :schedule_type "daily"
+                                         :schedule_hour 12
+                                         :recipients    []
+                                         :enabled       true}]}
+                 failed-recipients [{:email "ngoc@metabase.com"}
+                                    {:email "ngoc@metaba.be"}]
+                 success-recipients [{:email "ngoc@example.com"}]]
+             (testing "on creation"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "pulse"
+                                              (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
+
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 200 "pulse"
+                                       (assoc-in pulse [:channels 0 :recipients] success-recipients))))
+
+             (testing "on update"
+               (mt/with-temp [:model/Pulse {pulse-id :id} {:name          "Test Pulse"
+                                                           :dashboard_id  dashboard-id}]
+                 (testing "fail if recipients does not match allowed domains"
+                   (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                          (mt/user-http-request :crowberto :put 403 (format "pulse/%d" pulse-id)
+                                                (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
+
+                 (testing "success if recipients matches allowed domains"
+                   (mt/user-http-request :crowberto :put 200 (format "pulse/%d" pulse-id)
+                                         (assoc-in pulse [:channels 0 :recipients] success-recipients)))))
+
+             (testing "on test send"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "pulse/test"
+                                              (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
+
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 200 "pulse/test"
+                                       (assoc-in pulse [:channels 0 :recipients] success-recipients)))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/pulse/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -564,8 +630,8 @@
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived true})
-      (is (= true
-             (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse)))))))
+      (is (true?
+           (t2/select-one-fn :archived :model/Pulse :id (u/the-id pulse)))))))
 
 (deftest unarchive-test
   (testing "Can we unarchive a Pulse?"
@@ -592,12 +658,6 @@
         (is (t2/exists? :model/PulseChannel :id (u/the-id pc)))
         (is (t2/exists? :model/PulseChannelRecipient :id (u/the-id pcr)))))))
 
-(def pulse-channel-email-default
-  {:enabled        true
-   :channel_type   "email"
-   :channel_id     nil
-   :schedule_type  "hourly"})
-
 (deftest update-channels-no-op-test
   (testing "PUT /api/pulse/:id"
     (testing "If we PUT a Pulse with the same Channels, it should be a no-op"
@@ -618,13 +678,6 @@
           (is (=? [new-channel]
                   (:channels (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
                                                    {:channels [new-channel]})))))))))
-
-(def pulse-channel-slack-test
-  {:enabled        true
-   :channel_type   "slack"
-   :channel_id     nil
-   :schedule_type  "hourly"
-   :details        {:channels "#general"}})
 
 (deftest update-channels-add-new-channel-test
   (testing "PUT /api/pulse/:id"
@@ -788,7 +841,7 @@
       (testing (str "\n" message)
         (mt/with-temp [:model/Collection collection-1 {}
                        :model/Collection collection-2 {}
-                       :model/Card       card-1 {}]
+                       :model/Card       card-1  {}]
           (api.card-test/with-ordered-items collection-1 [:model/Pulse a
                                                           :model/Pulse b
                                                           :model/Pulse c
@@ -1186,7 +1239,7 @@
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
     (mt/with-temporary-setting-values
-      [slack/slack-app-token "test-token"]
+      [channel.settings/slack-app-token "test-token"]
       (mt/with-temp [:model/Channel _ {:type :channel/http :details {:url "https://metabasetest.com" :auth-method "none"}}]
         (is (= {:channels {:email {:allows_recipients true
                                    :configured        false
@@ -1214,12 +1267,12 @@
 (deftest form-input-slack-test
   (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
-      (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
 
-                                         slack/slack-app-token "test-token"
+                                         channel.settings/slack-app-token "test-token"
 
-                                         slack/slack-cached-channels-and-usernames
+                                         channel.settings/slack-cached-channels-and-usernames
                                          {:channels [{:type "channel"
                                                       :name "foo"
                                                       :display-name "#foo"

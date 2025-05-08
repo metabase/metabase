@@ -39,7 +39,7 @@ function legacyScalarSettingsToFormatOptions(settings) {
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
 export class Scalar extends Component {
-  static uiName = t`Number`;
+  static getUiName = () => t`Number`;
   static identifier = "scalar";
   static iconName = "number";
   static canSavePng = false;
@@ -64,7 +64,9 @@ export class Scalar extends Component {
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      title: t`Field to show`,
+      get title() {
+        return t`Field to show`;
+      },
       getDefault: ([
         {
           data: { cols },
@@ -150,6 +152,7 @@ export class Scalar extends Component {
       totalNumGridCols,
       fontFamily,
       rawSeries,
+      showTitle = true,
     } = this.props;
 
     if (rawSeries.length > 1) {
@@ -243,6 +246,7 @@ export class Scalar extends Component {
         </ScalarContainer>
 
         {isDashboard &&
+          showTitle &&
           (showSmallTitle ? (
             <LabelIcon
               data-testid="scalar-title-icon"

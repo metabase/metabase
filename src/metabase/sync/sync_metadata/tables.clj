@@ -4,10 +4,12 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -101,8 +103,20 @@
 (mu/defn- cruft-dependent-cols [{table-name :name :as table}
                                 database
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
-  (let [is-crufty? (crufty/name? table-name (into crufty-table-patterns
-                                                  (some-> database :settings :auto-cruft-tables)))]
+  (let [is-crufty? (if (= sync-stage ::update)
+                     ;; TODO: we should add an updated_by column to metabase_table in
+                     ;; [[metabase.api.table/update-table!*]] to track occasions where the table was updated by an
+                     ;; admin, and respect their choices during an update.
+                     ;;
+                     ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
+                     ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.
+                     ;;
+                     ;; Setting it false will be a no-op because we never unhide tables that are already visible via cruft settings.
+                     ;;
+                     ;; More context: https://metaboat.slack.com/archives/C013N8XL286/p1743707103874849
+                     false
+                     (crufty/name? table-name (into crufty-table-patterns
+                                                    (some-> database :settings :auto-cruft-tables))))]
     {:initial_sync_status (cond
                             ;; if we're updating a table, we don't overwrite the initial sync status, so that it remain
                             ;; "complete" during the sync. See:
@@ -241,6 +255,29 @@
                   :db_id  (u/the-id database)
                   :active true)))
 
+(mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
+  "Returns a map of schemas that should be adjusted to their new names."
+  [driver
+   database
+   our-metadata :- [:set (ms/InstanceOf :model/Table)]]
+  (reduce
+   (fn [accum schema]
+     (let [new-schema (driver/adjust-schema-qualification driver database schema)]
+       (cond-> accum
+         (not= schema new-schema) (assoc schema new-schema))))
+   nil
+   (into #{} (map :schema our-metadata))))
+
+(defn- adjust-table-schemas!
+  [database schemas-to-update]
+  (when schemas-to-update
+    (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
+  (doseq [[schema new-schema] schemas-to-update]
+    (t2/update! :model/Table
+                :db_id (:id database)
+                :schema schema
+                {:schema new-schema})))
+
 (mu/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
@@ -250,16 +287,28 @@
 
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
-   (let [db-table-metadatas    (table-set db-metadata)
+   (let [driver (driver.u/database->driver database)
+         db-table-metadatas    (table-set db-metadata)
          name+schema           #(select-keys % [:name :schema])
          name+schema->db-table (m/index-by name+schema db-table-metadatas)
          our-metadata          (db->our-metadata database)
+         multi-level-support?  (driver.u/supports? driver :multi-level-schema database)
+         schemas-to-update     (when multi-level-support?
+                                 (adjusted-schemas driver database our-metadata))
+         our-metadata          (cond->> our-metadata
+                                 multi-level-support?
+                                 (into #{} (map (fn [table]
+                                                  (update table :schema #(get schemas-to-update %1 %1))))))
          keep-name+schema-set  (fn [metadata]
                                  (set (map name+schema metadata)))
          [new-table-metadatas
           old-table-metadatas] (data/diff
                                 (keep-name+schema-set (set (map name+schema db-table-metadatas)))
                                 (keep-name+schema-set (set (map name+schema our-metadata))))]
+     (sync-util/with-error-handling (format "Error updating table schemas for %s"
+                                            (sync-util/name-for-logging database))
+       (adjust-table-schemas! database schemas-to-update))
+
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"

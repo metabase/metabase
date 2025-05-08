@@ -116,6 +116,7 @@
   db
   format-name
   id
+  ident
   mbql-query
   metadata-provider
   native-query
@@ -205,6 +206,9 @@
   with-metadata-provider]
 
  [qp.test-util
+  boolish->bool
+  card-with-metadata
+  card-with-updated-metadata
   card-with-source-metadata-for-query
   col
   cols
@@ -212,6 +216,7 @@
   formatted-rows+column-names
   format-rows-by
   formatted-rows
+  metadata->native-form
   nest-query
   normal-drivers
   normal-drivers-with-feature
@@ -305,7 +310,7 @@
  [tu.misc
   object-defaults
   with-clock
-  with-single-admin-user]
+  with-single-admin-user!]
 
  [u.random
   random-name

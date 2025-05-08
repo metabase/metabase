@@ -15,6 +15,7 @@
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -22,6 +23,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
+   [metabase.query-processor.middleware.annotate :as qp.annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -261,6 +263,21 @@
     (partial u/round-to-decimals (int x))
     x))
 
+(defn boolish->bool
+  "Convert something that looks like a reasonable DB bool to a bool.
+
+  Throw an exception if the input does not seem boolish. Valid inputs are #{0 1 true false}.
+
+  Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
+  [x]
+  ;; The compiler warns about performance here since (= (hash 0) (hash 0M)), so the `case` will fallback to linear
+  ;; probing for those values. It shouldn't matter for this function, but if it becomes an issue or we want to silence
+  ;; the warning, it could be rewritten to avoid the `case`.
+  (case x
+    (0 0M false) false
+    (1 1M true)  true
+    (throw (ex-info "value is not boolish" {:value x}))))
+
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
   sequence or any of the common map formats we expect in QP tests.
@@ -458,8 +475,37 @@
 
   Prefer [[metadata-provider-with-card-with-metadata-for-query]] instead of using this going forward."
   [query]
-  {:dataset_query   query
-   :result_metadata (actual-query-results query)})
+  (let [entity-id (u/generate-nano-id)]
+    {:dataset_query   query
+     :entity_id       entity-id
+     :result_metadata (-> query
+                          (assoc-in [:info :card-entity-id] entity-id)
+                          actual-query-results)}))
+
+(defn- as-model [result-metadata entity-id]
+  (for [col result-metadata]
+    (cond-> col
+      (not (lib/valid-model-ident? col entity-id)) (lib/add-model-ident entity-id))))
+
+(defn card-with-metadata
+  "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
+  [{:keys [dataset_query] :as card}]
+  (let [entity-id (or (:entity_id card) (u/generate-nano-id))]
+    (assoc card
+           :entity_id       entity-id
+           :result_metadata (-> dataset_query
+                                (assoc-in [:info :card-entity-id] entity-id)
+                                actual-query-results
+                                (cond-> (= (:type card) :model) (as-model entity-id))))))
+
+(defn card-with-updated-metadata
+  "Like [[card-with-metadata]] but takes an extra argument: a function `(f column-metadata card) => column-metadata`.
+
+  Helper for the decently common case of a query with slightly tweaked metadata."
+  [card metadata-fn]
+  (let [card (card-with-metadata card)]
+    (update card :result_metadata (fn [metadata]
+                                    (mapv #(metadata-fn % card) metadata)))))
 
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
   "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
@@ -492,15 +538,17 @@
                                          database-id)
                                        (u/the-id (lib.metadata/database parent-metadata-provider)))
                     :name          (format "Card %d" (inc i))
+                    :entity-id     (u/generate-nano-id)
                     :dataset-query query}))
     (completing
-     (fn [metadata-provider {query :dataset-query, :as card}]
-       (qp.store/with-metadata-provider metadata-provider
-         (let [result-metadata (if (= (:type query) :query)
-                                 (qp.preprocess/query->expected-cols query)
-                                 (actual-query-results query))
-               card            (assoc card :result-metadata result-metadata)]
-           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
+     (fn [metadata-provider {query :dataset-query, eid :entity-id, :as card}]
+       (let [query (assoc-in query [:info :card-entity-id] eid)]
+         (qp.store/with-metadata-provider metadata-provider
+           (let [result-metadata (if (= (:type query) :query)
+                                   (qp.preprocess/query->expected-cols query)
+                                   (actual-query-results query))
+                 card            (assoc card :result-metadata result-metadata)]
+             (lib.tu/mock-metadata-provider metadata-provider {:cards [card]}))))))
     parent-metadata-provider
     queries)))
 
@@ -593,3 +641,15 @@
   "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
   [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
+
+(defn metadata->native-form
+  "Given metadata for an MBQL query, transform it into the metadata which would be expected for a native query that
+  selected the same columns.
+
+  If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
+  be used instead, as is done for ad-hoc native queries."
+  ([metadata]
+   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
+  ([metadata card-entity-id]
+   (qp.annotate/annotate-native-cols (mapv #(dissoc % :id :ident :source) metadata)
+                                     card-entity-id)))

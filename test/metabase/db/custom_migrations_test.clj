@@ -28,11 +28,11 @@
    [metabase.driver :as driver]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.settings.models.setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task :as task]
    [metabase.test :as mt]
@@ -78,7 +78,7 @@
       (is (= (sort versions)
              versions)))))
 
-(jobs/defjob AbandonmentEmail [_] :default)
+(task/defjob AbandonmentEmail [_] :default)
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
@@ -1532,13 +1532,13 @@
 (defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
-  (binding [setting/*allow-retired-setting-names* true]
+  (binding [metabase.settings.models.setting/*allow-retired-setting-names* true]
     `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
 ;; even though it might make changes to some enterprise-only settings.
 ;; In order to write tests that runs in both OSS and EE, we can't use
-;; [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
+;; [[metabase.settings.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
 ;; because they require all settings are defined.
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest ^:mb/old-migrations-test migrate-remove-admin-from-group-mapping-if-needed-test

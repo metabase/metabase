@@ -14,7 +14,9 @@ import {
 } from "./SessionTimeoutSetting.styled";
 
 const UNITS = [
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { value: "minutes", name: t`minutes` },
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   { value: "hours", name: t`hours` },
 ];
 

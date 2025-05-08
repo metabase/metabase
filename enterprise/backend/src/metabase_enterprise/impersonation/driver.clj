@@ -104,13 +104,20 @@
               :else
               role)))))))
 
-(defenterprise hash-key-for-impersonation
+(defenterprise hash-input-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
   :feature :advanced-permissions
-  [field-id]
+  [field]
   ;; Include the role in the hash key, so that we can cache the results of the query for each role.
-  (let [db-id (field/field-id->database-id field-id)]
-    (str (hash [field-id (connection-impersonation-role db-id)]))))
+  (let [db-id (field/field-id->database-id (u/the-id field))]
+    (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
+      {:impersonation-role role})))
+
+(def ^:dynamic *impersonation-role*
+  "Set by Impersonation middleware, via the query processor, to define the role that should be used by
+  `set-role-if-supported!`. If not set (for example, when we're not in the context of a query) we'll compute it
+  ourselves with `connection-impersonation-role`."
+  nil)
 
 (defenterprise set-role-if-supported!
   "Executes a `USE ROLE` or similar statement on the given connection, if connection impersonation is enabled for the
@@ -123,7 +130,9 @@
     (try
       (let [enabled?           (impersonation-enabled-for-db? database)
             default-role       (driver.sql/default-database-role driver database)
-            impersonation-role (and enabled? (connection-impersonation-role database))]
+            ;; *impersonation-role* is bound by middleware in the context of a query - otherwise, we can calculate it ourselves.
+            impersonation-role (or *impersonation-role*
+                                   (connection-impersonation-role database))]
         (when (and enabled? (not default-role))
           (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
                           {:user-id api/*current-user-id*

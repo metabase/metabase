@@ -12,11 +12,11 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.task-history :as task-history]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -145,7 +145,7 @@
         (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
         (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids new-timezone (:priority trigger)))))))
 
-(jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
+(task/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
@@ -226,7 +226,7 @@
         (task/delete-trigger! trigger-key)
         (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
 
-(jobs/defjob
+(task/defjob
   ^{:doc
     "Find all active Dashboard Subscriptino channels, group them by pulse-id and schedule time and create a trigger for each.
     Do this every startup to make sure all active pulse channels are triggered correctly."

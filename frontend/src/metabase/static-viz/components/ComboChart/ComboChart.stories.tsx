@@ -316,6 +316,14 @@ export const BarStackedNormalizedCustomMinMax48021 = {
   },
 };
 
+export const BarStackedNormalizedGoalLine51054 = {
+  render: Template,
+  args: {
+    rawSeries: data.barStackedNormalizedGoalLine51054 as any,
+    renderingContext,
+  },
+};
+
 export const BarStackedNormalizedEmptySpace37880 = {
   render: Template,
   args: {
@@ -1024,10 +1032,35 @@ export const NoDimensionColumn54755 = {
   },
 };
 
+export const BarNonLinearNumericXAxis = {
+  render: Template,
+  args: {
+    rawSeries: data.barNonLinearNumericXAxis as any,
+    renderingContext,
+  },
+};
+
+export const BarWidthDstTimezones56424 = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
   args: {
     rawSeries: data.messedUpAxis as any,
     renderingContext,
+  },
+};
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+    hasDevWatermark: true,
   },
 };

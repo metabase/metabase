@@ -2,9 +2,9 @@
   (:require
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
-   [metabase.models.setting :as setting]
    [metabase.server.handler :as handler]
    [metabase.server.instance :as server]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

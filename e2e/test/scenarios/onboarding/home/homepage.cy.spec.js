@@ -265,9 +265,9 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
-        cy.findByText("Enabled").should("exist");
+        cy.findByText("Disabled").should("be.visible");
+        cy.findByText("Disabled").click();
+        cy.findByText("Enabled").should("be.visible");
       });
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -284,12 +284,13 @@ describe("scenarios > home > custom homepage", () => {
       );
 
       cy.log(
-        "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
+        "disabling custom-homepage-setting should also remove custom-homepage-dashboard-setting",
       );
+      cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Enabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Enabled").click();
         cy.findByText("Disabled").should("exist");
       });
 
@@ -297,7 +298,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Disabled").click();
         cy.findByText("Enabled").should("exist");
       });
 
@@ -572,7 +573,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
   it("should send snowplow events through admin settings", () => {
     cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+    cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")
@@ -601,6 +602,76 @@ H.describeWithSnowplow("scenarios > setup", () => {
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
+  });
+
+  it("should track when 'New' button is clicked", () => {
+    cy.visit("/");
+
+    cy.log("From the app bar");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "app-bar",
+    });
+
+    cy.log("Track closing the button as well");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").should("not.exist");
+    H.expectGoodSnowplowEvent(
+      {
+        event: "new_button_clicked",
+        triggered_from: "app-bar",
+      },
+      2,
+    );
+
+    cy.log("From the empty collection");
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+
+    cy.findByRole("dialog").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "empty-collection",
+    });
+  });
+
+  /**
+   * Until we refactor the NewItem menu component and drop EntityMenu from it,
+   * the only menu item that can have onClick handler is a "dashboard".
+   */
+  it("should track when a 'New' button's menu item is clicked", () => {
+    cy.visit("/");
+
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_item_clicked",
+      triggered_from: "dashboard",
+    });
+
+    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
+    cy.findByTestId("new-dashboard-modal").should("not.exist");
+
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectGoodSnowplowEvent(
+      {
+        event: "new_button_item_clicked",
+        triggered_from: "dashboard",
+      },
+      2,
+    );
   });
 });
 

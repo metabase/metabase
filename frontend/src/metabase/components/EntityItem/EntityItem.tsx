@@ -62,9 +62,11 @@ const EntityIconCheckBox = ({
   ...props
 }: EntityIconCheckBoxProps) => {
   const iconSize = variant === "small" ? 12 : 16;
-  const handleClick: React.MouseEventHandler = (e) => {
+  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
     onToggleSelected?.();
+    // helps keyboard shortcuts work for collection items
+    e.currentTarget.focus();
   };
 
   return (

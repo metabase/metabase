@@ -1,11 +1,10 @@
 (ns metabase.notification.payload.impl.dashboard
   (:require
    [metabase.channel.render.core :as channel.render]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.send :as notification.send]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
@@ -52,19 +51,23 @@
                (every? notification.execute/is-card-empty? dashboard_parts))
       :empty)))
 
+(defn handlers->audit-recipients
+  "Given an handlers, return a list of recipients that can be used for auditing."
+  [handlers]
+  (->> handlers
+       (mapcat :recipients)
+       (map #(or (not-empty (select-keys (:user %) [:id :first_name :last_name :email]))
+                 (get-in % [:details :value])))))
+
 (defmethod notification.send/do-after-notification-sent :notification/dashboard
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
   (try
-    (run! #(when-let [rows (get-in % [:result :data :rows])]
-             (notification.temp-storage/cleanup! rows))
-          (->> notification-payload :payload :dashboard_parts))
+    (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))
   (events/publish-event! :event/subscription-send
                          {:id      id
                           :user-id creator_id
-                          :object  {:recipients (->> handlers
-                                                     (mapcat :recipients)
-                                                     (map #(or (:user %) (:email %))))
+                          :object  {:recipients (handlers->audit-recipients handlers)
                                     :filters    (-> notification-info :dashboard_subscription :parameters)}}))

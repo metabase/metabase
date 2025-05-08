@@ -11,6 +11,11 @@ import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Table from "metabase/visualizations/visualizations/Table/Table";
 import type { RawSeries } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import * as data from "./stories-data";
 
@@ -30,11 +35,13 @@ const DefaultTemplate: StoryFn<{
   isDashboard,
   bgColor = "white",
   theme,
+  hasDevWatermark,
 }: {
   series: RawSeries;
   isDashboard?: boolean;
   bgColor?: string;
   theme?: MetabaseTheme;
+  hasDevWatermark?: boolean;
 }) => {
   const storyContent = (
     <Box h="calc(100vh - 2rem)" bg={bgColor}>
@@ -42,21 +49,52 @@ const DefaultTemplate: StoryFn<{
     </Box>
   );
 
+  const initialStore = hasDevWatermark
+    ? createMockState({
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures({
+            "development-mode": true,
+          }),
+        }),
+      })
+    : undefined;
+
   if (theme != null) {
     return (
-      <SdkVisualizationWrapper theme={theme}>
+      <SdkVisualizationWrapper theme={theme} initialStore={initialStore}>
         {storyContent}
       </SdkVisualizationWrapper>
     );
   }
 
-  return <VisualizationWrapper>{storyContent}</VisualizationWrapper>;
+  return (
+    <VisualizationWrapper initialStore={initialStore}>
+      {storyContent}
+    </VisualizationWrapper>
+  );
 };
 
 export const DefaultTable = {
+  parameters: {
+    loki: { skip: true },
+  },
   render: DefaultTemplate,
   args: {
     series: data.variousColumnSettings,
+  },
+};
+
+export const TableWithImages = {
+  render: DefaultTemplate,
+  args: {
+    series: data.images,
+  },
+};
+
+export const TableWithWrappedLinks = {
+  render: DefaultTemplate,
+  args: {
+    series: data.wrappedLinks,
   },
 };
 
@@ -90,6 +128,7 @@ export const DashboardTableEmbeddingTheme = {
         },
       },
     },
+    hasDevWatermark: false,
   },
 };
 
@@ -105,5 +144,16 @@ export const DashboardTableEmbeddingThemeWithStickyBackgroundColor = {
         },
       },
     },
+  },
+};
+
+export const Watermark = {
+  parameters: {
+    loki: { skip: true },
+  },
+  render: DefaultTemplate,
+  args: {
+    series: data.variousColumnSettings,
+    hasDevWatermark: true,
   },
 };

@@ -3,7 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -164,3 +164,10 @@
 (def ^:const mb-secondary-color-alpha
   "Minibar secondary color with alpha 0.2"
   (format "%s33" mb-secondary-color))
+
+(def ^:const view-as-img-style
+  "CSS Styles for img elements in cells of a column with {:view-as 'image'} setting"
+  {:max-width  "100%"
+   :max-height "30px"
+   :object-fit "contain"
+   :display    "block"})

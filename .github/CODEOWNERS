@@ -7,7 +7,7 @@ frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion @metabase/embed
 frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard @metabase/embedding
 frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
 # snowplow/* @metabase/data
-
+src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 .github @metabase/devexp
 .clj-kondo @metabase/devexp
 deps.edn @metabase/backend-developers

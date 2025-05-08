@@ -1,9 +1,9 @@
+import cx from "classnames";
 import { type HTMLAttributes, useMemo } from "react";
 import { useAsync } from "react-use";
 
 import type * as Lib from "metabase-lib";
-import { format, formatExample } from "metabase-lib/v1/expressions";
-import type { Expression } from "metabase-types/api";
+import { format, formatExpressionParts } from "metabase-lib/v1/expressions";
 
 import S from "./HighlightExpression.module.css";
 import { highlight } from "./utils";
@@ -16,11 +16,12 @@ export function HighlightExpression({
   printWidth = Infinity,
   ...props
 }: {
-  expression: Expression;
+  expression: Lib.ExpressionClause;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
   printWidth?: number;
+  inline?: boolean;
 } & HTMLAttributes<HTMLPreElement>) {
   const { value: formattedExpression } = useAsync(
     () =>
@@ -36,16 +37,17 @@ export function HighlightExpression({
   );
 }
 
-export function HighlightExampleExpression({
+export function HighlightExpressionParts({
   expression,
   printWidth = Infinity,
   ...props
 }: {
-  expression: Expression;
+  expression: Lib.ExpressionParts;
+  inline?: boolean;
   printWidth?: number;
 } & HTMLAttributes<HTMLPreElement>) {
   const { value: formattedExpression } = useAsync(
-    () => formatExample(expression, { printWidth }),
+    () => formatExpressionParts(expression, { printWidth }),
     [expression, printWidth],
   );
 
@@ -59,17 +61,19 @@ export function HighlightExampleExpression({
 
 export function HighlightExpressionSource({
   expression,
+  inline = false,
   ...props
 }: {
+  inline?: boolean;
   expression: string;
 } & HTMLAttributes<HTMLPreElement>) {
   const __html = useMemo(() => highlight(expression), [expression]);
 
   return (
-    <pre
-      {...props}
-      className={S.highlight}
+    <code
+      className={cx(S.highlight, inline ? S.inline : S.block)}
       dangerouslySetInnerHTML={{ __html }}
+      {...props}
     />
   );
 }

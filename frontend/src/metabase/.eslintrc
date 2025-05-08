@@ -45,6 +45,7 @@
         ],
       },
     ],
+    "ttag/no-module-declaration": 2,
   },
   "overrides": [
     {

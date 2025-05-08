@@ -25,6 +25,7 @@ export type WindowModalProps = BaseModalProps & {
   "data-testid"?: string;
   "aria-labelledby"?: string;
   zIndex?: number;
+  disableEventSandbox?: boolean;
   trapFocus?: boolean;
 } & {
   [size in ModalSize]?: boolean;
@@ -122,6 +123,7 @@ export class WindowModal extends Component<WindowModalProps> {
 
   render() {
     const {
+      disableEventSandbox,
       enableMouseEvents,
       isOpen,
       style,
@@ -142,6 +144,7 @@ export class WindowModal extends Component<WindowModalProps> {
     return (
       <SandboxedPortal
         container={this._modalElement}
+        disabled={disableEventSandbox}
         enableMouseEvents={enableMouseEvents}
         // disable keydown to allow FocusTrap to work
         unsandboxedEvents={["onKeyDown"]}

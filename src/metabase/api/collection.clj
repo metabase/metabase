@@ -15,7 +15,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -28,7 +28,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]

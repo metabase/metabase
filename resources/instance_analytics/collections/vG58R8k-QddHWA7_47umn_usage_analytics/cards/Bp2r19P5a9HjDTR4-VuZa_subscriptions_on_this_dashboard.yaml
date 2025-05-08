@@ -193,6 +193,7 @@ serdes/meta:
   label: subscriptions_on_this_dashboard
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 metabase_version: null
 source_card_id: 5ojUtU9iE-DCggHdFPIll
