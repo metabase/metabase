@@ -186,12 +186,24 @@ function node<T extends Item>(x: Omit<T, "key">): TreeNode {
   } as TreeNode;
 }
 
-export function useExpandedState(path: TreePath) {
-  const initialKey = toKey(path);
-  const [state, setState] = useState<{ [key: string]: boolean }>({
-    [initialKey]: true,
-  });
+function partialPaths(path: TreePath) {
+  return [path, { ...path, schemaId: undefined }];
+}
 
+type ExpandedState = {
+  [key: string]: boolean;
+};
+
+function initialState(path: TreePath) {
+  const res: ExpandedState = {};
+  partialPaths(path).forEach((path) => {
+    res[toKey(path)] = true;
+  });
+  return res;
+}
+
+export function useExpandedState(path: TreePath) {
+  const [state, setState] = useState(initialState(path));
   return {
     isExpanded(key: string) {
       return Boolean(state[key]);

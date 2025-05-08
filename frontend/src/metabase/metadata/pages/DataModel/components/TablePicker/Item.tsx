@@ -16,7 +16,7 @@ import {
   hasChildren,
 } from "./utils";
 
-const ITEM_MIN_HEIGHT = 25;
+const ITEM_MIN_HEIGHT = 32;
 const INDENT_LEVEL = 16;
 const TYPE_TO_LEVEL = {
   database: 0,
