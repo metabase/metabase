@@ -1,17 +1,14 @@
-import cx from "classnames";
-import { Component } from "react";
 import { goBack } from "react-router-redux";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ModalContent from "metabase/components/ModalContent";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import PasswordReveal from "metabase/components/PasswordReveal";
-import Button from "metabase/core/components/Button";
-import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { connect } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { Flex } from "metabase/ui";
+import { Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -33,64 +30,57 @@ interface UserPasswordResetModalProps extends UserPasswordResetModalParams {
   temporaryPassword: string;
 }
 
-class UserPasswordResetModalInner extends Component<UserPasswordResetModalProps> {
-  state = {
-    resetButtonDisabled: false,
+const UserPasswordResetModalInner = ({
+  clearTemporaryPassword,
+  emailConfigured,
+  onClose,
+  params,
+  temporaryPassword,
+  user,
+}: UserPasswordResetModalProps) => {
+  useUnmount(() => {
+    clearTemporaryPassword(params.userId);
+  });
+
+  const handleResetConfirm = async () => {
+    if (emailConfigured) {
+      await user.resetPasswordEmail();
+    } else {
+      await user.resetPasswordManual();
+    }
   };
 
-  componentWillUnmount() {
-    this.props.clearTemporaryPassword(this.props.params.userId);
-  }
-
-  handleClose = () => {
-    this.setState({ resetButtonDisabled: false });
-    this.props.onClose();
-  };
-
-  render() {
-    const { user, emailConfigured, temporaryPassword } = this.props;
-
-    return temporaryPassword ? (
-      <ModalContent
+  if (temporaryPassword) {
+    return (
+      <ConfirmModal
+        opened
         title={t`${user.common_name}'s password has been reset`}
-        footer={<Button primary onClick={this.handleClose}>{t`Done`}</Button>}
-        onClose={this.handleClose}
-      >
-        <span
-          className={cx(CS.pb3, CS.block)}
-        >{t`Here’s a temporary password they can use to log in and then change their password.`}</span>
-
-        <PasswordReveal password={temporaryPassword} />
-      </ModalContent>
-    ) : (
-      <ModalContent
-        title={t`Reset ${user.common_name}'s password?`}
-        onClose={this.handleClose}
-      >
-        <p>{t`Are you sure you want to do this?`}</p>
-
-        <Flex>
-          <Button
-            className={CS.mlAuto}
-            disabled={this.state.resetButtonDisabled}
-            onClick={async () => {
-              this.setState({ resetButtonDisabled: true });
-              if (emailConfigured) {
-                await user.resetPasswordEmail();
-                this.handleClose();
-              } else {
-                await user.resetPasswordManual();
-              }
-            }}
-            danger
-          >
-            {t`Reset password`}
-          </Button>
-        </Flex>
-      </ModalContent>
+        onConfirm={onClose}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonText={t`Done`}
+        closeButtonText={null}
+        onClose={onClose}
+        message={
+          <>
+            <Text pb="lg">{t`Here’s a temporary password they can use to log in and then change their password.`}</Text>
+            <PasswordReveal password={temporaryPassword} />
+          </>
+        }
+      />
     );
   }
-}
+
+  return (
+    <ConfirmModal
+      opened
+      title={t`Reset ${user.common_name}'s password?`}
+      onClose={onClose}
+      confirmButtonText={t`Reset password`}
+      onConfirm={handleResetConfirm}
+      message={t`Are you sure you want to do this?`}
+    />
+  );
+};
 
 export const UserPasswordResetModal = _.compose(
   Users.load({

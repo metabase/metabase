@@ -14,7 +14,7 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type {
   GroupId,
   Group as IGroup,
@@ -265,7 +265,7 @@ const PeopleListInner = ({
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <section className={CS.pb4}>
+      <Box component="section" pb="xl">
         <table
           data-testid="admin-people-list-table"
           className={cx(AdminS.ContentTable, CS.borderBottom)}
@@ -315,17 +315,19 @@ const PeopleListInner = ({
         </table>
 
         {hasUsers && (
-          <div
-            className={cx(CS.flex, CS.alignCenter, CS.justifyBetween, CS.p2)}
+          <Flex
+            align="center"
+            justify="space-between"
+            p="md"
             data-testid="people-list-footer"
           >
-            <div className={cx(CS.textMedium, CS.textBold)}>
+            <Box fw={700}>
               {ngettext(
                 msgid`${total} person found`,
                 `${total} people found`,
                 total,
               )}
-            </div>
+            </Box>
             <PaginationControls
               page={page}
               pageSize={pageSize}
@@ -334,29 +336,26 @@ const PeopleListInner = ({
               onNextPage={onNextPage}
               onPreviousPage={onPreviousPage}
             />
-          </div>
+          </Flex>
         )}
 
         {!hasUsers && (
-          <div
-            className={cx(
-              CS.flex,
-              CS.flexColumn,
-              CS.alignCenter,
-              CS.justifyCenter,
-              CS.p4,
-              CS.textMedium,
-              CS.textCentered,
-            )}
+          <Flex
+            align="center"
+            justify="center"
+            direction="column"
+            p="xl"
+            ta="center"
           >
-            <div className={CS.my3}>
-              <Icon name="search" className={CS.mb1} size={32} />
-              <h3 className={CS.textLight}>{t`No results found`}</h3>
-            </div>
-          </div>
+            <Box my="lg">
+              <Icon name="search" mb="sm" size={32} />
+              <Text c="text-light" fz="lg" fw={700}>{t`No results found`}</Text>
+            </Box>
+          </Flex>
         )}
+
         {modalContent}
-      </section>
+      </Box>
     </LoadingAndErrorWrapper>
   );
 };

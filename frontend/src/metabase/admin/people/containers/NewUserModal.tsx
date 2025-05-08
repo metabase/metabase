@@ -1,10 +1,10 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
 import Users from "metabase/entities/users";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Modal } from "metabase/ui";
 import type { User as UserType } from "metabase-types/api";
 
 import { UserForm } from "../forms/UserForm";
@@ -25,13 +25,13 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
   };
 
   return (
-    <ModalContent title="Create user" onClose={onClose}>
+    <Modal opened title="Create user" padding="xl" onClose={onClose}>
       <UserForm
         initialValues={{}}
         submitText={t`Create`}
         onCancel={onClose}
         onSubmit={handleSubmit}
       />
-    </ModalContent>
+    </Modal>
   );
 };
