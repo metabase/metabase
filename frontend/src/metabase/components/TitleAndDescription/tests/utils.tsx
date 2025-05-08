@@ -3,12 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  type waitForOptions,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import { assertNeverPasses } from "__support__/utils";
 import type {
   RetrievedDictionaryArrayRow,
   TokenFeatures,
@@ -22,7 +18,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import TitleAndDescription from "../TitleAndDescription";
 
 import { sampleDictionary } from "./constants";
-import { assertNeverPasses } from "__support__/utils";
 
 export interface SetupOpts {
   localeCode: string;
@@ -81,9 +76,9 @@ export const assertStringsDoNotBecomePresent = async (
    * called a 'msgstr'. */
   stringType: "msgid" | "msgstr",
 ) => {
-  await assertNeverPasses(() => {
+  await assertNeverPasses(async () => {
     expect(
-      screen.getByRole("heading", {
+      await screen.findByRole("heading", {
         name: sampleDictionary[0][stringType],
       }),
     ).toBeInTheDocument();
