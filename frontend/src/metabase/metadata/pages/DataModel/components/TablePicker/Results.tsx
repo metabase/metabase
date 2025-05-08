@@ -74,6 +74,7 @@ export function Results({
             <>
               {type !== "database" && parent && (
                 <Track
+                  key={`${key}-track`}
                   start={parent.start + 0.5 * parent.size}
                   end={start + 0.5 * size}
                   type={type}
