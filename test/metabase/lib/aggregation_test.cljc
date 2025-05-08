@@ -624,6 +624,14 @@
                 (->> (lib/selected-aggregation-operators aggregation-operators (first aggregations))
                      (filterv :selected?))))))))
 
+(deftest ^:parallel filter-pivot-aggregation-operators-test
+  (testing "Operators that are not supported for ad-hoc pivot tables can be filtered out"
+    (let [query (lib.tu/venues-query)
+          operators (lib/available-aggregation-operators query)
+          pivot-operators (lib/filter-pivot-aggregation-operators operators)]
+      (is (empty? (->> (map :short pivot-operators)
+                       (filter #{:cum-sum :cum-count})))))))
+
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
     (let [query (-> (lib.tu/venues-query)
@@ -661,7 +669,7 @@
   (let [query  (-> (lib.tu/venues-query)
                    (lib/aggregate (lib/avg (lib/+ (meta/field-metadata :venues :price) 1))))
         ag-uuid (:lib/source-uuid (first (lib/aggregations-metadata query)))
-        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} ag-uuid]]
+        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a0(3a-55857f0)7c4e0", :effective-type :type/Float} ag-uuid]]
     (is (= :type/Float
            (lib/type-of query ag-ref)))
     (is (= "Average of Price + 1"

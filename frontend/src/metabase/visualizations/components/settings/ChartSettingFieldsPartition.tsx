@@ -76,7 +76,7 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
   const [opened, { close, toggle }] = useDisclosure();
   const operators = useMemo(() => {
     const baseOperators = Lib.availableAggregationOperators(query, -1);
-    return baseOperators;
+    return Lib.filterPivotAggregationOperators(baseOperators);
     //return isUpdate
     //  ? Lib.selectedAggregationOperators(baseOperators, clause)
     //  : baseOperators;
@@ -109,6 +109,7 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
           stageIndex={-1}
           onClose={close}
           allowCustomExpressions={false}
+          allowMetrics={false}
           onQueryChange={() => {}}
         />
       </Popover.Dropdown>
