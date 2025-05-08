@@ -72,10 +72,10 @@ export function Results({
 
           return (
             <>
-              {type !== "database" && parent && (
+              {type !== "database" && (
                 <Track
                   key={`${key}-track`}
-                  start={parent.start + 0.5 * parent.size}
+                  start={parent ? parent.start + 0.5 * parent.size : 0}
                   end={start + 0.5 * size}
                   type={type}
                 />
