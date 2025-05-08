@@ -1,31 +1,39 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useListUsersQuery } from "metabase/api";
 import UserAvatar from "metabase/components/UserAvatar";
 import { Flex, Pill, Popover, Text, UnstyledButton } from "metabase/ui";
-import type { User } from "metabase-types/api";
+import type { Member, User } from "metabase-types/api";
 
 import { userToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
 
 interface AddMemberRowProps {
-  users: User[];
-  excludeIds: Set<number>;
+  members: Member[];
   onCancel: () => void;
   onDone: (userIds: number[]) => void;
 }
 
-export function AddMemberRow({
-  users,
-  excludeIds,
-  onCancel,
-  onDone,
-}: AddMemberRowProps) {
+export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
+  const listUsersReq = useListUsersQuery();
   const [text, setText] = useState("");
   const [selectedUsersById, setSelectedUsersById] = useState<Map<number, User>>(
     new Map(),
   );
+
+  const availableToSelectUsers = useMemo(() => {
+    const { isLoading, error, data } = listUsersReq;
+    if (isLoading || error) {
+      return [];
+    }
+    const allUsers = data?.data ?? [];
+    const groupMemberIds = new Set(members.map((m) => m.user_id));
+    return allUsers.filter(
+      ({ id }) => !selectedUsersById.has(id) && !groupMemberIds.has(id),
+    );
+  }, [members, selectedUsersById, listUsersReq]);
 
   const handleRemoveUser = (user: User) => {
     const newSelectedUsersById = new Map(selectedUsersById);
@@ -43,14 +51,6 @@ export function AddMemberRow({
   const handleDone = () => {
     onDone(Array.from(selectedUsersById.keys()));
   };
-
-  const availableToSelectUsers = useMemo(
-    () =>
-      users.filter(
-        (user) => !selectedUsersById.has(user.id) && !excludeIds.has(user.id),
-      ),
-    [selectedUsersById, excludeIds, users],
-  );
 
   const suggestedUsers = useMemo(() => {
     const input = text.toLowerCase();

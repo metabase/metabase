@@ -1,31 +1,28 @@
 import { goBack } from "react-router-redux";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
+import {
+  useForgotPasswordMutation,
+  useGetUserQuery,
+  useUpdatePasswordMutation,
+} from "metabase/api";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import PasswordReveal from "metabase/components/PasswordReveal";
-import Users from "metabase/entities/users";
-import { connect } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
 import { Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserPasswordResetModalParams {
-  params: { userId: string };
-}
-
-interface UserPasswordResetModalProps extends UserPasswordResetModalParams {
-  clearTemporaryPassword: (userId: string) => void;
+interface UserPasswordResetModalProps {
+  clearTemporaryPassword: () => void;
   onClose: () => void;
-  user: User & {
-    resetPasswordEmail: () => Promise<void>;
-    resetPasswordManual: () => Promise<void>;
-  };
+  user: User;
   emailConfigured: boolean;
   temporaryPassword: string;
 }
@@ -34,19 +31,22 @@ const UserPasswordResetModalInner = ({
   clearTemporaryPassword,
   emailConfigured,
   onClose,
-  params,
   temporaryPassword,
   user,
 }: UserPasswordResetModalProps) => {
   useUnmount(() => {
-    clearTemporaryPassword(params.userId);
+    clearTemporaryPassword();
   });
+
+  const [updatePassword] = useUpdatePasswordMutation();
+  const [resetPasswordEmail] = useForgotPasswordMutation();
 
   const handleResetConfirm = async () => {
     if (emailConfigured) {
-      await user.resetPasswordEmail();
+      await resetPasswordEmail(user.email).unwrap();
     } else {
-      await user.resetPasswordManual();
+      const password = generatePassword();
+      await updatePassword({ id: user.id, password }).unwrap();
     }
   };
 
@@ -82,22 +82,35 @@ const UserPasswordResetModalInner = ({
   );
 };
 
-export const UserPasswordResetModal = _.compose(
-  Users.load({
-    id: (_state: State, props: UserPasswordResetModalParams) =>
-      props.params.userId,
-    wrapped: true,
-  }),
-  connect(
-    (state, props: UserPasswordResetModalParams) => ({
-      emailConfigured: MetabaseSettings.isEmailConfigured(),
-      temporaryPassword: getUserTemporaryPassword(state, {
-        userId: props.params.userId,
-      }),
-    }),
-    {
-      onClose: goBack,
-      clearTemporaryPassword,
-    },
-  ),
-)(UserPasswordResetModalInner);
+interface UserPasswordResetModalProps {
+  params: { userId: string };
+  onClose: () => void;
+}
+
+export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
+  const userId = parseInt(props.params.userId);
+
+  const dispatch = useDispatch();
+
+  const { data: user, isLoading, error } = useGetUserQuery(userId);
+  const temporaryPassword = useSelector((state) =>
+    getUserTemporaryPassword(state, { userId }),
+  );
+
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      {user && (
+        <UserPasswordResetModalInner
+          {...props}
+          onClose={() => dispatch(goBack())}
+          clearTemporaryPassword={() =>
+            dispatch(clearTemporaryPassword(user.id))
+          }
+          user={user}
+          emailConfigured={MetabaseSettings.isEmailConfigured()}
+          temporaryPassword={temporaryPassword}
+        />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+};

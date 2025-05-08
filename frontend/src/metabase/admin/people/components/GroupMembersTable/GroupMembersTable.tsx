@@ -1,141 +1,96 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { useListApiKeysQuery } from "metabase/api";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
-import Users from "metabase/entities/users";
+import { usePagination } from "metabase/hooks/use-pagination";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import type { ApiKey, Group, User as IUser, Member } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
+
+const isApiKeyGroupMember = (member: Member) =>
+  member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
   group: Group;
-  groupMemberships: Member[];
-  membershipsByUser: Record<number, Member[]>;
-  currentUser: Partial<IUser>;
-  users: IUser[];
   showAddUser: any;
-  selectedUsers: IUser[];
   onAddUserCancel: () => void;
   onAddUserDone: (userIds: number[]) => Promise<void>;
-  onMembershipRemove: (membershipId: number) => Promise<void>;
+  onMembershipRemove: (membership: Membership) => Promise<void>;
   onMembershipUpdate: (member: Member) => void;
-  reload: () => void;
-  groupUsers: IUser[];
-  page: number;
-  pageSize: number;
-  onNextPage: () => void;
-  onPreviousPage: () => void;
 }
 
-function GroupMembersTableInner({
+export function GroupMembersTable({
   group,
-  groupMemberships,
-  membershipsByUser,
-  currentUser: { id: currentUserId } = {},
-  users,
   showAddUser,
   onAddUserCancel,
   onAddUserDone,
   onMembershipRemove,
   onMembershipUpdate,
-  groupUsers,
-  page,
-  pageSize,
-  onNextPage,
-  onPreviousPage,
-  reload,
 }: GroupMembersTableProps) {
-  const { isLoading, data: apiKeys } = useListApiKeysQuery();
-  const groupApiKeys = useMemo(() => {
-    return apiKeys?.filter((apiKey) => apiKey.group.id === group.id) ?? [];
-  }, [apiKeys, group.id]);
+  const pageSize = 25;
+  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const offset = page * pageSize;
 
-  // you can't remove people from Default and you can't remove the last user from Admin
-  const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
-  const canRemove = (user: IUser) =>
-    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
-
-  const hasMembers = group.members.length > 0;
-
-  const handleAddUser: GroupMembersTableProps["onAddUserDone"] = async (
-    userIds,
-  ) => {
-    await onAddUserDone(userIds);
-    reload();
-  };
-
-  const handleRemoveUser = async (membershipId: number) => {
-    await onMembershipRemove(membershipId);
-    reload();
-  };
-
-  const columnTitles = [
-    t`Name`,
-    canEditMembership(group) ? t`Type` : null,
-    t`Email`,
-  ].filter(isNotNull);
-
-  const alreadyMembersIds = useMemo(
-    () => new Set(groupMemberships.map((membership) => membership.user_id)),
-    [groupMemberships],
-  );
-
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
-  }
+  const members = useMemo(() => {
+    return _.partition(group.members, isApiKeyGroupMember).flat();
+  }, [group.members]);
+  const groupsPage = members.slice(offset, offset + pageSize);
 
   return (
     <>
-      <AdminContentTable columnTitles={columnTitles}>
+      <AdminContentTable
+        columnTitles={_.compact([
+          t`Name`,
+          canEditMembership(group) ? t`Type` : null,
+          t`Email`,
+        ])}
+      >
         {showAddUser && (
           <AddMemberRow
-            excludeIds={alreadyMembersIds}
-            users={users}
+            members={members}
             onCancel={onAddUserCancel}
-            onDone={handleAddUser}
+            onDone={onAddUserDone}
           />
         )}
-        {groupApiKeys?.map((apiKey: ApiKey) => (
-          <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
-        ))}
-        {groupUsers.map((user: IUser) => (
-          <UserRow
-            key={user.id}
-            group={group}
-            user={user}
-            memberships={membershipsByUser[user.id]}
-            canRemove={canRemove(user)}
-            onMembershipRemove={handleRemoveUser}
-            onMembershipUpdate={onMembershipUpdate}
-          />
-        ))}
+        {groupsPage.map((member) =>
+          isApiKeyGroupMember(member) ? (
+            <ApiKeyMemberRow key={member.membership_id} member={member} />
+          ) : (
+            <UserMemberRow
+              key={member.membership_id}
+              group={group}
+              member={member}
+              onMembershipRemove={onMembershipRemove}
+              onMembershipUpdate={onMembershipUpdate}
+            />
+          ),
+        )}
       </AdminContentTable>
-      {hasMembers && (
+
+      {members.length > 0 ? (
         <Flex align="center" justify="flex-end" p="md">
           <PaginationControls
             page={page}
             pageSize={pageSize}
-            itemsLength={groupUsers.length}
-            total={groupMemberships.length}
-            onNextPage={onNextPage}
-            onPreviousPage={onPreviousPage}
+            itemsLength={groupsPage.length}
+            total={members.length}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
           />
         </Flex>
-      )}
-      {!hasMembers && (
+      ) : (
         <Text size="lg" fw="700" ta="center" mt="4rem">
           {t`A group is only as good as its members.`}
         </Text>
@@ -144,65 +99,45 @@ function GroupMembersTableInner({
   );
 }
 
-export const GroupMembersTable = Users.loadList({
-  reload: true,
-  pageSize: 25,
-  listName: "groupUsers",
-  query: (_state: State, props: GroupMembersTableProps) => ({
-    group_id: props.group.id,
-  }),
-})(GroupMembersTableInner);
-
 interface UserRowProps {
-  user: IUser;
+  member: Member;
   group: Group;
-  canRemove: boolean;
-  onMembershipRemove: (membershipId: number) => void;
+  onMembershipRemove: (membership: Membership) => void;
   onMembershipUpdate: (membership: Member) => void;
-  memberships: Member[];
 }
 
-const UserRow = ({
-  user,
+const UserMemberRow = ({
+  member,
   group,
-  canRemove,
   onMembershipRemove,
   onMembershipUpdate,
-  memberships = [],
 }: UserRowProps) => {
-  const groupMembership = memberships.find(
-    (membership) => membership.group_id === group.id,
-  );
-
-  if (!groupMembership) {
-    return null;
-  }
+  // you can't remove people from Default and you can't remove the last user from Admin
+  const currentUser = useSelector(getCurrentUser);
+  const isCurrentUser = member.user_id === currentUser.id;
+  const canRemove =
+    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser);
 
   const handleTypeUpdate = (isManager: boolean) => {
-    onMembershipUpdate({
-      ...groupMembership,
-      is_group_manager: isManager,
-    });
+    onMembershipUpdate({ ...member, is_group_manager: isManager });
   };
 
   return (
     <tr>
       <td>
-        <Text fw={700}>{getName(user)}</Text>
+        <Text fw={700}>{getFullName(member) ?? "-"}</Text>
       </td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
-          isManager={groupMembership.is_group_manager}
+          isManager={member.is_group_manager}
           onChange={handleTypeUpdate}
-          isAdmin={user.is_superuser || isAdminGroup(group)}
+          isAdmin={member.is_superuser || isAdminGroup(group)}
         />
       )}
-      <td>{user.email}</td>
+      <td>{member.email}</td>
       {canRemove ? (
         <Box component="td" ta="right">
-          <UnstyledButton
-            onClick={() => onMembershipRemove(groupMembership?.membership_id)}
-          >
+          <UnstyledButton onClick={() => onMembershipRemove(member)}>
             <Icon name="close" c="text-light" size={16} />
           </UnstyledButton>
         </Box>
@@ -211,10 +146,10 @@ const UserRow = ({
   );
 };
 
-const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => (
+const ApiKeyMemberRow = ({ member }: { member: Member }) => (
   <tr>
     <td>
-      <Text fw="bold">{apiKey.name}</Text>
+      <Text fw="bold">{member.first_name}</Text>
     </td>
     <td>
       <Text fw="bold" c="text-medium">{t`API Key`}</Text>
@@ -229,13 +164,3 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => (
     </Box>
   </tr>
 );
-
-function getName(user: IUser): string {
-  const name = getFullName(user);
-
-  if (!name) {
-    return "-";
-  }
-
-  return name;
-}
