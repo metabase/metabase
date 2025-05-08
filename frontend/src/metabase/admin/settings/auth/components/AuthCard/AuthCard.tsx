@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import Modal from "metabase/components/Modal";
@@ -66,8 +66,8 @@ const AuthCard = ({
 
   const footer = isEnvSetting ? (
     <Text>
-      {t`Set with env var`}{" "}
-      <Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>
+      {c("{0} is the env var name")
+        .jt`Set with env var ${(<Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>)}`}
     </Text>
   ) : null;
 
