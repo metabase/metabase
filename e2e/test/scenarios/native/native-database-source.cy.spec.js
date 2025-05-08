@@ -115,7 +115,8 @@ describe(
     it("selecting a database in native editor for model actions should not persist the database", () => {
       [SAMPLE_DB_ID, PG_DB_ID].forEach(enableModelActionsForDatabase);
 
-      startNewAction();
+      cy.visit("/");
+      H.startNewAction();
       assertNoDatabaseSelected();
 
       selectDatabase("Sample Database");
@@ -129,7 +130,8 @@ describe(
       selectDatabase(postgresName);
       cy.wait("@persistDatabase");
 
-      startNewAction();
+      cy.visit("/");
+      H.startNewAction();
       assertNoDatabaseSelected();
     });
 
@@ -365,12 +367,6 @@ function startNativeQuestion() {
 function startNativeModel() {
   cy.visit("/model/new");
   cy.findByRole("heading", { name: "Use a native query" }).click();
-}
-
-function startNewAction() {
-  cy.visit("/");
-  cy.findByTestId("app-bar").findByText("New").click();
-  H.popover().findByTextEnsureVisible("Action").click();
 }
 
 function assertNoDatabaseSelected() {

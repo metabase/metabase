@@ -37,7 +37,6 @@ import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
-  showAddParameterPopover: () => void;
   removeParameter: (id: ParameterId) => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -94,7 +93,6 @@ interface DashboardSidebarsProps {
 
 export function DashboardSidebars({
   dashboard,
-  showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
   clickBehaviorSidebarDashcard,
@@ -201,7 +199,6 @@ export function DashboardSidebars({
           onChangeSourceConfig={setParameterSourceConfig}
           onChangeFilteringParameters={setParameterFilteringParameters}
           onRemoveParameter={removeParameter}
-          onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
           onChangeRequired={setParameterRequired}
           onChangeTemporalUnits={setParameterTemporalUnits}

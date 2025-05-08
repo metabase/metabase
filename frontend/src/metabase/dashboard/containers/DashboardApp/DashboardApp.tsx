@@ -41,7 +41,6 @@ import {
   setParameterType,
   setSharing,
   setSidebar,
-  showAddParameterPopover,
   toggleSidebar,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
@@ -156,7 +155,6 @@ const mapDispatchToProps = {
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
-  showAddParameterPopover,
   removeParameter,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
@@ -229,7 +227,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     setParameterSourceType,
     setParameterSourceConfig,
     setParameterFilteringParameters,
-    showAddParameterPopover,
     removeParameter,
     onReplaceAllDashCardVisualizationSettings,
     onUpdateDashCardVisualizationSettings,
@@ -390,7 +387,6 @@ const DashboardApp = (props: DashboardAppProps) => {
         setParameterSourceType={setParameterSourceType}
         setParameterSourceConfig={setParameterSourceConfig}
         setParameterFilteringParameters={setParameterFilteringParameters}
-        showAddParameterPopover={showAddParameterPopover}
         removeParameter={removeParameter}
         onReplaceAllDashCardVisualizationSettings={
           onReplaceAllDashCardVisualizationSettings
