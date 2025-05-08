@@ -91,11 +91,36 @@ const processPolyfillPlugin = () => ({
   },
 });
 
+// Taken from https://github.com/rtivital/hash-css-selector
+// But generates hashes based on the full css module file path,
+const generateScopedName = (selector, fileName) => {
+  const prefix = "mb-sdk";
+  const getFileName = (filePath) => {
+    return filePath
+      .replace(/\\/g, "/")
+      .replace(".module", "")
+      .replace(".css", "")
+      .replace(".scss", "");
+  };
+
+  const hashCSSSelector = (selector) => {
+    let hash = 0;
+
+    for (let i = 0; i < selector.length; i += 1) {
+      const chr = selector.charCodeAt(i);
+      hash = (hash << 5) - hash + chr;
+      hash |= 0;
+    }
+
+    return `${prefix}_${(hash + 2147483648).toString(16)}`;
+  };
+
+  return hashCSSSelector(`${getFileName(fileName)}-${selector}`, prefix);
+};
+
 const cssModulesPlugin = () => ({
   name: "css-module",
   setup(build) {
-    const generateScopedName = createGenerateScopedName("mb-sdk");
-
     build.onResolve(
       {
         filter: /(index\.css|\.module\.css)$/,
@@ -117,7 +142,7 @@ const cssModulesPlugin = () => ({
         }
 
         return {
-          path: `${args.path}#css-module`,
+          path: `${pathDir}#css-module`,
           namespace: "css-module",
           pluginData: {
             pathDir,
@@ -273,7 +298,7 @@ await build({
   splitting: true,
   treeshake: true,
   sourcemap: isDevMode,
-  minify: !isDevMode,
+  minify: false,
   clean: true,
   metafile: true,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
