@@ -45,7 +45,7 @@ docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase met
 
 ## Environment variables on Metabase Cloud
 
-If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help-premium) to adjust environment variables for your Metabase.
 
 ---
 
@@ -573,17 +573,6 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via static embedding?
 
-### `MB_ENABLE_FIELD_USAGE_ANALYSIS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `enable-field-usage-analysis`
-
-Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
-    application database.
-
-    Turn off by default since we haven't had an user-facing feature that uses this data yet.
-
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -690,7 +679,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help/premium`
+- Default: `https://www.metabase.com/help-premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -2241,4 +2230,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-

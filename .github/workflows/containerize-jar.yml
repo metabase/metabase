@@ -16,6 +16,8 @@ on:
       release:
         type: string
         default: 'true'
+      build-args:
+        type: string
   workflow_dispatch:
     inputs:
       artifact-name:
@@ -87,6 +89,7 @@ jobs:
         tags: ${{ inputs.repo }}:${{ inputs.tag }}
         no-cache: true
         push: true
+        build-args: ${{ inputs.build-args }}
 
     # we need to do this to get the nice fallback behavior of the legacy manifest file
     - name: Build container (x86 only)

@@ -140,7 +140,8 @@
   :getter     (fn []
                 (let [raw-vi (setting/get-value-of-type :json :version-info)
                       current-major (config/current-major-version)]
-                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)}))))
+                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)})))
+  :include-in-list? false)
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
@@ -292,14 +293,6 @@ x.com")
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
   :visibility :authenticated
   :encryption :when-encryption-key-set
-  :audit      :getter)
-
-(defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :public
   :audit      :getter)
 
 (defn- coerce-to-relative-url
@@ -786,6 +779,10 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :embedding                      (premium-features/hide-embed-branding?)
                       :embedding_sdk                  (premium-features/enable-embedding-sdk-origins?)
                       :hosting                        (premium-features/is-hosted?)
+                      :llm_autodescription            (premium-features/enable-llm-autodescription?)
+                      :metabot_v3                     (premium-features/enable-metabot-v3?)
+                      :ai_sql_fixer                   (premium-features/enable-ai-sql-fixer?)
+                      :ai_sql_generation              (premium-features/enable-ai-sql-generation?)
                       :official_collections           (premium-features/enable-official-collections?)
                       :query_reference_validation     (premium-features/enable-query-reference-validation?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
@@ -798,8 +795,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
                       :upload_management              (premium-features/enable-upload-management?)
-                      :whitelabel                     (premium-features/enable-whitelabeling?)
-                      :llm_autodescription            (premium-features/enable-llm-autodescription?)})
+                      :whitelabel                     (premium-features/enable-whitelabeling?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https
@@ -892,13 +888,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (when (and id (t2/exists? :model/Dashboard :id id :archived false))
                     id)))
   :doc        false)
-
-(defsetting sql-parsing-enabled
-  (deferred-tru "SQL Parsing is disabled")
-  :visibility :internal
-  :export?    false
-  :default    true
-  :type       :boolean)
 
 (defsetting bug-reporting-enabled
   (deferred-tru "Enable bug report submissions.")

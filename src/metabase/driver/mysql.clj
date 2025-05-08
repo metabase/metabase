@@ -66,7 +66,8 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
@@ -349,10 +350,6 @@
 (defmethod sql.qp/->honeysql [:mysql :text]
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:mysql :date]
-  [driver [_ value]]
-  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]

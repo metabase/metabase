@@ -1,5 +1,5 @@
 import { MBQL_CLAUSES } from "./config";
-import type { MBQLClauseFunctionConfig } from "./types";
+import type { MBQLClauseDefinition, MBQLClauseFunctionConfig } from "./types";
 
 export type DefinedClauseName = keyof typeof MBQL_CLAUSES;
 
@@ -16,10 +16,23 @@ export function getClauseDefinition(
 export function getClauseDefinition(
   name: string,
 ): MBQLClauseFunctionConfig | undefined {
-  if (isDefinedClause(name)) {
-    return MBQL_CLAUSES[name];
+  if (!isDefinedClause(name)) {
+    return undefined;
   }
-  return undefined;
+
+  const defn: MBQLClauseDefinition = MBQL_CLAUSES[name];
+  const args = defn.args();
+
+  return {
+    name,
+    argType(index) {
+      return args[index]?.type;
+    },
+    ...defn,
+    hasOptions: Boolean(defn.hasOptions),
+    multiple: Boolean(defn.multiple),
+    args,
+  };
 }
 
 const EXPRESSION_TO_MBQL_NAME = new Map(

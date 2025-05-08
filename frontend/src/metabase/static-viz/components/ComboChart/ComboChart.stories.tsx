@@ -1055,3 +1055,12 @@ export const Default = {
     renderingContext,
   },
 };
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
+};

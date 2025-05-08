@@ -34,7 +34,7 @@
            (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
            (java.util Locale Random)
-           (org.apache.commons.validator.routines DomainValidator RegexValidator UrlValidator)))
+           (org.apache.commons.validator.routines RegexValidator UrlValidator)))
   #?(:cljs (:require-macros [camel-snake-kebab.internals.macros :as csk.macros]
                             [metabase.util])))
 

@@ -35,6 +35,7 @@ import {
 } from "../components/BrowseContainer.styled";
 
 import { MetricsTable } from "./MetricsTable";
+import { trackNewMetricInitiated } from "./analytics";
 import type { MetricFilterSettings, MetricResult } from "./types";
 
 const {
@@ -74,7 +75,7 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={1} c="text-dark" id={titleId}>
+            <Title order={2} c="text-dark" id={titleId}>
               <Group gap="sm">
                 <Icon
                   size={24}
@@ -93,6 +94,7 @@ export function BrowseMetrics() {
                     variant="viewHeader"
                     component={ForwardRefLink}
                     to={newMetricLink}
+                    onClick={() => trackNewMetricInitiated()}
                   >
                     <Icon name="add" />
                   </ActionIcon>

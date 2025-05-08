@@ -6,8 +6,7 @@
    [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
-   [metabase.util.string :as u.string]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.string]))
 
 (set! *warn-on-reflection* true)
 

@@ -501,9 +501,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     H.navigationSidebar().should("be.visible");
     // Mantine Modals
-    H.newButton("Collection").click();
+    H.startNewCollectionFromSidebar();
 
-    H.modal()
+    cy.findByTestId("new-collection-modal")
       .findByLabelText(/collection it's saved in/i)
       .click();
 
@@ -518,7 +518,8 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("Escape");
     // Legacy Modals
 
-    H.newButton("Action").click();
+    H.startNewAction();
+
     // Remove focus
     H.modal()
       .findByText(/Build custom forms/)
