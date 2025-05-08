@@ -665,10 +665,13 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
     cy.findByRole("dialog").findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectGoodSnowplowEvent({
-      event: "new_button_item_clicked",
-      triggered_from: "dashboard",
-    });
+    H.expectGoodSnowplowEvent(
+      {
+        event: "new_button_item_clicked",
+        triggered_from: "dashboard",
+      },
+      2,
+    );
   });
 });
 
