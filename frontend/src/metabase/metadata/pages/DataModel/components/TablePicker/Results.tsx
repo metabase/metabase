@@ -7,7 +7,7 @@ import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon } from "metabase/ui";
 
 import S from "./Results.module.css";
-import type { Item, TreePath } from "./types";
+import type { FlatItem, TreePath } from "./types";
 import { getIconForType, getUrl, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
@@ -25,7 +25,7 @@ export function Results({
   toggle,
   path,
 }: {
-  items: (Item & { isExpanded?: boolean })[];
+  items: FlatItem[];
   toggle?: (key: string) => void;
   path: TreePath;
 }) {

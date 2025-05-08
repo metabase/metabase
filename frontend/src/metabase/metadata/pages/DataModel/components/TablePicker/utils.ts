@@ -14,6 +14,7 @@ import { getUrl as getUrl_ } from "../../utils";
 
 import type {
   DatabaseItem,
+  FlatItem,
   Item,
   ItemType,
   SchemaItem,
@@ -235,23 +236,19 @@ export function useSearch(query: string) {
   };
 }
 
-function toKey(value: TreePath) {
-  // Stable JSON stringify
-  return `{"databaseId":${JSON.stringify(value.databaseId ?? null)},"schemaId":${JSON.stringify(value.schemaId ?? null)},"tableId":${JSON.stringify(value.tableId ?? null)}}`;
-}
-
-export function item<T extends Item>(x: Omit<T, "key">): T {
+export function useExpandedState(path: TreePath) {
+  const [state, setState] = useState(initialState(path));
   return {
-    ...x,
-    key: toKey(x.value),
-  } as T;
-}
-
-function node<T extends Item>(x: Omit<T, "key">): TreeNode {
-  return {
-    ...item(x),
-    children: [],
-  } as TreeNode;
+    isExpanded(key: string) {
+      return Boolean(state[key]);
+    },
+    toggle(key: string) {
+      setState((current) => ({
+        ...current,
+        [key]: !current[key],
+      }));
+    },
+  };
 }
 
 function partialPaths(path: TreePath) {
@@ -274,31 +271,35 @@ function initialState(path: TreePath) {
   return res;
 }
 
-export function useExpandedState(path: TreePath) {
-  const [state, setState] = useState(initialState(path));
+function toKey(value: TreePath) {
+  // Stable JSON stringify
+  return `{"databaseId":${JSON.stringify(value.databaseId ?? null)},"schemaId":${JSON.stringify(value.schemaId ?? null)},"tableId":${JSON.stringify(value.tableId ?? null)}}`;
+}
+
+export function item<T extends Item>(x: Omit<T, "key">): T {
   return {
-    isExpanded(key: string) {
-      return Boolean(state[key]);
-    },
-    toggle(key: string) {
-      setState((current) => ({
-        ...current,
-        [key]: !current[key],
-      }));
-    },
-  };
+    ...x,
+    key: toKey(x.value),
+  } as T;
+}
+
+function node<T extends Item>(x: Omit<T, "key">): TreeNode {
+  return {
+    ...item(x),
+    children: [],
+  } as TreeNode;
 }
 
 export function flatten(
   node: TreeNode,
-  isExpanded: (key: string) => boolean,
-): (Item & { isExpanded?: boolean })[] {
+  isExpanded?: (key: string) => boolean,
+): FlatItem[] {
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
     return sort(node.children).flatMap((child) => flatten(child, isExpanded));
   }
 
-  if (!isExpanded(node.key)) {
+  if (typeof isExpanded === "function" && !isExpanded(node.key)) {
     return [node];
   }
 

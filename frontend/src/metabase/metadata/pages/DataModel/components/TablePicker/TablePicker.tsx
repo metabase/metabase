@@ -45,6 +45,7 @@ function Tree(props: TreePath) {
   const { isExpanded, toggle } = useExpandedState(props);
   const { tree } = useTableLoader(props);
 
+  const items = flatten(tree, isExpanded);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -64,15 +65,13 @@ function Tree(props: TreePath) {
     }
   }, [props, tree, dispatch, toggle]);
 
-  const items = flatten(tree, isExpanded);
   return <Results items={items} toggle={toggle} path={props} />;
 }
 
 function Search({ query, path }: { query: string; path: TreePath }) {
   const { tree, isLoading } = useSearch(query);
 
-  const isExpanded = () => true;
-  const items = flatten(tree, isExpanded);
+  const items = flatten(tree);
   const isEmpty = !isLoading && items.length === 0;
 
   if (isEmpty) {

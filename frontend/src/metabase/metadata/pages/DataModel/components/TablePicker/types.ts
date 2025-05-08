@@ -38,3 +38,7 @@ export type TableItem = {
 export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export type ItemType = Item["type"];
+
+export type FlatItem = Item & {
+  isExpanded?: boolean;
+};
