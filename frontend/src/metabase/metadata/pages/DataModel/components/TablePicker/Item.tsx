@@ -1,5 +1,6 @@
+import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type Ref, forwardRef } from "react";
+import { type Ref, forwardRef, useRef } from "react";
 
 import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon } from "metabase/ui";
@@ -7,8 +8,9 @@ import { Box, Flex, Icon } from "metabase/ui";
 import { getUrl } from "../../utils";
 
 import S from "./Item.module.css";
-import { type TreePath, getIconForType, hasChildren } from "./utils";
+import { type Item, type TreePath, getIconForType, hasChildren } from "./utils";
 
+const ITEM_MIN_HEIGHT = 25;
 const INDENT_LEVEL = 16;
 const TYPE_TO_LEVEL = {
   database: 0,
@@ -16,9 +18,56 @@ const TYPE_TO_LEVEL = {
   table: 2,
 };
 
-export const ITEM_MIN_HEIGHT = 25;
+export function Results({
+  items,
+  toggle,
+  isExpanded,
+}: {
+  items: Item[];
+  toggle?: (key: string) => void;
+  isExpanded: (key: string) => boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
 
-export const ItemRow = forwardRef(function ItemRowInner(
+  const virtual = useVirtualizer({
+    estimateSize: () => ITEM_MIN_HEIGHT,
+    count: items.length,
+    getScrollElement: () => ref.current,
+    overscan: 5,
+  });
+
+  return (
+    <Box ref={ref} px="xl" pb="lg" className={S.results}>
+      <Box
+        style={{
+          height: virtual.getTotalSize(),
+        }}
+      >
+        {virtual.getVirtualItems().map((virtualItem) => {
+          const item = items[virtualItem.index];
+          return (
+            <ItemRow
+              {...item}
+              key={item.key}
+              ref={virtual.measureElement}
+              onClick={() => {
+                toggle?.(item.key);
+                virtual.measure();
+              }}
+              style={{
+                position: "absolute",
+                top: virtualItem.start,
+              }}
+              isExpanded={isExpanded(item.key)}
+            />
+          );
+        })}
+      </Box>
+    </Box>
+  );
+}
+
+const ItemRow = forwardRef(function ItemRowInner(
   {
     type,
     onClick,

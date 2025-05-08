@@ -1,3 +1,9 @@
+.results {
+  position: relative;
+  overflow: auto;
+  height: 100%;
+}
+
 .chevron {
   transition: transform 100ms ease-in-out;
 

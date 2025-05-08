@@ -165,12 +165,12 @@ export function useTableLoader(path: TreePath) {
   return { tree };
 }
 
-export function toKey(value: TreePath) {
+function toKey(value: TreePath) {
   // Stable JSON stringify
   return `{"databaseId":${JSON.stringify(value.databaseId ?? null)},"schemaId":${JSON.stringify(value.schemaId ?? null)},"tableId":${JSON.stringify(value.tableId ?? null)}}`;
 }
 
-function item<T extends Item>(item: Omit<T, "key">): T {
+export function item<T extends Item>(item: Omit<T, "key">): T {
   return {
     ...item,
     key: toKey(item.value),

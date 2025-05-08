@@ -1,81 +1,53 @@
-import { t } from "ttag";
+import { skipToken, useSearchQuery } from "metabase/api";
+import type {
+  DatabaseId,
+  SchemaId,
+  SearchResponse,
+  TableId,
+} from "metabase-types/api";
 
-import NoResults from "assets/img/no_results.svg";
-import { useSearchQuery } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
-import { Box, Icon, Input } from "metabase/ui";
-import type { DatabaseId, SchemaId, SearchResponse } from "metabase-types/api";
+import { type Item, item } from "./utils";
 
-import { ItemRow } from "./Item";
-import { type Item, toKey } from "./utils";
-
-export function SearchInput({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Input
-      value={value}
-      onChange={(evt) => onChange(evt.target.value)}
-      placeholder={t`Search tables, fields…`}
-      leftSection={<Icon name="search" />}
-    />
+export function useSearch(query: string) {
+  const { data, isLoading } = useSearchQuery(
+    query === ""
+      ? skipToken
+      : {
+          q: query,
+          models: ["table"],
+        },
   );
-}
-
-export function SearchResults({ searchValue }: { searchValue: string }) {
-  const { data, isLoading } = useSearchQuery({
-    q: searchValue,
-    models: ["table"],
-  });
 
   const items = data ? flatten(data) : [];
-  const isEmpty = !isLoading && items.length === 0;
 
-  if (isEmpty) {
-    return (
-      <Box p="md">
-        <EmptyState
-          title={t`No results`}
-          illustrationElement={<img src={NoResults} />}
-        />
-      </Box>
-    );
-  }
-
-  return items?.map((item) => (
-    <ItemRow
-      type={item.type}
-      label={item.label}
-      key={toKey(item.value)}
-      value={item.value}
-      isExpanded
-    />
-  ));
+  return {
+    isLoading,
+    data: items,
+  };
 }
 
-function byName(a: { name: string }, b: { name: string }) {
-  return a.name.localeCompare(b.name);
+function byLabel(a: { label: string }, b: { label: string }) {
+  return a.label.localeCompare(b.label);
 }
 
 type Tree = {
   [databaseName: string]: {
     id: DatabaseId;
-    name: string;
+    label: string;
     schemas: {
       [schemaName: string]: {
         id: SchemaId;
-        name: string;
-        tables: SearchResponse["data"][number][];
+        label: string;
+        tables: {
+          id: TableId;
+          label: string;
+        }[];
       };
     };
   };
 };
 
-function flatten(data: SearchResponse): Omit<Item, "key">[] {
+function flatten(data: SearchResponse): Item[] {
   const tree: Tree = {};
   data?.data.forEach((result) => {
     if (
@@ -88,50 +60,53 @@ function flatten(data: SearchResponse): Omit<Item, "key">[] {
 
     tree[result.database_id] ??= {
       id: result.database_id,
-      name: result.database_name,
+      label: result.database_name,
       schemas: {},
     };
     tree[result.database_id].schemas[result.table_schema] ??= {
       id: result.table_schema,
-      name: result.table_schema,
+      label: result.table_schema,
       tables: [],
     };
-    tree[result.database_id].schemas[result.table_schema].tables.push(result);
+    tree[result.database_id].schemas[result.table_schema].tables.push({
+      id: result.id,
+      label: result.name,
+    });
   });
 
   return Object.values(tree)
-    .sort(byName)
+    .sort(byLabel)
     .flatMap((database) => [
-      {
-        type: "database" as const,
-        label: database.name,
+      item({
+        type: "database",
+        label: database.label,
         value: {
           databaseId: database.id,
         },
-      },
+      }),
       ...Object.values(database.schemas)
-        .sort(byName)
+        .sort(byLabel)
         .flatMap((schema) => [
-          {
-            type: "schema" as const,
-            label: schema.name,
+          item({
+            type: "schema",
+            label: schema.label,
             value: {
               databaseId: database.id,
               schemaId: schema.id,
             },
-          },
+          }),
           ...Object.values(schema.tables)
-            .sort(byName)
+            .sort(byLabel)
             .flatMap((table) => [
-              {
-                type: "table" as const,
-                label: table.name,
+              item({
+                type: "table",
+                label: table.label,
                 value: {
                   databaseId: database.id,
                   schemaId: schema.id,
                   tableId: table.id,
                 },
-              },
+              }),
             ]),
         ]),
     ]);

@@ -1,93 +1,65 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useDeferredValue, useRef, useState } from "react";
+import { useDeferredValue, useState } from "react";
+import { t } from "ttag";
 
-import { Box, Stack } from "metabase/ui";
+import NoResults from "assets/img/no_results.svg";
+import EmptyState from "metabase/components/EmptyState";
+import { Box, Icon, Input, Stack } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
 
-import { ITEM_MIN_HEIGHT, ItemRow } from "./Item";
-import { SearchInput, SearchResults } from "./Search";
-import S from "./TablePicker.module.css";
-import {
-  type TreeNode,
-  flatten,
-  useExpandedState,
-  useTableLoader,
-} from "./utils";
+import { Results } from "./Item";
+import { useSearch } from "./Search";
+import { flatten, useExpandedState, useTableLoader } from "./utils";
 
-export function TablePicker(props: {
+type TablePickerProps = {
   databaseId?: DatabaseId;
   schemaId?: SchemaId;
-}) {
-  const [searchValue, setSearchValue] = useState("");
-  const deferredSearchValue = useDeferredValue(searchValue);
+};
 
-  const { isExpanded, toggle } = useExpandedState(props);
-  const { tree } = useTableLoader(props);
+export function TablePicker(props: TablePickerProps) {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack className={S.tablePicker}>
+    <Stack mih={200} h="100%">
       <Box px="xl">
-        <SearchInput value={searchValue} onChange={setSearchValue} />
+        <Input
+          value={query}
+          onChange={(evt) => setQuery(evt.target.value)}
+          placeholder={t`Search tables, fields…`}
+          leftSection={<Icon name="search" />}
+        />
       </Box>
 
-      {deferredSearchValue === "" ? (
-        <Results tree={tree} toggle={toggle} isExpanded={isExpanded} />
+      {deferredQuery === "" ? (
+        <Tree {...props} />
       ) : (
-        <Box className={S.tablePickerItemWrapper} px="xl" pb="lg">
-          <SearchResults searchValue={searchValue} />
-        </Box>
+        <Search query={deferredQuery} />
       )}
     </Stack>
   );
 }
 
-function Results({
-  tree,
-  toggle,
-  isExpanded,
-}: {
-  tree: TreeNode;
-  toggle: (key: string) => void;
-  isExpanded: (key: string) => boolean;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
+function Tree(props: TablePickerProps) {
+  const { isExpanded, toggle } = useExpandedState(props);
+  const { tree } = useTableLoader(props);
 
   const items = flatten(tree, isExpanded);
+  return <Results items={items} toggle={toggle} isExpanded={isExpanded} />;
+}
 
-  const virtual = useVirtualizer({
-    estimateSize: () => ITEM_MIN_HEIGHT,
-    count: items.length,
-    getScrollElement: () => ref.current,
-    overscan: 5,
-  });
+function Search({ query }: { query: string }) {
+  const { data, isLoading } = useSearch(query);
+  const isEmpty = !isLoading && data.length === 0;
 
-  return (
-    <Box ref={ref} px="xl" pb="lg" className={S.tablePickerItemWrapper}>
-      <Box
-        style={{
-          height: virtual.getTotalSize(),
-        }}
-      >
-        {virtual.getVirtualItems().map((virtualItem) => {
-          const item = items[virtualItem.index];
-          return (
-            <ItemRow
-              {...item}
-              key={item.key}
-              ref={virtual.measureElement}
-              onClick={() => {
-                toggle(item.key);
-                virtual.measure();
-              }}
-              style={{
-                position: "absolute",
-                top: virtualItem.start,
-              }}
-              isExpanded={isExpanded(item.key)}
-            />
-          );
-        })}
+  if (isEmpty) {
+    return (
+      <Box p="md">
+        <EmptyState
+          title={t`No results`}
+          illustrationElement={<img src={NoResults} />}
+        />
       </Box>
-    </Box>
-  );
+    );
+  }
+  return <Results items={data} isExpanded={() => true} />;
 }
