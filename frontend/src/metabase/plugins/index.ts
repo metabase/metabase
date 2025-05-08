@@ -716,10 +716,6 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
 };
 
-export const PLUGIN_GO_MENU = {
-  getMenuItems: (_dispatch: any) => [] as Array<any>,
-};
-
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
