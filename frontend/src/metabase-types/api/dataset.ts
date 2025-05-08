@@ -111,13 +111,8 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error?:
-    | string
-    | {
-        status: number; // HTTP status code
-        data?: string;
-      };
-  error_type?: string;
+  error?: DatasetError;
+  error_type?: DatasetErrorType;
   error_is_curated?: boolean;
   context?: string;
   status?: string;
@@ -128,6 +123,18 @@ export interface Dataset {
   /** A date in ISO 8601 format */
   started_at?: string;
 }
+
+export type DatasetError =
+  | string
+  | {
+      status: number; // HTTP status code
+      data?: string;
+    };
+
+export type DatasetErrorType =
+  | "invalid-query"
+  | "missing-required-parameter"
+  | string;
 
 export interface EmbedDatasetData {
   rows: RowValues[];
@@ -147,7 +154,7 @@ interface SuccessEmbedDataset {
 }
 
 export interface ErrorEmbedDataset {
-  error_type: string;
+  error_type: DatasetErrorType;
   error: string;
   status: string;
 }
