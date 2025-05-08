@@ -11,7 +11,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/core/components/Markdown";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
@@ -20,7 +20,7 @@ export type EditableTextAttributes = Omit<
   "onChange" | "onFocus" | "onBlur"
 >;
 
-export interface EditableTextProps extends EditableTextAttributes {
+export interface EditableTextProps extends EditableTextAttributes, BoxProps {
   initialValue?: string | null;
   placeholder?: string;
   maxLength?: number;
