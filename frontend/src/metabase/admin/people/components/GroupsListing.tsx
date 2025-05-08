@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -11,19 +10,26 @@ import Alert from "metabase/components/Alert";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import UserAvatar from "metabase/components/UserAvatar";
-import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { Icon, Menu, UnstyledButton } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Input,
+  Menu,
+  UnstyledButton,
+} from "metabase/ui";
 import type { ApiKey, Group as IGroup } from "metabase-types/api";
+
+import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
 
@@ -177,31 +183,31 @@ function EditingGroupRow({
   onDoneClicked,
 }: EditingGroupRowProps) {
   const textIsValid = group.name && group.name.length;
+
   return (
-    <tr className={cx(CS.bordered, CS.borderBrand, CS.rounded)}>
+    <Box component="tr" bd="1px solid var(--mb-color-brand)">
       <td>
         <Input
-          className={CS.h3}
+          fz="lg"
           type="text"
-          autoFocus={true}
+          autoFocus
           value={group.name}
           onChange={(e) => onTextChange(e.target.value)}
         />
       </td>
       <td />
-      <td className={CS.textRight}>
-        <span className={CS.link} onClick={onCancelClicked}>{t`Cancel`}</span>
-        <button
-          className={cx(ButtonsS.Button, CS.ml2, {
-            [ButtonsS.ButtonPrimary]: textIsValid && textHasChanged,
-          })}
+      <Box component="td" ta="right">
+        <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
+        <Button
+          ml="1rem"
+          variant={textIsValid && textHasChanged ? "filled" : "outline"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >
           {t`Done`}
-        </button>
-      </td>
-    </tr>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
@@ -210,7 +216,6 @@ function EditingGroupRow({
 interface GroupRowProps {
   group: IGroup;
   groupBeingEdited: IGroup | null;
-  index: number;
   apiKeys: ApiKey[];
   onEditGroupClicked: (group: IGroup) => void;
   onDeleteGroupClicked: (group: IGroup) => void;
@@ -222,7 +227,6 @@ interface GroupRowProps {
 function GroupRow({
   group,
   groupBeingEdited,
-  index,
   apiKeys,
   onEditGroupClicked,
   onDeleteGroupClicked,
@@ -230,8 +234,7 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const colors = getGroupRowColors();
-  const backgroundColor = colors[index % colors.length];
+  const backgroundColor = groupIdToColor(group.id);
   const showActionsButton = !isDefaultGroup(group) && !isAdminGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
@@ -246,26 +249,27 @@ function GroupRow({
   ) : (
     <tr>
       <td>
-        <Link
+        <Flex
+          component={Link}
+          align="center"
           to={"/admin/people/groups/" + group.id}
-          className={cx(CS.link, CS.flex, CS.alignCenter)}
+          className={CS.link}
+          gap="md"
         >
-          <span className={CS.textWhite}>
-            <UserAvatar
-              user={{ first_name: getGroupNameLocalized(group) }}
-              bg={backgroundColor}
-            />
-          </span>
-          <span className={cx(CS.ml2, CS.textBold)}>
+          <UserAvatar
+            user={{ first_name: getGroupNameLocalized(group) }}
+            bg={backgroundColor}
+          />
+          <Box component="span" fw={700} c="brand">
             {getGroupNameLocalized(group)}
-          </span>
-        </Link>
+          </Box>
+        </Flex>
       </td>
       <td>
         {group.member_count || 0}
         <ApiKeyCount apiKeys={apiKeys} />
       </td>
-      <td className={CS.textRight}>
+      <Box component="td" ta="end">
         {showActionsButton ? (
           <ActionsPopover
             group={group}
@@ -274,7 +278,7 @@ function GroupRow({
             onDeleteGroupClicked={onDeleteGroupClicked}
           />
         ) : null}
-      </td>
+      </Box>
     </tr>
   );
 }
@@ -284,21 +288,13 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <span className={CS.textLight}>
+    <Box component="span" c="text-light">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
-    </span>
+    </Box>
   );
 };
-
-const getGroupRowColors = () => [
-  color("error"),
-  color("accent2"),
-  color("brand"),
-  color("accent4"),
-  color("accent1"),
-];
 
 interface GroupsTableProps {
   groups: IGroup[];
@@ -346,11 +342,10 @@ function GroupsTable({
         />
       ) : null}
       {groups &&
-        groups.map((group: IGroup, index: number) => (
+        groups.map((group: IGroup) => (
           <GroupRow
             key={group.id}
             group={group}
-            index={index}
             apiKeys={
               isDefaultGroup(group)
                 ? (apiKeys ?? [])

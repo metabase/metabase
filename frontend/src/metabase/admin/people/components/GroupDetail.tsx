@@ -1,10 +1,8 @@
-import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
-import CS from "metabase/css/core/index.css";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
   canEditMembership,
@@ -15,6 +13,7 @@ import {
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
+import { Box } from "metabase/ui";
 import type { Group, Member, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -26,33 +25,42 @@ import {
 } from "../people";
 import { getGroupMemberships, getMembershipsByUser } from "../selectors";
 
-import GroupMembersTable from "./GroupMembersTable";
+import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDescriptionProps {
   group: Group;
 }
 
-const GroupDescription = ({ group }: GroupDescriptionProps) =>
-  isDefaultGroup(group) ? (
-    <div className={cx(CS.px2, CS.textMeasure)}>
-      <p>
-        {t`All users belong to the ${getGroupNameLocalized(
-          group,
-        )} group and can't be removed from it. Setting permissions for this group is a great way to
-                make sure you know what new Metabase users will be able to see.`}
-      </p>
-    </div>
-  ) : isAdminGroup(group) ? (
-    <div className={cx(CS.px2, CS.textMeasure)}>
-      <p>
-        {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
-                settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
-      </p>
-      <p>
-        {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
-      </p>
-    </div>
-  ) : null;
+const GroupDescription = ({ group }: GroupDescriptionProps) => {
+  if (isDefaultGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`All users belong to the ${getGroupNameLocalized(
+            group,
+          )} group and can't be removed from it. Setting permissions for this group is a great way to
+        make sure you know what new Metabase users will be able to see.`}
+        </p>
+      </Box>
+    );
+  }
+
+  if (isAdminGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
+        settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
+        </p>
+        <p>
+          {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
+        </p>
+      </Box>
+    );
+  }
+
+  return null;
+};
 
 interface GroupDetailStateProps {
   groupMemberships: Member[];
@@ -142,12 +150,12 @@ const GroupDetailInner = ({
     setAddUserVisible(false);
     try {
       await Promise.all(
-        userIds.map(async (userId) => {
-          await createMembership({
+        userIds.map((userId) =>
+          createMembership({
             groupId: group.id,
             userId,
-          });
-        }),
+          }),
+        ),
       );
     } catch (error) {
       const errorMessage =
@@ -159,7 +167,6 @@ const GroupDetailInner = ({
   const handleChange = async (membership: Member) => {
     if (!currentUser) {
       throw new Error("currentUser is not defined");
-      return;
     }
 
     const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
@@ -185,7 +192,6 @@ const GroupDetailInner = ({
   const handleRemove = async (membershipId: number) => {
     if (!currentUser) {
       throw new Error("currentUser is not defined");
-      return;
     }
 
     const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
@@ -214,13 +220,13 @@ const GroupDetailInner = ({
       title={
         <Fragment>
           {getGroupNameLocalized(group ?? {})}
-          <span className={cx(CS.textLight, CS.ml1)}>
+          <Box component="span" c="text-light" ms="sm">
             {ngettext(
               msgid`${group.members.length} member`,
               `${group.members.length} members`,
               group.members.length,
             )}
-          </span>
+          </Box>
         </Fragment>
       }
       buttonText={t`Add members`}
