@@ -4,8 +4,38 @@
   height: 100%;
 }
 
+.item {
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+
+  &.active {
+    background-color: var(--mb-color-brand-light);
+    color: var(--mb-color-brand);
+  }
+
+  &.table {
+    padding-left: var(--mantine-spacing-md);
+    padding-right: var(--mantine-spacing-sm);
+  }
+}
+
+.icon {
+  color: var(--mb-color-accent-gray-dark);
+  opacity: 0.5;
+  flex-shrink: 0;
+
+  .active & {
+    opacity: 1;
+  }
+}
+
 .chevron {
   transition: transform 100ms ease-in-out;
+  color: var(--mb-color-accent-gray-dark);
+  opacity: 0.29;
+  flex-shrink: 0;
 
   &.expanded {
     transform: rotate(90deg);

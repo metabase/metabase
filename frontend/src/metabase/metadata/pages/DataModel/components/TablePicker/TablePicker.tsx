@@ -6,19 +6,19 @@ import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon, Input, Stack } from "metabase/ui";
-import type { DatabaseId, SchemaId } from "metabase-types/api";
 
 import { getUrl } from "../../utils";
 
 import { Results } from "./Item";
-import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
+import {
+  type TreePath,
+  flatten,
+  useExpandedState,
+  useSearch,
+  useTableLoader,
+} from "./utils";
 
-type TablePickerProps = {
-  databaseId?: DatabaseId;
-  schemaId?: SchemaId;
-};
-
-export function TablePicker(props: TablePickerProps) {
+export function TablePicker(props: TreePath) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
@@ -36,13 +36,13 @@ export function TablePicker(props: TablePickerProps) {
       {deferredQuery === "" ? (
         <Tree {...props} />
       ) : (
-        <Search query={deferredQuery} />
+        <Search query={deferredQuery} path={props} />
       )}
     </Stack>
   );
 }
 
-function Tree(props: TablePickerProps) {
+function Tree(props: TreePath) {
   const { isExpanded, toggle } = useExpandedState(props);
   const { tree } = useTableLoader(props);
 
@@ -74,10 +74,10 @@ function Tree(props: TablePickerProps) {
   }, [props, tree, dispatch, toggle]);
 
   const items = flatten(tree, isExpanded);
-  return <Results items={items} toggle={toggle} />;
+  return <Results items={items} toggle={toggle} path={props} />;
 }
 
-function Search({ query }: { query: string }) {
+function Search({ query, path }: { query: string; path: TreePath }) {
   const { tree, isLoading } = useSearch(query);
 
   const isExpanded = () => true;
@@ -95,5 +95,5 @@ function Search({ query }: { query: string }) {
     );
   }
 
-  return <Results items={items} />;
+  return <Results items={items} path={path} />;
 }
