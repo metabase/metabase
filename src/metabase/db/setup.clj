@@ -88,8 +88,8 @@
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase data-source)
           :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-          :down          (apply liquibase/rollback-major-version conn liquibase false args)
-          :down-force    (apply liquibase/rollback-major-version conn liquibase true args)
+          :down          (apply liquibase/rollback-major-version! conn liquibase false args)
+          :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
        ;; Migrations were successful; commit everything and re-enable auto-commit

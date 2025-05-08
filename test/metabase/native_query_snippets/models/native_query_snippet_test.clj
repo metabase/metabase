@@ -3,9 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
