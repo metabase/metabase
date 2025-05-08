@@ -237,7 +237,8 @@ export function useSearch(query: string) {
 }
 
 export function useExpandedState(path: TreePath) {
-  const [state, setState] = useState(initialState(path));
+  const [state, setState] = useState(expandPath({}, path));
+
   return {
     isExpanded(key: string) {
       return Boolean(state[key]);
@@ -255,7 +256,8 @@ function partialPaths(path: TreePath) {
   return [
     path,
     { ...path, tableId: undefined },
-    { ...path, schemaId: undefined, tableId: undefined },
+    { ...path, tableId: undefined, schemaId: undefined },
+    { ...path, tableId: undefined, schemaId: undefined, databaseId: undefined },
   ];
 }
 
@@ -263,8 +265,8 @@ type ExpandedState = {
   [key: string]: boolean;
 };
 
-function initialState(path: TreePath) {
-  const res: ExpandedState = {};
+function expandPath(state: ExpandedState, path: TreePath) {
+  const res = { ...state };
   partialPaths(path).forEach((path) => {
     res[toKey(path)] = true;
   });
