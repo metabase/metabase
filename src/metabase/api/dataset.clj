@@ -267,7 +267,7 @@
        value
        #(-> (if (= (count field-ids) 1)
               (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
-              (when-let [pk-field-id (:id (custom-values/pk-field-of-fk-pk-pair field-ids))]
+              (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
                 (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
             :values
             first))

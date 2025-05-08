@@ -159,18 +159,31 @@
                     {:status-code 400
                      :parameter parameter}))))
 
-(defn pk-field-of-fk-pk-pair
-  "Check if the collection `_field-ids` contains the ID of a FK field and the ID of the corresponding PK field
-  and nothing else.
-  Return the PK field if `_field-ids` is such a pair."
-  [[field-id1 field-id2 & others :as _field-ids]]
-  (when (and (nil? others)
-             (pos-int? field-id1)
-             (pos-int? field-id2))
-    (let [[field1 field2 :as fields] (t2/select :model/Field :id [:in [field-id1 field-id2]])]
-      (when (= (count fields) 2)
-        (cond (= (:fk_target_field_id field1) (:id field2)) field2
-              (= (:fk_target_field_id field2) (:id field1)) field1)))))
+(defn pk-of-fk-pk-field-ids
+  "Check if the collection `field-ids` contains the IDs of FK fields pointing to the same PK and
+  optionally the ID of that PK field and nothing else.
+  Return the PK field ID if `field-ids` is such a group."
+  [field-ids]
+  (when (and (seq field-ids) (every? pos-int? field-ids))
+    (let [field-id-set (set field-ids)
+          field-id->fk-target-field-id (t2/select-pk->fn :fk_target_field_id :model/Field :id [:in field-id-set])]
+      ;; when every field could be found
+      (when (= (count field-id-set) (count field-id->fk-target-field-id))
+        ;; pk->fks maps PK field IDs to FK field IDs pointing to them,
+        ;; plus nil to the field IDs in `field-ids` that are not FKs
+        (let [pk->fks (-> field-id->fk-target-field-id
+                          (->> (group-by val))
+                          (update-vals #(into #{} (map key) %)))]
+          (case (count pk->fks)
+            ;; there is a single group so it's either one PK mapped to its FKs, or nil mapped to non-FKs
+            1 (-> pk->fks first key)
+            ;; two groups can be a match if one group is nil mapped to a singleton set with a PK,
+            ;; and the other group is the PK mapped to all the other field IDs in the input
+            2 (when-let [pk (first (pk->fks nil))]
+                (when (= (conj (pk->fks pk) pk) field-id-set)
+                  pk))
+            ;; more than two groups are always ambiguous, so no match
+            nil))))))
 
 (defn parameter-remapped-value
   "Fetch the remapped value for the given `value` of parameter `param` with default values provided by

@@ -1321,7 +1321,7 @@
           #(let [field-ids (into #{} (map :field-id (param->fields param)))]
              (-> (if (= (count field-ids) 1)
                    (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
-                   (when-let [pk-field-id (:id (custom-values/pk-field-of-fk-pk-pair field-ids))]
+                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
                      (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
                  :values
                  first))))
