@@ -78,7 +78,11 @@ import type {
   Timeline,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, State } from "metabase-types/store";
+import type {
+  AdminPathKey,
+  Dispatch as ReduxDispatch,
+  State,
+} from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -726,7 +730,7 @@ export const PLUGIN_GO_MENU = {
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
-  dispatch: Dispatch,
+  dispatch: ReduxDispatch,
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {
