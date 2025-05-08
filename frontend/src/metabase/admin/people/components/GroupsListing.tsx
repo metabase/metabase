@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { Component } from "react";
 import { jt, t } from "ttag";
@@ -7,14 +8,11 @@ import { useListApiKeysQuery } from "metabase/api";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import UserAvatar from "metabase/components/UserAvatar";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
-import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
@@ -24,11 +22,10 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Icon, Menu, UnstyledButton } from "metabase/ui";
 import type { ApiKey, Group as IGroup } from "metabase-types/api";
 
 import { AddRow } from "./AddRow";
-import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -70,14 +67,14 @@ function AddGroupRow({
 // ------------------------------------------------------------ Groups Table: editing ------------------------------------------------------------
 
 interface DeleteGroupModalProps {
-  group: IGroup;
+  opened: boolean;
   apiKeys: ApiKey[];
-  onConfirm?: (group: IGroup) => void;
-  onClose?: () => void;
+  onConfirm: () => void;
+  onClose: () => void;
 }
 
 function DeleteGroupModal({
-  group,
+  opened,
   apiKeys,
   onConfirm = () => {},
   onClose = () => {},
@@ -92,6 +89,17 @@ function DeleteGroupModal({
         ? t`Are you sure you want remove this group and its API key?`
         : t`Are you sure you want remove this group and its API keys?`;
 
+  const message = hasApiKeys
+    ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
+        <Link
+          key="link"
+          to="/admin/settings/authentication/api-keys"
+          variant="brand"
+        >{t`move the API keys to another group`}</Link>
+      )}.`
+    : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
+              This can't be undone.`;
+
   const confirmButtonText =
     apiKeysCount === 0
       ? t`Remove group`
@@ -100,35 +108,14 @@ function DeleteGroupModal({
         : t`Remove group and API keys`;
 
   return (
-    <ModalContent title={modalTitle} onClose={onClose}>
-      <Stack gap="xl">
-        <Text>
-          {hasApiKeys
-            ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
-                <Link
-                  key="link"
-                  to="/admin/settings/authentication/api-keys"
-                  variant="brand"
-                >{t`move the API keys to another group`}</Link>
-              )}.`
-            : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
-                This can't be undone.`}
-        </Text>
-        <Group gap="md" justify="flex-end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            color="error"
-            onClick={() => {
-              onClose();
-              onConfirm(group);
-            }}
-          >
-            {confirmButtonText}
-          </Button>
-        </Group>
-      </Stack>
-    </ModalContent>
+    <ConfirmModal
+      opened={opened}
+      title={modalTitle}
+      message={message}
+      confirmButtonText={confirmButtonText}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
   );
 }
 
@@ -145,27 +132,32 @@ function ActionsPopover({
   onEditGroupClicked,
   onDeleteGroupClicked,
 }: ActionsPopoverProps) {
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
+
   return (
-    <PopoverWithTrigger
-      className={CS.block}
-      triggerElement={<Icon className={CS.textLight} name="ellipsis" />}
-    >
-      <ul className={cx(AdminS.UserActionsSelect, CS.py1)}>
-        <EditGroupButton onClick={onEditGroupClicked.bind(null, group)}>
-          {t`Edit Name`}
-        </EditGroupButton>
-        <ModalWithTrigger
-          as={DeleteModalTrigger}
-          triggerElement={t`Remove Group`}
-        >
-          <DeleteGroupModal
-            group={group}
-            apiKeys={apiKeys}
-            onConfirm={onDeleteGroupClicked}
-          />
-        </ModalWithTrigger>
-      </ul>
-    </PopoverWithTrigger>
+    <>
+      <Menu shadow="md" width={200} position="bottom-end">
+        <Menu.Target>
+          <UnstyledButton>
+            <Icon c="text-light" name="ellipsis" />
+          </UnstyledButton>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item onClick={() => onEditGroupClicked(group)}>
+            {t`Edit Name`}
+          </Menu.Item>
+          <Menu.Item c="danger" onClick={openModal}>
+            {t`Remove Group`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <DeleteGroupModal
+        opened={modalOpened}
+        apiKeys={apiKeys}
+        onConfirm={() => onDeleteGroupClicked(group)}
+        onClose={closeModal}
+      />
+    </>
   );
 }
 

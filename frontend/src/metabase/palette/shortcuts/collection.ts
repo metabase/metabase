@@ -6,6 +6,6 @@ export const collectionShortcuts = {
       return t`Move collection items to trash`;
     },
     shortcut: ["$mod+backspace"],
-    shortcutGroup: "collection",
+    shortcutGroup: "collection" as const,
   },
 };

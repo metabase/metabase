@@ -2,11 +2,11 @@ import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
@@ -50,7 +50,7 @@ export function EmbeddingDataPicker({
       return [
         metadata.database(databaseId),
         metadata.savedQuestionsDatabase(),
-      ].filter(Boolean);
+      ].filter(Boolean) as Database[];
     }
 
     /**
@@ -73,7 +73,7 @@ export function EmbeddingDataPicker({
     dataSourceCountData != null && dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
     return (
-      <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
+      <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}
@@ -97,7 +97,7 @@ export function EmbeddingDataPicker({
   }
 
   return (
-    <DataSourceSelector
+    <PLUGIN_EMBEDDING.DataSourceSelector
       key={pickerInfo?.tableId}
       isInitiallyOpen={!table}
       databases={databases}
