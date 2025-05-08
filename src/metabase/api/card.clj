@@ -35,6 +35,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -953,6 +954,6 @@
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
                               [:param-key :string]]
-   {:keys [value]}        :- [:map [:value :any]]]
+   {:keys [value]}        :- [:map [:value :string]]]
   (-> (api/read-check :model/Card id)
-      (param-remapped-value param-key value)))
+      (param-remapped-value param-key (codec/url-decode value))))

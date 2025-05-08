@@ -559,7 +559,7 @@
                                           embedding-params)]
      ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
      (when (not= (get embedding-params (keyword param-slug)) "enabled")
-       (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str param-slug))
+       (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter." (pr-str param-slug))
                        {:status-code 400})))
      (when (get slug-token-params (keyword param-slug))
        (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str param-slug))

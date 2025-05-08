@@ -31,6 +31,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -286,7 +287,7 @@
   "Embedded version of the remapped dashboard param value endpoint."
   [{:keys [token param-key]}
    {:keys [value]}]
-  (api.embed.common/dashboard-param-remapped-value token param-key value))
+  (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
@@ -321,7 +322,7 @@
   [{:keys [token param-key]} :- [:map
                                  [:token     string?]
                                  [:param-key string?]]
-   {:keys [value]}           :- [:map [:value :any]]]
+   {:keys [value]}           :- [:map [:value :string]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]
@@ -329,7 +330,7 @@
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
                                                  :card           card
                                                  :param-key      param-key
-                                                 :value          value})))
+                                                 :value          (codec/url-decode value)})))
 
 (api.macros/defendpoint :get "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.

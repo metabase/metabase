@@ -53,6 +53,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -1335,10 +1336,10 @@
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
                               [:param-key :string]]
-   {:keys [value]}        :- [:map [:value :any]]]
+   {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
-      (dashboard-param-remapped-value dashboard param-key value))))
+      (dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

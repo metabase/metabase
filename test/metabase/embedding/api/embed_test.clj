@@ -1821,6 +1821,63 @@
               (client/client :get 202 (dashcard-url dashcard))
               (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
 
+(deftest dashboard-param-value-remapping-test
+  (mt/dataset test-data
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {orders-card-id :id} {:enable_embedding true
+                                                       :display          :table
+                                                       :dataset_query    (mt/mbql-query orders)}
+                     :model/Dashboard {dashboard-id :id} {:enable_embedding true
+                                                          :parameters
+                                                          [{:name      "Price"
+                                                            :slug      "price"
+                                                            :id        "price-param"
+                                                            :type      :number/=}
+                                                           {:name                "User ID"
+                                                            :slug                "user-id"
+                                                            :id                  "user-id-param"
+                                                            :type                :number/between
+                                                            :filteringParameters ["price-param"]}]
+                                                          :embedding_params {:price   "locked"
+                                                                             :user-id "enabled"}}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id
+                                             :card_id      orders-card-id
+                                             :parameter_mappings
+                                             [{:parameter_id "price-param"
+                                               :card_id      orders-card-id
+                                               :target       [:dimension [:field (mt/id :orders :total) {:base-type :type/Float}]]}
+                                              {:parameter_id "user-id-param"
+                                               :card_id      orders-card-id
+                                               :target       [:dimension [:field (mt/id :orders :user_id) {:base-type :type/Integer}]]}]}]
+        (doseq [{:keys [test-str params]}
+                [{:test-str "Locked filter is not set in the token, so requests should fail."
+                  :params   {}}
+                 {:test-str "Locked filter is set to `nil` in the token, so requests should fail."
+                  :params   {:price nil}}]]
+          (testing test-str
+            (let [token (dash-token dashboard-id {:params params})]
+              (is (= "Cannot get remapped value for parameter: \"price\" is not an enabled parameter."
+                     (mt/user-http-request :crowberto :get 400
+                                           (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "price-param" "15.69"))))
+              (is (= "You must specify a value for :price in the JWT."
+                     (mt/user-http-request :crowberto :get 400
+                                           (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" 437)))))))
+        (doseq [{:keys [test-str params expected]}
+                [{:test-str "Locked filter is set to a list of values in the token, value can be found."
+                  :params   {:price ["15.69" "32.14"]}
+                  :expected [437 "Danial Keeling"]}
+                 {:test-str "Locked filter is set to a single value in the token, value filtered out."
+                  :params   {:price "15.69"}
+                  :expected ["42"]}
+                 {:test-str "Locked filter is set to an empty list in the token, value can be found."
+                  :params   {:price []}
+                  :expected [42 "Reyes Strosin"]}]]
+          (testing test-str
+            (let [token (dash-token dashboard-id {:params params})
+                  value (first expected)
+                  url   (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" value)]
+              (is (= expected (mt/user-http-request :crowberto :get 200 url))))))))))
+
 ;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
 
 (defn- png? [s]

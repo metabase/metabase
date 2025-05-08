@@ -15,7 +15,8 @@
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
@@ -54,7 +55,7 @@
   [{:keys [token param-key]} :- [:map
                                  [:token     string?]
                                  [:param-key string?]]
-   {:keys [value]}           :- [:map [:value :any]]]
+   {:keys [value]}           :- [:map [:value :string]]]
   (let [unsigned-token (check-and-unsign token)
         card           (api.embed.common/card-for-unsigned-token
                         unsigned-token
@@ -62,7 +63,7 @@
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
                                                  :card           card
                                                  :param-key      param-key
-                                                 :value          value})))
+                                                 :value          (codec/url-decode value)})))
 
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
@@ -86,7 +87,7 @@
   "Embedded version of the remapped dashboard param value endpoint."
   [{:keys [token param-key]}
    {:keys [value]}]
-  (api.embed.common/dashboard-param-remapped-value token param-key value {:preview true}))
+  (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
