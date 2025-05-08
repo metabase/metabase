@@ -74,7 +74,7 @@ function Tree(props: TreePath) {
 }
 
 function Search({ query, path }: { query: string; path: TreePath }) {
-  const debouncedQuery = useDebouncedValue(query, 500);
+  const debouncedQuery = useDebouncedValue(query, 300);
   const { tree, isLoading } = useSearch(debouncedQuery);
 
   const items = flatten(tree);

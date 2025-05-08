@@ -73,12 +73,14 @@ export function Results({
           return (
             <>
               {type !== "database" && (
-                <Track
-                  key={`${key}-track`}
-                  start={parent ? parent.start + 0.5 * parent.size : 0}
-                  end={start + 0.5 * size}
-                  type={type}
-                />
+                <Delay delay={isLoading ? 200 : 0}>
+                  <Track
+                    key={`${key}-track`}
+                    start={parent ? parent.start + 0.5 * parent.size : 0}
+                    end={start + 0.5 * size}
+                    type={type}
+                  />
+                </Delay>
               )}
               <Flex
                 key={key}
@@ -92,7 +94,13 @@ export function Results({
               >
                 <MaybeLink
                   className={S.link}
-                  to={value && !isExpanded ? getUrl(value) : undefined}
+                  to={
+                    // Only change url when we're expanding items
+                    // or when we're selecting a table
+                    value && (type === "table" || !isExpanded)
+                      ? getUrl(value)
+                      : undefined
+                  }
                   onClick={() => {
                     toggle?.(key);
                     virtual.measureElement(
