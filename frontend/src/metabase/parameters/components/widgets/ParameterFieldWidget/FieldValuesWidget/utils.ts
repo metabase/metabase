@@ -276,7 +276,7 @@ export function getValuesMode({
 export function isNumeric(parameter: Parameter, fields: Field[]) {
   return (
     isNumberParameter(parameter) ||
-    (fields.length > 1 && fields.every((field) => field.isNumeric()))
+    (fields.length > 0 && fields.every((field) => field.isNumeric()))
   );
 }
 
