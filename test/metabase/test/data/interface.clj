@@ -357,6 +357,37 @@
   [driver]
   (log/infof "%s has no after-run hooks." driver))
 
+(defmulti drop-if-exists-and-create-db!
+  "Drop a database named `db-name` if it already exists; then create a new empty one with that name."
+  {:added "0.55.0" :arglists '([driver db-name & [just-drop]])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-if-exists-and-create-db! ::test-extensions
+  [_driver _db-name & [_just-drop]]
+  (tap> "calling default method for drop-if-exists-and-create-db!")
+  (tap> {:driver _driver
+         :db-name _db-name
+         :just-drop _just-drop})
+  nil)
+
+(defn with-temp-database-fn!
+  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
+  [driver db-name f]
+  (try
+    (drop-if-exists-and-create-db! driver db-name)
+    (f)
+    (finally
+      (drop-if-exists-and-create-db! driver db-name :just-drop))))
+
+(defmacro with-temp-database!
+  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
+  [driver db-name & body]
+  `(with-temp-database-fn!
+     ~driver
+     ~db-name
+     (fn [] ~@body)))
+
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.

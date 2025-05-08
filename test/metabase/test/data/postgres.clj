@@ -1,8 +1,10 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions]
@@ -132,3 +134,17 @@
   (apply sql.tx/standard-standalone-table-comment-sql args))
 
 (defmethod sql.tx/session-schema :postgres [_driver] "public")
+
+(defmethod tx/drop-if-exists-and-create-db! :postgres
+  [_driver db-name & [just-drop]]
+  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
+    ;; kill any open connections
+    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
+                       FROM pg_stat_activity
+                       WHERE pg_stat_activity.datname = ?;" db-name])
+    ;; create the DB
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
+                   {:transaction? false})
+    (when (not= just-drop :just-drop)
+      (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
+                     {:transaction? false}))))

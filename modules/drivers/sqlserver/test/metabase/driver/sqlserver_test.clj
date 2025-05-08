@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.sqlserver-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
@@ -22,40 +21,11 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
-   [metabase.test.data.sql :as sql.tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]
    [next.jdbc]))
 
 (set! *warn-on-reflection* true)
-
-(defn drop-if-exists-and-create-db!
-  "Drop a sqlserver database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name & [just-drop]]
-  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver (mt/dbdef->connection-details :sqlserver :server nil))]
-    (jdbc/execute! spec
-                   [(format "DROP DATABASE IF EXISTS %s" (sql.tx/qualify-and-quote :sqlserver db-name))]
-                   {:transaction? false})
-    (when (not= just-drop :sqlserver/just-drop)
-      (jdbc/execute! spec
-                     [(format "CREATE DATABASE %s;" (sql.tx/qualify-and-quote :sqlserver db-name))]
-                     {:transaction? false}))))
-
-(defn with-temp-database-fn!
-  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
-  [db-name f]
-  (try
-    (drop-if-exists-and-create-db! db-name)
-    (f)
-    (finally
-      (drop-if-exists-and-create-db! db-name :sqlserver/just-drop))))
-
-(defmacro with-temp-database!
-  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
-  [db-name & body]
-  `(with-temp-database-fn!
-     ~db-name
-     (fn [] ~@body)))
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"

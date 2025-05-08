@@ -6,10 +6,7 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
-   [metabase.driver.mysql-test :as mysql-test]
-   [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sqlserver-test :as sql-server-test]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -101,7 +98,7 @@
       (let [db-name "conn_impersonation_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (postgres-test/with-temp-database! db-name
+        (tx/with-temp-database! :postgres db-name
           (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
                              "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
                              "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
@@ -133,7 +130,7 @@
       (let [db-name "conn_impersonation_test"
             details (mt/dbdef->connection-details :mysql :db {:database-name db-name :user "default_role_user"})
             spec (sql-jdbc.conn/connection-details->spec :mysql details)]
-        (mysql-test/with-temp-database! db-name
+        (tx/with-temp-database! :mysql db-name
           (doseq [statement ["drop table if exists table_a;"
                              "drop table if exists table_b;"
                              "create table table_a ( id integer primary key );"
@@ -192,7 +189,7 @@
       (let [db-name "conn_impersonation_test"
             details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name :user "default_role_user"})
             spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
-        (sql-server-test/with-temp-database! db-name
+        (tx/with-temp-database! :sqlserver db-name
           (doseq [statement ["use [conn_impersonation_test];"
 
                              "drop table if exists [table_a];"
@@ -274,8 +271,8 @@
             destination-db-name "db_routing_destination"
             destination-details (mt/dbdef->connection-details :postgres :db {:database-name destination-db-name})
             destination-spec (sql-jdbc.conn/connection-details->spec :postgres destination-details)]
-        (postgres-test/with-temp-database! router-db-name
-          (postgres-test/with-temp-database! destination-db-name
+        (tx/with-temp-database! :postgres router-db-name
+          (tx/with-temp-database! :postgres destination-db-name
             (doseq [statement ["DROP ROLE IF EXISTS \"impersonation.role\";"
                                "CREATE ROLE \"impersonation.role\";"]]
               (jdbc/execute! router-spec [statement]))

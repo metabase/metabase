@@ -1,7 +1,9 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -10,6 +12,17 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]))
 
 (sql-jdbc.tx/add-test-extensions! :mysql)
+
+(defmethod tx/drop-if-exists-and-create-db! :mysql
+  [_driver db-name & [just-drop]]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+    (jdbc/execute! spec
+                   [(format "DROP DATABASE IF EXISTS %s;" (sql.tx/qualify-and-quote :mysql db-name))]
+                   {:transaction? false})
+    (when (not= just-drop :just-drop)
+      (jdbc/execute! spec
+                     [(format "CREATE DATABASE %s;" (sql.tx/qualify-and-quote :mysql db-name))]
+                     {:transaction? false}))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
@@ -34,7 +47,7 @@
   [_ context {:keys [database-name]}]
   (merge
    {:host (tx/db-test-env-var-or-throw :mysql :host "localhost")
-    :port (tx/db-test-env-var-or-throw :mysql :port 3306)
+    :port 3308 #_(tx/db-test-env-var-or-throw :mysql :port 3306)
     :user (tx/db-test-env-var :mysql :user "root")}
    (when-let [password (tx/db-test-env-var :mysql :password)]
      {:password password})

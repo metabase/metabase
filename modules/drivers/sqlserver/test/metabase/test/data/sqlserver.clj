@@ -1,8 +1,11 @@
 (ns metabase.test.data.sqlserver
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
@@ -10,6 +13,17 @@
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
+
+(defmethod tx/drop-if-exists-and-create-db! :sqlserver
+  [_driver db-name & [just-drop]]
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver (mt/dbdef->connection-details :sqlserver :server nil))]
+    (jdbc/execute! spec
+                   [(format "DROP DATABASE IF EXISTS %s" (sql.tx/qualify-and-quote :sqlserver db-name))]
+                   {:transaction? false})
+    (when (not= just-drop :just-drop)
+      (jdbc/execute! spec
+                     [(format "CREATE DATABASE %s;" (sql.tx/qualify-and-quote :sqlserver db-name))]
+                     {:transaction? false}))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BIT"
