@@ -122,8 +122,6 @@ const getEventNames = (body) => {
 };
 
 export const expectGoodSnowplowEvents = (count) => {
-  // variables used to print a pretty message in case of errors
-
   return retrySnowplowRequest(
     "micro/good",
     ({ body }) => body.length >= count,
