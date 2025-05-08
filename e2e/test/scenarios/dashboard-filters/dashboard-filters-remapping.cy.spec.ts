@@ -1,7 +1,10 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { CardId, GetFieldValuesResponse } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -50,24 +53,42 @@ function setupDashboard() {
       "source-table": ORDERS_ID,
     },
   };
-  const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
+  const getMbqlQuestionDetails = (
+    modelId: CardId,
+  ): StructuredQuestionDetails => ({
     name: "Question",
     type: "question",
     query: {
       "source-table": `card__${modelId}`,
     },
   });
+  const nativeQuestionDetails: NativeQuestionDetails = {
+    native: {
+      query: "SELECT * FROM ORDERS WHERE {{product_id}}",
+      "template-tags": {
+        product_id: {
+          id: "product_id",
+          name: "Product ID",
+          "display-name": "Product ID",
+          type: "dimension",
+          dimension: ["field", ORDERS.PRODUCT_ID, null],
+        },
+      },
+    },
+  };
   H.createQuestion(modelDetails).then(({ body: card }) => {
-    H.createQuestionAndDashboard({
-      questionDetails: getQuestionDetails(card.id),
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+    H.createDashboardWithQuestions({
+      questions: [getMbqlQuestionDetails(card.id), nativeQuestionDetails],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
     });
   });
 
   H.editDashboard();
   H.setFilter("Number", undefined, "Quantity");
   H.selectDashboardFilter(H.getDashboardCard(), "Quantity");
+  H.setFilter("ID", undefined, "Product ID FK");
+  H.selectDashboardFilter(H.getDashboardCard(1), "Product ID");
   H.setFilter("ID", undefined, "User ID PK");
   H.getDashboardCard().findByText("Select…").click();
   H.popover().findAllByText("ID").should("have.length", 3).last().click();
@@ -77,9 +98,10 @@ function setupDashboard() {
 }
 
 const RATING_INDEX = 0;
-const USER_ID_PK_INDEX = 1;
-const USER_ID_FK_INDEX = 2;
-const WIDGET_COUNT = 3;
+const PRODUCT_ID_FK_INDEX = 1;
+const USER_ID_PK_INDEX = 2;
+const USER_ID_FK_INDEX = 3;
+const WIDGET_COUNT = 4;
 
 function findWidget(index: number) {
   return H.filterWidget().should("have.length", WIDGET_COUNT).eq(index);
@@ -93,6 +115,15 @@ function testDashboardFilterWidgets() {
     cy.button("Add filter").click();
   });
   findWidget(RATING_INDEX).should("contain.text", "N5");
+
+  cy.log("FK remapping");
+  findWidget(PRODUCT_ID_FK_INDEX).click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("1,");
+    cy.findByText("Rustic Paper Wallet").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget(PRODUCT_ID_FK_INDEX).should("contain.text", "Rustic Paper Wallet");
 
   cy.log("PK->Name remapping");
   findWidget(USER_ID_PK_INDEX).click();
