@@ -46,7 +46,7 @@ function Tree(props: TreePath) {
   const { isExpanded, toggle } = useExpandedState(props);
   const { tree } = useTableLoader(props);
 
-  const items = flatten(tree, isExpanded);
+  const items = flatten(tree, { isExpanded, addLoadingNodes: true });
   const dispatch = useDispatch();
 
   useEffect(() => {

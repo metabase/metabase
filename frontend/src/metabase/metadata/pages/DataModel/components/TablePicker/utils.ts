@@ -44,6 +44,17 @@ export function getUrl(value: TreePath) {
   });
 }
 
+/**
+ * For the currently view path, fetches the database, schema and table (or any subset that applies to the path).
+ *
+ * This state is managed at the top-level so we can generate a flat list of all nodes in the tree,
+ * which makes virtualization possible.
+ *
+ * This also makes it easier to do state transformations which needs more information than is available
+ * locally at any node in the path.
+ *
+ * This works by fetching the data and then recursively merging the results into the tree of data that was already fetched.
+ */
 export function useTableLoader(path: TreePath) {
   const [fetchDatabases] = useLazyListDatabasesQuery();
   const [fetchSchemas] = useLazyListDatabaseSchemasQuery();
@@ -152,11 +163,17 @@ export function useTableLoader(path: TreePath) {
       schemaId,
       tableId,
     });
+    // pass path items to the hook separately to avoid reloading
+    // when the object identity changes
   }, [databaseId, schemaId, tableId, load]);
 
   return { tree };
 }
 
+/**
+ * Fetch items from the search API and renders them as a TreeNode so we can use the same
+ * data structure for the tree and the search results and render them in a consistent way.
+ */
 export function useSearch(query: string) {
   const { data, isLoading } = useSearchQuery(
     query === ""
@@ -249,7 +266,7 @@ export function useExpandedState(path: TreePath) {
 
   useEffect(() => {
     // When the path changes, this means a user has navigated throught the browser back
-    // button, ensure the state is expanded to the current path.
+    // button, ensure the path is completely expanded.
     setState((state) => expandPath(state, { databaseId, schemaId, tableId }));
   }, [databaseId, schemaId, tableId]);
 
@@ -274,6 +291,7 @@ export function useExpandedState(path: TreePath) {
   };
 }
 
+// Returns a list of all the nodes along the TreePath
 function partialPaths(path: TreePath) {
   return [
     path,
@@ -287,6 +305,7 @@ type ExpandedState = {
   [key: string]: boolean;
 };
 
+// Returns a new state object with all the nodes along the path expanded.
 function expandPath(state: ExpandedState, path: TreePath) {
   const res = { ...state };
   partialPaths(path).forEach((path) => {
@@ -295,9 +314,9 @@ function expandPath(state: ExpandedState, path: TreePath) {
   return res;
 }
 
-function toKey(value: TreePath) {
-  // Stable JSON stringify
-  return `{"databaseId":${JSON.stringify(value.databaseId ?? null)},"schemaId":${JSON.stringify(value.schemaId ?? null)},"tableId":${JSON.stringify(value.tableId ?? null)}}`;
+// Create a unique key for a TreePath
+function toKey({ databaseId, schemaId, tableId }: TreePath) {
+  return JSON.stringify([databaseId, schemaId, tableId]);
 }
 
 export function item<T extends Item>(x: Omit<T, "key">): T {
@@ -316,25 +335,28 @@ function node<T extends Item>(x: Omit<T, "key">): TreeNode {
 
 export function flatten(
   node: TreeNode,
-  isExpanded?: (key: string) => boolean,
+  opts: {
+    addLoadingNodes?: boolean;
+    isExpanded?: (key: string) => boolean;
+  } = {},
 ): FlatItem[] {
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
-    if (node.children.length === 0) {
+    if (opts.addLoadingNodes && node.children.length === 0) {
       return [
         { isLoading: true, type: "database", key: Math.random().toString() },
         { isLoading: true, type: "database", key: Math.random().toString() },
         { isLoading: true, type: "database", key: Math.random().toString() },
       ];
     }
-    return sort(node.children).flatMap((child) => flatten(child, isExpanded));
+    return sort(node.children).flatMap((child) => flatten(child, opts));
   }
 
-  if (typeof isExpanded === "function" && !isExpanded(node.key)) {
+  if (typeof opts.isExpanded === "function" && !opts.isExpanded(node.key)) {
     return [node];
   }
 
-  if (node.children.length === 0) {
+  if (opts.addLoadingNodes && node.children.length === 0) {
     const childType = getChildType(node.type);
     if (!childType) {
       return [node];
@@ -347,7 +369,7 @@ export function flatten(
 
   return [
     { ...node, isExpanded: true },
-    ...sort(node.children).flatMap((child) => flatten(child, isExpanded)),
+    ...sort(node.children).flatMap((child) => flatten(child, opts)),
   ];
 }
 
