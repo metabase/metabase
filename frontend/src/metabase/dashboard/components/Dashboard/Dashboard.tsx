@@ -54,7 +54,6 @@ function Dashboard() {
     isEditingParameter,
     slowCards,
     navigateToNewCardFromDashboard,
-    showAddParameterPopover,
     removeParameter,
     addCardToDashboard,
     clickBehaviorSidebarDashcard,
@@ -281,7 +280,6 @@ function Dashboard() {
 
               <DashboardSidebars
                 dashboard={dashboard}
-                showAddParameterPopover={showAddParameterPopover}
                 removeParameter={removeParameter}
                 addCardToDashboard={addCardToDashboard}
                 clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
