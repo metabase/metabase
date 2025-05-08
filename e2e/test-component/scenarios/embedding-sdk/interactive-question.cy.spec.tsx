@@ -3,13 +3,11 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
-  SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
