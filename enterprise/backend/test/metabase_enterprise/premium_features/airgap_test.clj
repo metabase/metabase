@@ -1,9 +1,9 @@
-(ns metabase-enterprise.airgap-test
+(ns metabase-enterprise.premium-features.airgap-test
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.airgap :as airgap]
+   [metabase-enterprise.premium-features.airgap :as airgap]
    [metabase.premium-features.core :as premium-features]))
 
 (defn- test-fake-features! [& {:keys [token-fn pubk-fn]}]
