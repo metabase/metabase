@@ -9,13 +9,14 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
@@ -61,6 +62,54 @@ const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
           onAddBreakout={() => {}}
           onUpdateBreakoutColumn={() => {}}
           onClose={close}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+type AddAggregationPopoverProps = {
+  query: Lib.Query;
+};
+
+const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+  const operators = useMemo(() => {
+    const baseOperators = Lib.availableAggregationOperators(query, -1);
+    return baseOperators;
+    //return isUpdate
+    //  ? Lib.selectedAggregationOperators(baseOperators, clause)
+    //  : baseOperators;
+  }, [query]);
+
+  return (
+    <Popover
+      opened={opened}
+      onClose={close}
+      position={"right-start"}
+      onDismiss={close}
+    >
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <AggregationPicker
+          query={query}
+          operators={operators}
+          stageIndex={-1}
+          onClose={close}
+          allowCustomExpressions={false}
+          onQueryChange={() => {}}
         />
       </Popover.Dropdown>
     </Popover>
@@ -190,20 +239,25 @@ export const ChartSettingFieldsPartition = ({
     [columns, value],
   );
 
-  // TODO: disambiguate from columnAdd above
-  //const handleColumnAdd = () => { };
+  const emptyColumnMessage = canEditColumns
+    ? t`Add fields here`
+    : t`Drag fields here`;
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       {partitions.map(({ name: partitionName, title }) => {
         const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
+        const AggregationOrBreakoutPopover =
+          partitionType === "metric"
+            ? AddAggregationPopover
+            : AddBreakoutPopover;
         return (
           <Box py="sm" key={partitionName}>
             <Flex align="center" justify="space-between">
               <Text c="text-medium">{title}</Text>
               {canEditColumns && (
-                <AddBreakoutPopover query={question.query()} />
+                <AggregationOrBreakoutPopover query={question.query()} />
               )}
             </Flex>
             <Droppable
@@ -242,7 +296,9 @@ export const ChartSettingFieldsPartition = ({
                       bg="bg-light"
                       c="text-medium"
                       className={CS.rounded}
-                    >{t`Drag fields here`}</Box>
+                    >
+                      {emptyColumnMessage}
+                    </Box>
                   ) : (
                     updatedColumns.map((col, index) => (
                       <Draggable
