@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -7,13 +6,12 @@ import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
-import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { ApiKey, Group, User as IUser, Member } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -31,8 +29,8 @@ interface GroupMembersTableProps {
   showAddUser: any;
   selectedUsers: IUser[];
   onAddUserCancel: () => void;
-  onAddUserDone: (userIds: number[]) => void;
-  onMembershipRemove: (membershipId: number) => void;
+  onAddUserDone: (userIds: number[]) => Promise<void>;
+  onMembershipRemove: (membershipId: number) => Promise<void>;
   onMembershipUpdate: (member: Member) => void;
   reload: () => void;
   groupUsers: IUser[];
@@ -42,7 +40,7 @@ interface GroupMembersTableProps {
   onPreviousPage: () => void;
 }
 
-function GroupMembersTable({
+function GroupMembersTableInner({
   group,
   groupMemberships,
   membershipsByUser,
@@ -113,22 +111,20 @@ function GroupMembersTable({
         {groupApiKeys?.map((apiKey: ApiKey) => (
           <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
         ))}
-        {groupUsers.map((user: IUser) => {
-          return (
-            <UserRow
-              key={user.id}
-              group={group}
-              user={user}
-              memberships={membershipsByUser[user.id]}
-              canRemove={canRemove(user)}
-              onMembershipRemove={handleRemoveUser}
-              onMembershipUpdate={onMembershipUpdate}
-            />
-          );
-        })}
+        {groupUsers.map((user: IUser) => (
+          <UserRow
+            key={user.id}
+            group={group}
+            user={user}
+            memberships={membershipsByUser[user.id]}
+            canRemove={canRemove(user)}
+            onMembershipRemove={handleRemoveUser}
+            onMembershipUpdate={onMembershipUpdate}
+          />
+        ))}
       </AdminContentTable>
       {hasMembers && (
-        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.p2)}>
+        <Flex align="center" justify="flex-end" p="md">
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -137,28 +133,25 @@ function GroupMembersTable({
             onNextPage={onNextPage}
             onPreviousPage={onPreviousPage}
           />
-        </div>
+        </Flex>
       )}
       {!hasMembers && (
-        <div className={cx(CS.mt4, CS.pt4, CS.flex, CS.layoutCentered)}>
-          <h2
-            className={CS.textMedium}
-          >{t`A group is only as good as its members.`}</h2>
-        </div>
+        <Text size="lg" fw="700" ta="center" mt="4rem">
+          {t`A group is only as good as its members.`}
+        </Text>
       )}
     </>
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Users.loadList({
+export const GroupMembersTable = Users.loadList({
   reload: true,
   pageSize: 25,
   listName: "groupUsers",
   query: (_state: State, props: GroupMembersTableProps) => ({
     group_id: props.group.id,
   }),
-})(GroupMembersTable);
+})(GroupMembersTableInner);
 
 interface UserRowProps {
   user: IUser;
@@ -194,7 +187,9 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className={CS.textBold}>{getName(user)}</td>
+      <td>
+        <Text fw={700}>{getName(user)}</Text>
+      </td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -204,16 +199,36 @@ const UserRow = ({
       )}
       <td>{user.email}</td>
       {canRemove ? (
-        <td
-          className={cx(CS.textRight, CS.cursorPointer)}
-          onClick={() => onMembershipRemove(groupMembership?.membership_id)}
-        >
-          <Icon name="close" className={CS.textLight} size={16} />
-        </td>
+        <Box component="td" ta="right">
+          <UnstyledButton
+            onClick={() => onMembershipRemove(groupMembership?.membership_id)}
+          >
+            <Icon name="close" c="text-light" size={16} />
+          </UnstyledButton>
+        </Box>
       ) : null}
     </tr>
   );
 };
+
+const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => (
+  <tr>
+    <td>
+      <Text fw="bold">{apiKey.name}</Text>
+    </td>
+    <td>
+      <Text fw="bold" c="text-medium">{t`API Key`}</Text>
+    </td>
+    <td>{/* api keys don't have real emails */}</td>
+    <Box component="td" ta="right">
+      <Link to="/admin/settings/authentication/api-keys">
+        <Tooltip label={t`Manage API keys`} position="left">
+          <Icon name="link" c="text-light" size={16} />
+        </Tooltip>
+      </Link>
+    </Box>
+  </tr>
+);
 
 function getName(user: IUser): string {
   const name = getFullName(user);
@@ -224,24 +239,3 @@ function getName(user: IUser): string {
 
   return name;
 }
-
-const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
-  return (
-    <tr>
-      <td>
-        <Text fw="bold">{apiKey.name}</Text>
-      </td>
-      <td>
-        <Text fw="bold" color="text-medium">{t`API Key`}</Text>
-      </td>
-      <td>{/* api keys don't have real emails */}</td>
-      <td className={CS.textRight}>
-        <Link to="/admin/settings/authentication/api-keys">
-          <Tooltip label={t`Manage API keys`} position="left">
-            <Icon name="link" size={16} />
-          </Tooltip>
-        </Link>
-      </td>
-    </tr>
-  );
-};
