@@ -43,7 +43,6 @@ describe("parameters/utils/template-tag-options", () => {
     const field = {
       isDate: () => false,
       isID: () => false,
-      isCategory: () => false,
       isCity: () => false,
       isState: () => false,
       isZipCode: () => false,

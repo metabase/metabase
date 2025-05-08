@@ -37,7 +37,7 @@ export const TYPE_HIERARCHIES = {
   [NUMBER]: {
     base: [TYPE.Number],
     effective: [TYPE.Number],
-    semantic: [TYPE.Number],
+    semantic: [TYPE.Number], // MySQL hack! See Lib.isNumeric
   },
   [INTEGER]: {
     base: [TYPE.Integer],
@@ -79,10 +79,7 @@ export const TYPE_HIERARCHIES = {
     exclude: [LOCATION],
   },
   [CATEGORY]: {
-    base: [TYPE.Boolean],
-    effective: [TYPE.Boolean],
     semantic: [TYPE.Category],
-    include: [LOCATION],
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
   [DIMENSION]: {
