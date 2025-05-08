@@ -18,6 +18,7 @@ import {
 type Props = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
+  id?: string;
   language: CodeLanguage;
   lineNumbers?: boolean;
   readOnly?: boolean;
@@ -28,6 +29,7 @@ type Props = {
 export function CodeEditor({
   className,
   highlightRanges,
+  id,
   language,
   lineNumbers = true,
   readOnly,
@@ -58,6 +60,7 @@ export function CodeEditor({
       }}
       className={cx(S.codeEditor, className)}
       extensions={extensions}
+      id={id}
       readOnly={readOnly}
       ref={ref}
       value={value}

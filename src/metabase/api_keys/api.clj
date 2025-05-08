@@ -4,7 +4,7 @@
    [metabase.api-keys.models.api-key :as api-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]

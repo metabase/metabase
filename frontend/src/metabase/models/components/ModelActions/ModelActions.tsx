@@ -15,7 +15,7 @@ interface Props {
 function ModelActions({ model, shouldShowActionsUI }: Props) {
   return (
     <Stack p="3rem 4rem" mih="90dvh" gap="lg">
-      <Title>
+      <Title order={2}>
         <Group gap="sm">
           {jt`Actions for ${(
             <Group gap="xs">

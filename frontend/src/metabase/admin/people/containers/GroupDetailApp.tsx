@@ -1,17 +1,32 @@
-import _ from "underscore";
-
-import Group from "metabase/entities/groups";
-import Users from "metabase/entities/users";
-import type { GroupId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import {
+  useGetPermissionsGroupQuery,
+  useListUserMembershipsQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 
 import { GroupDetail } from "../components/GroupDetail";
 
-export const GroupDetailApp = _.compose(
-  Users.loadList(),
-  Group.load({
-    id: (_state: State, props: { params: { groupId: GroupId } }) =>
-      props.params.groupId,
-    reload: true,
-  }),
-)(GroupDetail);
+export const GroupDetailApp = (props: any) => {
+  const currentUser = useSelector(getUser);
+
+  const getGroupReq = useGetPermissionsGroupQuery(props.params.groupId);
+  const membershipsByUserReq = useListUserMembershipsQuery();
+
+  const error = getGroupReq.error ?? membershipsByUserReq.error;
+  const isLoading =
+    getGroupReq.isLoading ?? membershipsByUserReq.isLoading ?? !currentUser;
+
+  return (
+    <LoadingAndErrorWrapper error={error} loading={isLoading}>
+      {currentUser && (
+        <GroupDetail
+          membershipsByUser={membershipsByUserReq.data ?? {}}
+          group={getGroupReq.data!}
+          currentUser={currentUser}
+        />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+};

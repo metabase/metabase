@@ -31,7 +31,6 @@
     :model/CloudMigration
     :model/DashboardFavorite
     :model/DatabaseRouter
-    :model/FieldUsage
     :model/Query
     :model/QueryAnalysis
     :model/QueryCache

@@ -6,7 +6,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 export const settings = {
-  uiName: "Link",
+  getUiName: () => "Link",
   canSavePng: false,
   identifier: "link",
   iconName: "link",
