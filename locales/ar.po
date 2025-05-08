@@ -36319,7 +36319,7 @@ msgid "Maximum length of a JSON string before skipping it during sync for JSON u
 msgstr "الحد الأقصى لطول سلسلة JSON قبل تخطيها أثناء المزامنة لكشف JSON. إذا تم تعيين هذا على قيمة عالية جدًا، فقد يؤدي ذلك إلى إبطاء المزامنة أو حدوث أخطاء نفاد الذاكرة."
 
 #: metabase/integrations/ldap.clj:64
-msgid "User lookup filter. The placeholder '{login'} will be replaced by the user supplied login."
+msgid "User lookup filter. The placeholder '{login}' will be replaced by the user supplied login."
 msgstr "مرشح بحث المستخدم. سيتم استبدال العنصر النائب {'login}' بتسجيل الدخول المقدم للمستخدم."
 
 #: metabase/search/impl.clj:323
