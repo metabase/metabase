@@ -19,13 +19,13 @@ describe("TitleAndDescription component", () => {
       it("displays untranslated question title and description when locale is English", async () => {
         setup({ localeCode: "en", dictionary: sampleDictionary });
         assertStringsArePresent("msgid");
-        assertStringsDoNotBecomePresent("msgstr");
+        await assertStringsDoNotBecomePresent("msgstr");
       });
 
       it("displays untranslated question title and description when locale is German", async () => {
         setup({ localeCode: "de", dictionary: sampleDictionary });
         assertStringsArePresent("msgid");
-        assertStringsDoNotBecomePresent("msgstr");
+        await assertStringsDoNotBecomePresent("msgstr");
       });
     });
   });
