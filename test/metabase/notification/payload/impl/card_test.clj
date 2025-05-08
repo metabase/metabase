@@ -44,7 +44,7 @@
    [{:type "header" :text {:type "plain_text" :text "🔔 Card notification test card" :emoji true}}
     {:type "section"
      :text
-     {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Card notification test card>" card-id) :verbatim true}}]
+     {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Card notification test card>" card-id)}}]
     include-image?
     (conj {:type "image"
            :slack_file {:id (mt/malli=? :string)}

@@ -139,6 +139,17 @@
   rows-to-disk-threadhold
   1000)
 
+(def ^{:dynamic true
+       :doc "Control how many rows executing a card for notification will return.
+            Used when getting an example payload for UI."} *query-max-bare-rows*
+  nil)
+
+(defn- query-contraints
+  []
+  (cond-> {}
+    *query-max-bare-rows*
+    (assoc :max-results-bare-rows *query-max-bare-rows*)))
+
 (defn- data-rows-to-disk!
   [qp-result]
   (if (<= (:row_count qp-result) rows-to-disk-threadhold)
@@ -172,7 +183,7 @@
                                            :context       :dashboard-subscription
                                            :export-format :api
                                            :parameters    parameters
-                                           :constraints   {}
+                                           :constraints   (query-contraints)
                                            :middleware    {:process-viz-settings?             true
                                                            :js-int-to-string?                 false
                                                            :add-default-userland-constraints? false}
@@ -279,7 +290,7 @@
                  (qp.card/process-query-for-card card-id :api
                                                  ;; TODO rename to :notification?
                                                  :context     :pulse
-                                                 :constraints {}
+                                                 :constraints (query-contraints)
                                                  :middleware  {:skip-results-metadata?            false
                                                                :process-viz-settings?             true
                                                                :js-int-to-string?                 false

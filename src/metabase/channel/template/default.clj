@@ -47,7 +47,10 @@
                                                                                               "\n\n"
                                                                                               "{{#each record}}\n"
                                                                                               "- {{@key}} : {{@value}}\n"
-                                                                                              "{{/each}}\n")}}}
+                                                                                              "{{/each}}\n")}}
+                   [:notification/card nil] {:channel_type :channel/slack
+                                             :details      {:type :slack/handlebars-text
+                                                            :body "[{{payload.card.name}}]({{card-url payload.card.id}})"}}}
    :channel/http {[:notification/system-event :event/row.created] default-http-template
                   [:notification/system-event :event/row.updated] default-http-template
                   [:notification/system-event :event/row.deleted] default-http-template}})
@@ -71,6 +74,7 @@
   [payload-type payload]
   [payload-type (:event_name payload)])
 
+;; TODO: rework this signature this hsould be a multimethod
 (defn default-template
   "Given a notification info, return the template to use for the channel type."
   [payload-type payload channel-type]

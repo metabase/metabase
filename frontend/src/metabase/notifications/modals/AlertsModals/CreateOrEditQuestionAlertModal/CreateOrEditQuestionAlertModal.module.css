@@ -1,0 +1,23 @@
+.root {
+  display: grid;
+  width: 100%;
+  height: calc(100% - 5.5rem);
+  overflow: auto;
+}
+
+.modalContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalBody {
+  padding: 0;
+  height: 100%;
+  overflow: auto;
+  flex-grow: 1;
+}
+
+.modalFooter {
+  position: relative;
+}
