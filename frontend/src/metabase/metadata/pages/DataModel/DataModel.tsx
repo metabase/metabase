@@ -54,7 +54,11 @@ export const DataModel = ({ params }: Props) => {
           {t`Data model`}
         </Title>
 
-        <TablePicker databaseId={databaseId} schemaId={schemaId} />
+        <TablePicker
+          databaseId={databaseId}
+          schemaId={schemaId}
+          tableId={tableId}
+        />
       </Stack>
 
       {tableId && (

@@ -187,7 +187,11 @@ function node<T extends Item>(x: Omit<T, "key">): TreeNode {
 }
 
 function partialPaths(path: TreePath) {
-  return [path, { ...path, schemaId: undefined }];
+  return [
+    path,
+    { ...path, tableId: undefined },
+    { ...path, schemaId: undefined, tableId: undefined },
+  ];
 }
 
 type ExpandedState = {
