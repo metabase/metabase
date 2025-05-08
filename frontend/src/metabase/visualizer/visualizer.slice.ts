@@ -340,9 +340,6 @@ const visualizerSlice = createSlice({
         return;
       }
 
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(
           state,
@@ -369,7 +366,7 @@ const visualizerSlice = createSlice({
           );
         }
       } else if (state.display === "pie") {
-        addColumnToPieChart(state, column);
+        addColumnToPieChart(state, column, columnRef);
       }
     },
     removeColumn: (

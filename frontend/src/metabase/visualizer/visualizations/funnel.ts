@@ -115,6 +115,39 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
   );
 }
 
+export function findColumnSlotForFunnel(
+  {
+    display,
+    columns,
+    settings,
+  }: Pick<
+    VisualizerVizDefinitionWithColumns,
+    "display" | "columns" | "settings"
+  >,
+  column: DatasetColumn,
+  dataset: Dataset,
+) {
+  const isEmpty = columns.length === 0;
+
+  if (
+    (isEmpty || isScalarFunnel({ display, settings })) &&
+    canCombineCardWithFunnel(dataset)
+  ) {
+    // HACK: not really sure about this
+    return "scalar_funnel";
+  } else {
+    const ownMetric = settings["funnel.metric"];
+    if (!ownMetric && isMetric(column)) {
+      return "funnel.metric";
+    }
+
+    const ownDimension = settings["funnel.dimension"];
+    if (!ownDimension && isDimension(column) && !isMetric(column)) {
+      return "funnel.dimension";
+    }
+  }
+}
+
 export function addScalarToFunnel(
   state: VisualizerVizDefinitionWithColumns,
   dataSource: VisualizerDataSource,
@@ -159,26 +192,22 @@ export function addColumnToFunnel(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const isEmpty = state.columns.length === 0;
+  const slot = findColumnSlotForFunnel(state, column, dataset);
+  if (!slot) {
+    return;
+  }
 
-  if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(dataset)) {
+  if (slot === "scalar_funnel") {
     addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
     return;
   }
 
-  if (!isScalarFunnel(state)) {
-    state.columns.push(column);
-    state.columnValuesMapping[column.name] = [columnRef];
-
-    const metric = state.settings["funnel.metric"];
-    if (!metric && isMetric(column)) {
-      state.settings["funnel.metric"] = column.name;
-    }
-
-    const dimension = state.settings["funnel.dimension"];
-    if (!dimension && isDimension(column) && !isMetric(column)) {
-      state.settings["funnel.dimension"] = column.name;
-    }
+  state.columns.push(column);
+  state.columnValuesMapping[column.name] = [columnRef];
+  if (slot === "funnel.metric") {
+    state.settings["funnel.metric"] = column.name;
+  } else if (slot === "funnel.dimension") {
+    state.settings["funnel.dimension"] = column.name;
   }
 }
 
