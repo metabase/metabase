@@ -336,6 +336,7 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
+  field-reference
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag

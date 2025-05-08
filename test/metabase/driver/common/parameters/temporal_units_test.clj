@@ -3,12 +3,15 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest can-compile-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
     (testing "temporal unit parameters"
-      (let [base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.time_grouping('time-unit', %s)}}" "'created_at'"))
+      (let [field-reference (qp.store/with-metadata-provider (mt/metadata-provider)
+                              (mt/field-reference driver/*driver* (mt/id :orders :created_at)))
+            base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.time_grouping('time-unit', '%s')}}" field-reference))
             native-query (mt/native-query
                            (assoc base-query
                                   :template-tags {"time-unit" {:name "id"
