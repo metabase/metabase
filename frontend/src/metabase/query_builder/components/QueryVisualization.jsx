@@ -10,6 +10,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
+import { getIsNativeQueryFixApplied } from "metabase/query_builder/selectors";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { Box, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -37,6 +38,7 @@ export default function QueryVisualization(props) {
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState([]);
+  const isNativeQueryFixApplied = useSelector(getIsNativeQueryFixApplied);
 
   return (
     <div
@@ -75,10 +77,15 @@ export default function QueryVisualization(props) {
         )}
         data-testid="query-visualization-root"
       >
-        {result?.error ? (
+        {isNativeQueryFixApplied ? (
+          <VisualizationEmptyState className={CS.spread}>
+            {t`Fixes applied. Run your query to view results.`}
+          </VisualizationEmptyState>
+        ) : result?.error ? (
           <VisualizationError
             className={CS.spread}
             error={result.error}
+            errorType={result.error_type}
             via={result.via}
             question={question}
             duration={result.duration}
@@ -94,14 +101,16 @@ export default function QueryVisualization(props) {
           <VisualizationEmptyState
             className={CS.spread}
             isCompact={isNativeEditorOpen}
-          />
+          >
+            {t`Here's where your results will appear`}
+          </VisualizationEmptyState>
         ) : null}
       </div>
     </div>
   );
 }
 
-const VisualizationEmptyState = ({ isCompact }) => {
+const VisualizationEmptyState = ({ isCompact, children }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
@@ -122,7 +131,7 @@ const VisualizationEmptyState = ({ isCompact }) => {
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{t`Query results will appear here.`}</Text>
+        <Text c="text-medium">{children}</Text>
       </Stack>
     </Flex>
   );
@@ -146,7 +155,7 @@ export function VisualizationRunningState({ className = "" }) {
       align="center"
     >
       <LoadingSpinner />
-      <Title className={CS.textUppercase} c="brand" order={2} mt="lg">
+      <Title className={CS.textUppercase} c="brand" order={3} mt="lg">
         {message}
       </Title>
     </Flex>

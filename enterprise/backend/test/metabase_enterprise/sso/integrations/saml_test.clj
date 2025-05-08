@@ -7,9 +7,9 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.init]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -514,7 +514,8 @@
                          :id           true
                          :last_name    "User"
                          :date_joined  true
-                         :common_name  "New User"}
+                         :common_name  "New User"
+                         :tenant_id    false}
                         (-> (mt/boolean-ids-and-timestamps new-user)
                             (dissoc :last_login))))
                  (testing "User Invite Event is logged."
@@ -553,7 +554,8 @@
                         :id           true
                         :last_name    nil
                         :date_joined  true
-                        :common_name  "newuser@metabase.com"}]
+                        :common_name  "newuser@metabase.com"
+                        :tenant_id    false}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
             ;; login with the same user, but now givenname and surname attributes exist
@@ -567,7 +569,8 @@
                         :id           true
                         :last_name    "User"
                         :date_joined  true
-                        :common_name  "New User"}]
+                        :common_name  "New User"
+                        :tenant_id    false}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
              (finally

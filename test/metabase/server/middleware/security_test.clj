@@ -4,10 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.embed.app-origins-sdk :as aos]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
+   [metabase.embedding.app-origins-sdk :as aos]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
@@ -213,7 +213,16 @@
                  (get (mw.security/access-control-headers "https://example.com"
                                                           (embed.settings/enable-embedding-sdk)
                                                           (aos/embedding-app-origins-sdk))
-                      "Access-Control-Allow-Origin"))))))))
+                      "Access-Control-Allow-Origin"))))))
+    (testing "Should set Access-Control-Max-Age to 60"
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         embedding-app-origins-sdk "https://example.com"]
+        (let [headers (mw.security/access-control-headers
+                       "https://example.com"
+                       (embed.settings/enable-embedding-sdk)
+                       (aos/embedding-app-origins-sdk))]
+          (is (= "60" (get headers "Access-Control-Max-Age"))
+              "Expected Access-Control-Max-Age header to be set to 60"))))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."

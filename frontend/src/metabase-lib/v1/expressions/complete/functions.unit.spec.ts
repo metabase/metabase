@@ -88,13 +88,13 @@ describe("suggestFunctions", () => {
       {
         apply: expect.any(Function),
         detail:
-          'Returns the localized short name (eg. `"Apr"`) for the given month number (eg. `4`)',
-        displayLabel: "monthName",
+          "Looks at the values in each argument in order and returns the first non-null value for each row.",
+        displayLabel: "coalesce",
         icon: "function",
-        label: "monthName",
+        label: "coalesce",
         matches: [
-          [1, 2],
-          [5, 5],
+          [0, 1],
+          [6, 6],
         ],
         type: "function",
       },
@@ -111,13 +111,13 @@ describe("suggestFunctions", () => {
       {
         apply: expect.any(Function),
         detail:
-          "Looks at the values in each argument in order and returns the first non-null value for each row.",
-        displayLabel: "coalesce",
+          'Returns the localized short name (eg. `"Apr"`) for the given month number (eg. `4`)',
+        displayLabel: "monthName",
         icon: "function",
-        label: "coalesce",
+        label: "monthName",
         matches: [
-          [0, 1],
-          [6, 6],
+          [1, 2],
+          [5, 5],
         ],
         type: "function",
       },
@@ -270,18 +270,18 @@ describe("suggestFunctions", () => {
     const completer = setup({ expressionMode: "expression" });
     const results = await completer("not|");
     expect(results?.options.map((result) => result.displayLabel)).toEqual([
+      "notEmpty",
       "notIn",
       "notNull",
-      "notEmpty",
       "doesNotContain",
       "now",
-      "interval",
       "intervalStartingFrom",
+      "interval",
+      "contains",
+      "minute",
+      "month",
       "length",
       "monthName",
-      "month",
-      "minute",
-      "contains",
     ]);
   });
 });

@@ -17,6 +17,8 @@ import {
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
 
+import Watermark from "../../watermark.svg?component";
+
 import { calculateMargin } from "./utils/margin";
 
 const layout = {
@@ -45,9 +47,10 @@ const layout = {
 export type FunnelProps = {
   data: FunnelDatum[];
   settings: FunnelSettings;
+  hasDevWatermark?: boolean;
 };
 
-const Funnel = ({ data, settings }: FunnelProps) => {
+const Funnel = ({ data, settings, hasDevWatermark = false }: FunnelProps) => {
   const palette = { ...layout.colors, ...settings.colors };
 
   const groupedData = groupData(data);
@@ -176,6 +179,15 @@ const Funnel = ({ data, settings }: FunnelProps) => {
           );
         })}
       </Group>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={layout.height}
+          width={layout.width}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 };

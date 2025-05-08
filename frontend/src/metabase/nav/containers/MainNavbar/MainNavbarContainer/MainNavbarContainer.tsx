@@ -187,7 +187,6 @@ function MainNavbarContainer({
         bookmarks={bookmarks}
         isAdmin={isAdmin}
         isOpen={isOpen}
-        currentUser={currentUser}
         collections={collectionTree}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}

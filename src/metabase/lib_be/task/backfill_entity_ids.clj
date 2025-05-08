@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.task :as task]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]

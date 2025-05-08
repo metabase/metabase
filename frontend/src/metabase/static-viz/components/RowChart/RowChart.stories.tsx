@@ -30,3 +30,8 @@ export const MetricColumnWithScaling = {
     getColor: color,
   },
 };
+
+export const Watermark = {
+  render: Template,
+  args: { ...MULTIPLE_SERIES, getColor: color, hasDevWatermark: true },
+};

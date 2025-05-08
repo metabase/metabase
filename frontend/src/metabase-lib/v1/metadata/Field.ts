@@ -11,6 +11,7 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
+  isAddress,
   isBoolean,
   isCoordinate,
   isCurrency,
@@ -18,7 +19,6 @@ import {
   isDateWithoutTime,
   isDimension,
   isFK,
-  isLocation,
   isMetric,
   isNumber,
   isNumeric,
@@ -197,8 +197,8 @@ export default class Field extends Base {
     return isCoordinate(this);
   }
 
-  isLocation() {
-    return isLocation(this);
+  isAddress() {
+    return isAddress(this);
   }
 
   isSummable() {
@@ -306,11 +306,24 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
+  remappedField() {
+    return this.remappedInternalField() ?? this.remappedExternalField();
+  }
+
+  remappedInternalField() {
+    const dimensions = this.dimensions ?? [];
+    if (dimensions.length > 0 && dimensions[0].type === "internal") {
+      return this;
+    }
+
+    return null;
+  }
+
   /**
    * Returns the remapped field, if any
    * @return {?Field}
    */
-  remappedField() {
+  remappedExternalField() {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
@@ -366,7 +379,7 @@ export default class Field extends Base {
       return this.isSearchable() ? this : null;
     }
 
-    const remappedField = this.remappedField();
+    const remappedField = this.remappedExternalField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }

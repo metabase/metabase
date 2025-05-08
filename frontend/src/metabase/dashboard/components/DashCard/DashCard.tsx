@@ -93,7 +93,7 @@ export interface DashCardProps {
   /** Auto-scroll to this card on mount */
   autoScroll: boolean;
   /** Callback to execute when the dashcard has auto-scrolled to itself */
-  reportAutoScrolledToDashcard: () => void;
+  reportAutoScrolledToDashcard?: () => void;
 
   className?: string;
 }
@@ -152,7 +152,7 @@ function DashCardInner({
 
     if (autoScroll) {
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
-      reportAutoScrolledToDashcard();
+      reportAutoScrolledToDashcard?.();
     }
   });
 

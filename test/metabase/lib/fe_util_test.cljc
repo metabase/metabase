@@ -13,7 +13,6 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -40,7 +39,7 @@
                                       :inside (lib/expression-clause short-op [col 12 34 56 78 90] {})
                                       (:< :>) (lib/expression-clause short-op [col col] {})
                                       (lib/expression-clause short-op [col 123] {}))]]
-      (testing (str short-op " with " (lib.types.isa/field-type col))
+      (testing (str short-op " with " (:name col))
         (is (=? {:lib/type :mbql/expression-parts
                  :operator short-op
                  :args vector?}

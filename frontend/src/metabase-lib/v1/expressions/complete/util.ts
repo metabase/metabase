@@ -3,18 +3,17 @@ import Fuse from "fuse.js";
 
 import type Database from "metabase-lib/v1/metadata/Database";
 
-import { getHelpText } from "../helper-text-strings";
+import { type HelpText, getHelpText } from "../help-text";
 import {
   CALL,
   END_OF_INPUT,
   FIELD,
   IDENTIFIER,
-  OPERATORS,
   STRING,
   type Token,
   lexify,
 } from "../pratt";
-import type { HelpText, MBQLClauseFunctionConfig } from "../types";
+import type { MBQLClauseFunctionConfig } from "../types";
 
 import type { Completion } from "./types";
 
@@ -59,11 +58,11 @@ export function expressionClauseCompletion(
 function getSnippet(helpText: HelpText) {
   const args =
     helpText.args
-      ?.filter((arg) => arg.name !== "…")
-      ?.map((arg) => "${" + (arg.template ?? arg.name) + "}")
+      .filter((arg) => arg.name !== "…")
+      .map((arg) => "${" + (arg.template ?? arg.name) + "}")
       .join(", ") ?? "";
 
-  return `${helpText.structure}(${args})`;
+  return `${helpText.displayName}(${args})`;
 }
 
 export function fuzzyMatcher(options: Completion[]) {
@@ -91,7 +90,7 @@ export function fuzzyMatcher(options: Completion[]) {
 }
 
 export function tokenAtPos(source: string, pos: number): Token | null {
-  const { tokens } = lexify(source);
+  const tokens = lexify(source);
 
   const idx = tokens.findIndex(
     (token) => token.start <= pos && token.end >= pos,
@@ -121,10 +120,6 @@ export function content(source: string, token: Token): string {
 
 export function isIdentifier(token: Token | null) {
   return token != null && (token.type === IDENTIFIER || token.type === CALL);
-}
-
-export function isOperator(token: Token | null) {
-  return token != null && OPERATORS.has(token.type);
 }
 
 export function isFieldReference(token: Token | null) {

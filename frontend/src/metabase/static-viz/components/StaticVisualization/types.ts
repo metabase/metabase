@@ -11,4 +11,5 @@ export interface StaticChartProps {
   width?: number;
   height?: number;
   isStorybook?: boolean;
+  hasDevWatermark?: boolean;
 }

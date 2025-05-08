@@ -14,19 +14,20 @@
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.events :as events]
+   [metabase.embedding.settings :as embed.settings]
+   [metabase.events.core :as events]
    [metabase.logger :as logger]
    [metabase.models.database :as database]
-   [metabase.models.setting :as setting]
    [metabase.notification.core :as notification]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
+   [metabase.startup.core :as startup]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -174,6 +175,7 @@
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
+  (startup/run-startup-logic!)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)

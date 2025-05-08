@@ -8,12 +8,12 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.task-history :as task-history]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -501,12 +501,12 @@
                     (fn [& args]
                       (try
                         (task-history/with-task-history
-                         {:task            step-name
-                          :db_id           (u/the-id database)
-                          :on-success-info (fn [update-map result]
-                                             (if (instance? Throwable result)
-                                               (throw result)
-                                               (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
+                          {:task            step-name
+                           :db_id           (u/the-id database)
+                           :on-success-info (fn [update-map result]
+                                              (if (instance? Throwable result)
+                                                (throw result)
+                                                (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
                           (apply sync-fn database args))
                         (catch Throwable e
                           (if *log-exceptions-and-continue?*

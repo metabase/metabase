@@ -12,6 +12,7 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -149,6 +150,8 @@ const setup = async ({
   setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([createMockDatabase()]);
+
+  setupLastDownloadFormatEndpoints();
 
   const user = createMockUser();
 

@@ -2,8 +2,8 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.gsheets.constants :as gsheets.constants]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]

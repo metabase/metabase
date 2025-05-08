@@ -376,7 +376,7 @@ export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(within(popover).getByText("Total"));
   const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.click(await screen.findByText("Add filter"));
+  await userEvent.click(await screen.findByText("Apply filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

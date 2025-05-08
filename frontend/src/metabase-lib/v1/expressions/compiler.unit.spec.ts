@@ -446,4 +446,16 @@ describe("Specific expressions", () => {
       value("-9223372036854775809", "type/BigInteger"),
     );
   });
+
+  it("should render a custom error message for unresolved fields that used to resolver to a function invocation", () => {
+    expect(() => expr("now")).toThrow(
+      "Unknown column: now. Use now() instead.",
+    );
+    expect(() => expr("Count")).toThrow(
+      "Unknown column: Count. Use Count() instead.",
+    );
+    expect(() => expr("CumulativeCount")).toThrow(
+      "Unknown column: CumulativeCount. Use CumulativeCount() instead.",
+    );
+  });
 });

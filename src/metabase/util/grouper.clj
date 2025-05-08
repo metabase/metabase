@@ -13,7 +13,7 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [potemkin :as p])
   (:import

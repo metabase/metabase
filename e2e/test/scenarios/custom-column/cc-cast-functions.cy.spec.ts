@@ -75,6 +75,27 @@ const INTEGER_TEST_CASES: CastTestCase[] = [
     filterValue: "29",
     expectedRowCount: 1,
   },
+  {
+    name: "FloatLiteral",
+    expression: "integer(10.4)",
+    filterOperator: "Equal to",
+    filterValue: "10",
+    expectedRowCount: 200,
+  },
+  {
+    name: "FloatColumn",
+    expression: "integer([Price])",
+    filterOperator: "Equal to",
+    filterValue: "29",
+    expectedRowCount: 4,
+  },
+  {
+    name: "FloatExpression",
+    expression: "integer(42.333 + 0.56)",
+    filterOperator: "Equal to",
+    filterValue: "43",
+    expectedRowCount: 200,
+  },
 ];
 
 const DATE_TEST_CASES: CastTestCase[] = [

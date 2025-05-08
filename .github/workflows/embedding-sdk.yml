@@ -139,7 +139,7 @@ jobs:
     secrets: inherit
 
   cross-version-for-breaking-changes:
-    if: github.event_name == 'pull_request' && ${{ startsWith(inputs.branch, 'release-x.') }}
+    if: github.event_name == 'pull_request' && startsWith(inputs.branch, 'release-x.')
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
     secrets: inherit
     with:

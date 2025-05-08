@@ -11,6 +11,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -1235,3 +1237,30 @@
         (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
         (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
         (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))
+
+(deftest filter-by-column-sandboxing-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Sandboxing with filtering by a column works for all supported drivers"
+      (met/with-gtaps! {:gtaps {:venues   {:remappings {:cat   ["variable" [:field (mt/id :venues :category_id) nil]]}}
+                                :checkins {:remappings {:user  ["variable" [:field (mt/id :checkins :user_id) nil]]
+                                                        :venue ["variable" [:field (mt/id :checkins :venue_id) nil]]}}},
+                        :attributes {:cat   10
+                                     :user  1
+                                     :venue 47}}
+        (let [mp           (mt/metadata-provider)
+              venues       (lib.metadata/table mp (mt/id :venues))
+              venues-id    (lib.metadata/field mp (mt/id :venues :id))
+              venues-query (-> (lib/query mp venues)
+                               (lib/order-by venues-id :asc))
+              checkins       (lib.metadata/table mp (mt/id :checkins))
+              checkins-query (-> (lib/query mp checkins)
+                                 (lib/aggregate (lib/count)))]
+          (is (= [[34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
+                  [99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
+                 (->> venues-query
+                      qp/process-query
+                      (mt/formatted-rows [int str int 4.0 3.0 int]))))
+          (is (= [[2]]
+                 (->> checkins-query
+                      qp/process-query
+                      (mt/formatted-rows [int])))))))))
