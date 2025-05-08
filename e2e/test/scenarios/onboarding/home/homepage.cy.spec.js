@@ -639,6 +639,37 @@ H.describeWithSnowplow("scenarios > setup", () => {
       triggered_from: "empty-collection",
     });
   });
+
+  /**
+   * Until we refactor the NewItem menu component and drop EntityMenu from it,
+   * the only menu item that can have onClick handler is a "dashboard".
+   */
+  it("should track when a 'New' button's menu item is clicked", () => {
+    cy.visit("/");
+
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_item_clicked",
+      triggered_from: "dashboard",
+    });
+
+    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
+    cy.findByTestId("new-dashboard-modal").should("not.exist");
+
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_item_clicked",
+      triggered_from: "dashboard",
+    });
+  });
 });
 
 const pinItem = (name) => {
