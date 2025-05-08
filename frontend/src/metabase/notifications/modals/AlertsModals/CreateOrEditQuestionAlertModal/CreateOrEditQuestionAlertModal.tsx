@@ -431,6 +431,7 @@ export const CreateOrEditQuestionAlertModal = ({
           variant="outline"
           color="brand"
           loading={isLoading}
+          disabled={!isValid}
           onClick={onSendNow}
         >
           {isLoading ? t`Sending…` : t`Send now`}
