@@ -1097,7 +1097,8 @@
   (is (=? {:channel/email (mt/malli=? :map)
            :channel/slack (mt/malli=? :map)}
           (mt/user-http-request :crowberto :post 200 "notification/default_template"
-                                {:notification {:payload_type :notification/system-event
+                                {:channel_types [:channel/email :channel/slack]
+                                 :notification {:payload_type :notification/system-event
                                                 :payload      {:event_name :event/row.created}}}))))
 
 (deftest validate-email-domains-test

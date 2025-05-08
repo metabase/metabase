@@ -1221,7 +1221,7 @@
                 {:fields [{:text (mt/malli=? :string)
                            :type "mrkdwn"}]
                  :type "section"}
-                {:text {:text "My Card" :type "mrkdwn" :verbatim true}
+                {:text {:text "My Card" :type "mrkdwn"}
                  :type "section"}
                 {:alt_text "My Card" :slack_file {:id "My Card.png"} :type "image"}]
                (:blocks message))))}}))
