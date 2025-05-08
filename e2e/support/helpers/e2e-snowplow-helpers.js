@@ -36,7 +36,8 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
   retrySnowplowRequest(
     "micro/good",
     ({ body }) => {
-      lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
+      lastReceivedEvent =
+        body?.[0]?.event?.unstruct_event?.data?.data ?? body?.[0];
       lastFoundEventCount = body.filter((snowplowEvent) =>
         isDeepMatch(
           snowplowEvent?.event?.unstruct_event?.data?.data,
