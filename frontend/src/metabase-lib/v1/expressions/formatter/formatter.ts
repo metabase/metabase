@@ -1,6 +1,5 @@
 import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
-import { format as pformat } from "prettier/standalone";
 
 import { parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
@@ -57,11 +56,13 @@ export async function formatExpressionParts(
   // prettier expects us to pass a string, but we have the AST already
   // so we pass a bogus string and ignore it. The actual ast is passed via
   // the root option.
-  return pformat("__not_used__", {
-    parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root })],
-    printWidth: options.printWidth ?? 80,
-  });
+  return import("prettier/standalone").then(({ format: pformat }) =>
+    pformat("__not_used__", {
+      parser: PRETTIER_PLUGIN_NAME,
+      plugins: [plugin({ ...options, root })],
+      printWidth: options.printWidth ?? 80,
+    }),
+  );
 }
 
 const PRETTIER_PLUGIN_NAME = "custom-expression";
