@@ -147,9 +147,10 @@
   (init-status/set-progress! 0.55)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
+  (task/init-scheduler!)
+  (analytics/add-listeners-to-scheduler!)
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
-    (task/init-scheduler!)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
     (when new-install?

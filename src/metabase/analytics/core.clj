@@ -1,6 +1,7 @@
 (ns metabase.analytics.core
   (:require
    [metabase.analytics.prometheus]
+   [metabase.analytics.quartz]
    [metabase.analytics.sdk]
    [metabase.analytics.settings]
    [metabase.analytics.snowplow]
@@ -9,6 +10,7 @@
 
 (comment
   metabase.analytics.prometheus/keep-me
+  metabase.analytics.quartz/keep-me
   metabase.analytics.sdk/keep-me
   metabase.analytics.settings/keep-me
   metabase.analytics.snowplow/keep-me
@@ -25,6 +27,10 @@
   set!
   setup!
   shutdown!]
+
+ [metabase.analytics.quartz
+
+  add-listeners-to-scheduler!]
 
  [metabase.analytics.sdk
 
