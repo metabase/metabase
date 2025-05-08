@@ -105,7 +105,6 @@ export function EmbeddingDataPicker({
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
       selectedCollectionId={card?.collection_id}
-      databaseQuery={{ saved: true }}
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       triggerElement={

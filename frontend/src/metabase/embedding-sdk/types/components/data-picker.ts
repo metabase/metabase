@@ -8,7 +8,6 @@ export interface DataSourceSelectorProps {
   selectedDatabaseId: number | null;
   selectedTableId: TableId | undefined;
   selectedCollectionId: number | null | undefined;
-  databaseQuery: { saved: boolean };
   canSelectModel: boolean;
   canSelectTable: boolean;
   triggerElement: JSX.Element;

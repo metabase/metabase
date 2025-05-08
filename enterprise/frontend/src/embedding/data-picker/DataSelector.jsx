@@ -571,22 +571,13 @@ export class UnconnectedDataSelector extends Component {
     const loadersForSteps = {
       // NOTE: make sure to return the action's resulting promise
       [DATA_BUCKET_STEP]: () => {
-        return Promise.all([
-          this.props.fetchDatabases(this.props.databaseQuery),
-          this.props.fetchDatabases({ saved: true }),
-        ]);
+        return this.props.fetchDatabases();
       },
       [DATABASE_STEP]: () => {
-        return Promise.all([
-          this.props.fetchDatabases(this.props.databaseQuery),
-          this.props.fetchDatabases({ saved: true }),
-        ]);
+        return this.props.fetchDatabases();
       },
       [SCHEMA_STEP]: () => {
-        return Promise.all([
-          this.props.fetchDatabases(this.props.databaseQuery),
-          this.props.fetchSchemas(this.state.selectedDatabaseId),
-        ]);
+        return this.props.fetchSchemas(this.state.selectedDatabaseId);
       },
       [TABLE_STEP]: () => {
         if (this.state.selectedSchemaId != null) {
@@ -959,7 +950,7 @@ const DataSelector = _.compose(
       databases:
         ownProps.databases ||
         Databases.selectors.getList(state, {
-          entityQuery: ownProps.databaseQuery,
+          entityQuery: { saved: true },
         }) ||
         [],
       hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
@@ -978,8 +969,7 @@ const DataSelector = _.compose(
       }),
     }),
     {
-      fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList(databaseQuery),
+      fetchDatabases: () => Databases.actions.fetchList({ saved: true }),
       fetchSchemas: (databaseId) =>
         Schemas.actions.fetchList({ dbId: databaseId }),
       fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
