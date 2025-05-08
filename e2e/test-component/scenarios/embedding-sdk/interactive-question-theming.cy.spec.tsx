@@ -62,7 +62,7 @@ describe(
           <Box bg={theme.colors?.background} h="100vh">
             <InteractiveQuestion questionId={questionId} />
           </Box>,
-          { theme },
+          { sdkProviderProps: { theme } },
         );
       });
 
@@ -99,6 +99,12 @@ describe(
           .should(($el) =>
             haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
           );
+
+        cy.findByTestId("interactive-question-result-toolbar").should(
+          "have.css",
+          "background-color",
+          lighten(theme.colors?.background, 0.15),
+        );
       });
     });
 
@@ -117,7 +123,7 @@ describe(
           <Box bg={theme.colors?.background} h="100vh">
             <InteractiveQuestion questionId={questionId} />
           </Box>,
-          { theme },
+          { sdkProviderProps: { theme } },
         );
       });
 
@@ -140,6 +146,12 @@ describe(
           .should(($el) =>
             haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
           );
+
+        cy.findByTestId("interactive-question-result-toolbar").should(
+          "have.css",
+          "background-color",
+          darken(theme.colors?.background, 0.04),
+        );
       });
     });
   },
