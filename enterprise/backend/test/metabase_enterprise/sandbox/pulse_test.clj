@@ -64,12 +64,7 @@
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
-                    :details  {:recipients [(dissoc (mt/fetch-user :rasta)
-                                                    :last_login
-                                                    :is_qbnewb
-                                                    :is_superuser
-                                                    :date_joined
-                                                    :tenant_id)]
+                    :details  {:recipients [(select-keys (mt/fetch-user :rasta) [:id :email :first_name :last_name])]
                                :filters    []}}
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 

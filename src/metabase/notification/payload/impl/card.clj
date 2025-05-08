@@ -5,6 +5,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.notification.send :as notification.send]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,7 +79,5 @@
   (events/publish-event! :event/alert-send
                          {:id      id
                           :user-id creator_id
-                          :object  {:recipients (->> handlers
-                                                     (mapcat :recipients)
-                                                     (map #(or (:user %) (:email %))))
+                          :object  {:recipients (notification.dashboard/handlers->audit-recipients handlers)
                                     :filters    (-> notification-info :alert :parameters)}}))
