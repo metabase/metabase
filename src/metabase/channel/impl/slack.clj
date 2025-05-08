@@ -112,11 +112,13 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [_channel-type _payload-type {:keys [payload] :as notification-payload} template recipients]
-  (let [card-url-text (when template
-                        (markdown/process-markdown
-                         (channel.template/render-template template notification-payload)
-                         :slack))
+  [channel-type _payload-type {:keys [payload] :as notification-payload} template recipients]
+  ;; for alerts, we allow users to template the url card part only
+  (let [link-template (or template
+                          (channel.template/default-template :notification/card nil channel-type))
+        card-url-text (markdown/process-markdown
+                       (channel.template/render-template link-template notification-payload)
+                       :slack)
         blocks        (concat [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
