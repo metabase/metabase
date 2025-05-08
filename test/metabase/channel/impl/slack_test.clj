@@ -30,11 +30,11 @@
                                                        {:id "uploaded"})]
                       (mt/with-temporary-setting-values [site-url "a.com"]
                         (mapv #'channel.slack/part->sections! parts)))]
-    (is (= [[{:type "section", :text {:type "mrkdwn", :text "<http://a.com/question/1|&amp;amp;a>", :verbatim true}}
+    (is (= [[{:type "section", :text {:type "mrkdwn", :text "<http://a.com/question/1|&amp;amp;a>"}}
              {:type "section", :text {:type "plain_text", :text "No results"}}]
             [{:type "section",
               :text
-              {:type "mrkdwn", :text "<http://a.com/question/1|&gt; click &lt;https://c.com|here&gt;>", :verbatim true}}
+              {:type "mrkdwn", :text "<http://a.com/question/1|&gt; click &lt;https://c.com|here&gt;>"}}
              {:type "section", :text {:type "plain_text", :text "No results"}}]]
            processed))))
 
