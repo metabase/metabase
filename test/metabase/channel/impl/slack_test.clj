@@ -4,6 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.slack :as slack]
+   [metabase.config :as config]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -187,10 +188,11 @@
             (let [[_whole url label] (re-find #"\<(.*)\|(.*)\>" s)]
               (is (string? label))
               (is (u/url? url))))]
-    (testing "When whitelabeling is enabled, branding link should not be included"
-      (let [links (render-dashboard-links true)]
-        (is (every? markdown-link? links))
-        (is (= 1 (count links)))))
+    (when config/ee-available?
+      (testing "When whitelabeling is enabled, branding link should not be included"
+        (let [links (render-dashboard-links true)]
+          (is (every? markdown-link? links))
+          (is (= 1 (count links))))))
     (testing "When whitelabeling is disabled, branding link should be included"
       (let [links (render-dashboard-links false)]
         (is (every? markdown-link? links))
