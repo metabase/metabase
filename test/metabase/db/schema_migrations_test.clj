@@ -33,7 +33,7 @@
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -2424,7 +2424,7 @@
                                                    :created_at #t "2020"
                                                    :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
-      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (perms/add-user-to-group! user-id group-id)
       (migrate!)
       (clear-permissions!)
       ;; set one table to be unrestricted

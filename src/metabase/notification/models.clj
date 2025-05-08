@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -374,6 +374,13 @@
   [recipient]
   (mu/validate-throw ::NotificationRecipient recipient))
 
+(defenterprise validate-email-domains!
+  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting, if set.
+  This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the `:email-allow-list` feature."
+  metabase-enterprise.advanced-config.models.notification
+  [_email-addresses]
+  nil)
+
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
@@ -382,6 +389,9 @@
 (t2/define-before-update :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
+  (when (and (= :notification-recipient/raw-value (:type instance))
+             (u/email? (get-in instance [:details :value])))
+    (validate-email-domains! [(get-in instance [:details :value])]))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -410,6 +420,21 @@
   (merge {:send_condition :has_result
           :send_once      false}
          instance))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                            Helpers                                              ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn validate-email-handlers!
+  "Validate the domains of external emails for email handlers."
+  [handlers]
+  ;; validate email domain of all the external email recipients
+  (some->> handlers
+           (filter #(= :channel/email (:channel_type %)))
+           (mapcat :recipients)
+           (filter #(= :notification-recipient/raw-value (:type %)))
+           (map #(get-in % [:details :value]))
+           validate-email-domains!))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;
@@ -530,6 +555,7 @@
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subscriptions handlers+recipients]
+  (validate-email-handlers! handlers+recipients)
   (t2/with-transaction [_conn]
     (let [payload-id      (case (:payload_type notification)
                             (:notification/system-event :notification/testing)
@@ -576,6 +602,7 @@
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
+  (validate-email-handlers! (:handlers new-notification))
   (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
 
 (defn unsubscribe-user!

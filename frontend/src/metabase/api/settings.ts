@@ -1,7 +1,10 @@
+import _ from "underscore";
+
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   SettingDefinition,
+  SettingDefinitionMap,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -10,11 +13,13 @@ import { invalidateTags, tag } from "./tags";
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     // admin-only endpoint that returns all settings with lots of extra metadata
-    getAdminSettingsDetails: builder.query<SettingDefinition[], void>({
+    getAdminSettingsDetails: builder.query<SettingDefinitionMap, void>({
       query: () => ({
         method: "GET",
         url: "/api/setting",
       }),
+      transformResponse: (response: SettingDefinition[]) =>
+        _.indexBy(response, "key") as SettingDefinitionMap,
     }),
     getSetting: builder.query<EnterpriseSettingValue, EnterpriseSettingKey>({
       query: (name) => ({

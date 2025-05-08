@@ -11,9 +11,9 @@
    [metabase.config :as config]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))

@@ -60,7 +60,6 @@ export interface ParameterSidebarProps {
     temporalUnits: TemporalUnit[],
   ) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
-  onShowAddParameterPopover: () => void;
   onClose: () => void;
 }
 
@@ -78,7 +77,6 @@ export const ParameterSidebar = ({
   onChangeRequired,
   onChangeTemporalUnits,
   onRemoveParameter,
-  onShowAddParameterPopover,
   onClose,
   hasMapping,
 }: ParameterSidebarProps): JSX.Element => {
@@ -248,7 +246,6 @@ export const ParameterSidebar = ({
             parameter={parameter}
             otherParameters={otherParameters}
             onChangeFilteringParameters={handleFilteringParametersChange}
-            onShowAddParameterPopover={onShowAddParameterPopover}
           />
         </Tabs.Panel>
       </Tabs>

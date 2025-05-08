@@ -6,7 +6,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 export const settings = {
-  uiName: "iframe",
+  getUiName: () => "iframe",
   canSavePng: false,
   identifier: "iframe",
   iconName: "link",

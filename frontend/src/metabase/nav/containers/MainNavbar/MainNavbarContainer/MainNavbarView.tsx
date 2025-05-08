@@ -7,12 +7,7 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
-import {
-  PERSONAL_COLLECTIONS,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { OnboardingDismissedToast } from "metabase/home/components/Onboarding";
 import {
   getCanAccessOnboardingPage,
@@ -25,26 +20,32 @@ import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotificati
 import { addUndo } from "metabase/redux/undo";
 import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, type IconName, type IconProps, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Flex,
+  Icon,
+  type IconName,
+  type IconProps,
+  Tooltip,
+} from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
-  CollectionMenuList,
-  CollectionsMoreIcon,
-  CollectionsMoreIconContainer,
   PaddedSidebarLink,
   PaddedSidebarLinkDismissible,
   SidebarContentRoot,
   SidebarHeading,
-  SidebarHeadingWrapper,
   SidebarSection,
   TrashSidebarSection,
 } from "../MainNavbar.styled";
-import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import { SidebarCollectionLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
-import { trackOnboardingChecklistOpened } from "../analytics";
+import {
+  trackNewCollectionFromNavInitiated,
+  trackOnboardingChecklistOpened,
+} from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -57,7 +58,6 @@ interface CollectionTreeItem extends Collection {
 type Props = {
   isAdmin: boolean;
   isOpen: boolean;
-  currentUser: User;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
@@ -78,7 +78,6 @@ const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 
 export function MainNavbarView({
   isAdmin,
-  currentUser,
   bookmarks,
   collections,
   databases,
@@ -231,9 +230,9 @@ export function MainNavbarView({
           <SidebarSection>
             <ErrorBoundary>
               <CollectionSectionHeading
-                currentUser={currentUser}
                 handleCreateNewCollection={handleCreateNewCollection}
               />
+
               <Tree
                 data={collectionsWithoutTrash}
                 selectedId={collectionItem?.id}
@@ -242,6 +241,14 @@ export function MainNavbarView({
                 role="tree"
                 aria-label="collection-tree"
               />
+              {isAdmin && (
+                <PaddedSidebarLink
+                  icon="group"
+                  url={OTHER_USERS_COLLECTIONS_URL}
+                >
+                  {t`Other users' personal collections`}
+                </PaddedSidebarLink>
+              )}
             </ErrorBoundary>
           </SidebarSection>
 
@@ -282,54 +289,27 @@ export function MainNavbarView({
   );
 }
 interface CollectionSectionHeadingProps {
-  currentUser: User;
   handleCreateNewCollection: () => void;
 }
+
 function CollectionSectionHeading({
-  currentUser,
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
-  const renderMenu = useCallback(
-    ({ closePopover }: { closePopover: () => void }) => (
-      <CollectionMenuList>
-        <SidebarLink
-          icon="add"
+  return (
+    <Flex align="center" justify="space-between">
+      <SidebarHeading>{t`Collections`}</SidebarHeading>
+      <Tooltip label={t`Create a new collection`}>
+        <ActionIcon
+          aria-label={t`Create a new collection`}
+          color="var(--mb-color-text-medium)"
           onClick={() => {
-            closePopover();
+            trackNewCollectionFromNavInitiated();
             handleCreateNewCollection();
           }}
         >
-          {t`New collection`}
-        </SidebarLink>
-        {currentUser.is_superuser && (
-          <SidebarLink
-            icon={
-              getCollectionIcon(
-                PERSONAL_COLLECTIONS as Collection,
-              ) as unknown as IconName
-            }
-            url={OTHER_USERS_COLLECTIONS_URL}
-            onClick={closePopover}
-          >
-            {t`Other users' personal collections`}
-          </SidebarLink>
-        )}
-      </CollectionMenuList>
-    ),
-    [currentUser, handleCreateNewCollection],
-  );
-
-  return (
-    <SidebarHeadingWrapper>
-      <SidebarHeading>{t`Collections`}</SidebarHeading>
-      <CollectionsMoreIconContainer>
-        <TippyPopoverWithTrigger
-          renderTrigger={({ onClick }) => (
-            <CollectionsMoreIcon name="ellipsis" onClick={onClick} />
-          )}
-          popoverContent={renderMenu}
-        />
-      </CollectionsMoreIconContainer>
-    </SidebarHeadingWrapper>
+          <Icon name="add" />
+        </ActionIcon>
+      </Tooltip>
+    </Flex>
   );
 }

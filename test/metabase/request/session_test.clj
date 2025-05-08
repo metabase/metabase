@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting-test :as setting-test]
    [metabase.models.user :as user]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting-test :as setting-test]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]))
 
@@ -22,7 +22,7 @@
       (is (= nil i18n/*user-locale*))
       (is (false? api/*is-group-manager?*))
       (is (= (user/permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
-      (is (partial= {:test-user-local-only-setting "XYZ"} @@setting/*user-local-values*)))))
+      (is (=? {:test-user-local-only-setting "XYZ"} (setting/user-local-values))))))
 
 (deftest ^:parallel as-admin-test
   (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"

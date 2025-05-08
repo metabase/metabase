@@ -172,6 +172,105 @@ describe("scenarios > question > download", () => {
     );
   });
 
+  describe("download format preference", { tags: "@flaky" }, () => {
+    it("should remember the selected format across page reloads", () => {
+      cy.intercept(
+        "PUT",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("saveFormat");
+
+      H.createQuestion(
+        {
+          name: "Format Preference Test",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 5,
+          },
+          display: "table",
+        },
+        { visitQuestion: true },
+      );
+
+      cy.findByRole("button", { name: "Download results" }).click();
+      H.popover().within(() => {
+        cy.findByText(".xlsx")
+          .should("be.visible")
+          .click()
+          .then(() => {
+            cy.wait("@saveFormat");
+          });
+      });
+
+      cy.intercept(
+        "GET",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("fetchFormat");
+
+      cy.reload();
+      cy.wait("@fetchFormat");
+      cy.findByRole("button", { name: "Download results" }).click();
+      H.popover().within(() => {
+        cy.get("[data-checked='true']").should("contain", ".xlsx");
+      });
+    });
+
+    it("should remember the download format on dashboards", () => {
+      cy.intercept(
+        "PUT",
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+      ).as("saveFormat");
+
+      H.createQuestion({
+        name: "Dashboard Format Test",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+        display: "table",
+      }).then(({ body: { id: questionId } }) => {
+        H.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: questionId,
+            dashboard_id: dashboardId,
+          });
+
+          H.visitDashboard(dashboardId);
+
+          H.getDashboardCard(0).realHover();
+          H.getDashboardCardMenu(0).click();
+          H.popover().within(() => {
+            cy.findByText("Download results").click();
+          });
+          H.popover().within(() => {
+            cy.findByText(".xlsx")
+              .should("be.visible")
+              .click()
+              .then(() => {
+                cy.wait("@saveFormat");
+              });
+          });
+
+          cy.intercept(
+            "GET",
+            "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+          ).as("fetchFormat");
+
+          cy.reload();
+          cy.wait("@fetchFormat");
+
+          H.getDashboardCard(0).realHover();
+          H.getDashboardCardMenu(0).click();
+          H.popover().within(() => {
+            cy.findByText("Download results").click();
+          });
+          H.popover().within(() => {
+            cy.get("[data-checked='true']").should("contain", ".xlsx");
+          });
+        });
+      });
+    });
+  });
+
   it("respects renamed columns in self-joins", () => {
     const idLeftRef = [
       "field",
@@ -444,7 +543,8 @@ describe("scenarios > dashboard > download pdf", () => {
     });
 
     H.openSharingMenu("Export as PDF");
-    cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
+    cy.log("We're adding a 'Metabase-' prefix for non-whitelabelled instances");
+    cy.verifyDownload(`Metabase - saving pdf dashboard - ${date}.pdf`);
   });
 });
 

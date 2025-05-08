@@ -49,7 +49,7 @@
   []
   (let [namespace-names (all-namespace-names)]
     [{:id :sync
-      :display_name (tru "Sync issue")
+      :display_name (tru "Sync issue troubleshooting")
       :loggers (->> (-> [(logger "metabase.driver")]
                         (into (loggers-under "metabase.sync" namespace-names))
                         (into (comp (map #(str "metabase.driver." %))
@@ -152,6 +152,9 @@
 (mr/def ::time-unit
   (into [:enum {:decode/json keyword}] (keys keyword->TimeUnit)))
 
+(mr/def ::log-levels
+  [:map-of :string (into [:enum] (map name) (reverse logger/levels))])
+
 (api.macros/defendpoint :post "/adjustment"
   "Temporarily adjust the log levels."
   [_route-params
@@ -159,12 +162,31 @@
    {:keys [duration duration_unit log_levels]} :- [:map
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
-                                                   [:log_levels [:map-of :string ::log-level]]]]
+                                                   [:log_levels :any]]]
   (api/check-superuser)
-  (when-let [task @log-adjustment]
-    (cancel-undo-task! task))
-  (let [plan (set-log-levels! log_levels)]
-    (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)}))
+  (when-not (map? log_levels)
+    (let [json-type (condp #(%1 %2) log_levels
+                      nil?        "null"
+                      boolean?    "boolean"
+                      number?     "number"
+                      string?     "string"
+                      sequential? "array"
+                      "something strange")]
+      (api/check-400 false {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
+                            :errors {:_error (tru "Log levels should be an object, {0} received" json-type)}})))
+  (let [log-levels (update-keys log_levels #(cond-> % (instance? clojure.lang.Named %) name))]
+    (when-let [error (mu/explain ::log-levels log-levels)]
+      (api/check-400 false {:specific-errors {:log_levels error}
+                            :errors {:_error (tru (str "The format of the provided logging configuration is incorrect."
+                                                       " Please follow the following JSON structure:\n{0}")
+                                                  (str "{\n  \"namespace\": "
+                                                       (str/join " | " (map (fn [l] (str \" (name l) \"))
+                                                                            (reverse logger/levels)))
+                                                       "\n}"))}}))
+    (when-let [task @log-adjustment]
+      (cancel-undo-task! task))
+    (let [plan (set-log-levels! (update-vals log-levels keyword))]
+      (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})))
   nil)
 
 (api.macros/defendpoint :delete "/adjustment"

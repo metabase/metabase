@@ -79,9 +79,8 @@ describe("scenarios > visualizations > funnel chart", () => {
     H.selectFilterOperator("Is not");
     H.popover().within(() => {
       cy.findByText("Facebook").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
 
     H.getDraggableElements().should("have.length", 4);
 

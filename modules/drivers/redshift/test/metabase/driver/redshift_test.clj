@@ -9,8 +9,8 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -495,3 +495,13 @@
                               :target [:variable [:template-tag "date"]]
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel dont-query-pg-enum-test
+  (testing "Make sure redshift doesn't try to grab postgres enums. (#56992)"
+    (mt/test-driver
+      :redshift
+      (is (= 1
+             (->> (mt/native-query {:query "SELECT usename FROM pg_user limit 1;"})
+                  qp/process-query
+                  mt/rows
+                  count))))))
