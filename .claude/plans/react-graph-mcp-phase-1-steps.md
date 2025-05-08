@@ -1,0 +1,250 @@
+# React Graph MCP: Phase 1 Implementation Steps
+
+*Created: April 13, 2025*
+
+## Milestone 1: Basic Component Identification with Babel
+
+This milestone focuses on setting up the project and implementing basic component identification using Babel. The goal is to have a runnable program that can parse a single JSX/TSX file, identify React components within it, and output both the component data to a JSON file and the Babel AST to stdout for verification.
+
+- [x] 1. Create a new directory `react-graph-parser` at the project root
+- [x] 2. Initialize a Node.js project with npm/yarn and create a package.json file
+- [x] 3. Add TypeScript support with tsconfig.json
+- [x] 4. Install required Babel dependencies:
+  - @babel/parser
+  - @babel/traverse
+  - @babel/types
+  - @babel/preset-react
+  - @babel/preset-typescript
+- [x] 5. Install additional utility dependencies:
+  - commander (for CLI)
+  - fs-extra (for file operations)
+  - chalk (for colored output)
+  - Plus dev dependencies: typescript, ts-node, @types/node, @types/fs-extra
+- [x] 6. Create a basic CLI entry point that accepts a file path argument
+- [x] 6a. Verify CLI functionality:
+  - Compile the TypeScript code
+  - Test CLI help output
+  - Test error handling with invalid input
+  - Test basic execution flow with a sample file
+- [x] 7. Implement a function to read a JSX/TSX file into a string
+- [x] 7a. Verify file reading functionality:
+  - Test with existing files
+  - Test error handling for non-existent files
+  - Test handling of different file extensions
+
+- [x] 8. Create Babel parser configuration for JSX/TSX files with sourceType "module" and plugins ["jsx", "typescript"]
+- [x] 9. Implement AST parsing function using `@babel/parser.parse(code, options)`
+- [x] 9a. Verify AST parsing functionality:
+  - Test with simple JSX content
+  - Verify AST structure matches expectations
+  - Test error handling for invalid syntax
+
+- [x] 10. Add a utility to output a simplified version of the AST to console for debugging
+- [x] 10a. Verify AST output utility:
+  - Test readability of output format
+  - Verify important nodes are highlighted
+  - Test with different complexity of components
+
+## Milestone 2: Adding Test Infrastructure
+
+- [x] T1. Set up Jest testing framework with ESM support
+- [x] T2. Create test fixtures for different component types
+- [x] T3. Implement unit tests for parser module
+  - Tests for file reading functionality
+  - Tests for parser configuration
+  - Tests for AST parsing and simplified output
+- [x] T4. Implement integration tests for CLI functionality
+  - Tests for help output
+  - Tests for error handling
+  - Tests for end-to-end file processing
+
+## Milestone 3: Component Detection and Relationship Mapping
+
+- [x] 11. Create component detector visitor with the following patterns: **(Code Change)**
+  - FunctionDeclaration (traditional function components)
+  - ArrowFunctionExpression (arrow function components)
+  - ClassDeclaration (with superClass check for React.Component)
+  - VariableDeclaration (for components assigned to variables)
+  - Implementation substeps:
+    - [x] 11.1 Import and configure `@babel/traverse`
+    - [x] 11.2 Create visitor patterns for each component type
+    - [x] 11.3 Implement component detection utility function
+    - [x] 11.4 Integrate with main parsing function
+- [x] 11a. Verify component detection: **(Unit Tests)**
+  - [x] Create tests for FunctionDeclaration components
+  - [x] Create tests for ArrowFunctionExpression components
+  - [x] Create tests for ClassDeclaration components
+  - [x] Create tests for VariableDeclaration components
+  - [x] Test JSX element collection
+  - [x] Verify correct component metadata
+
+- [x] 12. Add JSX return detection logic: **(Code Change)**
+  - [x] 12.1 Create utility to analyze function bodies for JSX elements
+  - [x] 12.2 Handle different return patterns (explicit vs implicit)
+  - [x] 12.3 Support fragments, arrays, and conditional rendering
+  - [x] 12.4 Integrate with component detector visitors
+- [x] 12a. Verify JSX return detection: **(Unit Tests)**
+  - [x] Test components with explicit returns (covered in visitors.test.ts)
+  - [x] Test components with implicit returns (arrow functions)
+  - [x] Test with real-world component examples from test fixtures
+
+- [x] 13. Create component data structure: **(Code Change)**
+  - [x] 13.1 Enhance ComponentData interface with additional properties
+  - [x] 13.2 Implement unique ID generation for components
+  - [x] 13.3 Track location information (line, column)
+  - [x] 13.4 Add basic JSX element tracking
+- [x] 13a. Verify component data structure: **(Unit Tests)**
+  - [x] Test data integrity with various component types
+  - [x] Verify location information accuracy
+  - [x] Test unique ID generation
+  - [x] Test output format consistency
+
+- [x] 14. Enhance JSON output for component data: **(Code Change)**
+  - [x] 14.1 Format component metadata consistently
+  - [x] 14.2 Include file and component metadata
+  - [x] 14.3 Implement pretty printing options
+- [x] 14a. Verify JSON output: **(Unit Tests)**
+  - [x] Test file creation (covered in CLI tests)
+  - [x] Validate JSON structure 
+  - [x] Test with various component types
+
+## Parent-Child Relationship Detection (Incremental Implementation)
+
+- [ ] 15.1: Basic direct component usage (`<Child />` within a parent component)
+- [ ] 15.1T: Write one or more unit tests for direct component usage and ensure they pass
+- [ ] 15.2: Multiple direct children in a single component 
+- [ ] 15.2T: Write one or more unit tests for multiple direct children and ensure they pass
+- [ ] 15.3: HTML elements vs React components differentiation
+- [ ] 15.3T: Write one or more unit tests for HTML/React differentiation and ensure they pass
+- [ ] 15.4: JSX fragments (`<><Child /></>`)
+- [ ] 15.4T: Write one or more unit tests for JSX fragments and ensure they pass
+- [ ] 15.5: Conditional rendering (`{condition && <Child />}`)
+- [ ] 15.5T: Write one or more unit tests for conditional rendering and ensure they pass
+- [ ] 15.6: Ternary component selection (`{condition ? <ChildA /> : <ChildB />}`)
+- [ ] 15.6T: Write one or more unit tests for ternary component selection and ensure they pass
+- [ ] 15.7: Renamed component imports (`import { Button as CustomButton }`)
+- [ ] 15.7T: Write one or more unit tests for renamed imports and ensure they pass
+- [ ] 15.8: Default exports without explicit names
+- [ ] 15.8T: Write one or more unit tests for default exports and ensure they pass
+- [ ] 15.9: Component arrays (`{items.map(item => <Child key={item.id} />)}`)
+- [ ] 15.9T: Write one or more unit tests for component arrays and ensure they pass
+- [ ] 15.10: Higher-order components (components wrapped in HOCs)
+- [ ] 15.10T: Write one or more unit tests for higher-order components and ensure they pass
+- [ ] 15.11: Compound components (`<Table.Row>`)
+- [ ] 15.11T: Write one or more unit tests for compound components and ensure they pass
+- [ ] 15.12: Namespace imports (`import * as Components; <Components.Button />`)
+- [ ] 15.12T: Write one or more unit tests for namespace imports and ensure they pass
+- [ ] 15.13: Dynamic component selection (`const Component = components[type]; <Component />`)
+- [ ] 15.13T: Write one or more unit tests for dynamic component selection and ensure they pass
+- [ ] 15.14: Props spread to children (`<Child {...props} />`)
+- [ ] 15.14T: Write one or more unit tests for props spreading and ensure they pass
+- [ ] 15.15: Re-exported components through index files
+- [ ] 15.15T: Write one or more unit tests for re-exported components and ensure they pass
+- [ ] 15.16: Multiple import sources for the same component 
+- [ ] 15.16T: Write one or more unit tests for multiple import sources and ensure they pass
+- [ ] 15.17: Render props (`<Component>{props => <Child />}</Component>`)
+- [ ] 15.17T: Write one or more unit tests for render props and ensure they pass
+- [ ] 15.18: Function component references without JSX (`renderComponent(Child)`)
+- [ ] 15.18T: Write one or more unit tests for function references and ensure they pass
+- [ ] 15.19: React.lazy dynamically loaded components
+- [ ] 15.19T: Write one or more unit tests for React.lazy components and ensure they pass
+- [ ] 15.20: Context consumers/providers relationship tracking
+- [ ] 15.20T: Write one or more unit tests for context relationships and ensure they pass
+- [ ] 15.21: Components created/returned by custom hooks
+- [ ] 15.21T: Write one or more unit tests for custom hooks components and ensure they pass
+- [ ] 15.22: Components passed as props (`<Layout component={Footer} />`)
+- [ ] 15.22T: Write one or more unit tests for components-as-props and ensure they pass
+- [ ] 15.23: Forwardref and memo wrapped components
+- [ ] 15.23T: Write one or more unit tests for forwardref/memo components and ensure they pass
+- [ ] 15.24: Styled-components or emotion CSS-in-JS patterns
+- [ ] 15.24T: Write one or more unit tests for styled-components patterns and ensure they pass
+- [ ] 15.25: Component libraries with complex composition patterns
+- [ ] 15.25T: Write one or more unit tests for component libraries and ensure they pass
+
+## Error Handling and Documentation
+
+- [ ] 16.1: Improve error handling for relationship detection
+- [ ] 16.1T: Write one or more unit tests for error handling and ensure they pass
+
+- [ ] 16.2: Add verbose logging for relationship detection
+- [ ] 16.2T: Write one or more unit tests for verbose logging and ensure they pass
+
+- [ ] 17.1: Create comprehensive documentation for relationship detection
+- [ ] 17.2: Develop integration tests for end-to-end relationship detection
+- [ ] 17.2T: Run integration tests and ensure they pass
+
+## Milestone 4: Multi-File Processing and Graph Output
+
+- [ ] 19. Implement directory traversal: **(Code Change)**
+  - [ ] 19.1 Add glob-based file discovery
+  - [ ] 19.2 Create batched processing for multiple files
+  - [ ] 19.3 Track cross-file dependencies
+- [ ] 19a. Verify directory traversal: **(Unit Tests)**
+  - [ ] Test with nested directory structure
+  - [ ] Test with file filtering
+  - [ ] Test handling of non-React files
+  - [ ] Verify performance with many files
+
+- [ ] 20. Cross-file relationship mapping: **(Code Change)**
+  - [ ] 20.1 Track imports between files
+  - [ ] 20.2 Resolve component references across files
+  - [ ] 20.3 Handle aliased imports and re-exports
+- [ ] 20a. Verify cross-file relationships: **(Unit Tests)**
+  - [ ] Test with direct imports
+  - [ ] Test with aliased imports
+  - [ ] Test with re-exports
+  - [ ] Test with deeply nested imports
+
+- [ ] 21. Graph-ready output format: **(Code Change)**
+  - [ ] 21.1 Design nodes and edges data structure
+  - [ ] 21.2 Create formatting utility for Neo4j import
+  - [ ] 21.3 Add metadata for graph visualization
+- [ ] 21a. Verify graph output: **(Unit Tests)**
+  - [ ] Test node generation
+  - [ ] Test edge generation
+  - [ ] Validate output against expected Neo4j format
+  - [ ] Test with complex component relationships
+
+**Milestone Success Criteria:**
+- Program accepts a JSX/TSX file path as input
+- Program correctly identifies both functional and class components
+- Program outputs simplified AST to console for debugging/verification
+- Program generates a JSON file containing identified components with basic metadata
+- Program handles errors gracefully with helpful messages
+
+**Usage Example (Target):**
+```
+node dist/index.js --input src/components/Example.tsx --output components.json
+```
+
+**Expected Output Format:**
+```json
+{
+  "components": [
+    {
+      "id": "comp_1",
+      "name": "Button",
+      "type": "functional",
+      "filePath": "src/components/Example.tsx",
+      "location": {
+        "line": 5,
+        "column": 1
+      }
+    },
+    {
+      "id": "comp_2",
+      "name": "Card",
+      "type": "class",
+      "filePath": "src/components/Example.tsx",
+      "location": {
+        "line": 12,
+        "column": 1
+      }
+    }
+  ],
+  "metadata": {
+    "timestamp": "2025-04-13T12:34:56.789Z",
+    "parserVersion": "1.0.0"
+  }
+}
+```

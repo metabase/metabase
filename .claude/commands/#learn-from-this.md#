@@ -1,0 +1,53 @@
+# Learn From This Command
+
+## Instructions
+
+This command allows you to reflect on and document insights from the most recent part of our conversation. When invoked, I will:
+
+1. Analyze only the last 2-3 exchanges between us
+2. Generate insights about what worked well or could be improved
+3. Log these reflections to help improve future interactions
+
+## Process
+
+1. When this command is invoked, I'll create a new log entry in `.claude/logs/learn-from-this.log`
+2. I'll reflect on only the most recent exchanges, focusing particularly on:
+   - My latest response and its quality
+   - Any errors that were triggered
+   - The efficiency of my approach to your request
+   - Any metrics available (response time, token usage)
+   - Immediate patterns worth noting
+
+## Log Format
+
+Each entry in the log file will follow this format:
+
+```markdown
+### New Entry
+timestamp: <ISO timestamp>
+recent request:
+  - <bullet point summary of your recent request>
+agent reflection:
+  - <bullet point analysis of my handling of the request>
+agent learnings:
+  - <bullet point insights for handling similar requests better>
+```
+
+## Entry Components
+
+### Recent Request
+A brief bullet-point summary of what you asked in your most recent 1-2 prompts.
+
+### Agent Reflection
+A bullet-point analysis explaining:
+- What aspects of the request were handled well
+- What aspects were challenging or took significant time/tokens
+- Any misunderstandings or areas where clarification was needed
+
+### Agent Learnings
+Bullet points on how to improve future similar requests:
+- More efficient approaches to similar problems
+- Information that would have been helpful to have upfront
+- Specific techniques that worked well and should be repeated
+
+After logging, I'll share a brief summary of what I've learned directly in our conversation.

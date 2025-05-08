@@ -1,0 +1,9 @@
+1. Read the contents of `./.claude/references/frontend-dashviz.md`, which contains architectural reference information about the frontend codebase, specifically focused on areas relating to the Metabase DashViz team.
+
+2. I'm providing this reference because I'm about to ask questions and/or brainstorm ideas that will be best informed by a thorough understanding of the frontend code structure, patterns, and components used by the DashViz team.
+
+3. After reading the reference file, confirm that you've processed this information and are ready to discuss frontend-related concepts with the proper context.
+
+4. You don't need to summarize the entire document, but briefly mention that you now have context on the DashViz frontend architecture to help with our upcoming discussion.
+
+Remember that this command is meant to prepare you with the necessary context before we dive into specific frontend implementation discussions, architectural questions, or brainstorming sessions related to the dashboard visualization codebase.
