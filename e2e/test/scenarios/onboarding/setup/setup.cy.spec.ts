@@ -9,9 +9,9 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  locales.forEach((locale) => {
-    beforeEach(() => H.restore("blank"));
+  beforeEach(() => H.restore("blank"));
 
+  locales.forEach((locale) => {
     it(
       `should allow you to sign up using "${locale}" browser locale`,
       { tags: ["@external"] },
