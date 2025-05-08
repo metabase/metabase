@@ -171,6 +171,40 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
   });
 
+  it("should allow to visualize an existing dashcard another way if its viz type isn't supported by visualizer", () => {
+    const dashCard = () => H.getDashboardCard(0);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.findDashCardAction(dashCard(), "Visualize another way").click();
+
+    H.modal().within(() => {
+      H.assertDataSourceColumnSelected("Orders", "ID");
+      H.assertDataSourceColumnSelected("Orders", "Subtotal");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.assertCurrentVisualization("bar");
+      cy.button("Save").click();
+    });
+
+    dashCard().within(() => {
+      H.echartsContainer().within(() => {
+        cy.findByText("Subtotal").should("exist");
+        cy.findByText("ID").should("exist");
+      });
+    });
+
+    H.findDashCardAction(dashCard(), "Visualize another way").should(
+      "not.exist",
+    );
+    H.findDashCardAction(dashCard(), "Show visualization options").should(
+      "not.exist",
+    );
+
+    H.findDashCardAction(dashCard(), "Edit visualization").click();
+    H.modal().button("Save").should("be.disabled");
+  });
+
   it("should rename a dashboard card", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
