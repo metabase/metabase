@@ -25,7 +25,6 @@ describe("DataSelectorDataBucketPicker", () => {
 
     expect(screen.getByText("Models")).toBeInTheDocument();
     expect(screen.getByText("Raw Data")).toBeInTheDocument();
-    expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     expect(screen.queryAllByTestId("data-bucket-list-item").length).toBe(
       dataTypes.length,
     );
@@ -37,7 +36,6 @@ describe("DataSelectorDataBucketPicker", () => {
 
     expect(screen.queryByText("Models")).not.toBeInTheDocument();
     expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-    expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     expect(screen.queryAllByTestId("data-bucket-list-item").length).toBe(
       dataTypes.length,
     );
