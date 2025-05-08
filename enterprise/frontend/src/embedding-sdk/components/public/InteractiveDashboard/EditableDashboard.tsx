@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import type { InteractiveQuestionDefaultViewProps } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkLoader,
@@ -12,17 +11,17 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
-import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
 import { ConnectedDashboard } from "./ConnectedDashboard";
 import { InteractiveDashboardProvider } from "./context";
@@ -30,6 +29,7 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveDashboard
  */
 export type EditableDashboardProps = {
@@ -46,10 +46,9 @@ export type EditableDashboardProps = {
   /**
    * Props for the drill-through question
    */
-  drillThroughQuestionProps?: Omit<BaseInteractiveQuestionProps, "questionId"> &
-    InteractiveQuestionDefaultViewProps;
+  drillThroughQuestionProps?: DrillThroughQuestionProps;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
-  PublicOrEmbeddedDashboardEventHandlersProps;
+  DashboardEventHandlersProps;
 
 /**
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.

@@ -17,12 +17,16 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :development-mode
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
                               :hosting
                               :llm-autodescription
+                              :metabot-v3
+                              :ai-sql-fixer
+                              :ai-sql-generation
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -35,7 +39,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
-                              :upload_management
+                              :upload-management
                               :whitelabel
                               :collection-cleanup
                               :database-routing}
@@ -49,12 +53,16 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :development-mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
             :hosting                        true
             :llm_autodescription            true
+            :metabot_v3                     true
+            :ai_sql_fixer                   true
+            :ai_sql_generation              true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
@@ -66,7 +74,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
-            :upload_management              false
+            :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true}

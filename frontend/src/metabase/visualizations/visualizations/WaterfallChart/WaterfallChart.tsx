@@ -23,9 +23,10 @@ import { getCartesianChartDefinition } from "../CartesianChart/chart-definition"
 Object.assign(
   WaterfallChart,
   getCartesianChartDefinition({
-    uiName: t`Waterfall`,
+    getUiName: () => t`Waterfall`,
     identifier: "waterfall",
     iconName: "waterfall",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`waterfall chart`,
     minSize: getMinSize("waterfall"),
     defaultSize: getDefaultSize("waterfall"),
@@ -34,26 +35,34 @@ Object.assign(
     settings: {
       ...GRAPH_AXIS_SETTINGS,
       "waterfall.increase_color": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Increase color` },
         widget: "color",
         getDefault: () => color("accent1"),
       },
       "waterfall.decrease_color": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Decrease color` },
         widget: "color",
         getDefault: () => color("accent3"),
       },
       "waterfall.show_total": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         title: t`Show total`,
         widget: "toggle",
         default: true,
         inline: true,
       },
       "waterfall.total_color": {
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         section: t`Display`,
+        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Total color` },
         widget: "color",
         getDefault: () => color("text-dark"),

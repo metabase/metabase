@@ -255,8 +255,8 @@ PLUGIN_AUTH_PROVIDERS.push((providers) => {
 if (hasPremiumFeature("disable_password_login")) {
   PLUGIN_IS_PASSWORD_USER.push(
     (user) =>
-      !user.google_auth &&
-      !user.ldap_auth &&
+      user.sso_source !== "google" &&
+      user.sso_source !== "ldap" &&
       MetabaseSettings.isPasswordLoginEnabled(),
   );
 }

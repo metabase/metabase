@@ -436,7 +436,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("101");
+      H.fieldValuesCombobox().type("101");
       H.popover().findByText("1018947080336").click();
 
       H.fieldValuesValue(0)
@@ -459,7 +459,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("101");
+      H.fieldValuesCombobox().type("101");
       H.popover().findByText("1018947080336").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -481,7 +481,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("101");
+      H.fieldValuesCombobox().type("101");
       H.popover().findByText("1018947080336").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -512,7 +512,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("Custom Label");
+      H.fieldValuesCombobox().type("Custom Label");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -537,7 +537,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("Custom Label");
+      H.fieldValuesCombobox().type("Custom Label");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -562,7 +562,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("Custom Label");
+      H.fieldValuesCombobox().type("Custom Label");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line no-unsafe-element-filtering

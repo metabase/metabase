@@ -1,14 +1,16 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { fieldApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { MetabaseApi, RevisionsApi } from "metabase/services";
+import { RevisionsApi } from "metabase/services";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
@@ -91,12 +93,6 @@ export const fetchField = createThunkAction(
 export const updateFieldValues = (fieldId, fieldValuePairs) => {
   deprecated("metabase/redux/metadata updateFieldValues");
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
-};
-
-export { ADD_PARAM_VALUES } from "metabase/entities/fields";
-export const addParamValues = (paramValues) => {
-  deprecated("metabase/redux/metadata addParamValues");
-  return Fields.actions.addParamValues(paramValues);
 };
 
 export { ADD_FIELDS } from "metabase/entities/fields";
@@ -208,31 +204,41 @@ export const fetchRemapping = createThunkAction(
   (value, fieldId) => async (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const field = metadata.field(fieldId);
-    const remappedField = field && field.remappedField();
-    if (field && remappedField && !field.hasRemappedValue(value)) {
-      const fieldId = (field.target || field).id;
-      const remappedFieldId = remappedField.id;
-      fetchData({
+    if (field == null || field.hasRemappedValue(value)) {
+      return;
+    }
+
+    // internal remapping
+    const remappedInternalField = field.remappedInternalField();
+    if (remappedInternalField) {
+      const response = await entityCompatibleQuery(
+        fieldId,
         dispatch,
-        getState,
-        requestStatePath: [
-          "entities",
-          "remapping",
+        fieldApi.endpoints.getFieldValues,
+        { forceRefetch: false },
+      );
+      dispatch(addRemappings(field.id, response.values));
+    }
+
+    // external and type/Name remapping
+    const remappedExternalField = field && field.remappedExternalField();
+    if (remappedExternalField) {
+      const fieldId = (field.target || field).id;
+      const remappedFieldId = remappedExternalField.id;
+      const remapping = await entityCompatibleQuery(
+        {
+          value,
           fieldId,
-          JSON.stringify(value),
-        ],
-        getData: async () => {
-          const remapping = await MetabaseApi.field_remapping({
-            value,
-            fieldId,
-            remappedFieldId,
-          });
-          if (remapping) {
-            // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
-            dispatch(addRemappings(field.id, [remapping]));
-          }
+          remappedFieldId,
         },
-      });
+        dispatch,
+        fieldApi.endpoints.getRemappedFieldValue,
+        { forceRefetch: false },
+      );
+      if (remapping) {
+        // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
+        dispatch(addRemappings(field.id, [remapping]));
+      }
     }
   },
 );

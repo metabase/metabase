@@ -35,6 +35,7 @@ import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/component
 
 /**
  * @interface
+ * @expand
  */
 export type BaseInteractiveQuestionProps =
   InteractiveQuestionQuestionIdProps & {
@@ -55,7 +56,21 @@ export type BaseInteractiveQuestionProps =
     >;
 
 /**
+ * Props for the drill-through question
+ *
  * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type DrillThroughQuestionProps = Omit<
+  BaseInteractiveQuestionProps,
+  "questionId"
+> &
+  InteractiveQuestionDefaultViewProps;
+
+/**
+ * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionProps = BaseInteractiveQuestionProps &

@@ -15,11 +15,11 @@
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -31,6 +31,8 @@
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -192,24 +194,33 @@
     (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
     (quick-task/submit-task!
      (fn []
-       (let [details (maybe-test-and-migrate-details! database)]
+       (let [details (maybe-test-and-migrate-details! database)
+             engine (name engine)
+             driver (keyword engine)
+             details-map (assoc details :engine engine)]
          (try
            (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
-           (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-             (do
-               (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
-               (analytics/inc! :metabase-database/healthy {:driver engine} 1))
-             (do
-               (log/warn (u/format-color :yellow "Health check: failure %s {:id %d}" (:name database) (:id database)))
-               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))
+           (u/with-timeout (driver.u/db-connection-timeout-ms)
+             (or (driver/can-connect? driver details-map)
+                 (throw (Exception. "Failed to connect to Database"))))
+           (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
+           (analytics/inc! :metabase-database/status {:driver engine :healthy true})
+
            (catch Throwable e
-             (do
-               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
-               (analytics/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
+             (let [humanized-message (some->> (.getMessage e)
+                                              (driver/humanize-connection-error-message driver))
+                   reason (if (keyword? humanized-message) "user-input" "exception")]
+               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
+                                            (:name database)
+                                            (:id database)
+                                            reason
+                                            humanized-message))
+               (analytics/inc! :metabase-database/status {:driver engine :healthy false :reason reason})))))))))
 
 (defn check-health!
   "Health checks databases connected to metabase asynchronously using a thread pool."
   []
+  (analytics/clear! :metabase-database/status)
   (doseq [database (t2/select :model/Database)]
     (health-check-database! database)))
 

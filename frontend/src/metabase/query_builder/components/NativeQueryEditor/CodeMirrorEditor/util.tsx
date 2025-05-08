@@ -278,11 +278,3 @@ export function getSelectedRanges(state: EditorState): Range[] {
     convertSelectionToRange(value, range),
   );
 }
-
-export function areRangesEqual(a: Range, b: Range): boolean {
-  return a.start === b.start && a.end === b.end;
-}
-
-export function areAllRangesEqual(a: Range[], b: Range[]): boolean {
-  return a.length === b.length && a.every((a, i) => areRangesEqual(a, b[i]));
-}

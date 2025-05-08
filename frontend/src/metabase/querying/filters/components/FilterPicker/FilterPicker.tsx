@@ -99,7 +99,7 @@ export function FilterPicker({
         query={query}
         stageIndex={stageIndex}
         clause={filter}
-        startRule="boolean"
+        expressionMode="filter"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}

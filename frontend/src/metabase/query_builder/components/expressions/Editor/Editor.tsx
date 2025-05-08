@@ -13,13 +13,12 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import {
   type ExpressionError,
-  MBQL_CLAUSES,
-  type StartRule,
   diagnoseAndCompile,
   format,
+  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
 import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
@@ -43,7 +42,7 @@ type EditorProps = {
   clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
@@ -65,7 +64,7 @@ const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 export function Editor(props: EditorProps) {
   const {
     id,
-    startRule = "expression",
+    expressionMode = "expression",
     stageIndex,
     query,
     expressionIndex,
@@ -114,7 +113,7 @@ export function Editor(props: EditorProps) {
   });
 
   const extensions = useExtensions({
-    startRule,
+    expressionMode,
     query,
     stageIndex,
     expressionIndex,
@@ -128,17 +127,13 @@ export function Editor(props: EditorProps) {
     if (!view) {
       return;
     }
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
 
-    const text =
-      clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
-    const len =
-      clause.args.length > 0
-        ? clause.displayName.length + 1 // + 1 for the parenthesis
-        : clause.displayName.length;
+    const text = `${clause.displayName}()`;
+    const len = clause.displayName.length + 1; // + 1 for the parenthesis
 
     view?.focus();
     view?.dispatch(
@@ -208,7 +203,7 @@ export function Editor(props: EditorProps) {
       {isFunctionBrowserOpen && (
         <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
           <FunctionBrowser
-            startRule={startRule}
+            expressionMode={expressionMode}
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
@@ -228,7 +223,7 @@ export function Editor(props: EditorProps) {
 
 function useExpression({
   clause,
-  startRule,
+  expressionMode,
   stageIndex,
   query,
   expressionIndex,
@@ -245,33 +240,27 @@ function useExpression({
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
-      const expression =
-        clause &&
-        Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-
-      if (!expression) {
+      function done(source: string) {
         setIsFormatting(false);
-        setSource("");
+        setSource(source);
         if (initial) {
-          setInitialSource("");
+          setInitialSource(source);
         }
+      }
+
+      if (clause == null) {
+        done("");
         return;
       }
 
-      format(expression, {
+      format(clause, {
         query,
         stageIndex,
         expressionIndex,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
-        .then((source) => {
-          setIsFormatting(false);
-          setSource(source);
-          if (initial) {
-            setInitialSource(source);
-          }
-        });
+        .then(done);
     },
     [clause, query, stageIndex, expressionIndex],
   );
@@ -303,7 +292,7 @@ function useExpression({
 
       const { error, expressionClause: clause } = diagnoseAndCompile({
         source,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         metadata,
@@ -319,7 +308,7 @@ function useExpression({
     [
       query,
       stageIndex,
-      startRule,
+      expressionMode,
       metadata,
       handleChange,
       debouncedOnChange,

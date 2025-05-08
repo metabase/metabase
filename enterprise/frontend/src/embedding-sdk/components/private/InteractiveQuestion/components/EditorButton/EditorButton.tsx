@@ -8,6 +8,7 @@ import S from "./EditorButton.module.css";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionEditorButtonProps = {

@@ -61,6 +61,8 @@ export const getIsShowingSnippetSidebar = (state) =>
   getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = (state) =>
   getUiControls(state).isShowingDataReference;
+export const getHighlightedNativeQueryLineNumbers = (state) =>
+  getUiControls(state).highlightedNativeQueryLineNumbers;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
@@ -72,6 +74,7 @@ const SIDEBARS = [
   "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
+  "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
 
@@ -305,10 +308,10 @@ export const getQuestion = createSelector(
     // with a clean, ad-hoc, query.
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
-    return (isModel || isMetric) && isEditable
-      ? question.composeQuestion()
-      : question;
+    const composedQuestion =
+      isModel || isMetric ? question.composeQuestion() : question;
+    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
+    return isEditable ? composedQuestion : question;
   },
 );
 
@@ -756,6 +759,11 @@ export const getNativeEditorSelectedRange = createSelector(
 const getNativeEditorSelectedRanges = createSelector(
   [getUiControls],
   (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+export const getIsNativeQueryFixApplied = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls && uiControls.isNativeQueryFixApplied,
 );
 
 export const getIsTimeseries = createSelector(

@@ -85,3 +85,12 @@
         (when (instance? clojure.lang.Sorted c)
           (is (= (.comparator ^clojure.lang.Sorted c)
                  (.comparator ^clojure.lang.Sorted walked))))))))
+
+(deftest test-select-keys
+  (are [keys result] (= result (perf/select-keys {:a 1 :b 2 :c 3 :d 4 :e 5} keys))
+    [] {}
+    [:a] {:a 1}
+    [:a :b] {:a 1 :b 2}
+    [:a :b :q] {:a 1 :b 2}
+    [:a :b :c :d :e] {:a 1 :b 2 :c 3 :d 4 :e 5}
+    [:a :b :c :d :e :f] {:a 1 :b 2 :c 3 :d 4 :e 5}))

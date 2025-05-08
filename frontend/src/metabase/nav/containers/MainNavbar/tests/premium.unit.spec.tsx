@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupGdriveServiceAccountEndpoint } from "__support__/server-mocks";
+import {
+  setupGdriveGetFolderEndpoint,
+  setupGdriveServiceAccountEndpoint,
+} from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -8,6 +11,7 @@ import { type SetupOpts, setup } from "./setup";
 
 function setupPremium(opts: SetupOpts) {
   setupGdriveServiceAccountEndpoint();
+  setupGdriveGetFolderEndpoint({ status: "not-connected" });
   return setup({
     hasEnterprisePlugins: true,
     hasDWHAttached: true,

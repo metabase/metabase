@@ -50,9 +50,15 @@
  [metabase.permissions.models.permissions-group
   non-magic-groups]
  [metabase.permissions.models.permissions-group-membership
+  add-users-to-groups!
+  add-user-to-groups!
+  add-user-to-group!
   allow-changing-all-users-group-members
   fail-to-remove-last-admin-msg
-  throw-if-last-admin!]
+  remove-user-from-group!
+  remove-user-from-groups!
+  throw-if-last-admin!
+  without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

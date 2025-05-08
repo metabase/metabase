@@ -276,7 +276,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText("Current").click();
       cy.findByText("Quarter").click();
@@ -574,7 +574,7 @@ describe("issue 25378", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Created At: Month").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
@@ -682,10 +682,8 @@ describe("issue 25990", () => {
       cy.findByText("People").click();
       cy.findByText("ID").click();
       cy.findByPlaceholderText("Enter an ID").type("10").blur();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel")
@@ -721,7 +719,7 @@ describe("issue 25994", () => {
 
     H.popover().within(() => {
       cy.findByText("Min of Created At: Day").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
 
       // It doesn't really matter which dates we select so let's go with whatever is offered
       cy.button("Add filter").click();
@@ -1033,8 +1031,13 @@ describe("metabase#32985", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Email").type("foo");
+      cy.findByPlaceholderText("Search by Email or enter an ID").type("foo");
     });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("No matching Email found.")
+      .should("be.visible");
   });
 });
 
@@ -1203,9 +1206,8 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.popover().within(() => {
       cy.findByText("Binary").click();
       cy.findByLabelText("Is empty").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(0);
 
@@ -1221,9 +1223,8 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.popover().within(() => {
       cy.findByText("Jsonb").click();
       cy.findByLabelText("Not empty").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(2);
   });
@@ -1385,7 +1386,7 @@ describe("issue 47887", () => {
 
     H.popover().within(() => {
       cy.findByLabelText("asdfdsa").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
     });
   });
 });

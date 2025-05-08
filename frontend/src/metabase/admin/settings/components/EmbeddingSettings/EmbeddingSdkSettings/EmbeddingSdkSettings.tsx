@@ -67,7 +67,7 @@ export function EmbeddingSdkSettings({
           key: "embedding-app-origins-sdk",
           placeholder: "https://*.example.com",
           display_name: t`Cross-Origin Resource Sharing (CORS)`,
-          description: t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.`,
+          description: t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included. Changes will take effect within one minute.`,
         },
   );
 

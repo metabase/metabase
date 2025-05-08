@@ -555,6 +555,10 @@ export function getYAxisModel(
     label,
     formatter,
     isNormalized: stackType === "normalized",
+    splitNumber:
+      settings["graph.y_axis.split_number"] > 0
+        ? settings["graph.y_axis.split_number"]
+        : undefined,
   };
 }
 

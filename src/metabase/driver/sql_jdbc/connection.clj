@@ -13,9 +13,9 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.logger :as logger]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -96,10 +96,9 @@ When all connections are in use then Metabase will be slower to return results f
 For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
-  will kill connections that time out, but in practice it seems that connections disappear into the ether every once
-  in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
-  timeout in [[metabase.query-processor.context/query-timeout-ms]] by default."
+  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
+  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
+  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
   :visibility :internal
   :type       :integer
   :getter     (fn []

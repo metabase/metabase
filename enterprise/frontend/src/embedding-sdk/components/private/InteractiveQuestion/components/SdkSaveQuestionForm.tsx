@@ -10,6 +10,7 @@ import { useInteractiveQuestionContext } from "../context";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionSaveQuestionFormProps = {
@@ -54,7 +55,7 @@ export const SdkSaveQuestionForm = ({
       targetCollection={id}
     >
       <Stack p="md">
-        <Title>
+        <Title order={2}>
           <SaveQuestionTitle />
         </Title>
         <SaveQuestionForm onCancel={() => onCancel?.()} />

@@ -17,6 +17,7 @@ import { useInteractiveQuestionContext } from "../context";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
@@ -45,7 +46,6 @@ export const QuestionVisualization = ({
     updateQuestion,
     variant,
     originalId,
-    isCardIdError,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
@@ -56,10 +56,7 @@ export const QuestionVisualization = ({
     return <SdkLoader />;
   }
 
-  if (
-    !question ||
-    (isCardIdError && originalId !== "new" && originalId !== null)
-  ) {
+  if (!question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
