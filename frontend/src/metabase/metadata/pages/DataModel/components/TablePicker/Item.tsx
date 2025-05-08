@@ -14,10 +14,10 @@ const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
 const INDENT_LEVEL = 10;
 
-const itemPadding = {
+const itemMargin = {
   database: 0,
   schema: INDENT_LEVEL,
-  table: 2 * INDENT_LEVEL,
+  table: INDENT_LEVEL * 2,
 };
 
 export function Results({
@@ -41,30 +41,27 @@ export function Results({
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
-        {virtual.getVirtualItems().map((virtualItem) => {
-          const { value, label, type, isExpanded, key } =
-            items[virtualItem.index];
+        {virtual.getVirtualItems().map(({ start, index }) => {
+          const { value, label, type, isExpanded, key } = items[index];
+          const isActive = type === "table" && _.isEqual(path, value);
+
           return (
             <Flex
               key={key}
               ref={virtual.measureElement}
+              className={cx(S.item, S[type], { [S.active]: isActive })}
               style={{
-                position: "absolute",
-                top: virtualItem.start,
-                paddingLeft: itemPadding[type],
-                left: "var(--mantine-spacing-xl)",
-                right: "var(--mantine-spacing-xl)",
+                top: start,
+                marginLeft: itemMargin[type],
               }}
             >
               <Link
+                className={S.link}
                 to={getUrl(value)}
                 onClick={() => {
                   toggle?.(key);
                   virtual.measure();
                 }}
-                className={cx(S.item, S[type], {
-                  [S.active]: type === "table" && _.isEqual(path, value),
-                })}
               >
                 <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
                   {hasChildren(type) && (

@@ -5,10 +5,11 @@
 }
 
 .item {
+  position: absolute;
   border-radius: 8px;
   cursor: pointer;
-  display: block;
-  width: 100%;
+  left: var(--mantine-spacing-xl);
+  right: var(--mantine-spacing-xl);
 
   &.active {
     background-color: var(--mb-color-brand-light);
@@ -19,6 +20,11 @@
     padding-left: var(--mantine-spacing-md);
     padding-right: var(--mantine-spacing-sm);
   }
+}
+
+.link {
+  display: block;
+  width: 100%;
 }
 
 .icon {
