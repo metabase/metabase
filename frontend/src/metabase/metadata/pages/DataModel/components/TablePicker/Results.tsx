@@ -12,7 +12,7 @@ import { getIconForType, getUrl, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
-const INDENT_LEVEL = 10;
+const INDENT_LEVEL = 18;
 
 const itemMargin = {
   database: 0,
@@ -38,57 +38,75 @@ export function Results({
     estimateSize: () => ITEM_MIN_HEIGHT,
   });
 
+  const virtualItems = virtual.getVirtualItems();
+
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
-        {virtual.getVirtualItems().map(({ start, index }) => {
-          const { value, label, type, isExpanded, isLoading, key } =
-            items[index];
+        {virtualItems.map(({ start, size, index }) => {
+          const item = items[index];
+          const { value, label, type, isExpanded, isLoading, key } = item;
           const isActive = type === "table" && _.isEqual(path, value);
 
+          const parentIndex = items.findIndex(findParentFor(item));
+          const parent = virtualItems.find(
+            (item) => item.index === parentIndex,
+          );
+
           return (
-            <Flex
-              key={key}
-              ref={virtual.measureElement}
-              className={cx(S.item, S[type], { [S.active]: isActive })}
-              data-index={index}
-              style={{
-                top: start,
-                marginLeft: itemMargin[type],
-              }}
-            >
-              <MaybeLink
-                className={S.link}
-                to={value ? getUrl(value) : undefined}
-                onClick={() => {
-                  toggle?.(key);
-                  virtual.measureElement(
-                    ref.current?.querySelector(`[data-index='${index}']`),
-                  );
+            <>
+              {type !== "database" && parent && (
+                <Track
+                  start={parent.start + 0.5 * parent.size}
+                  end={start + 0.5 * size}
+                  type={type}
+                />
+              )}
+              <Flex
+                key={key}
+                ref={virtual.measureElement}
+                className={cx(S.item, S[type], { [S.active]: isActive })}
+                data-index={index}
+                style={{
+                  top: start,
+                  marginLeft: itemMargin[type],
                 }}
               >
-                <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
-                  <Delay delay={isLoading ? 200 : 0}>
-                    {hasChildren(type) && (
-                      <Icon
-                        name="chevronright"
-                        size={10}
-                        color="var(--mb-color-text-light)"
-                        className={cx(S.chevron, { [S.expanded]: isExpanded })}
-                      />
-                    )}
-                    <Icon name={getIconForType(type)} className={S.icon} />
-                    {isLoading ? (
-                      <Loading />
-                    ) : (
-                      <Box pl="sm" className={S.label}>
-                        {label}
-                      </Box>
-                    )}
-                  </Delay>
-                </Flex>
-              </MaybeLink>
-            </Flex>
+                <MaybeLink
+                  className={S.link}
+                  to={value ? getUrl(value) : undefined}
+                  onClick={() => {
+                    toggle?.(key);
+                    virtual.measureElement(
+                      ref.current?.querySelector(`[data-index='${index}']`),
+                    );
+                  }}
+                >
+                  <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
+                    <Delay delay={isLoading ? 200 : 0}>
+                      {hasChildren(type) && (
+                        <Icon
+                          name="chevronright"
+                          size={10}
+                          color="var(--mb-color-text-light)"
+                          className={cx(S.chevron, {
+                            [S.expanded]: isExpanded,
+                          })}
+                        />
+                      )}
+                      <Icon name={getIconForType(type)} className={S.icon} />
+                      {isLoading ? (
+                        <Loading />
+                      ) : (
+                        <Box pl="sm" className={S.label}>
+                          {label}
+                        </Box>
+                      )}
+                    </Delay>
+                  </Flex>
+                </MaybeLink>
+              </Flex>
+            </>
           );
         })}
       </Box>
@@ -109,26 +127,66 @@ function MaybeLink(props: {
 }
 
 function Delay({ delay, children }: { delay: number; children: ReactNode }) {
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(delay === 0);
 
   useEffect(() => {
-    if (delay === 0) {
-      setShow(true);
-      return;
+    if (delay > 0) {
+      const timeout = setTimeout(() => setShow(true), delay);
+      return () => clearTimeout(timeout);
     }
-    const timeout = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(timeout);
+    setShow(true);
   }, [delay]);
 
-  if (!show) {
-    // make tests aware that things are loading
-    return <span data-testid="loading-indicator" />;
-  }
-
-  return children;
+  return show ? children : null;
 }
 
 function Loading() {
   const w = 20 + Math.random() * 80;
   return <Skeleton radius="sm" width={`${w}%`} height={12} />;
+}
+
+function Track({
+  type,
+  start,
+  end,
+}: {
+  type: FlatItem["type"];
+  start: number;
+  end: number;
+}) {
+  const LEFT = 18;
+  const TOP = 20;
+
+  const top = start + TOP;
+
+  return (
+    <div
+      className={S.track}
+      style={{
+        top,
+        height: end - top,
+        left: LEFT + itemMargin[type],
+      }}
+    />
+  );
+}
+
+function findParentFor({ type, value }: FlatItem) {
+  return (item: FlatItem) => {
+    if (type === "database") {
+      return null;
+    }
+    if (type === "schema") {
+      return (
+        item.type === "database" && item.value?.databaseId === value?.databaseId
+      );
+    }
+    if (type === "table") {
+      return (
+        item.type === "schema" &&
+        item.value?.databaseId === value?.databaseId &&
+        item.value?.schemaId === value?.schemaId
+      );
+    }
+  };
 }
