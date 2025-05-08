@@ -6,6 +6,7 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
@@ -148,8 +149,10 @@
                              "drop role if exists full_access_role;"
                              "create role 'full_access_role';"
                              "grant all privileges on conn_impersonation_test.* to 'full_access_role';"
-                             "grant full_access_role, role_a, role_b to 'default_role_user'@'%';"
-                             "set default role full_access_role to default_role_user;"]]
+                             "grant full_access_role to 'default_role_user'@'%';"
+                             "grant role_a to 'default_role_user'@'%';"
+                             "grant role_b to 'default_role_user'@'%';"
+                             (format "set default role full_access_role %s default_role_user;" (if (mysql/mariadb? (mt/db)) "for" "to"))]]
             (jdbc/execute! spec [statement]))
           (mt/with-temp [:model/Database database {:engine :mysql :details (assoc details :user "default_role_user")}]
             (mt/with-db database
