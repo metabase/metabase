@@ -4,7 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]

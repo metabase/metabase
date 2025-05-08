@@ -8,4 +8,5 @@
   (:require
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.cache.init]
-   [metabase-enterprise.enhancements.init]))
+   [metabase-enterprise.enhancements.init]
+   [metabase-enterprise.stale.init]))
