@@ -8,7 +8,13 @@ import { Box, Flex, Icon } from "metabase/ui";
 import { getUrl } from "../../utils";
 
 import S from "./Item.module.css";
-import { type Item, type TreePath, getIconForType, hasChildren } from "./utils";
+import {
+  type Item,
+  type ItemType,
+  type TreePath,
+  getIconForType,
+  hasChildren,
+} from "./utils";
 
 const ITEM_MIN_HEIGHT = 25;
 const INDENT_LEVEL = 16;
@@ -21,11 +27,9 @@ const TYPE_TO_LEVEL = {
 export function Results({
   items,
   toggle,
-  isExpanded,
 }: {
-  items: Item[];
+  items: (Item & { isExpanded?: boolean })[];
   toggle?: (key: string) => void;
-  isExpanded: (key: string) => boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -58,7 +62,6 @@ export function Results({
                 position: "absolute",
                 top: virtualItem.start,
               }}
-              isExpanded={isExpanded(item.key)}
             />
           );
         })}
@@ -76,7 +79,7 @@ const ItemRow = forwardRef(function ItemRowInner(
     isExpanded,
     value,
   }: {
-    type: "database" | "schema" | "table";
+    type: ItemType;
     onClick?: () => void;
     style?: any;
     isExpanded?: boolean;

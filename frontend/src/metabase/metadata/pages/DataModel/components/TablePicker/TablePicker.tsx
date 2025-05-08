@@ -43,7 +43,7 @@ function Tree(props: TablePickerProps) {
   const { tree } = useTableLoader(props);
 
   const items = flatten(tree, isExpanded);
-  return <Results items={items} toggle={toggle} isExpanded={isExpanded} />;
+  return <Results items={items} toggle={toggle} />;
 }
 
 function Search({ query }: { query: string }) {
@@ -64,5 +64,5 @@ function Search({ query }: { query: string }) {
     );
   }
 
-  return <Results items={items} isExpanded={isExpanded} />;
+  return <Results items={items} />;
 }

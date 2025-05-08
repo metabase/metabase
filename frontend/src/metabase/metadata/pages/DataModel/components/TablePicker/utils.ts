@@ -10,16 +10,16 @@ import {
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
-type NodeType = "database" | "schema" | "table";
+export type ItemType = Item["type"];
 
-export function getIconForType(type: NodeType): IconName {
+export function getIconForType(type: ItemType): IconName {
   if (type === "table") {
     return "table2";
   }
   return type;
 }
 
-export function hasChildren(type: NodeType): boolean {
+export function hasChildren(type: ItemType): boolean {
   return type !== "table";
 }
 
@@ -208,7 +208,7 @@ export function useExpandedState(path: TreePath) {
 export function flatten(
   node: TreeNode,
   isExpanded: (key: string) => boolean,
-): Item[] {
+): (Item & { isExpanded?: boolean })[] {
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
     return sort(node.children).flatMap((child) => flatten(child, isExpanded));
@@ -219,7 +219,7 @@ export function flatten(
   }
 
   return [
-    node,
+    { ...node, isExpanded: true },
     ...sort(node.children).flatMap((child) => flatten(child, isExpanded)),
   ];
 }
