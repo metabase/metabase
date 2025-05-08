@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import {
@@ -6,16 +7,16 @@ import {
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import { CopyButton } from "metabase/components/CopyButton";
+import { COPY_BUTTON_ICON, CopyButton } from "metabase/components/CopyButton";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import {
   Flex,
   Group,
+  type GroupProps,
   Icon,
   Paper,
   Popover,
-  Stack,
-  type StackProps,
   Text,
   type TitleProps,
 } from "metabase/ui";
@@ -23,54 +24,73 @@ import {
 import Styles from "./EntityIdCard.module.css";
 
 const EntityIdTitle = (props?: TitleProps) => {
-  const { url: docsLink, showMetabaseLinks } = useDocsUrl(
-    "installation-and-operation/serialization",
-  );
-
   return (
     <SidesheetCardTitle mb={0} {...props}>
       <Group gap="sm">
         {t`Entity ID`}
-        <Popover position="top-start">
-          <Popover.Target>
-            <Icon tabIndex={0} name="info" className={Styles.InfoIcon} />
-          </Popover.Target>
-          <Popover.Dropdown>
-            <Paper p="md" maw="13rem">
-              <Text fz="sm">
-                {t`When using serialization, replace the sequential ID with this global entity ID to have stable URLs across environments. Also useful when troubleshooting serialization.`}{" "}
-                {showMetabaseLinks && (
-                  <>
-                    <Link
-                      target="_new"
-                      to={docsLink}
-                      style={{ color: "var(--mb-color-brand)" }}
-                    >
-                      Learn more
-                    </Link>
-                  </>
-                )}
-              </Text>
-            </Paper>
-          </Popover.Dropdown>
-        </Popover>
+        <EntityInfoIcon />
       </Group>
     </SidesheetCardTitle>
   );
 };
 
+export const EntityInfoIcon = () => {
+  const { url: docsLink, showMetabaseLinks } = useDocsUrl(
+    "installation-and-operation/serialization",
+  );
+
+  return (
+    <Popover position="top-start">
+      <Popover.Target>
+        <Icon tabIndex={0} name="info" className={Styles.InfoIcon} />
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Paper p="md" maw="13rem">
+          <Text fz="sm">
+            {t`When using serialization, replace the sequential ID with this global entity ID to have stable URLs across environments. Also useful when troubleshooting serialization.`}{" "}
+            {showMetabaseLinks && (
+              <>
+                <Link
+                  target="_new"
+                  to={docsLink}
+                  style={{ color: "var(--mb-color-brand)" }}
+                >
+                  {t`Learn more`}
+                </Link>
+              </>
+            )}
+          </Text>
+        </Paper>
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+export const EntityCopyButton = ({ entityId }: { entityId: string }) => (
+  <CopyButton
+    className={cx(Styles.CopyButton, CS.hoverParent, CS.hoverVisibility)}
+    value={entityId}
+    style={{
+      height: "1rem",
+    }}
+    target={
+      <Flex gap="sm" wrap="nowrap" align="center">
+        <div className={cx(CS.hoverChild)}>{COPY_BUTTON_ICON}</div>
+        <Text lh="1rem">{entityId}</Text>
+      </Flex>
+    }
+  />
+);
+
 export const EntityIdDisplay = ({
   entityId,
   ...props
-}: { entityId: string } & StackProps) => {
+}: { entityId: string } & GroupProps) => {
   return (
-    <Stack gap="md" {...props}>
+    <Group justify="space-between" {...props}>
       <EntityIdTitle />
-      <Flex gap="sm">
-        <Text lh="1rem">{entityId}</Text>
-        <CopyButton className={Styles.CopyButton} value={entityId} />
-      </Flex>
-    </Stack>
+      <EntityCopyButton entityId={entityId} />
+    </Group>
   );
 };
 

@@ -2,7 +2,9 @@
   "Code relating to the premium features token check, and related logic.
 
   WARNING: Token check data, particularly the user count, is used for billing, so errors here have the potential to be
-  high consequence. Be extra careful when editing this code!"
+  high consequence. Be extra careful when editing this code!
+
+  TODO -- We should move the settings in this namespace into [[metabase.premium-features.settings]]."
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
@@ -11,9 +13,10 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [metabase.config :as config]
-   [metabase.internal-stats :as internal-stats]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.premium-features.settings :as premium-features.settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -29,7 +32,7 @@
 
 (def ^:private RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
-  #"^[0-9a-f]{64}$")
+  #"^(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})$")
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
@@ -95,7 +98,7 @@
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."
-  metabase-enterprise.embedding-data
+  metabase-enterprise.internal-stats.core
   [_embedded-dashboard-count _embedded-question-count]
   {:enabled-embedding-static      false
    :enabled-embedding-interactive false
@@ -113,7 +116,7 @@
                       :embedding-dashboard-count embedding-dashboard-count
                       :embedding-question-count embedding-question-count
                       :external-users ext-users
-                      :interal-users (- users ext-users)
+                      :internal-users (- users ext-users)
                       :domains (internal-stats/email-domain-count)})]
     (log/info "Reporting embedding stats:" stats)
     stats))
@@ -233,7 +236,7 @@
   (cond (mr/validate [:re RemoteCheckedToken] token)
         ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
         ;; reasonable amount of time throw a timeout exception
-        (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
+        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
           (try (fetch-token-and-parse-body token token-check-url site-uuid)
                (catch Exception e1
                  (log/errorf e1 "Error fetching token status from %s:" token-check-url)
@@ -413,5 +416,14 @@
   []
   (or (is-hosted?) (has-feature? :audit-app)))
 
-(defenterprise decode-airgap-token "In OSS, this returns an empty map." metabase-enterprise.airgap [_] {})
-(defenterprise token-valid-now? "In OSS, this returns false." metabase-enterprise.airgap [_] false)
+(defenterprise decode-airgap-token
+  "In OSS, this returns an empty map."
+  metabase-enterprise.premium-features.airgap
+  [_]
+  {})
+
+(defenterprise token-valid-now?
+  "In OSS, this returns false."
+  metabase-enterprise.premium-features.airgap
+  [_]
+  false)

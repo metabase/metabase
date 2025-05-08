@@ -23,7 +23,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -31,6 +30,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -244,6 +244,15 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
+      (isa? coercion :Coercion/String->Float)
+      {"$toDouble" field-name}
+
+      (isa? coercion :Coercion/String->Integer)
+      {"$toLong" field-name}
+
+      (isa? coercion :Coercion/Float->Integer)
+      {"$toLong" {"$round" {"$toDouble" field-name}}}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
@@ -417,7 +426,7 @@
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
-    (= base-type :type/*)
+    (isa? base-type :type/MongoBinData)
     (try
       (-> (str value)
           java.util.UUID/fromString
@@ -839,7 +848,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
-  (compile-cond [:and [:>= field min-val] [:< field max-val]]))
+  (compile-cond [:and [:>= field min-val] [:<= field max-val]]))
 
 (defn- index-of-code-point
   "See https://docs.mongodb.com/manual/reference/operator/aggregation/indexOfCP/"
@@ -937,7 +946,7 @@
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
                                              ;; aliases should also contain no . characters (#32182).
                                              ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
-                                             (str/replace #"[~\. ]" "_")
+                                             (str/replace #"[~\. -]" "_")
                                              (str "__" (next-alias-index)))]
                                {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]

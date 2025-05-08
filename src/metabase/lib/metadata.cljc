@@ -117,10 +117,10 @@
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
 (mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
-  "Get metadata for the Metric with `metric-id`, if it can be found."
+  "Get metadata for the Metric with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metric-id             :- ::lib.schema.id/metric]
-  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+   card-id               :- ::lib.schema.id/card]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)]
     (when (= (:type card-meta) :metric)
       (assoc card-meta :lib/type :metadata/metric))))
 
@@ -167,6 +167,18 @@
   (let [stages (:stages query)]
     (mu/disable-enforcement
       (editable-stages? query stages))))
+
+(mu/defn database-supports? :- :boolean
+  "Does `metadata-providerable`'s [[database]] support the given `feature`?
+
+  Minimize the use of this function. Using it is often a code smell. The lib should not normally be concerned with
+  driver features. See https://github.com/metabase/metabase/pull/55206#discussion_r2017378181"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   feature               :- :keyword]
+  (-> metadata-providerable
+      database
+      :features
+      (contains? feature)))
 
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use

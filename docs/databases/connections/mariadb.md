@@ -14,7 +14,7 @@ MariaDB shares a driver with MySQL, so select the **MySQL** driver.
 
 Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/kb/en/mariadb-server-release-dates/).
 
-## Settings
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -60,9 +60,9 @@ Turn this option **OFF** if people want to click **Run** (the play button) befor
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-### Choose when Metabase syncs and scans
+### Choose when syncs and scans happen
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md).
+See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 
 #### Database syncing
 
@@ -92,6 +92,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Syncing records that include JSON
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

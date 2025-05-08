@@ -197,9 +197,8 @@ describe("scenarios > question > native", () => {
       H.selectFilterOperator(operator);
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("This has a value");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
 
       cy.log(
         `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
@@ -301,7 +300,7 @@ describe("scenarios > question > native", () => {
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Query results will appear here.").should("be.visible");
+    cy.findByText("Here's where your results will appear").should("be.visible");
   });
 
   it("should allow to preview a fully parameterized query", () => {
@@ -425,18 +424,28 @@ describe("scenarios > question > native", () => {
       },
     };
 
+    function setViewport(width, height) {
+      cy.viewport(width, height);
+      cy.wait(100); // wait for UI to re-render to avoid flakiness
+    }
+
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.log("open editor on a normal screen size");
     cy.findByTestId("visibility-toggler").click();
 
-    dataReferenceSidebar().should("be.visible");
+    dataReferenceSidebar()
+      .should("be.visible")
+      // means data is loaded
+      .should("contain", "Sample Database");
 
     cy.findByTestId("visibility-toggler").click();
+    dataReferenceSidebar().should("not.be.visible");
 
     cy.log("open editor on a small screen size");
-    cy.viewport(1279, 800);
+    setViewport(1279, 800);
 
+    cy.log("try to open data reference sidebar on a mid size screen");
     cy.findByTestId("visibility-toggler").click();
     dataReferenceSidebar().should("not.be.visible");
 
@@ -447,7 +456,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("native-query-editor-sidebar").icon("reference").click();
 
     cy.log("set small viewport");
-    cy.viewport(800, 800);
+    setViewport(800, 800);
 
     cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
     cy.findByTestId("sidebar-right").invoke("width").should("be.gt", 350);

@@ -7,6 +7,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;;; TODO -- move these into appropriate modules.
+
 (mu/defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
@@ -113,26 +115,6 @@
                 [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
-;; metric events
-
-;; TODO -- are these for LEGACY METRICS? ARE THESE EVENT USED ANYMORE?
-
-(mr/def ::metric
-  [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/LegacyMetric %)]]])
-
-(mr/def :event/metric-create ::metric)
-
-(mr/def ::metric-with-message
-  [:merge
-   ::metric
-   [:map {:closed true}
-    [:revision-message {:optional true} :string]]])
-
-(mr/def :event/metric-update ::metric-with-message)
-(mr/def :event/metric-delete ::metric-with-message)
-
 ;; segment events
 
 (mr/def ::segment
@@ -157,6 +139,7 @@
   [:map {:closed true}
    [:object [:fn #(t2/instance-of? :model/Database %)]]
    [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
+   [:details {:optional true} :map]
    [:user-id pos-int?]])
 
 (mr/def :event/database-create ::database)

@@ -8,11 +8,11 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -134,10 +134,20 @@
                                    tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
 
+(def ^{:private true
+       :doc     "If a query has more than the number of rows specified here, we store the data to disk instead of in memory."}
+  rows-to-disk-threadhold
+  1000)
+
 (defn- data-rows-to-disk!
   [qp-result]
-  (log/debugf "Storing %d rows to disk" (:row_count qp-result))
-  (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))
+  (if (<= (:row_count qp-result) rows-to-disk-threadhold)
+    (do
+      (log/debugf "Less than %d rows, skip storing %d rows to disk" rows-to-disk-threadhold (:row_count qp-result))
+      qp-result)
+    (do
+      (log/debugf "Storing %d rows to disk" (:row_count qp-result))
+      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -282,5 +292,5 @@
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
-     :result result
+     :result (data-rows-to-disk! result)
      :type   :card}))

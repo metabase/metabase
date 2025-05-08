@@ -15,9 +15,9 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models.setting :as setting]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -54,12 +54,15 @@
   (with-open [rs (.getCatalogs metadata)]
     (set (map :table_cat (jdbc/metadata-result rs)))))
 
-(defn- database-type->base-type-or-warn
+(defn database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver database-type]
+  [driver namespaced-col database-type]
   (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                     database-type)
+      (do (let [pretty-column (str/join "." (map #(str "'" % "'")
+                                                 (drop-while nil? namespaced-col)))]
+            (log/warnf "Don't know how to map column type '%s' to a Field base_type for %s, falling back to :type/*."
+                       database-type
+                       pretty-column))
           :type/*)))
 
 (defn- calculated-semantic-type
@@ -170,11 +173,22 @@
          init
          [jdbc-metadata fallback-metadata])))))
 
+(def ^:private ^:dynamic *table-info*
+  "To be bound in [[describe-table-fields]] to convey table schema and name into [[describe-fields-xf]]. Reason
+  being, that describe-fields-xf is used in driver/describe-fields and driver/describe-table-fields, where transducer's
+  `col` arg is missing this information for the latter."
+  {})
+
 (defn describe-fields-xf
   "Returns a transducer for computing metadata about the fields in `db`."
   [driver db]
   (map (fn [col]
-         (let [base-type (database-type->base-type-or-warn driver (:database-type col))
+         (let [base-type (or (:base-type col) (database-type->base-type-or-warn
+                                               driver
+                                               [((some-fn :table-schema) col *table-info*)
+                                                ((some-fn :table-name)   col *table-info*)
+                                                (:name col)]
+                                               (:database-type col)))
                semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
                json? (isa? base-type :type/JSON)
                database-position (some-> (:database-position col) int)]
@@ -213,10 +227,13 @@
 
 (defmethod describe-table-fields :sql-jdbc
   [driver conn table db-name-or-nil]
-  (into
-   #{}
-   (describe-table-fields-xf driver (table/database table))
-   (fields-metadata driver conn table db-name-or-nil)))
+  (binding [*table-info* (merge {:table-name (:name table)}
+                                (when (:schema table)
+                                  {:table-schema (:schema table)}))]
+    (into
+     #{}
+     (describe-table-fields-xf driver (table/database table))
+     (fields-metadata driver conn table db-name-or-nil))))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
 ;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
@@ -303,6 +320,19 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti describe-fields-pre-process-xf
+  "Returns a (possibly stateful) transducer for computing metadata about the fields in `db`.
+   Occurs on the results of [[describe-fields-sql]].
+   Same args as [[describe-fields]]."
+  {:added    "0.53.10"
+   :arglists '([driver db & args])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod describe-fields-pre-process-xf :sql-jdbc
+  [_driver _db & _args]
+  identity)
+
 (defn describe-fields
   "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db & {:keys [schema-names table-names] :as args}]
@@ -318,7 +348,9 @@
         (catch Throwable _
           (log/error "Failed to prepare sql for log.")))
       (eduction
-       (describe-fields-xf driver db)
+       (comp
+        (m/mapply describe-fields-pre-process-xf driver db args)
+        (describe-fields-xf driver db))
        (sql-jdbc.execute/reducible-query db sql)))))
 
 (defmulti describe-indexes-sql
@@ -365,7 +397,7 @@
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
  i.e. [[describe-fks]]."
   {:added    "0.49.0"
-   :arglists '([driver & {:keys [schema-names table-names]}])}
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -375,7 +407,7 @@
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver args))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (:details db))))))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

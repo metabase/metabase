@@ -78,6 +78,7 @@ serdes/meta:
   label: active_alerts
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S

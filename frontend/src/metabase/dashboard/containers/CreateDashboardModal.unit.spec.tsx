@@ -11,7 +11,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -52,7 +51,6 @@ COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 
 function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupRecentViewsAndSelectionsEndpoints([]);
   const onClose = jest.fn();
 

@@ -9,7 +9,6 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import type * as Lib from "metabase-lib";
-import type { StartRule } from "metabase-lib/v1/expressions";
 import { suggestions } from "metabase-lib/v1/expressions/complete";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -19,7 +18,7 @@ import S from "./Editor.module.css";
 import { customExpression } from "./language";
 
 type Options = {
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex: number | undefined;
@@ -43,7 +42,7 @@ function getTooltipParent() {
 
 export function useExtensions(options: Options): Extension[] {
   const {
-    startRule,
+    expressionMode,
     query,
     stageIndex,
     expressionIndex,
@@ -73,7 +72,7 @@ export function useExtensions(options: Options): Extension[] {
       highlighting(),
       EditorView.lineWrapping,
       customExpression({
-        startRule,
+        expressionMode,
         query,
         stageIndex,
         expressionIndex,
@@ -97,7 +96,7 @@ export function useExtensions(options: Options): Extension[] {
         query,
         stageIndex,
         reportTimezone,
-        startRule,
+        expressionMode,
         expressionIndex,
         metadata,
       }),
@@ -111,7 +110,7 @@ export function useExtensions(options: Options): Extension[] {
       .filter(isNotNull);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    startRule,
+    expressionMode,
     query,
     stageIndex,
     expressionIndex,

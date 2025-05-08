@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.task :as task]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -31,7 +31,7 @@
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/decode+kw body)))
 
-(jobs/defjob ^{:doc "Simple job which looks up all databases and runs a sync on them"} CheckForNewVersions [_]
+(task/defjob ^{:doc "Simple job which looks up all databases and runs a sync on them"} CheckForNewVersions [_]
   (when (public-settings/check-for-updates)
     (log/debug "Checking for new Metabase version info.")
     (try

@@ -1,6 +1,7 @@
 name: ORDERS
 display_name: Orders
 description: null
+entity_id: Xklmu-9-kSX8qWUU4gx8T
 created_at: '2024-08-28T14:38:42.774331Z'
 db_id: test-data (h2)
 schema: PUBLIC
@@ -21,4 +22,3 @@ serdes/meta:
 - id: ORDERS
   model: Table
 database_require_filter: null
-entity_id: Xklmu-9-kSX8qWUU4gx8T

@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
   (:require
+   [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -15,6 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
@@ -24,10 +27,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :as database]
    [metabase.models.secret :as secret]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
@@ -487,7 +489,12 @@
              net.snowflake.client.jdbc.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
-
+        (is (can-connect? (-> (:details (mt/db))
+                              (assoc :host (str (get-in (mt/db) [:details :account])
+                                                ".snowflakecomputing.com")
+                                     :use-hostname true)
+                              (dissoc :account)))
+            "can-connect? with host and no account")
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
             (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
@@ -504,6 +511,13 @@
                                                                         :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
+                (is (can-connect? (-> (:details (mt/db))
+                                      (assoc :host (str (get-in (mt/db) [:details :account])
+                                                        ".snowflakecomputing.com")
+                                             :use-hostname true)
+                                      (dissoc :password :account)
+                                      (merge {:db pk-db :user pk-user} {:private-key-id path-secret-id})))
+                    "can-connect? with pk, host and no account")
                 (doseq [to-merge [;; uploaded string
                                   {:private-key-value pk-key
                                    :private-key-options "uploaded"}
@@ -562,9 +576,17 @@
                         (is (= details-to-succeed
                                (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
                                                                                 :details details))))
-                        (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
-                                 {:level :info, :message #"^Successfully connected, migrating to: .*"}]
-                                (messages)))))
+                        (let [success-re #"^Successfully connected, migrating to: (.*)"
+                              msgs (messages)
+                              migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
+                              success-keys (set (keys details-to-succeed))
+                              [_ keys-removed _] (data/diff success-keys (set (keys details)))]
+                          (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
+                                   {:level :info, :message success-re}]
+                                  msgs))
+                          (is (= {:keys success-keys
+                                  :keys-removed keys-removed}
+                                 migrating-to)))))
                     (is (= (-> details-to-succeed
                                (cond-> uses-secret? (assoc :private-key-id secret-id))
                                (dissoc :private-key-options :private-key-value :private-key-path))
@@ -1163,184 +1185,17 @@
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
                 [idxs result])))))))
 
-;; integer()
-
-(defn- check-integer-query
-  ([query db-type uncasted-field]
-   (check-integer-query query db-type uncasted-field "\"subquery\".\"INTCAST\""))
-  ([query db-type uncasted-field casted-field]
-   (mt/native-query {:query (str "SELECT " casted-field ", "
-                                 ;; need to do regex because some strings have 0 in front
-                                 (name uncasted-field) " REGEXP CONCAT('^0*', " "CAST(" casted-field " AS " db-type "), '$')"
-                                 ", "
-                                 (name uncasted-field) " "
-                                 "FROM ( "
-                                 (-> query qp.compile/compile :query)
-                                 " ) AS \"subquery\" "
-                                 "LIMIT 100")})))
-
-(deftest ^:parallel integer-cast-table-fields
+(deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
-                {:keys [field db-type]} fields]
-          (testing (str "casting " table "." field "(" db-type ") to integer")
-            (let [field-md (lib.metadata/field mp (mt/id table field))
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/with-fields [field-md])
-                            (lib/expression "INTCAST" (lib/integer field-md))
-                            (lib/limit 100))
-                  result (-> query (check-integer-query db-type (str "\"" (name field) "\"")) qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              ;; Snowflake doesn't use an integer type; BIGINT gets translated to NUMBER
-              (is (= :type/Number (-> cols first :base_type)))
-              (doseq [[casted-value equals? uncasted-value] rows]
-                (is (number? casted-value))
-                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
-
-(deftest ^:parallel integer-cast-custom-expressions
-  (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/concat
-                                                             (lib.metadata/field mp (mt/id :people :id))
-                                                             (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "TEXT"}]]]
-                {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer")
-            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/with-fields [])
-                            (lib/expression "UNCASTED" expression)
-                            (as-> q
-                                  (lib/expression q "INTCAST" (lib/integer (lib/expression-ref q "UNCASTED"))))
-                            (lib/limit 10))
-                  result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (= :type/Number (-> cols first :base_type)))
-              (doseq [[casted-value equals? uncasted-value] rows]
-                (is (number? casted-value))
-                (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))
-
-(deftest ^:parallel integer-cast-nested-native-query
-  (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[_table expressions] [[:people [{:expression "'123'" :db-type "TEXT"}
-                                                {:expression "'-123'" :db-type "TEXT"}]]]
-                {:keys [expression db-type]} expressions]
-          (testing (str "Casting " db-type " to integer from native query")
-            (let [native-query (mt/native-query {:query (str "SELECT " expression " AS \"UNCASTED\"")})]
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query native-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first)))))
-                      result (-> query (check-integer-query db-type "\"UNCASTED\"") qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (= :type/Number (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (number? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-query
-  (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
-                {:keys [field db-type]} fields]
-          (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))]
-            (testing (str "Casting " db-type " to integer")
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (lib/with-fields [])
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (lib.metadata/field mp (mt/id table field)))))
-                                (lib/limit 10))
-                      result (-> query (check-integer-query db-type (str "\"" (name field) "\"")) qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (= :type/Number (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (number? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-query-custom-expressions
-  (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression (lib/concat
-                                                             (lib.metadata/field mp (mt/id :people :id))
-                                                             (lib.metadata/field mp (mt/id :people :zip)))
-                                                :db-type "TEXT"}]]]
-                {:keys [expression db-type]} expressions]
-          (let [nested-query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                                 (lib/with-fields [])
-                                 (lib/expression "UNCASTED" expression)
-                                 (lib/limit 10))]
-            (testing (str "Casting " db-type " to integer")
-              (mt/with-temp
-                [:model/Card
-                 {card-id :id}
-                 (mt/card-with-source-metadata-for-query nested-query)]
-                (let [query (-> (lib/query mp (lib.metadata/card mp card-id))
-                                (as-> q
-                                      (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (filter #(= "UNCASTED" (:name %))) first))))
-                                (lib/limit 10))
-                      result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
-                      cols (mt/cols result)
-                      rows (mt/rows result)]
-                  (is (= :type/Number (-> cols first :base_type)))
-                  (doseq [[casted-value equals? uncasted-value] rows]
-                    (is (number? casted-value))
-                    (is equals? (str "Not equal for: " casted-value " " uncasted-value))))))))))))
-
-(deftest ^:parallel integer-cast-nested-custom-expressions
-  (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table expressions] [[:people [{:expression [(lib/concat
-                                                              (lib.metadata/field mp (mt/id :people :id))
-                                                              (lib.metadata/field mp (mt/id :people :zip)))
-                                                             (lib/concat
-                                                              (lib.metadata/field mp (mt/id :people :id))
-                                                              (lib.metadata/field mp (mt/id :people :zip)))]
-                                                :db-type "TEXT"}]]]
-                {db-type :db-type [e1 e2] :expression} expressions]
-          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/expression "UNCASTED" e1)
-                          (lib/expression "INTCAST" (lib/integer e2))
-                          (lib/limit 10))
-                result (-> query (check-integer-query db-type "\"subquery\".\"UNCASTED\"") qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (= :type/Number (-> cols first :base_type)))
-            (doseq [[casted-value equals? uncasted-value] rows]
-              (is (number? casted-value))
-              (is equals? (str "Not equal for: " casted-value " " uncasted-value)))))))))
-
-(deftest ^:parallel integer-cast-aggregations
-  (mt/test-driver :snowflake
-    (mt/dataset test-data
-      (let [mp (mt/metadata-provider)]
-        (doseq [[table fields] [[:people [{:field :zip :db-type "TEXT"}]]]
-                {:keys [field db-type]} fields]
-          (testing (str "aggregating " table "." field "(" db-type ") and casting to integer")
-            (let [field-md (lib.metadata/field mp (mt/id table field))
-                  query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                            (lib/aggregate (lib/max field-md))
-                            (lib/aggregate (lib/max (lib/integer field-md))))
-                  result (-> query (check-integer-query db-type "\"subquery\".\"max\"" "\"subquery\".\"max_2\"") qp/process-query)
-                  cols (mt/cols result)
-                  rows (mt/rows result)]
-              (is (= :type/Number (-> cols first :base_type)))
-              (doseq [[casted-value _equals? _uncasted-value] rows]
-                (is (number? casted-value))))))))))
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

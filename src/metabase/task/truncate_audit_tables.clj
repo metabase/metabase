@@ -7,11 +7,11 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -132,7 +132,7 @@ If set to 0, Metabase will keep all rows.")
        (truncate-table! model timestamp-col)))
    (audit-models-to-truncate)))
 
-(jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
+(task/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
   (truncate-audit-tables!))
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")

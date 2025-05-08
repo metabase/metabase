@@ -395,6 +395,30 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByLabelText("Number of decimal places").click().type("4").blur();
     cy.findByTestId("scalar-container").findByText("34’400.0000%");
 
+    // negative decimal places flip to positive
+    cy.findByLabelText("Number of decimal places")
+      .click()
+      .clear()
+      .type("-3")
+      .blur();
+    cy.findByTestId("scalar-container").findByText("34’400.000%");
+
+    // non-integer decimal places round to nearest integer
+    cy.findByLabelText("Number of decimal places")
+      .click()
+      .clear()
+      .type("2.4")
+      .blur();
+    cy.findByTestId("scalar-container").findByText("34’400.00%");
+
+    // negative non-integer decimal places round to nearest integer and flip to positive
+    cy.findByLabelText("Number of decimal places")
+      .click()
+      .clear()
+      .type("-3.8")
+      .blur();
+    cy.findByTestId("scalar-container").findByText("34’400.0000%");
+
     // multiply by a number
     cy.findByLabelText("Multiply by a number").click().type("2").blur();
     cy.findByTestId("scalar-container").findByText("68’800.0000%");

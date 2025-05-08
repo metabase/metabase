@@ -21,9 +21,7 @@ describe("query validator", { tags: "@external" }, () => {
         "Query Validator",
       );
       cy.visit("/admin/settings/general");
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-        "not.exist",
-      );
+      cy.findByTestId("query-analysis-enabled-setting").should("not.exist");
     });
   });
 
@@ -38,11 +36,9 @@ describe("query validator", { tags: "@external" }, () => {
     it("enable query analysis setting", () => {
       cy.visit("/admin/settings/general");
 
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-        "have.attr",
-        "checked",
-      );
-      cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).click();
+      cy.findByTestId("query-analysis-enabled-setting")
+        .findByText("Enabled")
+        .click();
 
       cy.findByRole("link", { name: /troubleshooting/i }).click();
 
@@ -194,8 +190,7 @@ describe("OSS", { tags: "@OSS" }, () => {
       "Query Validator",
     );
     cy.visit("/admin/settings/general");
-    cy.findByRole("switch", { name: /ENABLE QUERY ANALYSIS/i }).should(
-      "not.exist",
-    );
+
+    cy.findByTestId("query-analysis-enabled-setting").should("not.exist");
   });
 });

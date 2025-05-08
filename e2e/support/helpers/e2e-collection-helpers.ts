@@ -3,9 +3,17 @@ import {
   entityPickerModalLevel,
   entityPickerModalTab,
   getFullName,
+  navigationSidebar,
   popover,
 } from "e2e/support/helpers";
 import type { CollectionId } from "metabase-types/api";
+
+export function startNewCollectionFromSidebar() {
+  return navigationSidebar()
+    .findByLabelText("Create a new collection")
+    .should("be.visible")
+    .click();
+}
 
 export function getCollectionActions() {
   return cy.findByTestId("collection-menu");
@@ -49,6 +57,8 @@ export const getUnpinnedSection = () => {
 };
 
 export const openPinnedItemMenu = (name: string) => {
+  cy.log(`open pinned item menu: ${name}`);
+
   getPinnedSection().within(() => {
     cy.findByText(name)
       .closest("a")

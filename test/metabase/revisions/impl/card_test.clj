@@ -107,6 +107,7 @@
                             (= col :type)              "model"
                             (= col :dataset_query)     (mt/mbql-query users)
                             (= col :visualization_settings) {:text "now it's a text card"}
+                            (= col :card_schema)       20
                             (int? value)               (inc value)
                             (boolean? value)           (not value)
                             (string? value)            (str value "_changed")))]
@@ -129,6 +130,9 @@
                          ;; similarly, we don't need a description for `archived_directly` because whenever
                          ;; this field changes `archived` will also change and we have a description for that.
                          :archived_directly
+                         ;; No description is needed for `card_schema`, because it is an internal, bookkeeping matter
+                         ;; and does not change independently.
+                         :card_schema
                          ;; we don't expect a description for this column because it should never change
                          ;; once created by the migration
                          :dataset_query_metrics_v2_migration_backup} col)

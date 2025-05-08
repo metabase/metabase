@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -52,6 +53,8 @@ export const QuestionInfoSidebar = ({
 
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionInfo());
+
+  useHotkeys([["]", handleClose]]);
 
   const [isOpen, setIsOpen] = useState(false);
 

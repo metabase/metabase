@@ -826,6 +826,7 @@ serdes/meta:
   label: last_downloads
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (a98530f)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb

@@ -18,6 +18,14 @@
   (cond-> x
     (string? x) keyword))
 
+(defn normalize-keyword-lower
+  "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
+  string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
+  should not get converted to keywords, like numbers."
+  [x]
+  (cond-> x
+    (string? x) (-> u/lower-case-en keyword)))
+
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`."
   [m]

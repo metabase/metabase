@@ -16,8 +16,8 @@
    [metabase.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -292,22 +292,25 @@
       :below)
     :rows))
 
-(defn- send-email!
-  "Sends an email on a background thread, returning a future."
+(defn- send-email-sync!
   ([recipients subject template-path template-context]
-   (send-email! recipients subject template-path template-context false))
+   (send-email-sync! recipients subject template-path template-context false))
   ([recipients subject template-path template-context bcc?]
    (when (seq recipients)
-     (future
-       (try
-         (email/send-email-retrying!
-          {:recipients   recipients
-           :message-type :html
-           :subject      subject
-           :message      (channel.template/render template-path template-context)
-           :bcc?         bcc?})
-         (catch Exception e
-           (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject)))))))
+     (try
+       (email/send-email-retrying!
+        {:recipients   recipients
+         :message-type :html
+         :subject      subject
+         :message      (channel.template/render template-path template-context)
+         :bcc?         bcc?})
+       (catch Exception e
+         (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject))))))
+
+(defn- send-email!
+  "Sends an email on a background thread, returning a future."
+  [& args]
+  (future (apply send-email-sync! args)))
 
 (defn- template-path [template-name]
   (str "metabase/channel/email/" template-name ".hbs"))

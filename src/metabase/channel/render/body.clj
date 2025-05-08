@@ -10,9 +10,9 @@
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -432,7 +432,7 @@
                                                     (m/distinct-by #(get-in % [:card :id])))
         viz-settings                           (or (get dashcard :visualization_settings)
                                                    (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/javascript-visualization cards-with-data viz-settings)]
+        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle

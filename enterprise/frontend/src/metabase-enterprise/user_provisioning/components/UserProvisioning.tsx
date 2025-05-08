@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
@@ -8,7 +9,6 @@ import { SettingToggle } from "metabase/admin/settings/components/widgets/Settin
 import type { SettingElement } from "metabase/admin/settings/types";
 import { useSetting } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { useModal } from "metabase/hooks/use-modal";
 import {
   Box,
   Button,
@@ -23,8 +23,11 @@ import {
   useRegenerateScimTokenMutation,
 } from "metabase-enterprise/api";
 import { hasAnySsoPremiumFeature } from "metabase-enterprise/settings";
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
-import type { SettingValue, Settings } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  SettingValue,
+  Settings,
+} from "metabase-types/api";
 
 import { CopyScimInput, getTextInputStyles } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";
@@ -88,6 +91,15 @@ export const UserProvisioning = ({
   const isScimEnabled = !!settingValues["scim-enabled"];
   const isScimInitialized = !!maskedTokenRequest.data;
 
+  const [
+    showFirstEnabledModal,
+    { open: openFirstEnabledModal, close: closeFirstEnabledModal },
+  ] = useDisclosure(false);
+  const [
+    showRegenerateModal,
+    { open: openRegenerateModal, close: closeRegenerateModal },
+  ] = useDisclosure(false);
+
   // since the request to enable scim and create the first token are seperate requests, it's possible
   // that the token request failed or wasn't issued due to some interuption (network issue, instance down, etc.)
   // we can detect this case by seing the scim is enabled without any token after all requests for token have settled
@@ -109,7 +121,7 @@ export const UserProvisioning = ({
       onChanged: async () => {
         if (enabled && !isScimInitialized) {
           await regenerateToken();
-          firstEnabledModal.open();
+          openFirstEnabledModal();
         }
       },
     });
@@ -126,9 +138,6 @@ export const UserProvisioning = ({
       settingValues["ldap-enabled"] ||
       settingValues["saml-enabled"] ||
       settingValues["jwt-enabled"]);
-
-  const firstEnabledModal = useModal(false);
-  const regenerateModal = useModal(false);
 
   return (
     <>
@@ -197,7 +206,7 @@ export const UserProvisioning = ({
                         <Button
                           disabled={isLoadingToken || !isScimEnabled}
                           variant="filled"
-                          onClick={regenerateModal.open}
+                          onClick={openRegenerateModal}
                         >
                           {regenerateTokenReq.isLoading
                             ? t`Regenerating...`
@@ -243,16 +252,16 @@ export const UserProvisioning = ({
       </LoadingAndErrorWrapper>
 
       <UserProvisioningFirstEnabledModal
-        opened={firstEnabledModal.opened}
-        onClose={firstEnabledModal.close}
+        opened={showFirstEnabledModal}
+        onClose={closeFirstEnabledModal}
         unmaskedScimToken={regenerateTokenReq.data?.unmasked_key ?? ""}
         scimBaseUrl={fields["scim-base-url"].value?.toString() || ""}
         scimError={regenerateTokenReq.error}
       />
 
       <UserProvisioningRegenerateTokenModal
-        opened={regenerateModal.opened}
-        onClose={regenerateModal.close}
+        opened={showRegenerateModal}
+        onClose={closeRegenerateModal}
       />
     </>
   );

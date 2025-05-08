@@ -1,13 +1,7 @@
 name: E2E Cross-version Component Tests for Embedding SDK
 
 on:
-  push:
-    branches:
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - "release-**"
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -66,8 +60,7 @@ jobs:
   build:
     needs: [files-changed, get-build-requirements]
     if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false
+      !cancelled()
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:

@@ -43,7 +43,7 @@ describe("HelpText (OSS)", () => {
       "expression-helper-popover-structure",
     );
     expect(
-      await within(exampleCodeEl).findByText("CumulativeCount"),
+      await within(exampleCodeEl).findByText("CumulativeCount()"),
     ).toBeInTheDocument();
 
     expect(
@@ -63,11 +63,15 @@ describe("HelpText (OSS)", () => {
     );
 
     helpText?.args?.forEach(({ name, description }) => {
-      const expectedName = name === "…" ? "…" : name;
       expect(
-        within(argumentsBlock).getByText(expectedName),
-      ).toBeInTheDocument();
-      expect(within(argumentsBlock).getByText(description)).toBeInTheDocument();
+        within(argumentsBlock).getByTestId(`arg-${name}-name`),
+      ).toHaveTextContent(name);
+
+      expect(
+        within(argumentsBlock).getByTestId(`arg-${name}-description`) ?? "",
+      ).toHaveTextContent(
+        description?.replaceAll("`", "").replaceAll("$", "") ?? "",
+      );
     });
   });
 

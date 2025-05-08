@@ -116,6 +116,10 @@ const enterSamlSettings = () => {
       /SAML Identity Provider URL/,
       "https://example.test",
     );
+    H.typeAndBlurUsingLabel(
+      /SAML Identity Provider Issuer/,
+      "https://example.test/issuer",
+    );
     // paste this long value to not waste time typing
     cy.findByLabelText(/SAML Identity Provider Certificate/)
       .click()

@@ -160,6 +160,18 @@
     (sql.helpers/where query [:= id :database_id])
     query))
 
+(defn add-table-where-clauses
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  [qry model search-ctx]
+  (sql.helpers/where qry (case model
+                           "table" (search.permissions/permitted-tables-clause search-ctx :table.id)
+                           "search-index" [:or
+                                           [:= :search_index.model nil]
+                                           [:!= :search_index.model [:inline "table"]]
+                                           [:and
+                                            [:= :search_index.model [:inline "table"]]
+                                            (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]])))
+
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -168,7 +180,7 @@
    search-ctx     :- SearchContext]
   (let [collection-id-col      (case model
                                  "collection"    :collection.id
-                                 "search-index" :search_index.collection_id
+                                 "search-index"  :search_index.collection_id
                                  :collection_id)
         permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
@@ -499,7 +511,8 @@
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
-  (base-query-for-model model search-ctx))
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/where [:= :router_database_id nil])))
 
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]
@@ -541,6 +554,7 @@
   (when (seq current-user-perms)
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
+        (add-table-where-clauses model search-ctx)
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defmethod search.engine/model-set :search.engine/in-place

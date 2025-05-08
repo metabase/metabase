@@ -1,9 +1,11 @@
 (ns metabase.notification.payload.impl.card
   (:require
    [metabase.channel.render.core :as channel.render]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.notification.send :as notification.send]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,14 +66,18 @@
       (let [^String error-text (format "Unrecognized alert with condition '%s'" send-condition)]
         (throw (IllegalArgumentException. error-text))))))
 
-(defmethod notification.send/do-after-notification-sent :notification/card
-  [{:keys [id creator_id handlers] :as notification-info} _notification-payload]
+(mu/defmethod notification.send/do-after-notification-sent :notification/card
+  [{:keys [id creator_id handlers] :as notification-info} :- ::models.notification/FullyHydratedNotification
+   notification-payload]
   (when (-> notification-info :payload :send_once)
     (t2/update! :model/Notification (:id notification-info) {:active false}))
+  (try
+    (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
+      (notification.payload/cleanup! rows))
+    (catch Exception e
+      (log/warn e "Error cleaning up temp files for notification" id)))
   (events/publish-event! :event/alert-send
                          {:id      id
                           :user-id creator_id
-                          :object  {:recipients (->> handlers
-                                                     (mapcat :recipients)
-                                                     (map #(or (:user %) (:email %))))
+                          :object  {:recipients (notification.dashboard/handlers->audit-recipients handlers)
                                     :filters    (-> notification-info :alert :parameters)}}))

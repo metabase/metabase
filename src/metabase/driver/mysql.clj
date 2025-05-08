@@ -16,6 +16,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -29,14 +30,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -70,11 +71,16 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
-                              :cast                                   true
+                              :expressions/integer                    true
+                              :expressions/float                      true
+                              :expressions/date                       true
+                              :expressions/text                       true
+                              :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
-                              :window-functions/offset                false}]
+                              :window-functions/offset                false
+                              :expression-literals                    true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -193,8 +199,7 @@
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
@@ -306,14 +311,45 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
+(defmethod sql.qp/integer-dbtype :mysql
+  [_]
+  :signed)
 
-(defmethod sql.qp/->integer :mysql
-  [_ value]
-  (h2x/maybe-cast :signed value))
+(defmethod sql.qp/->honeysql [:mysql :split-part]
+  [driver [_ text divider position]]
+  (let [text (sql.qp/->honeysql driver text)
+        div  (sql.qp/->honeysql driver divider)
+        pos  (sql.qp/->honeysql driver position)]
+    [:case
+     ;; non-positive position
+     [:< pos 1]
+     ""
+
+     ;; position greater than number of parts
+     [:> pos
+      [:+ 1
+       [:floor
+        [:/
+         [:- [:length text]
+          [:length [:replace text div ""]]]
+         [:length div]]]]]
+     ""
+
+     ;; This needs some explanation.
+     ;; The inner substring_index returns the string up to the `pos` instance of `div`
+     ;; The outer substring_index returns the string from the last instance of `div` to the end
+     :else
+     [:substring_index
+      [:substring_index text div pos]
+      div -1]]))
+
+(defmethod sql.qp/->honeysql [:mysql :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/->honeysql [:mysql :date]
+  [driver [_ value]]
+  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -328,6 +364,9 @@
   If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
   {"integer"          "signed"
    "text"             "char"
+   ;; MySQL decimal defaults to 0 decimal places, so cast it as a double
+   ;; See https://dev.mysql.com/doc/refman/8.4/en/fixed-point-types.html
+   "decimal"          "double"
    "double precision" "double"
    "bigint"           "unsigned"})
 
@@ -374,10 +413,6 @@
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
-
-(defmethod sql.qp/->honeysql [:mysql :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -701,21 +736,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload/float                    [:double]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:datetime]
-    ::upload/offset-datetime          [:timestamp]))
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:datetime]
+    :metabase.upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/allowed-promotions :mysql
   [_driver]
-  {::upload/int     #{::upload/float}
-   ::upload/boolean #{::upload/int
-                      ::upload/float}})
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
@@ -939,17 +974,14 @@
                     [table-name privileges])))
           table-names)))
 
-;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
-;; name, but coerces boolean fields since mysql returns them as 0/1 integers
-(defmethod driver/describe-fields :mysql
-  [driver database & args]
-  (eduction
-   (map (fn [col]
-          (-> col
-              (update :pk? pos?)
-              (update :database-required pos?)
-              (update :database-is-auto-increment pos?))))
-   (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
+;; Coerces boolean fields since mysql returns them as 0/1 integers
+(defmethod sql-jdbc.sync/describe-fields-pre-process-xf :mysql
+  [_driver _db & _args]
+  (map (fn [col]
+         (-> col
+             (update :pk? pos?)
+             (update :database-required pos?)
+             (update :database-is-auto-increment pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -974,7 +1006,8 @@
                 [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
                 (when-let [db-name ((some-fn :db :dbname) details)]
                   [:= :c.table_schema db-name])
-                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
+               :order-by [:c.table_name :c.ordinal_position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
@@ -992,3 +1025,20 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
+  ;; MariaDB and MySQL report different error codes for the timeout caused by using .setQueryTimeout. This happens because they
+  ;; use different mechanisms for causing this timeout. MySQL timesout and terminates the connection externally. MariaDB uses the
+  ;; max_statement_time configuration that can be passed to a SQL statement to set its.
+  ;;
+  ;; Docs for MariaDB:
+  ;; https://mariadb.com/kb/en/e1317/
+  ;; https://mariadb.com/kb/en/e1969/
+  ;; https://mariadb.com/kb/en/e3024/
+  ;;
+  ;; Docs for MySQL:
+  ;; https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+  ;;
+  ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
+  ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
+  (contains? #{1317 1969 3024} (.getErrorCode e)))

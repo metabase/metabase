@@ -35,8 +35,19 @@ const DASHBOARD_SCHEMA = Yup.object({
 });
 
 export interface CreateDashboardProperties {
+  /**
+   * Dashboard title
+   */
   name: string;
+
+  /**
+   * Dashboard description
+   */
   description: string | null;
+
+  /**
+   * @internal
+   */
   collection_id: CollectionId;
 }
 

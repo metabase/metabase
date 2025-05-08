@@ -162,6 +162,7 @@ serdes/meta:
   label: questions_in_this_dashboard
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 metabase_version: null
 source_card_id: pKdvc0pwu1zDi8NqnyJkt

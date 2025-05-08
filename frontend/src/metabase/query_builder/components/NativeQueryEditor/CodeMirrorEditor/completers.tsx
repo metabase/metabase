@@ -277,7 +277,7 @@ export function useReferencedCardCompletion({
         },
         options: results.map((column) => ({
           label: column.field.name,
-          detail: `${column.card.name} :${column.field.base_type}`,
+          detail: `${column.card.name} ${column.field.database_type}`,
         })),
       };
     },

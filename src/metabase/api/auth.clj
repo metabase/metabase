@@ -1,6 +1,6 @@
 (ns metabase.api.auth
   (:require
-   [metabase.models.setting :refer [defsetting]]))
+   [metabase.settings.core :refer [defsetting]]))
 
 (defsetting api-key
   "When set, this key is required for calls to /notify/ endpoints."

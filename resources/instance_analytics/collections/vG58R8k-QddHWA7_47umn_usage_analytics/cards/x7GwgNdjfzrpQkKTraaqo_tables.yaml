@@ -286,6 +286,7 @@ serdes/meta:
   label: tables
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: null
 metabase_version: vUNKNOWN (0e09ac7)
 source_card_id: null
