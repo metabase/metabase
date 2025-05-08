@@ -109,7 +109,7 @@ const getEventNames = (body) => {
     if (eventName) {
       return eventName;
     }
-    // get the  eventType if it exists, print is as object so we can tell
+    // get the eventType if it exists, print is as object so we can tell
     if (event.eventType) {
       return {
         eventType: event.eventType,
@@ -134,7 +134,7 @@ export const expectGoodSnowplowEvents = (count) => {
     const eventNamesReceived = getEventNames(body);
 
     if (body.length !== count) {
-      // this gets called the number of events is greater than what we expected
+      // this gets called when the number of events is greater than what we expected
       throw new Error(
         `Expected ${count} good Snowplow events, but got ${eventNamesReceived.length}. ${eventNamesReceived ? `Events names received: ${JSON.stringify(eventNamesReceived, null, 2)}` : ""}`,
       );
