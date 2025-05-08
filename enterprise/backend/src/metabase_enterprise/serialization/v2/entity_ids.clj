@@ -25,7 +25,7 @@
    ;; Check against explicitly ignored tables
    (contains? ignored-entity-id-table-names table-name)
    ;; Filter out dynamically created search index tables
-   (re-matches #"search_index___.*" table-name)))
+   (re-matches #"search_index.*" table-name)))
 
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding
