@@ -295,14 +295,6 @@ x.com")
   :encryption :when-encryption-key-set
   :audit      :getter)
 
-(defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :public
-  :audit      :getter)
-
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
    Otherwise make the landing-page a relative path."

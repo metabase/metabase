@@ -1,12 +1,12 @@
-(ns metabase.models.view-log
+(ns metabase.view-log.models.view-log
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
-   [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
+   [metabase.view-log.models.view-log-impl :as view-log-impl]
    [methodical.core :as m]
    [toucan2.core :as t2]))
 

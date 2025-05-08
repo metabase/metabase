@@ -1,17 +1,17 @@
-(ns metabase.events.view-log-test
+(ns metabase.view-log.events.view-log-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.events.core :as events]
-   [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.view-log.events.view-log :as events.view-log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
