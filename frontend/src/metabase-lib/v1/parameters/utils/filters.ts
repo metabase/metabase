@@ -53,9 +53,7 @@ function isParameterCompatibleWithColumn(
     case "boolean":
       return isBoolean;
     case "string":
-      return (
-        (isString || (isBoolean && hasFieldValues === "list")) && !isAddress
-      );
+      return isString && !isAddress;
     case "temporal-unit":
       return isTemporalBucketable;
     default:
