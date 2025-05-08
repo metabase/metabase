@@ -47,7 +47,8 @@
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]

@@ -70,7 +70,8 @@
                  :effective_type   "type/Text"
                  :has_field_values "list"
                  :database_required false
-                 :database_indexed  false
+                 ;; Index sync is turned off across the application as it is not used ATM.
+                 #_#_:database_indexed  false
                  :database_is_auto_increment false
                  :dimensions       []
                  :name_field       nil})
