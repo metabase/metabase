@@ -1,0 +1,69 @@
+name: E2E Cross-version Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      fe-ref:
+        description: "Frontend git ref to use"
+        type: string
+        required: true
+        default: "master"
+      be-ref:
+        description: "Backend git ref to use"
+        type: string
+        required: true
+        default: "master"
+  workflow_call:
+    inputs:
+      fe-ref:
+        description: "Frontend git ref to use"
+        type: string
+        required: true
+      be-ref:
+        description: "Backend git ref to use"
+        type: string
+        required: true
+
+jobs:
+  cross-version-for-breaking-changes:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: cross-version-uberjar
+
+      - name: Build jar with different frontend and backend version
+        env:
+          MB_EDITION: ee
+          CYPRESS_CI: true
+        run: |
+          bash bin/backward-compatibility-test.sh \
+            ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
+            build
+
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Run the tests
+        env:
+          MB_EDITION: ee
+          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+          CYPRESS_CI: true
+        run: |
+          bash bin/backward-compatibility-test.sh \
+            ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
+            start > /dev/null & \
+            bash bin/backward-compatibility-test.sh \
+            ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
+            test

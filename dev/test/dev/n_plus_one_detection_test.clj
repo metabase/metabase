@@ -36,4 +36,4 @@
       (is (= [{::just-a-fake-cached-hydration-function!!! :cached}]
              (t2/hydrate [{}] ::just-a-fake-cached-hydration-function!!!))))
     (testing "The 'cache' was populated"
-      (is (= true @*cached?*)))))
+      (is (true? @*cached?*)))))

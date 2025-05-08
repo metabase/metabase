@@ -16,9 +16,25 @@ import {
   useSummarizeData,
 } from "../use-summarize-data";
 
-export const SummarizeDropdown = (
-  popoverProps: Omit<PopoverProps, "children" | "onClose" | "opened">,
-) => {
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionSummarizeDropdownProps = Omit<
+  PopoverProps,
+  "children" | "onClose" | "opened"
+>;
+
+/**
+ * Dropdown button for the Summarize component.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const SummarizeDropdown = ({
+  ...popoverProps
+}: InteractiveQuestionSummarizeDropdownProps) => {
   const aggregationItems = useSummarizeData();
 
   const label = match(aggregationItems.length)

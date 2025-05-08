@@ -24,7 +24,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`There are no revisions for this segment`,
+  get message() {
+    return t`There are no revisions for this segment`;
+  },
 };
 
 const mapStateToProps = (state, props) => {

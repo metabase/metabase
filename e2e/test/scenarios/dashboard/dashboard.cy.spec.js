@@ -125,6 +125,10 @@ describe("scenarios > dashboard", () => {
       () => {
         cy.intercept("POST", "api/collection").as("createCollection");
         cy.visit("/");
+        cy.findByTestId("home-page").should(
+          "contain",
+          "Try out these sample x-rays to see what Metabase can do.",
+        );
         H.closeNavigationSidebar();
         H.appBar().findByText("New").click();
         H.popover().findByText("Dashboard").should("be.visible").click();
@@ -1211,13 +1215,23 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("warn before leave", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
+    });
+
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+
+      cy.findByTestId("home-page").should(
+        "contain",
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
 
       // add
       createNewDashboard();
       cy.findByTestId("dashboard-header").icon("add").click();
       cy.findByTestId("add-card-sidebar").findByText("Orders").click();
+      cy.wait("@queryMetadata");
       assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
 

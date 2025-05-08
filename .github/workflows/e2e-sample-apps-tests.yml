@@ -6,7 +6,7 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened]
     branches:
       - "master"
       - "release-**"
@@ -218,8 +218,9 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       # Sample Apps testing variables
       CYPRESS_CI: true
-      TEST_SUITE: ${{ matrix.test_suite }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -245,6 +246,7 @@ jobs:
       - name: Check if sample app branch exists
         id: check-sample-app-branch
         run: |
+          TEST_SUITE="${{ matrix.test_suite }}"
           REPO_NAME="${TEST_SUITE%-e2e}"
           REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
           echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
@@ -254,9 +256,29 @@ jobs:
             echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Prepare and launch Sample Apps
-        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
-        run: npx tsx ./e2e/runner/start-sample-app-containers/start-ci.ts
+      - name: Configure AWS credentials
+        if: ${{ matrix.test_suite == 'shoppy-e2e' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SHOPPY_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+
+      - name: Download Shoppy's App DB PostgreSQL dump from S3
+        if: ${{ matrix.test_suite == 'shoppy-e2e' }}
+        run: |
+          aws s3 cp s3://${{ secrets.SHOPPY_METABASE_APP_DB_S3_BUCKET }}/${{ secrets.SHOPPY_METABASE_APP_DB_S3_KEY }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql
+
+      - name: Prepare and launch Sample Apps for shoppy-e2e test suite
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite == 'shoppy-e2e' }}
+        env:
+          METABASE_APP_DB_USER: ${{ secrets.SHOPPY_METABASE_APP_DB_USER }}
+          METABASE_APP_DB: ${{ secrets.SHOPPY_METABASE_APP_DB_DATABASE }}
+        run: npx tsx ./e2e/runner/start-sample-app-containers/start-ci.ts shoppy-e2e
+
+      - name: Prepare and launch Sample Apps for other test suites
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && matrix.test_suite != 'shoppy-e2e' }}
+        run: npx tsx ./e2e/runner/start-sample-app-containers/start-ci.ts ${{ matrix.test_suite }}
 
       - name: Run e2e tests for Sample App
         id: run-e2e-tests

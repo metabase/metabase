@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
-import { getByText, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -12,19 +11,9 @@ import {
 
 type SetupOpts = Omit<NumberInputWidgetProps, "setValue"> & {
   parameter?: Parameter;
-  values?: ParameterValue[];
 };
 
-const setup = ({
-  parameter = createMockParameter(),
-  values = [],
-  ...props
-}: SetupOpts) => {
-  setupParameterValuesEndpoints({
-    values,
-    has_more_values: false,
-  });
-
+const setup = ({ parameter = createMockParameter(), ...props }: SetupOpts) => {
   const setValue = jest.fn();
 
   renderWithProviders(
@@ -69,7 +58,7 @@ describe("NumberInputWidget", () => {
       expect(button).toBeEnabled();
     });
 
-    it("should let you update the input with a new value", async () => {
+    it("should allow to update the input with a new value", async () => {
       const { setValue } = setup({ value: [123] });
 
       const textbox = screen.getByRole("textbox");
@@ -80,7 +69,7 @@ describe("NumberInputWidget", () => {
       expect(setValue).toHaveBeenCalledWith([456]);
     });
 
-    it("should let you update the input with an undefined value", async () => {
+    it("should allow to update the input with an undefined value", async () => {
       const { setValue } = setup({ value: [1] });
 
       const textbox = screen.getByRole("textbox");
@@ -88,6 +77,31 @@ describe("NumberInputWidget", () => {
       await userEvent.type(textbox, "{backspace}");
       await userEvent.click(button);
       expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should allow to submit a value on enter", async () => {
+      const { setValue } = setup({ value: [] });
+      await userEvent.type(screen.getByRole("textbox"), "10{enter}");
+      expect(setValue).toHaveBeenCalledWith([10]);
+    });
+
+    it("should allow to submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup({ value: ["10"] });
+      const input = screen.getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should not allow to submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        value: ["10"],
+        parameter: createMockParameter({ required: true }),
+      });
+      const input = screen.getByRole("textbox");
+      await userEvent.clear(input);
+      await userEvent.type(input, "{enter}");
+      expect(setValue).not.toHaveBeenLastCalledWith(undefined);
     });
   });
 
@@ -224,7 +238,6 @@ describe("NumberInputWidget", () => {
         value: [42, 55],
         arity: "n",
         parameter,
-        values,
       });
 
       const input = screen.getByRole("combobox");
@@ -251,7 +264,6 @@ describe("NumberInputWidget", () => {
         value: [],
         arity: "n",
         parameter,
-        values,
       });
 
       const input = screen.getByRole("combobox");
@@ -264,10 +276,54 @@ describe("NumberInputWidget", () => {
 
       expect(setValue).toHaveBeenCalledWith([55]);
     });
+
+    it("should allow to submit a value on enter", async () => {
+      const { setValue } = setup({ value: [], arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "10{enter}");
+      expect(screen.getByText("10")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith([10]);
+    });
+
+    it("should allow to submit multiple values on enter", async () => {
+      const { setValue } = setup({ value: [], arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "10,20{enter}");
+      expect(screen.getByText("10")).toBeInTheDocument();
+      expect(screen.getByText("20")).toBeInTheDocument();
+      expect(setValue).not.toHaveBeenCalled();
+
+      await userEvent.type(input, "{enter}");
+      expect(setValue).toHaveBeenCalledWith([10, 20]);
+    });
+
+    it("should allow to submit an empty value on enter if the parameter is not required", async () => {
+      const { setValue } = setup({ value: [10], arity: "n" });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should not allow to submit an empty value on enter if the parameter is required", async () => {
+      const { setValue } = setup({
+        value: [10],
+        parameter: createMockParameter({ required: true }),
+        arity: "n",
+      });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}{enter}");
+      expect(setValue).not.toHaveBeenLastCalledWith(undefined);
+    });
   });
 });
 
 function getValue(parent: HTMLElement, value: number | string) {
-  /* eslint-disable-next-line testing-library/prefer-screen-queries */
-  return getByText(parent, value.toString());
+  return within(parent).getByText(value.toString());
 }

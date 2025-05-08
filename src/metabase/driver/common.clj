@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -114,12 +114,19 @@
     :placeholder  "******"
     :visible-if   {"tunnel-auth-option" "ssh-key"}}])
 
+(def destination-database-option
+  "Map representing the 'is this a destination database' option"
+  {:name "destination-database"
+   :type :hidden
+   :default false})
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."
   {:name    "advanced-options"
    :type    :section
-   :default false})
+   :default false
+   :visible-if {"destination-database" false}})
 
 (def auto-run-queries
   "Map representing the `auto-run-queries` option in a DB connection form."
@@ -184,9 +191,15 @@
                        "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
+(def multi-level-schema
+  "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."
+  {:name    "multi-level-schema"
+   :type    :boolean
+   :default false})
+
 (def default-advanced-options
   "Vector containing the three most common options present in the advanced option section of the DB connection form."
-  [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
+  [destination-database-option auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -205,6 +218,7 @@
    :ssl                      default-ssl-details
    :user                     default-user-details
    :ssh-tunnel               ssh-tunnel-preferences
+   :multi-level-schema       multi-level-schema
    :additional-options       additional-options
    :advanced-options-start   advanced-options-start
    :default-advanced-options default-advanced-options})
@@ -327,13 +341,13 @@
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
 (def ^:dynamic *start-of-week*
-  "Used to override the [[metabase.public-settings/start-of-week]] settings.
+  "Used to override the [[metabase.settings.deprecated-grab-bag/start-of-week]] settings.
   Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
 (mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
-  "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
+  "Returns the int value for the current [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
   []
@@ -342,7 +356,7 @@
 (defn start-of-week-offset-for-day
   "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the
   offset (as a negative number) needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day
-  of week in the range 1..7 with [[metabase.public-settings/start-of-week]] as 1."
+  of week in the range 1..7 with [[metabase.settings.deprecated-grab-bag/start-of-week]] as 1."
   [start-of-week]
   (let [db-start-of-week     (.indexOf days-of-week start-of-week)
         target-start-of-week (start-of-week->int)
@@ -352,13 +366,13 @@
 
 (mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
-  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
+  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.settings.deprecated-grab-bag/start-of-week]] in
   results.
 
   e.g.
 
   If `:my-driver` returns [[driver/db-start-of-week]] as `:sunday` (1 is Sunday, 2 is Monday, and so forth),
-  and [[metabase.public-settings/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
+  and [[metabase.settings.deprecated-grab-bag/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
   Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
   [driver]
   (start-of-week-offset-for-day (driver/db-start-of-week driver)))

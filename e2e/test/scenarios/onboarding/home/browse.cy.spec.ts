@@ -351,7 +351,7 @@ describe("issue 37907", () => {
     cy.get("main").within(() => {
       cy.findByText("My ID column").should("be.visible");
       cy.findByText("The total billed amount. Updated.").should("be.visible");
-      cy.findByText("Discount amount.").should("be.visible");
+      cy.findByText("Discount amount.").scrollIntoView().should("be.visible");
     });
 
     H.visitQuestion(ORDERS_QUESTION_ID);

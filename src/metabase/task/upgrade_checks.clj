@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.task :as task]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))

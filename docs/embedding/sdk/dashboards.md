@@ -14,49 +14,54 @@ You can embed an interactive, editable, or static dashboard.
 
 You can embed a dashboard using the one of the dashboard components:
 
-- `StaticDashboard`
+### `StaticDashboard`
 
 A lightweight dashboard component. Use this component when you want to display results without letting people interact with the data.
 
-- `InteractiveDashboard`
+#### API Reference
+- [Component](./api/StaticDashboard.html)
+- [Props](./api/StaticDashboardProps.html)
+
+#### Props
+
+{% include_file "{{ dirname }}/api/snippets/StaticDashboardProps.md" snippet="properties" %}
+
+### `InteractiveDashboard`
 
 A dashboard component with drill downs, click behaviors, and the ability to view and click into questions. Use this component when you want to allow people to explore their data.
 
-- `EditableDashboard`
+#### API Reference
+- [Component](./api/InteractiveDashboard.html)
+- [Props](./api/InteractiveDashboardProps.html)
+
+#### Props
+
+{% include_file "{{ dirname }}/api/snippets/InteractiveDashboardProps.md" snippet="properties" %}
+
+### `EditableDashboard`
 
 A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard. Use this component when you want to give people the ability to modify your dashboards, for example in an admin panel in your app.
 
-## Dashboard component props
+#### API Reference
+- [Component](./api/EditableDashboard.html)
+- [Props](./api/EditableDashboardProps.html)
 
-| Prop                         | Type                                                        | Description                                                                                                                                                                                                                                                                                                                      |
-| ---------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| dashboardId                  | `number \| string`                                          | The ID of the dashboard. This is either:<br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`<br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data |
-| initialParameters\*\*        | `Record<string, string \| string[]>`                        | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
-| withTitle                    | `boolean`                                                   | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
-| withCardTitle                | `boolean`                                                   | Whether the dashboard cards should display a title.                                                                                                                                                                                                                                                                              |
-| withDownloads                | `boolean \| null`                                           | Whether to hide the download button.                                                                                                                                                                                                                                                                                             |
-| hiddenParameters\*\*         | `string[] \| null`                                          | A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).                                                                                                                                                                                                                                           |
-| drillThroughQuestionHeight\* | `number \| null`                                            | Height of a question component when drilled from the dashboard to a question level.                                                                                                                                                                                                                                              |
-| questionPlugins\*            | `{ mapQuestionClickActions: Function } \| null`             | Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.                                                                                                                                                                                                     |
-| onLoad                       | `(dashboard: Dashboard \| null) => void`                    | Event handler that triggers after dashboard loads with all visible cards and their content.                                                                                                                                                                                                                                      |
-| onLoadWithoutCards           | `(dashboard: Dashboard \| null) => void`                    | Event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.                                                                                                                                                  |
-| renderDrillThroughQuestion\* | `() => ReactNode`                                           | A react component that renders [a question's layout](#customizing-drill-through-question-layout) shown after drilling through a question or clicking on a question card in the dashboard.                                                                                                                                        |
-| drillThroughQuestionProps\*              | `[InteractiveQuestionProps](./questions.md#question-props)` | Props for the drill-through question                                                                                                                                                                                                                                                                                             |
+#### Props
 
-_\* Not available for `StaticDashboard`._
-
-_\*\* Combining `initialParameters` and `hiddenParameters` to filter data on the frontend is a [security risk](./authentication.md#security-warning-each-end-user-must-have-their-own-metabase-account). Combining `initialParameters` and `hiddenParameters` to declutter the user interface is fine._
-
-By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
-
-```tsx
-{% include_file "{{ dirname }}/snippets/dashboards/custom-height.tsx" snippet="example" %}
-```
+{% include_file "{{ dirname }}/api/snippets/EditableDashboardProps.md" snippet="properties" %}
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/interactive-dashboard.tsx" %}
+```
+
+## Customizing dashboard height
+
+By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
+
+```tsx
+{% include_file "{{ dirname }}/snippets/dashboards/custom-height.tsx" snippet="example" %}
 ```
 
 ## Customizing drill-through question layout
@@ -125,30 +130,35 @@ If you want to replace the existing menu with your own component, you can do so 
 
 Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
 
-### Hook
+### `useCreateDashboardApi`
 
+Use this hook if you'd like to have total control over the UI and settings.
+
+#### API Reference
+- [Hook](./api/useCreateDashboardApi.html)
+- [Options](./api/CreateDashboardValues.html)
+
+#### Example
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-hook" %}
 ```
 
-Props:
+#### Options
 
-| Prop         | Type                             | Description                                                                                                    |
-| ------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| name         | `string`                         | (required) Dashboard title                                                                                     |
-| description  | `string \| null`                 | Optional dashboard description                                                                                 |
-| collectionId | `number \| 'root' \| 'personal'` | Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`. |
+{% include_file "{{ dirname }}/api/snippets/CreateDashboardValues.md" snippet="properties" %}
 
-### Component
+### `CreateDashboardModal`
 
+#### API Refernce
+- [Component](./api/CreateDashboardModal.html)
+- [Props](./api/CreateDashboardModalProps.html)
+
+#### Example
 ```typescript
 {% include_file "{{ dirname }}/snippets/dashboards/create-dashboard.tsx" snippet="example-component" %}
 ```
 
-Supported component props:
+#### Props
 
-| Prop          | Type                             | Description                                                                                                        |
-| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| collectionId? | `number \| 'root' \| 'personal'` | Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`. |
-| onCreate      | `(dashboard: Dashboard) => void` | Handler to react on dashboard creation.                                                                            |
-| onClose       | `() => void`                     | Handler to close modal component                                                                                   |
+{% include_file "{{ dirname }}/api/snippets/CreateDashboardModalProps.md" snippet="properties" %}
+

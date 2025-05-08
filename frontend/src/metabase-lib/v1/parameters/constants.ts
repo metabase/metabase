@@ -5,105 +5,167 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "number/=",
       operator: "=",
-      name: t`Number`,
-      menuName: t`Equal to`,
+      get name() {
+        return t`Number`;
+      },
+      get menuName() {
+        return t`Equal to`;
+      },
     },
     {
       type: "number/!=",
       operator: "!=",
-      name: t`Not equal to`,
+      get name() {
+        return t`Not equal to`;
+      },
     },
     {
       type: "number/between",
       operator: "between",
-      name: t`Between`,
+      get name() {
+        return t`Between`;
+      },
     },
     {
       type: "number/>=",
       operator: ">=",
-      name: t`Greater than or equal to`,
+      get name() {
+        return t`Greater than or equal to`;
+      },
     },
     {
       type: "number/<=",
       operator: "<=",
-      name: t`Less than or equal to`,
+      get name() {
+        return t`Less than or equal to`;
+      },
     },
   ],
   string: [
     {
       type: "string/=",
       operator: "=",
-      name: t`Is`,
-      description: t`Select one or more values from a list or search box.`,
+      get name() {
+        return t`Is`;
+      },
+      get description() {
+        return t`Select one or more values from a list or search box.`;
+      },
     },
     {
       type: "string/!=",
       operator: "!=",
-      name: t`Is not`,
-      description: t`Exclude one or more specific values.`,
+      get name() {
+        return t`Is not`;
+      },
+      get description() {
+        return t`Exclude one or more specific values.`;
+      },
     },
     {
       type: "string/contains",
       operator: "contains",
-      name: t`Contains`,
-      description: t`Match values that contain the entered text.`,
+      get name() {
+        return t`Contains`;
+      },
+      get description() {
+        return t`Match values that contain the entered text.`;
+      },
     },
     {
       type: "string/does-not-contain",
       operator: "does-not-contain",
-      name: t`Does not contain`,
-      description: t`Filter out values that contain the entered text.`,
+      get name() {
+        return t`Does not contain`;
+      },
+      get description() {
+        return t`Filter out values that contain the entered text.`;
+      },
     },
     {
       type: "string/starts-with",
       operator: "starts-with",
-      name: t`Starts with`,
-      description: t`Match values that begin with the entered text.`,
+      get name() {
+        return t`Starts with`;
+      },
+      get description() {
+        return t`Match values that begin with the entered text.`;
+      },
     },
     {
       type: "string/ends-with",
       operator: "ends-with",
-      name: t`Ends with`,
-      description: t`Match values that end with the entered text.`,
+      get name() {
+        return t`Ends with`;
+      },
+      get description() {
+        return t`Match values that end with the entered text.`;
+      },
     },
   ],
   date: [
     {
       type: "date/month-year",
       operator: "month-year",
-      name: t`Month and Year`,
-      description: t`Like January 2016`,
+      get name() {
+        return t`Month and Year`;
+      },
+      get description() {
+        return t`Like January 2016`;
+      },
     },
     {
       type: "date/quarter-year",
       operator: "quarter-year",
-      name: t`Quarter and Year`,
-      description: t`Like Q1 2016`,
+      get name() {
+        return t`Quarter and Year`;
+      },
+      get description() {
+        return t`Like Q1 2016`;
+      },
     },
     {
       type: "date/single",
       operator: "single",
-      name: t`Single Date`,
-      description: t`Like January 31, 2016`,
+      get name() {
+        return t`Single Date`;
+      },
+      get description() {
+        return t`Like January 31, 2016`;
+      },
     },
     {
       type: "date/range",
       operator: "range",
-      name: t`Date Range`,
-      description: t`Like December 25, 2015 - February 14, 2016`,
+      get name() {
+        return t`Date Range`;
+      },
+      get description() {
+        return t`Like December 25, 2015 - February 14, 2016`;
+      },
     },
     {
       type: "date/relative",
       operator: "relative",
-      name: t`Relative Date`,
-      description: t`Like "the previous 7 days" or "this month"`,
+      get name() {
+        return t`Relative Date`;
+      },
+      get description() {
+        return t`Like "the previous 7 days" or "this month"`;
+      },
     },
     {
       type: "date/all-options",
       operator: "all-options",
-      name: t`Date`,
-      menuName: t`All Options`,
-      description: t`Contains all of the above`,
+      get name() {
+        return t`Date`;
+      },
+      get menuName() {
+        return t`All Options`;
+      },
+      get description() {
+        return t`Contains all of the above`;
+      },
     },
   ],
 } as const;
@@ -111,21 +173,29 @@ export const PARAMETER_OPERATOR_TYPES = {
 export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   {
     type: "date",
-    typeName: t`Date`,
+    get typeName() {
+      return t`Date`;
+    },
   },
   {
     type: "string",
-    typeName: t`String`,
+    get typeName() {
+      return t`String`;
+    },
   },
   {
     type: "number",
-    typeName: t`Number`,
+    get typeName() {
+      return t`Number`;
+    },
   },
 ] as const;
 
 export const ID_OPTION = {
   type: "id",
-  name: t`ID`,
+  get name() {
+    return t`ID`;
+  },
 } as const;
 
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
@@ -171,43 +241,63 @@ type FilterMap = {
 
 export const DATE_MBQL_FILTER_MAPPING: FilterMap = {
   thisday: {
-    name: t`Today`,
+    get name() {
+      return t`Today`;
+    },
     mapping: ["=", null, ["relative-datetime", "current"]],
   },
   past1days: {
-    name: t`Yesterday`,
+    get name() {
+      return t`Yesterday`;
+    },
     mapping: ["=", null, ["relative-datetime", -1, "day"]],
   },
   past7days: {
-    name: t`Previous 7 Days`,
+    get name() {
+      return t`Previous 7 Days`;
+    },
     mapping: ["time-interval", null, -7, "day"],
   },
   past30days: {
-    name: t`Previous 30 Days`,
+    get name() {
+      return t`Previous 30 Days`;
+    },
     mapping: ["time-interval", null, -30, "day"],
   },
   past1weeks: {
-    name: t`Previous Week`,
+    get name() {
+      return t`Previous Week`;
+    },
     mapping: ["time-interval", null, "previous", "week"],
   },
   past1months: {
-    name: t`Previous Month`,
+    get name() {
+      return t`Previous Month`;
+    },
     mapping: ["time-interval", null, "previous", "month"],
   },
   past1years: {
-    name: t`Previous Year`,
+    get name() {
+      return t`Previous Year`;
+    },
     mapping: ["time-interval", null, "previous", "year"],
   },
   thisweek: {
-    name: t`This Week`,
+    get name() {
+      return t`This Week`;
+    },
     mapping: ["time-interval", null, "current", "week"],
   },
   thismonth: {
-    name: t`This Month`,
+    get name() {
+      return t`This Month`;
+    },
     mapping: ["time-interval", null, "current", "month"],
   },
   thisyear: {
-    name: t`This Year`,
+    get name() {
+      return t`This Year`;
+    },
     mapping: ["time-interval", null, "current", "year"],
   },
 };

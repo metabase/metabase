@@ -14,13 +14,20 @@
 (def ^:dynamic *user-ctx* nil)
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-sync-search-indexing
+  "Perform all search indexing synchronously."
+  [& body]
+  `(binding [metabase.search.ingestion/*force-sync* true]
+     ~@body))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body."
   [& body]
   `(when (search/supports-index?)
      (search.index/with-temp-index-table
       ;; We need ingestion to happen on the same thread so that it uses the right search index.
-       (binding [metabase.search.ingestion/*force-sync* true]
+       (with-sync-search-indexing
          ~@body))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}

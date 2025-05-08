@@ -132,7 +132,7 @@
     (let [is-neg?        (< num 1)
           has-neg?       (< min 0)
           normalized-max (clojure.core/max (abs min) (abs max))
-          pct-full       (int (* (/ (abs num) normalized-max) 100))
+          pct-full       (if (zero? normalized-max) 0 (int (* (/ (abs num) normalized-max) 100)))
           pct-left       (- style/mb-width pct-full)
           neg-pct-full   (int (Math/floor (* pct-full 0.49)))
           neg-pct-left   (- 49 neg-pct-full)
@@ -232,6 +232,19 @@
     (= "middle" text-align) "center"
     :else                   text-align))
 
+(defn- column-has-width
+  "Check if a column has a valid width in the column-widths array.
+   Returns true if:
+   - column-widths is present
+   - column-index is not nil
+   - column-index is within bounds of column-widths
+   - The width at column-index is not nil"
+  [column-widths column-index]
+  (and column-widths
+       (some? column-index)
+       (< column-index (count column-widths))
+       (some? (nth column-widths column-index))))
+
 (defn column->viz-setting-styles
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
@@ -248,10 +261,12 @@
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
-                                     (if column-widths
+                                     (if (column-has-width column-widths column-index)
                                        {:min-width (format "%spx" (get-min-width column-widths column-index))}
-                                       ;; Text wrapping enabled but no column widths supplied, default to 780px
-                                       {:max-width "780px"})))
+                                       ;; Text wrapping enabled but conditions not met, fall back to 780px
+                                       ;; Email clients respond to `min-width`, but slack responds to `width`
+                                       {:max-width "780px !important"
+                                        :width "780px"})))
 
            ;; text alignment
            (::mb.viz/text-align col-setting)
@@ -263,7 +278,7 @@
 
            ;; minibar
            (::mb.viz/show-mini-bar col-setting)
-           (assoc column-name (if column-widths
+           (assoc column-name (if (column-has-width column-widths column-index)
                                 {:width (nth column-widths column-index)
                                  :min-width (get-min-width column-widths column-index)}
                                 {})))))
