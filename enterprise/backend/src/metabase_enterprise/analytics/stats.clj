@@ -1,4 +1,4 @@
-(ns metabase-enterprise.stats
+(ns metabase-enterprise.analytics.stats
   (:require
    [metabase-enterprise.advanced-config.models.notification :as advanced-config.models.notification]
    [metabase-enterprise.scim.api :as scim-api]

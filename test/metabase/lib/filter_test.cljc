@@ -12,7 +12,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.number :as u.number]))
@@ -354,7 +353,7 @@
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
                                   (:< :>) (lib/filter-clause op col col)
                                   (lib/filter-clause op col 123))]]
-      (testing (str (:short op) " with " (lib.types.isa/field-type col))
+      (testing (str (:short op) " with " (:name col))
         (is (= op
                (lib/filter-operator query filter-clause)))))))
 

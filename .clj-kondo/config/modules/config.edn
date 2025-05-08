@@ -133,7 +133,7 @@
    :uses #{db settings}}
 
   auth-provider
-  {:api  #{metabase.auth-provider}
+  {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
 
   bookmarks
@@ -282,7 +282,8 @@
            util}}
 
   events
-  {:api  #{metabase.events metabase.events.init}
+  {:api  #{metabase.events.core
+           metabase.events.init}
    :uses #{api channel driver models premium-features util}}
 
   formatter
@@ -729,9 +730,9 @@
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api enterprise/impersonation lib models permissions premium-features query-processor util}}
 
-  enterprise/airgap
+  enterprise/analytics
   {:api  #{}
-   :uses #{premium-features util}}
+   :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
 
   enterprise/api
   {:api  #{metabase-enterprise.api.routes
@@ -811,6 +812,10 @@
   {:api  #{metabase-enterprise.llm.api}
    :uses #{analytics analyze api query-processor settings util}}
 
+  enterprise/premium-features
+  {:api  #{}
+   :uses #{premium-features util}}
+
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}
    :uses #{api models query-analysis request util}}
@@ -858,12 +863,9 @@
    :uses #{api channel embedding events notification premium-features request session settings sso util enterprise/scim}}
 
   enterprise/stale
-  {:api  #{metabase-enterprise.stale.routes}
+  {:api  #{metabase-enterprise.stale.api
+           metabase-enterprise.stale.init}
    :uses #{analytics api embedding models premium-features request settings util}}
-
-  enterprise/stats
-  {:api  #{}
-   :uses #{driver premium-features enterprise/advanced-config enterprise/scim enterprise/sso}}
 
   enterprise/task
   {:api  #{metabase-enterprise.task.truncate-audit-tables}

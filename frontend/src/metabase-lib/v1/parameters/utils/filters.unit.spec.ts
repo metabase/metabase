@@ -21,7 +21,7 @@ describe("parameters/utils/field-filters", () => {
       isNumeric: () => false,
       isString: () => false,
       isBoolean: () => false,
-      isLocation: () => false,
+      isAddress: () => false,
       isCoordinate: () => false,
     });
 
@@ -57,7 +57,8 @@ describe("parameters/utils/field-filters", () => {
           type: "location",
           field: () => ({
             ...field,
-            isLocation: () => true,
+            isString: () => true,
+            isAddress: () => true,
             isCity: () => true,
           }),
         },
@@ -134,7 +135,7 @@ describe("parameters/utils/field-filters", () => {
       const locationDimension = createMockDimension({
         field: () => ({
           ...field,
-          isLocation: () => true,
+          isAddress: () => true,
         }),
       });
 

@@ -1,4 +1,4 @@
-(ns metabase.events
+(ns metabase.events.impl
   "Provides a very simple Emacs Lisp hook-style events system using Methodical. See
   https://github.com/metabase/metabase/issues/19812 for more information.
 

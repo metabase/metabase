@@ -4,7 +4,7 @@
    [metabase.api.database :as api.database]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]

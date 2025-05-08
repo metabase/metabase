@@ -1,7 +1,7 @@
 (ns metabase.events.cards-notification-deleted-on-card-save
   (:require
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 

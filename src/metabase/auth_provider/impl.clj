@@ -1,4 +1,4 @@
-(ns metabase.auth-provider
+(ns metabase.auth-provider.impl
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
@@ -9,4 +9,6 @@
   60)
 
 (defenterprise fetch-auth "In OSS, this returns an empty map."
-  metabase-enterprise.auth-provider [_driver _database-id _db-details] {})
+  metabase-enterprise.auth-provider.impl
+  [_driver _database-id _db-details]
+  {})

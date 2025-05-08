@@ -8,7 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.http-client :as client]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]

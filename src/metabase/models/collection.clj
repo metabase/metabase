@@ -14,7 +14,7 @@
    [metabase.audit :as audit]
    [metabase.config :as config :refer [*request-id*]]
    [metabase.db :as mdb]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

@@ -1,7 +1,7 @@
-(ns metabase-enterprise.stale-test
+(ns metabase-enterprise.stale.impl-test
   (:require
    [clojure.test :refer [deftest is are testing]]
-   [metabase-enterprise.stale :as stale]
+   [metabase-enterprise.stale.impl :as stale]
    [metabase-enterprise.test :as met]
    [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]

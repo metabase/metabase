@@ -102,8 +102,7 @@
    There are slight differences between names and ordering for the different base types."
   [column :- ::lib.schema.metadata/column]
   ;; The order of these clauses is important since we want to match the most relevant type
-  ;; the order is different than `lib.types.isa/field-type` as filters need to operate
-  ;; on the effective-type rather than the semantic-type, eg boolean and number cannot become
+  ;; filters need to operate on the effective-type rather than the semantic-type, eg boolean and number cannot become
   ;; string if semantic type is type/Category
   (condp lib.types.isa/field-type? column
     :metabase.lib.types.constants/temporal    temporal-operators

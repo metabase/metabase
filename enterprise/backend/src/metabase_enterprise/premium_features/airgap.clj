@@ -1,4 +1,4 @@
-(ns metabase-enterprise.airgap
+(ns metabase-enterprise.premium-features.airgap
   (:require
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]

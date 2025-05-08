@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]

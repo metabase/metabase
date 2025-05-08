@@ -8,7 +8,7 @@
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]

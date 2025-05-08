@@ -229,8 +229,8 @@
     (testing "mbql queries have parameter mappings with field ids"
       (let [table (t2/select-one :model/Table :id (mt/id :products))
             dashboard (magic/automagic-analysis table {})
-            expected-targets (mt/$ids #{[:dimension $products.category]
-                                        [:dimension $products.created_at]})
+            expected-targets (mt/$ids #{[:dimension $products.category {:stage-number 0}]
+                                        [:dimension $products.created_at {:stage-number 0}]})
             actual-targets (into #{}
                                  (comp (mapcat :parameter_mappings)
                                        (map :target))
@@ -246,8 +246,8 @@
           (let [dashboard (magic/automagic-analysis card {})
                 ;; i'm not sure why category isn't picked here
                 expected-targets #{[:dimension
-                                    [:field "CREATED_AT"
-                                     {:base-type :type/DateTimeWithLocalTZ}]]}
+                                    [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                                    {:stage-number 0}]}
                 actual-targets (into #{}
                                      (comp (mapcat :parameter_mappings)
                                            (map :target))

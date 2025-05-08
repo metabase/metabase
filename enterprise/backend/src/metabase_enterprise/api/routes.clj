@@ -19,7 +19,7 @@
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
-   [metabase-enterprise.stale.routes]
+   [metabase-enterprise.stale.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
@@ -74,7 +74,7 @@
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
-   "/stale"                      (premium-handler metabase-enterprise.stale.routes/routes :collection-cleanup)
+   "/stale"                      (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/upload-management"          (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

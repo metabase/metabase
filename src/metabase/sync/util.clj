@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.query-processor.interface :as qp.i]

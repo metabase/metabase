@@ -1,7 +1,7 @@
-(ns metabase.events-test
+(ns metabase.events.impl-test
   (:require
    [clojure.test :refer :all]
-   [metabase.events :as events]
+   [metabase.events.impl :as events]
    [methodical.core :as methodical]))
 
 (def ^:private ^:dynamic *method-calls* nil)
@@ -29,6 +29,6 @@
       (is (= {:some :object}
              (events/publish-event! ::test-topic {:some :object}))))
     (testing "Our method should have been called"
-      (is (= {:metabase.events-test/test-topic  {:some :object}
-              :metabase.events-test/test-topics {:some :object}}
+      (is (= {:metabase.events.impl-test/test-topic  {:some :object}
+              :metabase.events.impl-test/test-topics {:some :object}}
              @*method-calls*)))))

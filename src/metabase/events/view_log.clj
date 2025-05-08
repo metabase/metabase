@@ -3,7 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
