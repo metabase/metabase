@@ -122,11 +122,11 @@
   (cleaned-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "card test card", :model "card", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "dataset test dataset", :model "dataset", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "metric test metric", :model "metric", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
