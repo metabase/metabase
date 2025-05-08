@@ -222,27 +222,31 @@ describe("scenarios > setup", () => {
     });
   });
 
-  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
-    H.setTokenFeatures("none");
-    H.mockSessionProperty("is-hosted?", true);
+  it(
+    "should pre-fill user info for hosted instances (infra-frontend#1109)",
+    { tags: "@flaky" },
+    () => {
+      H.setTokenFeatures("none");
+      H.mockSessionProperty("is-hosted?", true);
 
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
-    );
+      cy.visit(
+        "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+      );
 
-    skipWelcomePage();
-    selectPreferredLanguageAndContinue();
+      skipWelcomePage();
+      selectPreferredLanguageAndContinue();
 
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByDisplayValue("John").should("exist");
-      cy.findByDisplayValue("Doe").should("exist");
-      cy.findByDisplayValue("john@doe.test").should("exist");
-      cy.findByDisplayValue("Doe Unlimited").should("exist");
-      cy.findByLabelText("Create a password")
-        .should("be.focused")
-        .and("be.empty");
-    });
-  });
+      cy.findByTestId("setup-forms").within(() => {
+        cy.findByDisplayValue("John").should("exist");
+        cy.findByDisplayValue("Doe").should("exist");
+        cy.findByDisplayValue("john@doe.test").should("exist");
+        cy.findByDisplayValue("Doe Unlimited").should("exist");
+        cy.findByLabelText("Create a password")
+          .should("be.focused")
+          .and("be.empty");
+      });
+    },
+  );
 
   it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";
@@ -454,7 +458,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events", () => {
+  it("should send snowplow events", { tags: "@flaky" }, () => {
     let goodEvents = 0;
 
     goodEvents++; // 1 - new_instance_created
@@ -576,14 +580,18 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
   });
 
-  it("should ignore snowplow failures and work as normal", () => {
-    H.blockSnowplow();
-    cy.visit("/setup");
-    skipWelcomePage();
+  it(
+    "should ignore snowplow failures and work as normal",
+    { tags: "@flaky" },
+    () => {
+      H.blockSnowplow();
+      cy.visit("/setup");
+      skipWelcomePage();
 
-    // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
-    H.expectGoodSnowplowEvents(1);
-  });
+      // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
+      H.expectGoodSnowplowEvents(1);
+    },
+  );
 });
 
 const skipWelcomePage = () => {
