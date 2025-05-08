@@ -32,6 +32,7 @@ export interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   allowCustomExpressions?: boolean;
+  allowMetrics?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
@@ -68,6 +69,7 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   allowCustomExpressions = false,
+  allowMetrics = true,
   onClose,
   onQueryChange,
   onBack,
@@ -138,7 +140,7 @@ export function AggregationPicker({
       });
     }
 
-    if (metrics.length > 0) {
+    if (allowMetrics && metrics.length > 0) {
       sections.push({
         key: "metrics",
         name: t`Metrics`,
@@ -167,6 +169,7 @@ export function AggregationPicker({
     clauseIndex,
     operators,
     allowCustomExpressions,
+    allowMetrics,
   ]);
 
   const checkIsItemSelected = useCallback(

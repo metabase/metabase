@@ -92,6 +92,7 @@
   aggregations-metadata
   available-aggregation-operators
   selected-aggregation-operators
+  filter-pivot-aggregation-operators
   count
   avg
   count-where
