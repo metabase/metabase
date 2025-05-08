@@ -53,7 +53,7 @@
     (let [url-length       (count  url)
           const-length     3
           max-label-length (- block-text-length-limit url-length const-length)
-          label' (escape-mkdwn label)]
+          label'           (escape-mkdwn label)]
       (if (< max-label-length 10)
         (truncate (str "(URL exceeds slack limits) " label') block-text-length-limit)
         (format "<%s|%s>" url (truncate label' max-label-length))))
@@ -66,7 +66,7 @@
 
 (defn- part->sections!
   "Converts a notification part directly into Slack Block Kit blocks."
-  [part]
+  [part & {:keys [card-url-text]}]
   (let [part (channel.shared/maybe-realize-data-rows part)]
     (case (:type part)
       :card
@@ -78,9 +78,8 @@
             title-link                             (when-not (= :table-editable (:display card))
                                                      (urls/card-url card-id))]
         (conj [{:type "section"
-                :text {:type     "mrkdwn"
-                       :text     (mkdwn-link-text title-link title)
-                       :verbatim true}}]
+                :text {:type "mrkdwn"
+                       :text (or card-url-text (mkdwn-link-text title-link title))}}]
               (if (:render/text rendered-info)
                 {:type "section"
                  :text {:type "plain_text"
@@ -113,12 +112,18 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [_channel-type _payload-type {:keys [payload]} _template recipients]
-  (let [blocks (concat [{:type "header"
-                         :text {:type "plain_text"
-                                :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
-                                :emoji true}}]
-                       (part->sections! (:card_part payload)))]
+  [channel-type _payload-type {:keys [payload] :as notification-payload} template recipients]
+  ;; for alerts, we allow users to template the url card part only
+  (let [link-template (or template
+                          (channel.template/default-template :notification/card nil channel-type))
+        card-url-text (markdown/process-markdown
+                       (channel.template/render-template link-template notification-payload)
+                       :slack)
+        blocks        (concat [{:type "header"
+                                :text {:type "plain_text"
+                                       :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
+                                       :emoji true}}]
+                              (part->sections! (:card_part payload) :card-url-text card-url-text))]
     (doall (for [channel (map notification-recipient->channel recipients)]
              {:channel channel
               :blocks  blocks}))))

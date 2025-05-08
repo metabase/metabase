@@ -109,6 +109,7 @@ export const AlertListItem = ({
       </Group>
 
       <HandlersInfo
+        mt="sm"
         emailHandler={emailHandler}
         slackHandler={slackHandler}
         hookHandlers={hookHandlers}

@@ -15,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -176,7 +177,8 @@
     (notification/sample-payload notification)
 
     ;; else
-    (notification/notification-payload notification)))
+    (binding [notification.payload.execute/*query-max-bare-rows* 2]
+      (notification/notification-payload notification))))
 
 (api.macros/defendpoint :post "/payload"
   "Return the payload of a notification"

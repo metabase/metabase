@@ -50,7 +50,7 @@
    [{:type "header" :text {:type "plain_text" :text "🔔 Test card" :emoji true}}
     {:type "section"
      :text
-     {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}]
+     {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}]
     include-image?
     (conj {:type "image"
            :slack_file {:id "Test card.png"}

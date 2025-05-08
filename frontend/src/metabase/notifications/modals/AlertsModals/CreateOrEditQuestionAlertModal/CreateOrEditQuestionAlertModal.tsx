@@ -1,10 +1,14 @@
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import {
+  skipToken,
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
+  useGetDefaultNotificationTemplateQuery,
+  useGetNotificationPayloadExampleQuery,
   useListChannelsQuery,
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
@@ -48,12 +52,14 @@ import type {
   AlertNotification,
   CreateAlertNotificationRequest,
   NotificationCardSendCondition,
+  NotificationChannelType,
   NotificationCronSubscription,
   NotificationHandler,
   ScheduleType,
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
 
+import S from "./CreateOrEditQuestionAlertModal.module.css";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
@@ -120,6 +126,45 @@ export const CreateOrEditQuestionAlertModal = ({
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
+
+  const { data: defaultTemplates } = useGetDefaultNotificationTemplateQuery(
+    notification?.payload?.send_condition &&
+      user &&
+      notification.handlers.length > 0
+      ? {
+          notification: {
+            payload_type: notification.payload_type,
+            payload: notification.payload,
+          },
+          channel_types: notification.handlers.map(
+            (h) => h.channel_type,
+          ) as NotificationChannelType[],
+        }
+      : skipToken,
+    {
+      skip:
+        !notification?.payload?.send_condition ||
+        notification.handlers.length === 0,
+    },
+  );
+
+  const { data: templateContext } = useGetNotificationPayloadExampleQuery(
+    notification?.payload_type &&
+      notification?.payload &&
+      user &&
+      notification.handlers.length > 0
+      ? {
+          payload_type: notification.payload_type,
+          payload: notification.payload,
+          creator_id: user.id,
+        }
+      : skipToken,
+    {
+      skip:
+        !notification?.payload?.send_condition ||
+        notification.handlers.length === 0,
+    },
+  );
 
   const questionId = question?.id();
   const isEditMode = !!editingNotification;
@@ -278,6 +323,10 @@ export const CreateOrEditQuestionAlertModal = ({
       onClose={onClose}
       padding="2.5rem"
       title={isEditMode ? t`Edit alert` : t`New alert`}
+      classNames={{
+        content: S.modalContent,
+        body: S.modalBody,
+      }}
       styles={{
         body: {
           paddingLeft: 0,
@@ -285,106 +334,113 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
-        <AlertModalSettingsBlock
-          title={t`What do you want to be alerted about?`}
-        >
-          <Flex gap="lg" align="center">
-            <AlertTriggerIcon />
-            {hasSingleTriggerOption ? (
-              <Paper
-                data-testid="alert-goal-select"
-                withBorder
-                shadow="none"
-                py="sm"
-                px="1.5rem"
-                bg="transparent"
-              >
-                <Text>{triggerOptions[0].label}</Text>
-              </Paper>
-            ) : (
-              <Select
-                data-testid="alert-goal-select"
-                data={triggerOptions}
-                value={notification.payload.send_condition}
-                w={276}
-                onChange={(value) =>
-                  setNotification({
-                    ...notification,
-                    payload: {
-                      ...notification.payload,
-                      send_condition: value as NotificationCardSendCondition,
-                    },
-                  })
-                }
-              />
-            )}
-          </Flex>
-        </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock
-          title={t`When do you want to check this?`}
-          style={{
-            "--alert-modal-content-padding": "0",
-          }}
-        >
-          <NotificationSchedule
-            subscription={subscription}
-            scheduleOptions={ALERT_SCHEDULE_OPTIONS}
-            onScheduleChange={handleScheduleChange}
-          />
-        </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock
-          title={t`Where do you want to send the results?`}
-        >
-          <NotificationChannelsPicker
-            notificationHandlers={notification.handlers}
-            channels={channelSpec ? channelSpec.channels : undefined}
-            onChange={(newHandlers: NotificationHandler[]) => {
-              setNotification({
-                ...notification,
-                handlers: newHandlers,
-              });
+      <div className={S.root}>
+        <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
+          <AlertModalSettingsBlock
+            title={t`What do you want to be alerted about?`}
+          >
+            <Flex gap="lg" align="center">
+              <AlertTriggerIcon />
+              {hasSingleTriggerOption ? (
+                <Paper
+                  data-testid="alert-goal-select"
+                  withBorder
+                  shadow="none"
+                  py="sm"
+                  px="1.5rem"
+                  bg="transparent"
+                >
+                  <Text>{triggerOptions[0].label}</Text>
+                </Paper>
+              ) : (
+                <Select
+                  data-testid="alert-goal-select"
+                  data={triggerOptions}
+                  value={notification.payload.send_condition}
+                  w={276}
+                  onChange={(value) =>
+                    setNotification({
+                      ...notification,
+                      payload: {
+                        ...notification.payload,
+                        send_condition: value as NotificationCardSendCondition,
+                      },
+                    })
+                  }
+                />
+              )}
+            </Flex>
+          </AlertModalSettingsBlock>
+          <AlertModalSettingsBlock
+            title={t`When do you want to check this?`}
+            style={{
+              "--alert-modal-content-padding": "0",
             }}
-            getInvalidRecipientText={(domains) =>
-              userCanAccessSettings
-                ? t`You're only allowed to email alerts to addresses ending in ${domains}`
-                : t`You're only allowed to email alerts to allowed domains`
-            }
-          />
-        </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock title={t`More options`}>
-          <Switch
-            label={t`Only send this alert once`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
-            labelPosition="right"
-            size="sm"
-            checked={notification.payload.send_once}
-            onChange={(e) =>
-              setNotification({
-                ...notification,
-                payload: {
-                  ...notification.payload,
-                  send_once: e.target.checked,
+          >
+            <NotificationSchedule
+              subscription={subscription}
+              scheduleOptions={ALERT_SCHEDULE_OPTIONS}
+              onScheduleChange={handleScheduleChange}
+            />
+          </AlertModalSettingsBlock>
+          <AlertModalSettingsBlock
+            title={t`Where do you want to send the results?`}
+          >
+            <NotificationChannelsPicker
+              notificationHandlers={notification.handlers}
+              channels={channelSpec ? channelSpec.channels : undefined}
+              onChange={(newHandlers: NotificationHandler[]) => {
+                setNotification({
+                  ...notification,
+                  handlers: newHandlers,
+                });
+              }}
+              getInvalidRecipientText={(domains) =>
+                userCanAccessSettings
+                  ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+                  : t`You're only allowed to email alerts to allowed domains`
+              }
+              enableTemplates
+              defaultTemplates={defaultTemplates}
+              templateContext={templateContext}
+            />
+          </AlertModalSettingsBlock>
+          <AlertModalSettingsBlock title={t`More options`}>
+            <Switch
+              label={t`Only send this alert once`}
+              styles={{
+                label: {
+                  lineHeight: "1.5rem",
                 },
-              })
-            }
-          />
-        </AlertModalSettingsBlock>
-      </Stack>
+              }}
+              labelPosition="right"
+              size="sm"
+              checked={notification.payload.send_once}
+              onChange={(e) =>
+                setNotification({
+                  ...notification,
+                  payload: {
+                    ...notification.payload,
+                    send_once: e.target.checked,
+                  },
+                })
+              }
+            />
+          </AlertModalSettingsBlock>
+        </Stack>
+      </div>
       <Flex
+        h="5.5rem"
         justify="space-between"
         px="2.5rem"
         pt="lg"
-        className={CS.borderTop}
+        className={cx(CS.borderTop, S.modalFooter)}
       >
         <Button
           variant="outline"
           color="brand"
           loading={isLoading}
+          disabled={!isValid}
           onClick={onSendNow}
         >
           {isLoading ? t`Sending…` : t`Send now`}

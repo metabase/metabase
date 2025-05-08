@@ -85,3 +85,7 @@
                           :user-id creator_id
                           :object  {:recipients (notification.dashboard/handlers->audit-recipients handlers)
                                     :filters    (-> notification-info :alert :parameters)}}))
+
+(defmethod notification.payload/notification-payload-schema :notification/card
+  [_notification-info]
+  :any)

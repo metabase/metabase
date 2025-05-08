@@ -231,7 +231,7 @@
    (apply concat
           (for [card-id card-ids]
             [{:type "section"
-              :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
+              :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
              {:type "image" :slack_file {:id (format "%s.png" pulse.test-util/card-name)} :alt_text pulse.test-util/card-name}]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -393,7 +393,7 @@
                            {:type "section"
                             :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}
                            {:type "section"
-                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
+                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                            {:type "section" :text {:type "plain_text" :text "1,000"}}
                            {:type "section" :text {:type "mrkdwn" :text "*header*"}}]}
                 pulse-results))))}}))
@@ -431,7 +431,7 @@
                           {:type "section"
                            :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}
                           {:type "section"
-                           :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
+                           :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                           {:type "section" :text {:type "plain_text" :text "1,000"}}
                           {:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}
                 pulse-results))))}}))
@@ -473,7 +473,7 @@
                                 (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
                                         dashboard-id)}]}
                              {:type "section"
-                              :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
+                              :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                              {:type "section" :text {:type "plain_text" :text "1,000"}}]}
                   message))))}})))
 
@@ -535,7 +535,7 @@
                          {:type "section", :fields [{:type "mrkdwn"
                                                      :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}
                          {:type "section"
-                          :text {:type "mrkdwn" :text #"<https://testmb\.com/question/\d+\|Test card>" :verbatim true}}
+                          :text {:type "mrkdwn" :text #"<https://testmb\.com/question/\d+\|Test card>"}}
                          {:type "section", :text {:type "plain_text", :text "1,000"}}
                          {:type "section",
                           :text
@@ -936,7 +936,7 @@
                                      dashboard-id)}]}
                           {:type "section" :text {:type "mrkdwn" :text "*The first tab*"}}
                           {:type "section"
-                           :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
+                           :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                           {:type "section" :text {:type "plain_text" :text "1,000"}}
                           {:type "section" :text {:type "mrkdwn" :text "Card 1 tab-1"}}
                           {:type "section" :text {:type "mrkdwn" :text "Card 2 tab-1"}}
@@ -1221,7 +1221,7 @@
                 {:fields [{:text (mt/malli=? :string)
                            :type "mrkdwn"}]
                  :type "section"}
-                {:text {:text "My Card" :type "mrkdwn" :verbatim true}
+                {:text {:text "My Card" :type "mrkdwn"}
                  :type "section"}
                 {:alt_text "My Card" :slack_file {:id "My Card.png"} :type "image"}]
                (:blocks message))))}}))
