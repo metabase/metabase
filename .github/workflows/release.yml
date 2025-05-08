@@ -443,6 +443,7 @@ jobs:
       - name: Publish draft release notes to github
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           result-encoding: string
           script: | # js
             const {

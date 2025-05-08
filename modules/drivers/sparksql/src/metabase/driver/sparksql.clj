@@ -235,6 +235,7 @@
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
@@ -249,3 +250,7 @@
 (defmethod sql.qp/quote-style :sparksql
   [_driver]
   :mysql)
+
+(defmethod sql.qp/->integer :sparksql
+  [driver value]
+  (sql.qp/->integer-with-round driver value))

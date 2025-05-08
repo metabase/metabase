@@ -15,9 +15,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -201,8 +199,8 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
-        (is (= true
-               (mi/can-read? dash)))))
+        (is (true?
+             (mi/can-read? dash)))))
 
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
@@ -318,11 +316,11 @@
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection c1   {:name "top level" :location "/" :created_at now}
                      :model/Dashboard  dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]
         (is (= "8cbf93b7"
-               (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) now])
+               (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) (:created_at dash)])
                (serdes/identity-hash dash)))))))
 
 (deftest descendants-test

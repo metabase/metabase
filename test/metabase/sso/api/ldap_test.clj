@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.sso.settings :as sso.settings]
@@ -65,9 +65,9 @@
 
       (with-redefs [ldap/test-ldap-connection (constantly {:status :SUCCESS})]
         (testing "LDAP port is saved as default value if passed as an empty string (#18936)"
-          (is (= true
-                 (mt/user-http-request :crowberto :put 200 "ldap/settings"
-                                       (assoc (ldap-test-details) :ldap-port ""))))
+          (is (true?
+               (mt/user-http-request :crowberto :put 200 "ldap/settings"
+                                     (assoc (ldap-test-details) :ldap-port ""))))
           (is (= 389 (sso.settings/ldap-port)))))
 
       (testing "Could update with obfuscated password"

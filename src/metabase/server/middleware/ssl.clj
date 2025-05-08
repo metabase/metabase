@@ -2,8 +2,8 @@
   "Middleware for redirecting users to HTTPS sessions"
   (:require
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [ring.util.request :as req]
    [ring.util.response :as response]))
 

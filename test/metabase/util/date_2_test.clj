@@ -497,8 +497,8 @@
         (doseq [t ((juxt t/instant t/local-date t/local-date-time t/offset-date-time identity)
                    (t/zoned-date-time "2019-11-01T00:00-08:00[US/Pacific]"))]
           (testing (format "t = %s" (pr-str t))
-            (is (= true
-                   (u.date/older-than? t (t/weeks 2)))
+            (is (true?
+                 (u.date/older-than? t (t/weeks 2)))
                 (format "%s happened before 2019-11-19" (pr-str t)))
             (is (= false
                    (u.date/older-than? t (t/months 2)))

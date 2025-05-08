@@ -7,6 +7,9 @@
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
@@ -207,3 +210,20 @@
                  (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
           (finally
             (driver/drop-table! :clickhouse (:id db) table)))))))
+
+(deftest ^:parallel percentile-test
+  (mt/test-driver
+    :clickhouse
+    (testing "Percentile with expression arg works correctly (#56485)"
+      (let [mp (mt/metadata-provider)
+            q (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                  (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
+                  (lib/aggregate (lib/percentile (lib/case [[(lib/< (lib.metadata/field mp (mt/id :orders :created_at))
+                                                                    "2018-04-01")
+                                                             (lib.metadata/field mp (mt/id :orders :total))]])
+                                                 0.7))
+                  (lib/limit 3))]
+        (is (= [["2016-04-01T00:00:00Z" 52.76]
+                ["2016-05-01T00:00:00Z" 81.892]
+                ["2016-06-01T00:00:00Z" 71.954]]
+               (mt/rows (qp/process-query q))))))))

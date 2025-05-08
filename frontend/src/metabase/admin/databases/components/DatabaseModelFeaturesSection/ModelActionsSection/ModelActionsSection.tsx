@@ -1,20 +1,21 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Toggle from "metabase/core/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Switch, Tooltip } from "metabase/ui";
 
-import { Description, Error, Label } from "../ModelFeatureToggles";
+import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 
 export interface ModelActionsSectionProps {
   hasModelActionsEnabled: boolean;
   onToggleModelActionsEnabled: (enabled: boolean) => Promise<void>;
+  disabled: boolean;
 }
 
 export function ModelActionsSection({
   hasModelActionsEnabled,
   onToggleModelActionsEnabled,
+  disabled,
 }: ModelActionsSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
@@ -31,11 +32,21 @@ export function ModelActionsSection({
     <div>
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="model-actions-toggle">{t`Model actions`}</Label>
-        <Toggle
-          id="model-actions-toggle"
-          value={hasModelActionsEnabled}
-          onChange={handleToggleModelActionsEnabled}
-        />
+        <Tooltip
+          label={t`Model actions can not be enabled if database routing is enabled.`}
+          disabled={!disabled}
+        >
+          <Box>
+            <Switch
+              id="model-actions-toggle"
+              checked={hasModelActionsEnabled}
+              onChange={(e) =>
+                handleToggleModelActionsEnabled(e.currentTarget.checked)
+              }
+              disabled={disabled}
+            />
+          </Box>
+        </Tooltip>
       </Flex>
       <Box maw="22.5rem">
         {error ? <Error>{error}</Error> : null}

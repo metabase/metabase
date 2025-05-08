@@ -4,6 +4,7 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.enterprise :as qp.enterprise]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -16,7 +17,8 @@
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
     (f (f query rff)) -> (f query rff)"
-  [#'qp.perms/check-query-action-permissions])
+  [#'qp.enterprise/swap-mirror-db-middleware
+   #'qp.perms/check-query-action-permissions])
 
 (defn- apply-middleware [qp middleware-fns]
   (reduce

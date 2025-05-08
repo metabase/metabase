@@ -1,16 +1,30 @@
 import type { MouseEvent } from "react";
 
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import type { ButtonProps } from "embedding-sdk/types/ui";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
-import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionResetButtonProps = ButtonProps;
+
+/**
+ * Button to reset question modifications. Only appears when there are unsaved changes to the question.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 export const QuestionResetButton = ({
   onClick,
   ...buttonProps
-}: ButtonProps = {}) => {
+}: InteractiveQuestionResetButtonProps = {}) => {
   const { question, originalQuestion, onReset } =
     useInteractiveQuestionContext();
 

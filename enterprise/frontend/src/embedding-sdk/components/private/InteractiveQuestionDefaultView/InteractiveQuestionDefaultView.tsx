@@ -33,8 +33,19 @@ import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./InteractiveQuestionDefaultView.module.css";
 
 export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
+  /**
+   * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout.
+   */
   title?: SdkQuestionTitleProps;
+
+  /**
+   * Determines whether a reset button is displayed. Only relevant when using the default layout.
+   */
   withResetButton?: boolean;
+
+  /**
+   * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
+   */
   withChartTypeSelector?: boolean;
 }
 
@@ -55,7 +66,6 @@ export const InteractiveQuestionDefaultView = ({
     originalQuestion,
     isSaveEnabled,
     withDownloads,
-    isCardIdError,
   } = useInteractiveQuestionContext();
 
   const isCreatingQuestionFromScratch =
@@ -75,10 +85,7 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  if (
-    !question ||
-    (isCardIdError && originalId !== "new" && originalId !== null)
-  ) {
+  if (!question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {

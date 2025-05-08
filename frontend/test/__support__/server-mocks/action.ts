@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import type { CardId, WritebackAction } from "metabase-types/api";
+import type {
+  CardId,
+  GetPublicAction,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   createMockImplicitQueryAction,
   createMockQueryAction,
@@ -53,4 +57,10 @@ export function setupModelActionsEndpoints(
   setupActionPostEndpoint();
 
   actions.forEach((action) => setupActionEndpoints(action));
+}
+
+export function setupListPublicActionsEndpoint(
+  publicActions: GetPublicAction[],
+) {
+  fetchMock.get("path:/api/action/public", publicActions);
 }

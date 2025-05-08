@@ -18,7 +18,6 @@ jobs:
     timeout-minutes: 3
     outputs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed

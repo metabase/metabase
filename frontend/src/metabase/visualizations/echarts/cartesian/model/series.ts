@@ -21,6 +21,7 @@ import type {
   VizSettingsKey,
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getHexColor } from "metabase/visualizations/lib/color";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -185,7 +186,9 @@ export const getCardSeriesModels = (
           card.name,
         );
 
-      const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+      const color = getHexColor(
+        settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+      );
 
       const dataKey = getDatasetKey(metric.column, cardId);
 
@@ -247,7 +250,9 @@ export const getCardSeriesModels = (
         card.name,
       );
 
-    const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
+    const color = getHexColor(
+      settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+    );
 
     const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
 

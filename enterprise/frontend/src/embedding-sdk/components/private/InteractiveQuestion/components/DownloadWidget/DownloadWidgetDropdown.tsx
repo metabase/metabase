@@ -4,7 +4,22 @@ import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
 
-export const DownloadWidgetDropdown = (popoverProps: PopoverProps) => {
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionDownloadWidgetDropdownProps = PopoverProps;
+
+/**
+ * Provides a button that contains a dropdown that shows the `DownloadWidget`.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const DownloadWidgetDropdown = ({
+  ...popoverProps
+}: InteractiveQuestionDownloadWidgetDropdownProps) => {
   const { withDownloads } = useInteractiveQuestionContext();
   return (
     <Popover

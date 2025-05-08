@@ -29,6 +29,7 @@ import { advancedPermissionsSlice, getImpersonatedPostAction } from "./reducer";
 import { getImpersonations } from "./selectors";
 
 const IMPERSONATED_PERMISSION_OPTION = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   label: t`Impersonated`,
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
@@ -36,6 +37,7 @@ const IMPERSONATED_PERMISSION_OPTION = {
 };
 
 const BLOCK_PERMISSION_OPTION = {
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   label: t`Blocked`,
   value: DataPermissionValue.BLOCKED,
   icon: "close",

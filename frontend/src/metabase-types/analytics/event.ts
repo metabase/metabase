@@ -2,6 +2,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
+import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 
 type SimpleEventSchema = {
   event: string;
@@ -91,6 +92,11 @@ export type GsheetsImportClickedEvent = ValidateEvent<{
   triggered_from: "sheets-url-popup";
 }>;
 
+export type KeyboardShortcutPerformEvent = ValidateEvent<{
+  event: "keyboard_shortcut_performed";
+  event_detail: KeyboardShortcutId;
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -103,4 +109,5 @@ export type SimpleEvent =
   | ErrorDiagnosticModalOpenedEvent
   | ErrorDiagnosticModalSubmittedEvent
   | GsheetsConnectionClickedEvent
-  | GsheetsImportClickedEvent;
+  | GsheetsImportClickedEvent
+  | KeyboardShortcutPerformEvent;

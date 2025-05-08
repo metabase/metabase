@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase.channel.email-test :as et :refer [inbox]]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.task.creator-sentiment-emails :as creator-sentiment-emails]
    [metabase.test :as mt]
    [metabase.util.json :as json]

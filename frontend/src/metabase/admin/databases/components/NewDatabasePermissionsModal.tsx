@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Button, Flex, Modal, Text } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 export const NewDatabasePermissionsModal = ({
   opened,

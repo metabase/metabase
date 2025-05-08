@@ -6,7 +6,6 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
-import type { QuestionStateParams } from "embedding-sdk/types/question";
 import type { PopoverProps } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../../context";
@@ -15,17 +14,19 @@ import { BreakoutBadgeList } from "../BreakoutBadgeList";
 import { BreakoutPicker } from "../BreakoutPicker";
 import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
 
-type BreakoutDropdownProps = Omit<
+/**
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionBreakoutDropdownProps = Omit<
   PopoverProps,
   "children" | "onClose" | "opened"
 >;
 
-export const BreakoutDropdownInner = ({
-  question,
-  updateQuestion,
-  ...popoverProps
-}: QuestionStateParams & BreakoutDropdownProps) => {
-  const items = useBreakoutData({ question, updateQuestion });
+export const BreakoutDropdownInner = (
+  popoverProps: InteractiveQuestionBreakoutDropdownProps,
+) => {
+  const items = useBreakoutData();
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
 
@@ -90,18 +91,21 @@ export const BreakoutDropdownInner = ({
   );
 };
 
-export const BreakoutDropdown = (props: BreakoutDropdownProps) => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+/**
+ * Dropdown button for the Breakout component.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const BreakoutDropdown = (
+  props: InteractiveQuestionBreakoutDropdownProps,
+) => {
+  const { question } = useInteractiveQuestionContext();
 
   if (!question) {
     return null;
   }
 
-  return (
-    <BreakoutDropdownInner
-      question={question}
-      updateQuestion={updateQuestion}
-      {...props}
-    />
-  );
+  return <BreakoutDropdownInner {...props} />;
 };

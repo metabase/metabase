@@ -44,6 +44,7 @@
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :expressions                     true
                               :native-parameters               true
                               :now                             true
@@ -141,10 +142,6 @@
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_ [_ t]]
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
-
-(defmethod sql.qp/->float :presto-jdbc
-  [_ value]
-  (h2x/cast :double value))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :regex-match-first]
   [driver [_ arg pattern]]
