@@ -249,7 +249,7 @@ describe("scenarios [EE] > embedding > questions", () => {
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
     cy.findByTestId("download-button").realHover();
-    H.tooltip().findByText("Lade alle Ergebnisse herunter", { exact: false });
+    H.tooltip().findByText("Ergebnis downloaden", { exact: false });
 
     cy.url().should("include", "locale=de");
   });
