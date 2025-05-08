@@ -47,7 +47,7 @@
   [_ context {:keys [database-name]}]
   (merge
    {:host (tx/db-test-env-var-or-throw :mysql :host "localhost")
-    :port 3308 #_(tx/db-test-env-var-or-throw :mysql :port 3306)
+    :port (tx/db-test-env-var-or-throw :mysql :port 3306)
     :user (tx/db-test-env-var :mysql :user "root")}
    (when-let [password (tx/db-test-env-var :mysql :password)]
      {:password password})
