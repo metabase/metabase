@@ -771,7 +771,7 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses #{enterprise/advanced-config enterprise/cache enterprise/enhancements enterprise/data-editing}}
+   :uses #{enterprise/advanced-config enterprise/cache enterprise/enhancements enterprise/data-editing enterprise/stale}}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
