@@ -11,7 +11,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.template.core :as channel.template]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]

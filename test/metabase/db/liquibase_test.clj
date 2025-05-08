@@ -178,10 +178,10 @@
         (let [actual-latest-applied-version (liquibase/latest-applied-major-version conn (.getDatabase liquibase))
               actual-latest-available-version (liquibase/latest-available-major-version liquibase)]
           (testing "Can downgrade and re-upgrade version"
-            (liquibase/rollback-major-version conn liquibase false (dec actual-latest-available-version))
+            (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))
             (is (= (dec actual-latest-applied-version) (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
 
-            (liquibase/rollback-major-version conn liquibase false (- actual-latest-available-version 2))
+            (liquibase/rollback-major-version! conn liquibase false (- actual-latest-available-version 2))
             (is (= (- actual-latest-available-version 2) (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
 
             (.update liquibase "")
@@ -190,6 +190,6 @@
           (testing "Cannot downgrade when there are changests from a newer version already ran which are not in the changelog file"
             (with-redefs [liquibase/latest-applied-major-version (constantly (inc actual-latest-applied-version))]
               (is (thrown-with-msg? ExceptionInfo #"Cannot downgrade.*"
-                                    (liquibase/rollback-major-version conn liquibase false (dec actual-latest-available-version))))
+                                    (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))))
               (testing "CAN downgrade if forced"
-                (liquibase/rollback-major-version conn liquibase true (dec actual-latest-available-version))))))))))
+                (liquibase/rollback-major-version! conn liquibase true (dec actual-latest-available-version))))))))))

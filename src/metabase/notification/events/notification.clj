@@ -3,7 +3,7 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.task-history.core :as task-history]

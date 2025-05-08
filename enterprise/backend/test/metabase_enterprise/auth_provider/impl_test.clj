@@ -1,8 +1,8 @@
-(ns metabase-enterprise.auth-provider-test
+(ns metabase-enterprise.auth-provider.impl-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
