@@ -8,7 +8,7 @@ import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
+import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { getFont, getFontFiles } from "../../selectors";
 

@@ -10,19 +10,6 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
 
-export interface NewItemMenuProps {
-  className?: string;
-  collectionId?: CollectionId;
-  trigger?: ReactNode;
-  triggerIcon?: string;
-  triggerTooltip?: string;
-  hasDataAccess: boolean;
-  hasNativeWrite: boolean;
-  hasDatabaseWithJsonEngine: boolean;
-  onCloseNavbar: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
-}
-
 type NewMenuItem = {
   title: string;
   icon: string;
@@ -31,6 +18,22 @@ type NewMenuItem = {
   action?: () => void;
   onClose?: () => void;
 };
+
+export interface NewItemMenuProps {
+  className?: string;
+  collectionId?: CollectionId;
+  trigger?: ReactNode;
+  triggerIcon?: string;
+  triggerTooltip?: string;
+  appendMenuItems?: NewMenuItem[];
+  hasModels: boolean;
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+  hasDatabaseWithJsonEngine: boolean;
+  hasDatabaseWithActionsEnabled: boolean;
+  onCloseNavbar: () => void;
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
+}
 
 const NewItemMenu = ({
   className,

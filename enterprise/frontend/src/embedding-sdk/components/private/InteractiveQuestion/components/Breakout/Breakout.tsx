@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import type { QuestionStateParams } from "embedding-sdk/types/question";
 import { Group, Popover } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../../context";
@@ -25,11 +24,8 @@ const AddBreakoutPopover = () => {
   );
 };
 
-export const BreakoutInner = ({
-  question,
-  updateQuestion,
-}: QuestionStateParams) => {
-  const breakoutItems = useBreakoutData({ question, updateQuestion });
+export const BreakoutInner = () => {
+  const breakoutItems = useBreakoutData();
 
   return (
     <Group>
@@ -59,11 +55,11 @@ export const BreakoutInner = ({
  * @category InteractiveQuestion
  */
 export const Breakout = () => {
-  const { question, updateQuestion } = useInteractiveQuestionContext();
+  const { question } = useInteractiveQuestionContext();
 
   if (!question) {
     return null;
   }
 
-  return <BreakoutInner question={question} updateQuestion={updateQuestion} />;
+  return <BreakoutInner />;
 };

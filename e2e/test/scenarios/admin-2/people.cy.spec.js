@@ -465,9 +465,8 @@ describe("scenarios > admin > people", () => {
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
 
-        // cy.findByLabelText("Next page").click();
-        cy.findByTestId("next-page-btn").click();
-        waitForUserRequests();
+        cy.findByLabelText("Next page").click();
+        cy.wait("@users");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 
@@ -479,7 +478,6 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Next page").should("be.disabled");
 
         cy.findByLabelText("Previous page").click();
-        cy.wait("@users");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 

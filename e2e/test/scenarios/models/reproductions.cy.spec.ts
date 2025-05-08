@@ -1132,7 +1132,9 @@ describe("issue 34514", () => {
     H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
-      cy.findByText("Query results will appear here.").should("be.visible");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
     });
   }
 });
@@ -1430,6 +1432,21 @@ describe("issue 51925", () => {
         .first()
         .should("have.attr", "href", "https://example.com/6");
     });
+  });
+});
+
+describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
   });
 });
 

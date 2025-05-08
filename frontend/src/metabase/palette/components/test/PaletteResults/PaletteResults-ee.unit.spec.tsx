@@ -28,5 +28,23 @@ describe("PaletteResults EE", () => {
         ).findByRole("img", { name: /verified_filled/ }),
       ).toBeInTheDocument();
     });
+
+    it("should show the default metabot palette item", async () => {
+      setup();
+      expect(
+        await screen.findByRole("option", {
+          name: "Ask me to do something, or ask me a question",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("should show the metabot palette item with interpolated query", async () => {
+      setup({ query: "what is our aov" });
+      expect(
+        await screen.findByRole("option", {
+          name: 'Ask Metabot, "what is our aov"',
+        }),
+      ).toBeInTheDocument();
+    });
   });
 });

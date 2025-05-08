@@ -174,11 +174,11 @@
   get-year
   get-month
   get-day
+  get-day-of-week
   get-hour
   get-minute
   get-second
   get-quarter
-  get-day-of-week
   datetime-add
   datetime-subtract
   concat
