@@ -22,6 +22,7 @@ export * from "./e2e-filter-helpers";
 export * from "./e2e-ldap-helpers";
 export * from "./e2e-misc-helpers";
 export * from "./e2e-mock-app-settings-helpers";
+export * from "./e2e-metabot-helpers";
 export * from "./e2e-models-metadata-helpers";
 export * from "./e2e-native-editor-helpers";
 export * from "./e2e-notebook-helpers";

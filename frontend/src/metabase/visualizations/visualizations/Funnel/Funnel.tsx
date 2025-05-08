@@ -11,7 +11,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
   ChartSettingsError,
-  // MinRowsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -53,18 +53,18 @@ Object.assign(Funnel, {
     series: RawSeries,
     settings: ComputedVisualizationSettings,
   ) => {
-    // const [
-    //   {
-    //     data: { rows },
-    //   },
-    // ] = series;
+    const [
+      {
+        data: { rows },
+      },
+    ] = series;
     if (series.length > 1) {
       return;
     }
 
-    // if (rows.length < 1) {
-    //   throw new MinRowsError(1, rows.length);
-    // }
+    if (rows.length < 1) {
+      throw new MinRowsError(1, rows.length);
+    }
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(
         t`Which fields do you want to use?`,
