@@ -1,9 +1,7 @@
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { TableId } from "metabase-types/api";
 
 export interface DataSourceSelectorProps {
   isInitiallyOpen: boolean;
-  databases: Database[] | undefined;
   canChangeDatabase: boolean;
   selectedDatabaseId: number | null;
   selectedTableId: TableId | undefined;

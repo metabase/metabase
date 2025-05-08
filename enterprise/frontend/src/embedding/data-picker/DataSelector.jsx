@@ -121,7 +121,6 @@ export class UnconnectedDataSelector extends Component {
     delete: PropTypes.func,
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
-    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -391,6 +390,14 @@ export class UnconnectedDataSelector extends Component {
 
   getDatabases = () => {
     const { databases } = this.state;
+    const { canChangeDatabase, selectedDatabaseId } = this.props;
+
+    const isJoiningData = !canChangeDatabase;
+    if (isJoiningData) {
+      return databases
+        .filter((db) => !db.is_saved_questions)
+        .filter((db) => db.id === selectedDatabaseId);
+    }
 
     return databases.filter((db) => !db.is_saved_questions);
   };
@@ -918,7 +925,8 @@ export class UnconnectedDataSelector extends Component {
 const DataSelector = _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
-    listName: "allDatabases",
+    listName: "databases",
+    query: { saved: true },
   }),
   // If there is at least one model,
   // we want to display a slightly different data picker view
@@ -935,12 +943,6 @@ const DataSelector = _.compose(
     (state, ownProps) => ({
       availableModels: ownProps.metadata?.available_models ?? [],
       metadata: getMetadata(state),
-      databases:
-        ownProps.databases ||
-        Databases.selectors.getList(state, {
-          entityQuery: { saved: true },
-        }) ||
-        [],
       hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables", saved: true },
       }),
@@ -950,7 +952,7 @@ const DataSelector = _.compose(
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
-      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
+      hasDataAccess: getHasDataAccess(ownProps.databases ?? []),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
       selectedQuestion: Questions.selectors.getObject(state, {
         entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
