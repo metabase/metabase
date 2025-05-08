@@ -8,8 +8,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon, Input, Stack } from "metabase/ui";
 
 import { Results } from "./Item";
+import type { TreePath } from "./types";
 import {
-  type TreePath,
   flatten,
   getUrl,
   useExpandedState,

@@ -8,11 +8,19 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import type { IconName } from "metabase/ui";
-import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type { DatabaseId, SchemaId } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
-export type ItemType = Item["type"];
+import type {
+  DatabaseItem,
+  Item,
+  ItemType,
+  SchemaItem,
+  TableItem,
+  TreeNode,
+  TreePath,
+} from "./types";
 
 export function getIconForType(type: ItemType): IconName {
   if (type === "table") {
@@ -34,43 +42,6 @@ export function getUrl(value: TreePath) {
     ...value,
   });
 }
-
-export type TreePath = {
-  databaseId?: DatabaseId;
-  schemaId?: SchemaId;
-  tableId?: TableId;
-};
-
-type RootNode = {
-  type: "root";
-  label: "";
-  children: TreeNode[];
-};
-
-export type TreeNode = RootNode | (Item & { children: TreeNode[] });
-
-type DatabaseItem = {
-  type: "database";
-  label: string;
-  key: string;
-  value: { databaseId: DatabaseId };
-};
-
-type SchemaItem = {
-  type: "schema";
-  label: string;
-  key: string;
-  value: { databaseId: DatabaseId; schemaId: SchemaId };
-};
-
-type TableItem = {
-  type: "table";
-  label: string;
-  key: string;
-  value: { databaseId: DatabaseId; schemaId: SchemaId; tableId: TableId };
-};
-
-export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export function useTableLoader(path: TreePath) {
   const [fetchDatabases] = useLazyListDatabasesQuery();
@@ -179,6 +150,91 @@ export function useTableLoader(path: TreePath) {
   return { tree };
 }
 
+export function useSearch(query: string) {
+  const { data, isLoading } = useSearchQuery(
+    query === ""
+      ? skipToken
+      : {
+          q: query,
+          models: ["table"],
+        },
+  );
+
+  const tree = useMemo(() => {
+    const tree: TreeNode = {
+      type: "root",
+      label: "",
+      children: [],
+    };
+
+    data?.data.forEach((result) => {
+      const { model, database_name, database_id, table_schema, id, name } =
+        result;
+
+      if (
+        model !== "table" ||
+        database_name === null ||
+        table_schema === null
+      ) {
+        return;
+      }
+
+      let databaseNode = tree.children.find(
+        (node) =>
+          node.type === "database" && node.value.databaseId === database_id,
+      );
+      if (!databaseNode) {
+        databaseNode = node({
+          type: "database",
+          label: database_name,
+          value: {
+            databaseId: database_id,
+          },
+        });
+        tree.children.push(databaseNode);
+      }
+
+      let schemaNode = databaseNode.children.find(
+        (node) =>
+          node.type === "schema" && node.value.schemaId === table_schema,
+      );
+      if (!schemaNode) {
+        schemaNode = node({
+          type: "schema",
+          label: table_schema,
+          value: {
+            databaseId: database_id,
+            schemaId: table_schema,
+          },
+        });
+        databaseNode.children.push(schemaNode);
+      }
+
+      let tableNode = schemaNode.children.find(
+        (node) => node.type === "table" && node.value.tableId === id,
+      );
+      if (!tableNode) {
+        tableNode = node({
+          type: "table",
+          label: name,
+          value: {
+            databaseId: database_id,
+            schemaId: table_schema,
+            tableId: id,
+          },
+        });
+        schemaNode.children.push(tableNode);
+      }
+    });
+    return tree;
+  }, [data]);
+
+  return {
+    isLoading,
+    tree,
+  };
+}
+
 function toKey(value: TreePath) {
   // Stable JSON stringify
   return `{"databaseId":${JSON.stringify(value.databaseId ?? null)},"schemaId":${JSON.stringify(value.schemaId ?? null)},"tableId":${JSON.stringify(value.tableId ?? null)}}`;
@@ -279,89 +335,4 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
   }
 
   return { ...a, ...b, children };
-}
-
-export function useSearch(query: string) {
-  const { data, isLoading } = useSearchQuery(
-    query === ""
-      ? skipToken
-      : {
-          q: query,
-          models: ["table"],
-        },
-  );
-
-  const tree = useMemo(() => {
-    const tree: TreeNode = {
-      type: "root",
-      label: "",
-      children: [],
-    };
-
-    data?.data.forEach((result) => {
-      const { model, database_name, database_id, table_schema, id, name } =
-        result;
-
-      if (
-        model !== "table" ||
-        database_name === null ||
-        table_schema === null
-      ) {
-        return;
-      }
-
-      let databaseNode = tree.children.find(
-        (node) =>
-          node.type === "database" && node.value.databaseId === database_id,
-      );
-      if (!databaseNode) {
-        databaseNode = node({
-          type: "database",
-          label: database_name,
-          value: {
-            databaseId: database_id,
-          },
-        });
-        tree.children.push(databaseNode);
-      }
-
-      let schemaNode = databaseNode.children.find(
-        (node) =>
-          node.type === "schema" && node.value.schemaId === table_schema,
-      );
-      if (!schemaNode) {
-        schemaNode = node({
-          type: "schema",
-          label: table_schema,
-          value: {
-            databaseId: database_id,
-            schemaId: table_schema,
-          },
-        });
-        databaseNode.children.push(schemaNode);
-      }
-
-      let tableNode = schemaNode.children.find(
-        (node) => node.type === "table" && node.value.tableId === id,
-      );
-      if (!tableNode) {
-        tableNode = node({
-          type: "table",
-          label: name,
-          value: {
-            databaseId: database_id,
-            schemaId: table_schema,
-            tableId: id,
-          },
-        });
-        schemaNode.children.push(tableNode);
-      }
-    });
-    return tree;
-  }, [data]);
-
-  return {
-    isLoading,
-    tree,
-  };
 }
