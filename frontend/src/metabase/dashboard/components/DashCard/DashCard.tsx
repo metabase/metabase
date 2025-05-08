@@ -104,7 +104,7 @@ export interface DashCardProps {
 
   className?: string;
 
-  onEditVisualization?: (
+  onEditVisualization: (
     dashcard: StoreDashcard,
     initialState: VisualizerVizDefinitionWithColumns,
   ) => void;
@@ -317,30 +317,22 @@ function DashCardInner({
     );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
-  const onEditVisualizationClick = useMemo(() => {
-    if (
-      !isVisualizerDashboardCard(dashcard) &&
-      !isVisualizerSupportedVisualization(dashcard.card.display)
-    ) {
-      return;
+
+  const onEditVisualizationClick = useCallback(() => {
+    let initialState: VisualizerVizDefinitionWithColumns;
+
+    if (isVisualizerDashboardCard(dashcard)) {
+      initialState = getInitialStateForVisualizerCard(dashcard, datasets);
+    } else if (series.length > 1) {
+      initialState = getInitialStateForMultipleSeries(series);
+    } else {
+      initialState = getInitialStateForCardDataSource(
+        series[0].card,
+        series[0],
+      );
     }
 
-    return () => {
-      let initialState: VisualizerVizDefinitionWithColumns;
-
-      if (isVisualizerDashboardCard(dashcard)) {
-        initialState = getInitialStateForVisualizerCard(dashcard, datasets);
-      } else if (series.length > 1) {
-        initialState = getInitialStateForMultipleSeries(series);
-      } else {
-        initialState = getInitialStateForCardDataSource(
-          series[0].card,
-          series[0],
-        );
-      }
-
-      onEditVisualization?.(dashcard, initialState);
-    };
+    onEditVisualization(dashcard, initialState);
   }, [dashcard, series, onEditVisualization, datasets]);
 
   return (
@@ -438,7 +430,11 @@ function DashCardInner({
           onChangeLocation={onChangeLocation}
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
-          onEditVisualization={onEditVisualizationClick}
+          onEditVisualization={
+            isVisualizerSupportedVisualization(dashcard.card.display)
+              ? onEditVisualizationClick
+              : undefined
+          }
         />
       </Box>
     </ErrorBoundary>
