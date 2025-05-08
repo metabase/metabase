@@ -2,8 +2,8 @@ import { sampleDictionary } from "./constants";
 import {
   type SetupOpts,
   assertStringsArePresent,
-  setup as baseSetup,
   assertStringsDoNotBecomePresent,
+  setup as baseSetup,
 } from "./utils";
 
 describe("TitleAndDescription component (OSS)", () => {
