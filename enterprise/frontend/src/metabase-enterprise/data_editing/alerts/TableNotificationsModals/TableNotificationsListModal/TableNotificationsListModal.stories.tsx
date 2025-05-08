@@ -10,7 +10,6 @@ import {
 
 import { TableNotificationsListModal } from "./TableNotificationsListModal";
 
-// eslint-disable-next-line import/no-default-export
 export default {
   title: "Notifications/TableNotificationsListModal",
   component: TableNotificationsListModal,

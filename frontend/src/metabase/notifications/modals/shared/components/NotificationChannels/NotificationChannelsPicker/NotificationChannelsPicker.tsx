@@ -604,7 +604,7 @@ export const NotificationChannelsPicker = ({
         const channelType = templateStateKeyMap[channelKey];
         if (handler.channel_type === channelType) {
           // We assume that handler.template exists if the reset button is clicked
-          return { ...handler, template: null };
+          return { ...handler, template: null, template_id: null };
         }
         return handler;
       });
