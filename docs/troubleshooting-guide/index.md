@@ -54,6 +54,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Email and alerts
 
 - [Metabase isn't sending email][not-sending-email].
+- [Troubleshooting notifications](./notifications.md).
 
 ## Error messages
 
@@ -99,6 +100,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [login]: ./cant-log-in.md
 [models]: ./models.md
 [not-sending-email]: ./cant-send-email.md
+[notifications]: ./notifications.md
 [permissions]: ./permissions.md
 [proxies]: ./proxies.md
 [releases]: https://github.com/metabase/metabase/releases
