@@ -20,7 +20,7 @@
    [metabase.events.core :as events]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.notification.send :as notification.send]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
@@ -375,7 +375,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (binding [notification.send/*default-options* {:notification/sync? true}]
+  (binding [notification/*default-options* {:notification/sync? true}]
     (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
