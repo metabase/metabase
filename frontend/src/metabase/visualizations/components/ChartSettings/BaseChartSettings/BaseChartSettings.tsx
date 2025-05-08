@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
@@ -196,7 +197,7 @@ export const BaseChartSettings = ({
         data-testid="chartsettings-sidebar"
         h="100%"
         gap={0}
-        className={`${CS.overflowHidden} ${className}`}
+        className={cx(CS.overflowHidden, className)}
         {...stackProps}
       >
         {showSectionPicker && (
