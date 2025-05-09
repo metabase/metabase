@@ -306,9 +306,9 @@
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :date]
-  [driver [_ value]]
-  (h2x/maybe-cast :Date32 (sql.qp/->honeysql driver value)))
+(defmethod sql.qp/date-dbtype :clickhouse
+  [_driver]
+  :Date32)
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
