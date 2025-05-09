@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib-be.task.backfill-entity-ids :as backfill-entity-ids]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

@@ -66,6 +66,7 @@ export interface SearchResult<
   Model extends SearchModel = SearchModel,
 > {
   id: Id;
+  entity_id: string;
   name: string;
   model: Model;
   description: string | null;

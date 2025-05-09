@@ -74,10 +74,10 @@ The `./bin/mage -check-readable <file> <optional: line-number>` command checks i
 This ensures your changes maintain valid syntax and structure.
 
 - Edit Clojure files one step at a time.
-- After EVERY change to a Clojure form, call `mage -check-readable src/metabase/thefile.clj <line-number>` with the line number. 
+- After EVERY change to a Clojure form, call `mage -check-readable src/metabase/thefile.clj <line-number>` with the line number.
 - If it's readable then call `mage -check-readable dev/src/dev.clj` without the line number to check the entire file.
 - If the change results in unreadable code, try again until it is readable.
-- To overcome errors about parens, pay close attention to them. Count opening/closing parens you add/remove. 
+- To overcome errors about parens, pay close attention to them. Count opening/closing parens you add/remove.
 
 #### Bottom-up dev loop
 
@@ -104,9 +104,9 @@ mage -repl --namespace metabase.db.connection
 
 To call `your.namespace/your-function` on `arg1` and `arg2`:
 
-   ```
-   ./bin/mage -repl --namespace your.namespace '(your-function arg1 arg2)'
-   ```
+```
+./bin/mage -repl --namespace your.namespace '(your-function arg1 arg2)'
+```
 
 DO NOT use "require", "load-file" etc in the code string argument.
 

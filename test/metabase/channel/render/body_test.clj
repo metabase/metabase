@@ -11,9 +11,9 @@
    [metabase.config :as config]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
@@ -423,6 +423,45 @@
           {:cols         default-columns
            :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
+
+(deftest render-funnel-visualizer
+  (testing "Visualizer funnel charts render"
+    (let [test-card-1 {:id 192 :name "SCALAR 3"}
+          test-card-2 {:id 191 :name "SCALAR 2"}
+          test-card-3 {:id 190 :name "SCALAR 1"}
+          test-dashcard {:series-results
+                         [{:result {:data {:rows [[420]] :cols [{:name "count"}]}}
+                           :card test-card-2}
+                          {:result {:data {:rows [[2495]] :cols [{:name "count"}]}}
+                           :card test-card-3}]
+                         :visualization_settings
+                         {:visualization
+                          {:display "funnel",
+                           :columns
+                           [{:name "COLUMN_1",
+                             :display_name "Count"}
+                            {:name "DIMENSION",
+                             :display_name "DIMENSION"}],
+                           :columnValuesMapping
+                           {:COLUMN_1
+                            [{:sourceId "card:192", :originalName "count", :name "COLUMN_1"}
+                             {:sourceId "card:191", :originalName "count", :name "COLUMN_2"}
+                             {:sourceId "card:190", :originalName "count", :name "COLUMN_3"}],
+                            :DIMENSION
+                            ["$_card:192_name" "$_card:191_name" "$_card:190_name"]},
+                           :settings
+                           {:card.title "My new visualization",
+                            :funnel.metric "COLUMN_1",
+                            :funnel.dimension "DIMENSION",
+                            :funnel.order_dimension "DIMENSION",
+                            :funnel.rows
+                            [{:key "SCALAR 1" :name "SCALAR 1" :enabled true}
+                             {:key "SCALAR 2" :name "SCALAR 2" :enabled true}
+                             {:key "SCALAR 3" :name "SCALAR 3" :enabled true}]}}}}
+          test-data {:rows [[168]]
+                     :cols [{:name "count" :display_name "Count"}]}]
+      (is (has-inline-image?
+           (body/render :funnel :inline pacific-tz test-card-1 test-dashcard test-data))))))
 
 (defn- render-error?
   [pulse-body]

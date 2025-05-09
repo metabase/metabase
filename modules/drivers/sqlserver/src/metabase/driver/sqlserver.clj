@@ -50,7 +50,8 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :expression-literals                    true
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]
@@ -864,6 +865,14 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
   [_driver this]
   {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql.qp/->integer :sqlserver
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver)
+                  [:round (sql.qp/->float driver value) 0]))
 
 (defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
   (= (sql-jdbc/get-sql-state e) "HY008"))

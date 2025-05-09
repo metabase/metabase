@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   act,
   getIcon,
@@ -90,7 +91,6 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
-      onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       isTrashedOnRemove={false}
       onRemove={jest.fn()}
@@ -103,6 +103,7 @@ function setup({
       downloadsEnabled
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
+      onEditVisualization={jest.fn()}
     />,
     {
       storeInitialState: {
@@ -126,6 +127,7 @@ describe("DashCard", () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {
@@ -247,6 +249,62 @@ describe("DashCard", () => {
     it("should show a 'replace card' action for erroring queries", async () => {
       setup({ isEditing: true, dashcardData: erroringDashcardData });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "bar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(screen.getByLabelText("Edit visualization")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Visualize another way"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Show visualization options"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types not supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "smartscalar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(
+        screen.getByLabelText("Visualize another way"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Edit visualization"),
+      ).not.toBeInTheDocument();
     });
 
     it.each([

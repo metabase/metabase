@@ -1,31 +1,43 @@
-import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/components/EntityMenu";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import UserAvatar from "metabase/components/UserAvatar";
-import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
+import { ForwardRefLink } from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, Tooltip } from "metabase/ui";
-import type { Group, GroupId, Member, User } from "metabase-types/api";
+import {
+  Box,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
+import type {
+  GroupId,
+  GroupInfo,
+  Member,
+  Membership,
+  User,
+} from "metabase-types/api";
 
-import MembershipSelect from "./MembershipSelect";
-import { RefreshLink } from "./PeopleListRow.styled";
+import { userToColor } from "../colors";
+
+import { MembershipSelect } from "./MembershipSelect";
+import S from "./PeopleListRow.module.css";
 
 const enablePasswordLoginKey = "enable-password-login";
 
 interface PeopleListRowProps {
   user: User;
   showDeactivated: boolean;
-  groups: Group[];
-  userMemberships: Member[];
+  groups: GroupInfo[];
+  userMemberships: Membership[];
   isCurrentUser: boolean;
   isAdmin: boolean;
   onAdd: (groupId: GroupId) => void;
@@ -55,23 +67,16 @@ export const PeopleListRow = ({
     [userMemberships],
   );
 
-  const isLoadingGroups = !groups;
-
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
 
   return (
     <tr key={user.id}>
-      <td className={cx(CS.flex, CS.alignCenter)}>
-        <span className={cx(CS.textWhite, CS.inlineBlock)}>
-          <UserAvatar
-            bg={user.is_superuser ? color("accent2") : color("brand")}
-            user={user}
-          />
-        </span>{" "}
-        <span className={cx(CS.ml2, CS.textBold)}>{getName(user)}</span>
-      </td>
+      <Flex component="td" align="center" gap="md" c="text-white">
+        <UserAvatar bg={userToColor(user)} user={user} />
+        <Text fw="700">{getFullName(user) ?? "-"}</Text>
+      </Flex>
       <td>
         {user.sso_source === "google" ? (
           <Tooltip label={t`Signed up via Google`}>
@@ -87,74 +92,80 @@ export const PeopleListRow = ({
       <td>{user.email}</td>
       {showDeactivated ? (
         <Fragment>
-          <td>{moment(user.updated_at).fromNow()}</td>
+          <td>{dayjs(user.updated_at).fromNow()}</td>
           <td>
             <Tooltip label={t`Reactivate this account`}>
-              <span>
-                <RefreshLink to={Urls.reactivateUser(user.id)}>
-                  <Icon name="refresh" size={20} />
-                </RefreshLink>
-              </span>
+              <ForwardRefLink
+                to={Urls.reactivateUser(user.id)}
+                className={S.refreshLink}
+              >
+                <Icon name="refresh" size={20} />
+              </ForwardRefLink>
             </Tooltip>
           </td>
         </Fragment>
       ) : (
         <Fragment>
           <td>
-            {isLoadingGroups ? (
-              <LoadingSpinner />
-            ) : (
-              <MembershipSelect
-                groups={groups}
-                memberships={membershipsByGroupId}
-                isCurrentUser={isCurrentUser}
-                isUserAdmin={user.is_superuser}
-                onAdd={onAdd}
-                onRemove={onRemove}
-                onChange={onChange}
-                isConfirmModalOpen={isConfirmModalOpen}
-              />
-            )}
+            <MembershipSelect
+              groups={groups}
+              memberships={membershipsByGroupId}
+              isCurrentUser={isCurrentUser}
+              isUserAdmin={user.is_superuser}
+              onAdd={onAdd}
+              onRemove={onRemove}
+              onChange={onChange}
+              isConfirmModalOpen={isConfirmModalOpen}
+            />
           </td>
           <td>
-            {user.last_login ? moment(user.last_login).fromNow() : t`Never`}
+            {user.last_login ? dayjs(user.last_login).fromNow() : t`Never`}
           </td>
-          <td className={CS.textRight}>
+          <Box component="td" ta="right">
             {isAdmin && (
-              <EntityMenu
-                triggerIcon="ellipsis"
-                items={[
-                  {
-                    title: t`Edit user`,
-                    link: Urls.editUser(user.id),
-                  },
-                  isPasswordLoginEnabled && {
-                    title: t`Reset password`,
-                    link: Urls.resetPassword(user.id),
-                  },
-                  ...PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap((getItems) =>
+              <Menu shadow="md" position="bottom-end">
+                <Menu.Target>
+                  <UnstyledButton>
+                    <Icon name="ellipsis" />
+                  </UnstyledButton>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Item
+                    component={ForwardRefLink}
+                    to={Urls.editUser(user.id)}
+                  >
+                    {t`Edit user`}
+                  </Menu.Item>
+
+                  {isPasswordLoginEnabled && (
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={Urls.resetPassword(user.id)}
+                    >
+                      {t`Reset password`}
+                    </Menu.Item>
+                  )}
+
+                  {PLUGIN_ADMIN_USER_MENU_ITEMS.flatMap((getItems) =>
                     getItems(user),
-                  ),
-                  !isCurrentUser && {
-                    title: t`Deactivate user`,
-                    link: Urls.deactivateUser(user.id),
-                  },
-                ]}
-              />
+                  )}
+
+                  {!isCurrentUser && (
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={Urls.deactivateUser(user.id)}
+                      c="danger"
+                    >
+                      {t`Deactivate user`}
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
             )}
-          </td>
+          </Box>
         </Fragment>
       )}
     </tr>
   );
 };
-
-function getName(user: User): string {
-  const name = getFullName(user);
-
-  if (!name) {
-    return "-";
-  }
-
-  return name;
-}

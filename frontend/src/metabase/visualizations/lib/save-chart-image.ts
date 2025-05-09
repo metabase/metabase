@@ -9,9 +9,9 @@ import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
-  createFooterElement,
-  getFooterConfig,
-  getFooterSize,
+  createBrandingElement,
+  getBrandingConfig,
+  getBrandingSize,
 } from "./exports-branding-utils";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
@@ -74,14 +74,12 @@ export const saveChartImage = async ({
   const contentHeight = node.getBoundingClientRect().height;
   const contentWidth = node.getBoundingClientRect().width;
 
-  const size = getFooterSize(contentWidth);
-  const FOOTER_HEIGHT = getFooterConfig(size).h;
+  const size = getBrandingSize(contentWidth);
+  const brandingHeight = getBrandingConfig(size).h;
+  const verticalOffset = includeBranding ? brandingHeight : 0;
 
   // Appending any element to the node does not automatically increase the canvas height.
-  // We have to manually calculate it or the footer will not be visible.
-  const canvasHeight = includeBranding
-    ? contentHeight + FOOTER_HEIGHT
-    : contentHeight;
+  const canvasHeight = contentHeight + verticalOffset;
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
@@ -96,8 +94,19 @@ export const saveChartImage = async ({
       node.style.border = "none";
 
       if (includeBranding) {
-        const footer = createFooterElement(size);
-        node.appendChild(footer);
+        const branding = createBrandingElement(size);
+        /**
+         * The DOM node that encapsulates the dashboard card is absolutely positioned.
+         * That node is the container for the chart, and for the branding element.
+         * Unless we sanitize the container, we have to position the branding content
+         * appropriately, or it will not be visible.
+         */
+        branding.style.position = "absolute";
+        branding.style.left = "0";
+        branding.style.bottom = `-${brandingHeight}px`;
+        branding.style.zIndex = "1000";
+
+        node.appendChild(branding);
       }
     },
   });

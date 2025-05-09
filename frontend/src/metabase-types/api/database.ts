@@ -47,6 +47,7 @@ export type DatabaseFeature =
   | "native-requires-specified-collection"
   | "window-functions/offset"
   | "distinct-where"
+  | "saved-question-sandboxing"
   | "split-part";
 
 export interface Database extends DatabaseData {

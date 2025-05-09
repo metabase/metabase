@@ -187,6 +187,12 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
+
+    H.openNavigationSidebar();
+
+    H.navigationSidebar()
+      .findByRole("link", { name: /Automatically generated dashboards/i })
+      .should("exist");
   });
 
   it("should start loading cards from top to bottom", () => {

@@ -436,11 +436,6 @@ describe("scenarios > admin > people", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
 
-      const waitForUserRequests = () => {
-        cy.wait("@users");
-        cy.wait("@memberships");
-      };
-
       beforeEach(() => {
         generateUsers(NEW_USERS);
 
@@ -453,8 +448,6 @@ describe("scenarios > admin > people", () => {
 
         cy.visit("/admin/people");
 
-        waitForUserRequests();
-
         // Total
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${NEW_TOTAL_USERS} people found`);
@@ -465,11 +458,8 @@ describe("scenarios > admin > people", () => {
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
 
-        // cy.findByLabelText("Next page").click();
         cy.findByTestId("next-page-btn").click();
-        waitForUserRequests();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Loading...").should("not.exist");
+        cy.wait("@users");
 
         // Page 2
         cy.findByTestId("people-list-footer")
@@ -479,9 +469,6 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Next page").should("be.disabled");
 
         cy.findByLabelText("Previous page").click();
-        cy.wait("@users");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Loading...").should("not.exist");
 
         // Page 1
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -504,7 +491,6 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Previous page").should("be.disabled");
 
         cy.findByLabelText("Next page").click();
-        waitForUserRequests();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 
@@ -514,7 +500,6 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Next page").should("be.disabled");
 
         cy.findByLabelText("Previous page").click();
-        cy.wait("@users");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 

@@ -10,9 +10,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
+   [metabase.cache.core :as cache]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
@@ -21,7 +22,6 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
-   [metabase.models.cache-config :as cache-config]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -1262,7 +1262,7 @@
                                          :status              nil
                                          :text                (tru "Unverified due to edit")}))
     ;; Invalidate the cache for card
-    (cache-config/invalidate! {:questions [(:id card-before-update)]
+    (cache/invalidate-config! {:questions [(:id card-before-update)]
                                :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)
@@ -1428,6 +1428,7 @@
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
+                  :entity-id           true
                   :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]

@@ -306,11 +306,9 @@
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :date]
-  [driver [_ value]]
-  (h2x/maybe-cast "Date32"
-                  [:'parseDateTime64 (sql.qp/->honeysql driver value)
-                   [:inline "%Y-%m-%d"]]))
+(defmethod sql.qp/date-dbtype :clickhouse
+  [_driver]
+  :Date32)
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
@@ -343,6 +341,10 @@
   [_ value]
   ;; casting in clickhouse does not properly handle NULL; this function does
   (h2x/with-database-type-info [:'toFloat64 value] :Float64))
+
+(defmethod sql.qp/->integer :clickhouse
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
@@ -455,10 +457,6 @@
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
   expr)
-
-(defmethod sql.qp/->honeysql [:clickhouse :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "BIGINT" (sql.qp/->honeysql driver value)))
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions

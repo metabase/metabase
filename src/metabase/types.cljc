@@ -351,8 +351,14 @@
 (derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
+(derive :Coercion/Temporal->Temporal :Coercion/*)
+(derive :Coercion/DateTime->Date :Coercion/Temporal->Temporal)
+
 (derive :Coercion/String->Number :Coercion/*)
 (derive :Coercion/String->Float :Coercion/String->Number)
+
+(derive :Coercion/String->Integer :Coercion/String->Number)
+(derive :Coercion/Float->Integer  :Coercion/*)
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -458,9 +464,14 @@
 
 (coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
 
+(coercion-hierarchies/define-types! :Coercion/DateTime->Date  :type/DateTime :type/Date)
+
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
+
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Integer :type/Text  :type/Integer)
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/Float->Integer  :type/Float :type/Integer)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."

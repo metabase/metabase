@@ -42,18 +42,24 @@ function DashCardPlaceholderInner({
   return (
     <>
       <Flex
-        align="center"
-        justify="center"
         p={2}
         style={{ flex: 1, pointerEvents }}
         opacity={isEditingParameter ? 0.25 : 1}
       >
         {isEditing && (
-          <Button
-            onClick={() => setQuestionPickerOpen(true)}
-            onMouseDown={preventDragging}
-            style={{ pointerEvents }}
-          >{t`Select question`}</Button>
+          <Flex
+            direction="column"
+            align="center"
+            justify="center"
+            gap="sm"
+            w="100%"
+          >
+            <Button
+              onClick={() => setQuestionPickerOpen(true)}
+              onMouseDown={preventDragging}
+              style={{ pointerEvents }}
+            >{t`Select question`}</Button>
+          </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
@@ -83,8 +89,7 @@ function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
 }
 
 export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  uiName: t`Empty card`,
+  getUiName: () => t`Empty card`,
   identifier: "placeholder",
   iconName: "table_spaced", // TODO replace
 
@@ -93,7 +98,6 @@ export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
   hidden: true,
   disableSettingsConfig: true,
   supportPreviewing: false,
-  supportsSeries: false,
 
   checkRenderable: () => {
     // always renderable

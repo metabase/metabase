@@ -4,11 +4,12 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.config :as config]
-   [metabase.embed.app-origins-sdk :as aos]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.embedding.app-origins-sdk :as aos]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -120,7 +121,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
-                                  (when (public-settings/anon-tracking-enabled)
+                                  (when (analytics/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
@@ -158,7 +159,7 @@
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
-                                 (when (public-settings/anon-tracking-enabled)
+                                 (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
@@ -231,7 +232,9 @@
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
       "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"})))
+      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"
+      ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
+      "Access-Control-Max-Age"  "60"})))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."

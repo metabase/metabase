@@ -27,7 +27,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test.initialize :as initialize]
    [metabase.util.date-2 :as u.date]))
 

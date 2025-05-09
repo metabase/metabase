@@ -6,8 +6,7 @@ import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { useSelector } from "metabase/lib/redux";
-
-import { LeftNavWrapper } from "./AdminPeopleApp.styled";
+import { Flex } from "metabase/ui";
 
 export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
@@ -15,13 +14,13 @@ export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <AdminLayout
       sidebar={
-        <LeftNavWrapper>
+        <Flex direction="column" w="266px" flex="0 0 auto">
           <LeftNavPane>
             <LeftNavPaneItem name={t`People`} path="/admin/people" index />
             <LeftNavPaneItem name={t`Groups`} path="/admin/people/groups" />
           </LeftNavPane>
           {shouldNudge && <NudgeToPro />}
-        </LeftNavWrapper>
+        </Flex>
       }
     >
       {children}
