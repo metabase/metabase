@@ -70,6 +70,10 @@
   "Should we allow users embed the SDK in sites other than localhost?"
   :embedding-sdk)
 
+(define-premium-feature enable-embedding-iframe-sdk?
+  "Should we allow users to embed iframes backed by SDK components?"
+  :embedding-iframe-sdk)
+
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
   :whitelabel

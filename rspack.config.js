@@ -66,7 +66,7 @@ const SWC_LOADER = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: devMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -77,12 +77,12 @@ const CSS_CONFIG = {
 
 class OnScriptError {
   apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", compilation => {
+    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
         "OnScriptError",
         (data, cb) => {
           // Manipulate the content
-          data.assetTags.scripts.forEach(script => {
+          data.assetTags.scripts.forEach((script) => {
             script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
           });
           // Tell webpack to move on
@@ -104,6 +104,7 @@ const config = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -278,6 +279,12 @@ const config = {
       chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-sdk.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
+      template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
     new rspack.BannerPlugin({
       banner:
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
@@ -377,4 +384,11 @@ if (devMode) {
   );
 }
 
-module.exports = config;
+const additionalRspackConfig = [];
+
+if (process.env.MB_EDITION === "ee") {
+  // Build the embed.js script for the sdk iframe embedding.
+  additionalRspackConfig.push(require("./rspack.iframe-sdk-embed.config"));
+}
+
+module.exports = [config, ...additionalRspackConfig];

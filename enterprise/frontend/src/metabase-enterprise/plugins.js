@@ -18,6 +18,7 @@ import "./database_routing";
 import "./whitelabel";
 import "./embedding";
 import "./embedding-sdk";
+import "./embedding_iframe_sdk";
 import "./snippets";
 import "./sharing";
 import "./moderation";

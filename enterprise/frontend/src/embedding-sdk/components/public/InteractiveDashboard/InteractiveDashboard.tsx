@@ -1,4 +1,9 @@
-import { type ReactNode, useCallback, useEffect } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+} from "react";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -51,7 +56,7 @@ export type InteractiveDashboardProps = {
   /**
    * Height of a question component when drilled from the dashboard to a question level.
    */
-  drillThroughQuestionHeight?: number;
+  drillThroughQuestionHeight?: CSSProperties["height"];
 
   /**
    * Props of a question component when drilled from the dashboard to a question level.
