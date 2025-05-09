@@ -33,12 +33,20 @@ interface SetupOpts {
   databases?: Database[];
   isJoinStep?: boolean;
   availableModels?: AvailableModels;
+  selectedTable?: {
+    id: number | undefined;
+    databaseId: number | null;
+  };
 }
 
 function setup({
   databases = DATABASES,
   isJoinStep = false,
   availableModels = "tables-only",
+  selectedTable = {
+    id: undefined,
+    databaseId: null,
+  },
 }: SetupOpts = {}) {
   fetchMock.get(
     {
@@ -67,7 +75,8 @@ function setup({
     <DataSourceSelector
       isInitiallyOpen
       canChangeDatabase={!isJoinStep}
-      selectedDatabaseId={null}
+      selectedDatabaseId={selectedTable.databaseId}
+      selectedTableId={selectedTable.id}
       canSelectModel={true}
       canSelectTable={true}
       triggerElement={<div>Click me to open or close data picker</div>}
@@ -168,6 +177,36 @@ describe("DataSourceSelector", () => {
 
       expect(screen.queryByText("Models")).not.toBeInTheDocument();
       expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it("should only show data from the selected database when joining data", async () => {
+      const sampleDatabase = createSampleDatabase();
+      const DB_ID = getNextId(sampleDatabase.id);
+      const manyTablesDatabase = createMockDatabase({
+        id: DB_ID,
+        name: "Many tables Database",
+        tables: [...createNNumberOfTables(10, DB_ID)],
+      });
+
+      setup({
+        ...setupOpts,
+        isJoinStep: true,
+        databases: [sampleDatabase, manyTablesDatabase],
+        selectedTable: {
+          id: (manyTablesDatabase.tables as Table[])[0].id as number,
+          databaseId: manyTablesDatabase.id,
+        },
+      });
+
+      expect(
+        await screen.findByText("Many tables Database"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Table 1")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Many tables Database"));
+      // We're at the database step
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Many tables Database")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
     });
   });
 });
