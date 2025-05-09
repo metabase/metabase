@@ -39,7 +39,7 @@
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
     (with-redefs [driver.impl/hierarchy (make-hierarchy)] ;; To simulate :h2 not being registed yet.
       (driver/the-driver :h2))
-    (is (= classloader/shared-context-classloader
+    (is (= @classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread))))))
 
 (deftest available?-test
