@@ -19,6 +19,7 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
+   [metabase.models.interface :as mi]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
@@ -79,6 +80,12 @@
 
 (defn- unsaved-card-download
   [card {:keys [export-format format-rows pivot]}]
+  (testing "Sanity check"
+    (mt/with-current-user :crowberto
+      (assert (mi/can-read? (mt/db))))
+    (when-let [table-id (get-in card [:dataset_query :source-table])]
+      (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
+        (assert (mi/can-read? :model/Card (parse-long card-id-str))))))
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
@@ -1279,7 +1286,7 @@
 
 (deftest pivot-rows-order-test
   (testing "A pivot download will use the user-configured rows order."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [enable-pivoted-exports true]
       (mt/with-temp [:model/Card card {:display                :pivot
                                        :dataset_query          (mt/mbql-query products
                                                                  {:aggregation  [[:count]]
