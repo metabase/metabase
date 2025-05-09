@@ -201,6 +201,10 @@
   [_]
   "DOUBLE PRECISION")
 
+(defmethod sql.qp/text-dbtype :vertica
+  [_]
+  :VARCHAR)
+
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
