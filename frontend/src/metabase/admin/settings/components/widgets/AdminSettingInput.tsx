@@ -17,7 +17,6 @@ import {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
-  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -43,7 +42,7 @@ type InputDetails =
       placeholder?: never;
     };
 
-export type AdminSettingInputProps<S extends SettingKey> = {
+export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   name: S;
   title?: string;
   description?: React.ReactNode;
@@ -57,7 +56,7 @@ export type AdminSettingInputProps<S extends SettingKey> = {
  * create a special component (in the widgets/ folder) instead of building one-off
  * features into this component
  */
-export function AdminSettingInput<SettingName extends SettingKey>({
+export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   title,
   description,
   name,
@@ -114,6 +113,7 @@ export function AdminSettingInput<SettingName extends SettingKey>({
 export function BasicAdminSettingInput({
   name,
   value,
+  disabled,
   onChange,
   options,
   placeholder,
@@ -124,6 +124,7 @@ export function BasicAdminSettingInput({
   name: EnterpriseSettingKey;
   value: any;
   onChange: (newValue: string | boolean | number) => void;
+  disabled?: boolean;
   options?: { label: string; value: string }[];
   placeholder?: string;
   autoFocus?: boolean;
@@ -149,6 +150,7 @@ export function BasicAdminSettingInput({
           value={localValue}
           onChange={handleChange}
           data={options ?? []}
+          disabled={disabled}
         />
       );
     case "boolean":
@@ -159,6 +161,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => handleChange(e.target.checked)}
           label={switchLabel ?? (localValue ? t`Enabled` : t`Disabled`)}
           w="auto"
+          disabled={disabled}
         />
       );
     case "radio":
@@ -191,6 +194,7 @@ export function BasicAdminSettingInput({
           value={localValue}
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
+          disabled={disabled}
         />
       );
     case "number":
@@ -205,6 +209,7 @@ export function BasicAdminSettingInput({
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}
           type={inputType ?? "text"}
+          disabled={disabled}
           autoFocus={autoFocus}
         />
       );
