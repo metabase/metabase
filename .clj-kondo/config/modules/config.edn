@@ -77,7 +77,6 @@
           metabase.api.dataset
           metabase.api.docs
           metabase.api.field
-          metabase.api.geojson
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
@@ -113,6 +112,7 @@
            revisions
            sample-data
            search
+           secrets
            server
            session
            settings
@@ -261,6 +261,7 @@
            notification
            plugins
            premium-features
+           secrets
            settings
            pulse
            query-processor
@@ -295,7 +296,7 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{audit-app channel driver models util view-log}}
+   :uses #{channel driver models util view-log}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -409,7 +410,6 @@
           metabase.models.query
           metabase.models.query.permissions
           metabase.models.resolution
-          metabase.models.secret
           metabase.models.serialization
           metabase.models.table
           metabase.models.user
@@ -434,6 +434,7 @@
            permissions
            plugins
            premium-features
+           secrets
            settings
            public-sharing
            pulse
@@ -599,6 +600,10 @@
           metabase.search.spec}
    :uses #{analytics api audit-app config db driver models permissions premium-features settings request startup task util}}
 
+  secrets
+  {:api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}}
+
   segments
   {:api  #{metabase.segments.api}
    :uses #{api events legacy-mbql lib models permissions search util xrays}}
@@ -749,7 +754,7 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api enterprise/metabot-v3 premium-features util}}
+   :uses #{api enterprise/metabot-v3 premium-features}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
