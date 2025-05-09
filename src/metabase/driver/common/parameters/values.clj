@@ -88,7 +88,8 @@
   compatibility."
   [tag :- mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
-                      :dimension :dimension
+                      :dimension     :dimension
+                      :temporal-unit :dimension
                       :variable)]
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
@@ -246,6 +247,25 @@
     (params/map->ReferencedQuerySnippet
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
+
+(defmethod parse-tag :temporal-unit
+  [{:keys [name] :as tag} params]
+  (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
+                         (when (> (count matching-params) 1)
+                           (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
+                                           {:type                qp.error-type/invalid-parameter
+                                            :template-tag        tag
+                                            :matching-parameters params})))
+                         (first matching-params))
+        nil-value?     (and matching-param
+                            (nil? (:value matching-param)))]
+    (params/map->TemporalUnit
+     {:name name
+      :value (or (:value matching-param)
+                 (when nil-value?
+                   params/no-value)
+                 (:default tag)
+                 params/no-value)})))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 

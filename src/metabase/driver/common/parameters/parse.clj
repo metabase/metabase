@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse-param :as parse-param]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -9,7 +10,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (metabase.driver.common.parameters Optional Param)))
+   (metabase.driver.common.parameters Optional FunctionParam Param)))
 
 (set! *warn-on-reflection* true)
 
@@ -23,6 +24,7 @@
   [:or
    :string
    (lib.schema.common/instance-of-class Param)
+   (lib.schema.common/instance-of-class FunctionParam)
    (lib.schema.common/instance-of-class Optional)])
 
 (defn- combine-adjacent-strings
@@ -98,7 +100,7 @@
       (when (empty? k)
         (throw (ex-info (tru "'''{{...}}''' clauses cannot be empty.")
                         {:type qp.error-type/invalid-query})))
-      (params/->Param k))))
+      (parse-param/parse-param k))))
 
 (defn- optional [& parsed]
   (when-not (some params/Param? parsed)
