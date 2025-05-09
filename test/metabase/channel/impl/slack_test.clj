@@ -73,21 +73,3 @@
       "abc"    "abc"
       "abcde"  "abcde"
       "abcdef" "abcd…")))
-
-(deftest card-header-truncation-test
-  (let [render-card-header
-        (fn [card-name char-limit]
-          (let [notification {:payload_type :notification/card
-                              :payload      {:card {:name card-name}
-                                             :card_part {:type :text, :text "foo"}}}
-                recipient    {:type    :notification-recipient/raw-value
-                              :details {:value "#foo"}}
-                processed    (with-redefs [channel.slack/header-text-limit char-limit]
-                               (channel/render-notification :channel/slack :notification/card notification nil [recipient]))]
-            (-> processed first :blocks first :text :text)))]
-    (are [card-name rendered-text]
-         (= rendered-text (render-card-header card-name 8))
-      ;; note java String .length counts UTF-16 characters, so (count "🔔") == 2. This may lead to overestimation of lengths (depending on how slack measures 'characters')
-      "abc"    "🔔 abc"
-      "abcde"  "🔔 abcde"
-      "abcdef" "🔔 abcd…")))

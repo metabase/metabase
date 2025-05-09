@@ -171,21 +171,27 @@
 
 (defn- sample-payload
   "Generate a sample payload for a notification."
-  [notification]
+  [notification channel-type]
   (case (:payload_type notification)
     :notification/system-event
-    (notification/sample-payload notification)
+    (channel/template-context (:payload_type notification)
+                              channel-type
+                              (notification/sample-payload notification))
 
     ;; else
     (binding [notification.payload.execute/*query-max-bare-rows* 2]
-      (notification/notification-payload notification))))
+      (channel/template-context channel-type
+                                (:payload_type notification)
+                                (notification/notification-payload notification)))))
 
 (api.macros/defendpoint :post "/payload"
   "Return the payload of a notification"
-  [_route _query body :- ::models.notification/NotificationWithPayload]
-  (api/create-check :model/Notification body)
-  {:payload (sample-payload body)
-   :schema  (api.macros/schema->json-schema (notification/notification-payload-schema body))})
+  [_route _query {:keys [notification channel_type]} :- [:map {:closed true}
+                                                         [:notification ::models.notification/NotificationWithPayload]
+                                                         [:channel_type :keyword]]]
+  (api/create-check :model/Notification notification)
+  {:payload (sample-payload notification channel_type)
+   :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
 
 (defn- sample-recipient
   [channel-type]
@@ -211,7 +217,7 @@
   (api/create-check :model/Notification notification)
   (let [sample-notification-context (if custom_context
                                       (mu/validate-throw (notification/notification-payload-schema notification) custom_context)
-                                      (sample-payload notification))]
+                                      (sample-payload notification (:channel_type template)))]
     {:context  sample-notification-context
      :rendered (first (channel/render-notification
                        (:channel_type template)

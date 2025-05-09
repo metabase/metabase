@@ -73,18 +73,18 @@
                                  :last_name   "Bot"
                                  :common_name "Meta Bot"
                                  :email       "bot@metabase.com"}}
-              [:first_name :string]
-              [:last_name :string]
+              [:first_name [:maybe :string]]
+              [:last_name [:maybe :string]]
               [:email :string]
-              [:common_name :string]]]
+              [:common_name [:maybe :string]]]]
    [:editor [:map {:gen/return {:first_name  "Meta"
                                 :last_name   "Bot"
                                 :common_name "Meta Bot"
                                 :email       "bot@metabase.com"}}
-             [:first_name :string]
-             [:last_name :string]
+             [:first_name [:maybe :string]]
+             [:last_name [:maybe :string]]
              [:email :string]
-             [:common_name :string]]]
+             [:common_name [:maybe :string]]]]
    [:table [:map {:closed   true
                   :gen/fmap (fn [_x]
                               (if *sample-table-id*
@@ -228,10 +228,7 @@
   (or (lib.util.match/match-one
         notification-info
         {:payload    {:event_name ?event_name}
-         :creator    {:first_name  ?creator_first_name
-                      :last_name   ?creator_last_name
-                      :email       ?creator_email
-                      :common_name ?creator_common_name}
+         :creator    ?creator
          :event_info {:actor       ?actor
                       :args        {:table_id  ?table_id
                                     :db_id     ?db_id
@@ -245,14 +242,8 @@
           (merge
            {:context  {:event_name ?event_name
                        :timestamp  (u.date/format ?timestamp)}
-            :editor   {:first_name  (:first_name ?actor)
-                       :last_name   (:last_name ?actor)
-                       :email       (:email ?actor)
-                       :common_name (:common_name ?actor)}
-            :creator  {:first_name  ?creator_first_name
-                       :last_name   ?creator_last_name
-                       :email       ?creator_email
-                       :common_name ?creator_common_name}
+            :editor   (select-keys ?actor [:first_name :last_name :email :common_name])
+            :creator  (select-keys ?creator [:first_name :last_name :email :common_name])
             :table    {:id   ?table_id
                        :name ?table_name
                        :url  (urls/table-url ?db_id ?table_id)}
@@ -300,7 +291,6 @@
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event :- :map
   [notification-info :- ::notification.payload/Notification]
-  (def notification-info notification-info)
   (transform-event-info notification-info))
 
 (defmethod notification.payload/notification-payload-schema :notification/system-event
