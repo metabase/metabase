@@ -431,20 +431,6 @@
                    metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
-(mu/defn- remapped-name-mbql-query
-  "Generate the MBQL for getting name value for a PK."
-  [pk-field-id   :- ms/PositiveInt
-   name-field-id :- ms/PositiveInt
-   value         :- :any]
-  {:database (field/field-id->database-id pk-field-id)
-   :type     :query
-   :query    (-> {:source-table (field/field-id->table-id pk-field-id)
-                  :filter       [:= [:field pk-field-id nil] value]
-                  :fields       [[:field name-field-id nil]]
-                  :limit        1}
-                 metadata-queries/add-required-filters-if-needed)
-   :middleware {:disable-remaps? true}})
-
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
 (mu/defn- unremapped-chain-filter :- ms/FieldValuesResult
@@ -515,8 +501,8 @@
 (sql/register-clause! ::union format-union :union)
 
 (defn- implicit-pk->name-mapping-query
-  [field-id]
-  {:select    [[:dest.id :id]]
+  [field-id mapping-type]
+  {:select    [[:dest.id :id] [[:inline mapping-type] :mapping_type]]
    :from      [[:metabase_field :source]]
    :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
                [:metabase_field :dest] [:= :dest.table_id :table.id]]
@@ -527,9 +513,9 @@
    :limit     1})
 
 (defn- remapped-field-id-query [field-id]
-  {:select [[:ids.id :id]]
+  {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
    :from   [[{::union [;; Explicit FK Field->Field remapping
-                       {:select [[:dimension.human_readable_field_id :id]]
+                       {:select [[:dimension.human_readable_field_id :id] [[:inline "fk->field"] :mapping_type]]
                         :from   [[:dimension :dimension]]
                         :where  [:and
                                  [:= :dimension.field_id field-id]
@@ -542,29 +528,12 @@
                          :where     [:and
                                      [:= :id field-id]
                                      (mdb.query/isa :semantic_type :type/FK)]
-                         :limit     1})
+                         :limit     1}
+                        "fk->pk->name")
                        ;; Implicit PK Field-> [Name] Field remapping
-                       (implicit-pk->name-mapping-query field-id)]}
-             :ids]]
+                       (implicit-pk->name-mapping-query field-id "pk->name")]}
+             :mapping]]
    :limit  1})
-
-(defn name-for-pk
-  "When there is a type/Name field in the table of `pk-field`, return the value
-  of that field for the entry where `pk-field` has the value `value`."
-  [pk-field value]
-  (let [pk-field-id (:id pk-field)]
-    (when-let [name-field-id (:id (t2/query-one (implicit-pk->name-mapping-query pk-field-id)))]
-      (let [mbql-query (remapped-name-mbql-query pk-field-id name-field-id value)]
-        (log/debugf "Remapped name MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
-        (try
-          (-> (qp/process-query mbql-query (constantly conj))
-              ffirst)
-          (catch Throwable e
-            (throw (ex-info "Error remapped name query"
-                            {:pk-field-id   pk-field-id
-                             :name-field-id name-field-id
-                             :mbql-query    mbql-query}
-                            e))))))))
 
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ms/PositiveInt]
@@ -572,6 +541,17 @@
   remapping."
   [field-id :- [:maybe ms/PositiveInt]]
   (:id (t2/query-one (remapped-field-id-query field-id))))
+
+(mu/defn remapping :- [:maybe [:map
+                               [:id ms/PositiveInt]
+                               [:mapping-type [:enum :fk->field :fk->pk->name :pk->name]]]]
+  "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
+  remapping."
+  [field-id :- [:maybe ms/PositiveInt]]
+  (when-let [raw-mapping (t2/query-one (remapped-field-id-query field-id))]
+    (-> raw-mapping
+        (dissoc :mapping_type)
+        (assoc :mapping-type (-> raw-mapping :mapping_type keyword)))))
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
@@ -622,8 +602,10 @@
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
+        relax-fk-requirement? (:relax-fk-requirement? options)
+        options               (dissoc options :relax-fk-requirement?)
         v->human-readable     (human-readable-remapping-map field-id)
-        the-remapped-field-id (delay (remapped-field-id field-id))]
+        remapping             (delay (remapping field-id))]
     (cond
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
@@ -632,15 +614,24 @@
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
 
-      (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
+      (and (use-cached-field-values? field-id) (nil? @remapping))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
 
      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
      ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
-      (some? @the-remapped-field-id)
-      (unremapped-chain-filter @the-remapped-field-id constraints (assoc options :original-field-id field-id))
+      (some? @remapping)
+      (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
+        (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
+                                        relax-fk-requirement?)
+                               (t2/select-one-fn :fk_target_field_id :model/Field field-id))]
+          (unremapped-chain-filter the-remapped-field-id
+                                   (map #(cond-> %
+                                           (= (:field-id %) field-id) (assoc :field-id pk-field-id))
+                                        constraints)
+                                   (assoc options :original-field-id pk-field-id))
+          (unremapped-chain-filter the-remapped-field-id constraints (assoc options :original-field-id field-id))))
 
       :else
       (unremapped-chain-filter field-id constraints options))))

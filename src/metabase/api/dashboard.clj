@@ -53,6 +53,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -1320,7 +1321,8 @@
           value
           #(let [field-ids (into #{} (map :field-id (param->fields param)))]
              (-> (if (= (count field-ids) 1)
-                   (chain-filter dashboard param-key (assoc constraint-param-key->value param-key value))
+                   (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
+                                              :relax-fk-requirement? true :limit 1)
                    (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
                      (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
                  :values
@@ -1335,10 +1337,10 @@
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
                               [:param-key :string]]
-   {:keys [value]}        :- [:map [:value :any]]]
+   {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
-      (dashboard-param-remapped-value dashboard param-key value))))
+      (dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
