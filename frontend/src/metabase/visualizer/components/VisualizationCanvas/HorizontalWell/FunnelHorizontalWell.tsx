@@ -24,7 +24,10 @@ import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
+import {
+  isArtificialColumn,
+  isDraggedColumnItem,
+} from "metabase/visualizer/utils";
 import {
   removeColumn,
   updateSettings,
@@ -47,7 +50,9 @@ export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
   });
 
   const dimension = columns.find(
-    (column) => column.name === settings["funnel.dimension"],
+    (column) =>
+      column.name === settings["funnel.dimension"] &&
+      !isArtificialColumn(column),
   );
 
   const rows = settings?.["funnel.rows"] ?? [];
