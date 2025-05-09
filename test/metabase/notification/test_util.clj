@@ -3,7 +3,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
