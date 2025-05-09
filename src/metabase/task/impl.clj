@@ -312,7 +312,6 @@
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
   (when-let [scheduler (scheduler)]
-    (qs/shutdown? scheduler)
     (let [job-key (->job-key job-key)]
       (try
         (assoc (job-detail->info (qs/get-job scheduler job-key))
