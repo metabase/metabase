@@ -20,7 +20,7 @@ import {
 export const activityApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listRecents: builder.query<RecentItem[], RecentsRequest | void>({
-      query: ({ context, include_metadata } = { context: ["views"] }) => {
+      query: ({ context, include_metadata } = {}) => {
         const contextParams = [];
 
         if (context) {
@@ -32,6 +32,8 @@ export const activityApi = Api.injectEndpoints({
             .forEach((ctx) => {
               contextParams.push(`context=${ctx}`);
             });
+        } else {
+          contextParams.push("context=views");
         }
 
         if (include_metadata != null) {
