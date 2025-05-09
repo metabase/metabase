@@ -293,6 +293,11 @@
   {:api  #{metabase.formatter}
    :uses #{models settings query-processor types util}}
 
+  geojson
+  {:api  #{metabase.geojson.api
+           metabase.geojson.init}
+   :uses #{api settings util}}
+
   indexed-entities
   {:api  #{metabase.indexed-entities.api metabase.indexed-entities.init}
    :uses #{analytics api driver legacy-mbql lib models query-processor search sync task util}}
