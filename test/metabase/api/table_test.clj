@@ -70,7 +70,8 @@
   (merge
    (mt/object-defaults :model/Field)
    {:default_dimension_option nil
-    :database_indexed         false
+    ;; Index sync is turned off across the application as it is not used ATM.
+    #_#_:database_indexed         false
     :dimension_options        []
     :dimensions               []
     :position                 0
@@ -275,7 +276,8 @@
                                      :visibility_type            "normal"
                                      :has_field_values           "none"
                                      :database_required          false
-                                     :database_indexed           true
+                                     ;; Index sync is turned off across the application as it is not used ATM.
+                                     #_#_:database_indexed           true
                                      :database_is_auto_increment true
                                      :database_is_generated      false
                                      :database_is_nullable       false
@@ -369,7 +371,8 @@
                                      :base_type        "type/BigInteger"
                                      :effective_type   "type/BigInteger"
                                      :has_field_values "none"
-                                     :database_indexed  true
+                                     ;; Index sync is turned off across the application as it is not used ATM.
+                                     #_#_:database_indexed  true
                                      :database_required false
                                      :database_is_auto_increment true
                                      :database_is_generated      false
@@ -580,7 +583,8 @@
                                             :semantic_type     "type/FK"
                                             :database_position 2
                                             :position          2
-                                            :database_indexed  true
+                                            ;; Index sync is turned off across the application as it is not used ATM.
+                                            #_#_:database_indexed  true
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
                                                             (t2/select-one [:model/Table
@@ -600,7 +604,8 @@
                                             :effective_type   "type/BigInteger"
                                             :database_type    "BIGINT"
                                             :semantic_type    "type/PK"
-                                            :database_indexed true
+                                            ;; Index sync is turned off across the application as it is not used ATM.
+                                            #_#_:database_indexed true
                                             :table            (merge
                                                                (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                                (t2/select-one [:model/Table
@@ -635,7 +640,8 @@
                               :effective_type    "type/BigInteger"
                               :has_field_values  "none"
                               :database_required false
-                              :database_indexed  true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              #_#_:database_indexed  true
                               :database_is_auto_increment true
                               :name_field        {:base_type "type/Text",
                                                   :display_name "Name",

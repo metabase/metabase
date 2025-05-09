@@ -18,6 +18,7 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
     info: "info",
     addEditableTable: "addEditableTable",
     configureEditableTable: "configureEditableTable",
+    analyze: "analyze",
   };
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
