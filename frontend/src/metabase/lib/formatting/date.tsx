@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { parseTimestamp } from "metabase/lib/time";
@@ -720,7 +721,7 @@ const getMonthFormat = (options: OptionsType) =>
 export function getDateFormatFromStyle(
   style: string,
   unit: DatetimeUnit,
-  separator: string,
+  separator?: string,
   includeWeekday?: boolean,
 ) {
   const replaceSeparators = (format: string) =>
@@ -1105,4 +1106,73 @@ export function formatDateTimeWithUnit(
   }
 
   return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
+}
+
+const EXAMPLE_DATE = moment("2018-01-31 17:24");
+
+export function getDateStyleOptionsForUnit(
+  unit: DatetimeUnit,
+  abbreviate = false,
+  separator?: string,
+) {
+  // hour-of-day shouldn't have any date style. It's handled as a time instead.
+  // Other date parts are handled as dates, but hour-of-day needs to use the
+  // time settings for 12/24 hour clock.
+  if (unit === "hour-of-day") {
+    return [];
+  }
+
+  const options = [
+    dateStyleOption("MMMM D, YYYY", unit, abbreviate, separator),
+    dateStyleOption("D MMMM, YYYY", unit, abbreviate, separator),
+    dateStyleOption("dddd, MMMM D, YYYY", unit, abbreviate, separator),
+    dateStyleOption("M/D/YYYY", unit, abbreviate, separator),
+    dateStyleOption("D/M/YYYY", unit, abbreviate, separator),
+    dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
+  ];
+  const seen = new Set();
+  return options.filter((option) => {
+    const format = getDateFormatFromStyle(option.value, unit);
+    if (seen.has(format)) {
+      return false;
+    } else {
+      seen.add(format);
+      return true;
+    }
+  });
+}
+
+function dateStyleOption(
+  style: string,
+  unit: DatetimeUnit,
+  abbreviate = false,
+  separator?: string,
+) {
+  let format = getDateFormatFromStyle(style, unit, separator);
+  if (abbreviate) {
+    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+  }
+  return {
+    name: EXAMPLE_DATE.format(format),
+    value: style,
+  };
+}
+
+export function getTimeStyleOptions(unit: DatetimeUnit) {
+  return [
+    timeStyleOption("h:mm A", t`12-hour clock`),
+    ...(unit === "hour-of-day"
+      ? [timeStyleOption("h A", "12-hour clock without minutes")]
+      : []),
+    timeStyleOption("HH:mm", t`24-hour clock`),
+  ];
+}
+
+function timeStyleOption(style: string, description: string) {
+  const format = style;
+  return {
+    name:
+      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+    value: style,
+  };
 }

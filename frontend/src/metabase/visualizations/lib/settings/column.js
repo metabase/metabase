@@ -1,12 +1,15 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import _ from "underscore";
 
 import { currency } from "cljs/metabase.util.currency";
 import {
   displayNameForColumn,
+  getCurrency,
+  getCurrencyStyleOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
+  getDateStyleOptionsForUnit,
+  getTimeStyleOptions,
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
@@ -38,17 +41,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 
 import { nestedSettings } from "./nested";
-
-function getCurrency(currency, currencyStyle) {
-  return (0)
-    .toLocaleString("en", {
-      style: "currency",
-      currency: currency,
-      currencyDisplay: currencyStyle,
-    })
-    .replace(/0([.,]0+)?/, "")
-    .trim(); // strip off actual number
-}
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map((s) => (s.data && s.data.cols) || []));
@@ -93,56 +85,6 @@ function getInhertiedSettingsForColumn(column) {
   return {
     ...getGlobalSettingsForColumn(column),
     ...getLocalSettingsForColumn(column),
-  };
-}
-
-const EXAMPLE_DATE = moment("2018-01-31 17:24");
-
-function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
-  // hour-of-day shouldn't have any date style. It's handled as a time instead.
-  // Other date parts are handled as dates, but hour-of-day needs to use the
-  // time settings for 12/24 hour clock.
-  if (unit === "hour-of-day") {
-    return [];
-  }
-
-  const options = [
-    dateStyleOption("MMMM D, YYYY", unit, abbreviate, separator),
-    dateStyleOption("D MMMM, YYYY", unit, abbreviate, separator),
-    dateStyleOption("dddd, MMMM D, YYYY", unit, abbreviate, separator),
-    dateStyleOption("M/D/YYYY", unit, abbreviate, separator),
-    dateStyleOption("D/M/YYYY", unit, abbreviate, separator),
-    dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
-  ];
-  const seen = new Set();
-  return options.filter((option) => {
-    const format = getDateFormatFromStyle(option.value, unit);
-    if (seen.has(format)) {
-      return false;
-    } else {
-      seen.add(format);
-      return true;
-    }
-  });
-}
-
-function dateStyleOption(style, unit, abbreviate = false, separator) {
-  let format = getDateFormatFromStyle(style, unit, separator);
-  if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
-  }
-  return {
-    name: EXAMPLE_DATE.format(format),
-    value: style,
-  };
-}
-
-function timeStyleOption(style, description) {
-  const format = style;
-  return {
-    name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
-    value: style,
   };
 }
 
@@ -253,14 +195,8 @@ export const DATE_COLUMN_SETTINGS = {
     },
     widget: "radio",
     default: "h:mm A",
-    getProps: (column, settings) => ({
-      options: [
-        timeStyleOption("h:mm A", t`12-hour clock`),
-        ...(column.unit === "hour-of-day"
-          ? [timeStyleOption("h A", "12-hour clock without minutes")]
-          : []),
-        timeStyleOption("HH:mm", t`24-hour clock`),
-      ],
+    getProps: (column) => ({
+      options: getTimeStyleOptions(column.unit),
     }),
     getHidden: (column, settings) =>
       !settings["time_enabled"] || isDateWithoutTime(column),
@@ -331,29 +267,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     widget: "radio",
     getProps: (column, settings) => {
-      const c = settings["currency"] || "USD";
-      const symbol = getCurrencySymbol(c);
-      const code = getCurrency(c, "code");
-      const name = getCurrency(c, "name");
       return {
-        options: [
-          ...(symbol !== code
-            ? [
-                {
-                  name: t`Symbol` + ` ` + `(${symbol})`,
-                  value: "symbol",
-                },
-              ]
-            : []),
-          {
-            name: t`Code` + ` ` + `(${code})`,
-            value: "code",
-          },
-          {
-            name: t`Name` + ` ` + `(${name})`,
-            value: "name",
-          },
-        ],
+        options: getCurrencyStyleOptions(settings["currency"] || "USD"),
       };
     },
     getDefault: getDefaultCurrencyStyle,
