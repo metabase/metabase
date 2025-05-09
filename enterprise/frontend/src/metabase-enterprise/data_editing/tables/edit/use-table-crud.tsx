@@ -91,6 +91,7 @@ export const useTableCRUD = ({
         const response = await updateTableRows({
           tableId: tableId,
           rows: [updatedRowWithPk],
+          scope,
         });
 
         if (response.error) {
@@ -121,6 +122,7 @@ export const useTableCRUD = ({
       handleCellValueUpdateError,
       stateUpdateStrategy,
       tableId,
+      scope,
       updateTableRows,
     ],
   );
