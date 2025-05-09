@@ -44,6 +44,7 @@ const SCHEMA_STEP = "SCHEMA";
 // chooses a table (database has already been selected)
 const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
+// XXX: This could be removed since embedding data picker doesn't show fields
 const FIELD_STEP = "FIELD";
 
 /**
