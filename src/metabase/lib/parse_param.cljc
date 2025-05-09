@@ -1,11 +1,10 @@
-(ns metabase.driver.common.parameters.parse-param
+(ns metabase.lib.parse-param
   (:require
    [clojure.core.match :refer [match]]
-   [instaparse.core :as insta]
-   [metabase.driver.common.parameters :as params]))
+   [instaparse.core :as insta]))
 
 (insta/defparser ^:private param-grammar "
-S = <whitespace> function/param <whitespace>
+S = (<whitespace> function <whitespace>) / param
 param = #'.*'
 expr = string|doubleString
 string = <'\\''> #'[^\\']*' <'\\''>
@@ -26,5 +25,10 @@ whitespace = #'\\s*'
   optionally :args]"
   [s]
   (match (param-grammar s)
-    [:S [:function [:functionName prefix name] [:arglist & args]]] (params/->FunctionParam (str prefix name) (mapv parse-expr args))
-    [:S [:param name]] (params/->Param name)))
+    [:S [:function
+         [:functionName prefix function-name]
+         [:arglist & args]]] {:type :metabase.lib.parse/function-param
+                              :name (str prefix function-name)
+                              :args (mapv parse-expr args)}
+    [:S [:param param-name]] {:type :metabase.lib.parse/param
+                              :name param-name}))
