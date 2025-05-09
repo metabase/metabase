@@ -242,18 +242,12 @@
   {:exclude
    {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
     metabase.cmd/load                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
-    metabase.db.data-migrations/data-migrations                                  {:namespaces ["metabase\\.db\\.data-migrations"]}
-    metabase.db.data-migrations/defmigration                                     {:namespaces ["metabase\\.db\\.data-migrations"]}
-    metabase.db.data-migrations/run-migration-if-needed!                         {:namespaces ["metabase\\.db\\.data-migrations"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
-    metabase.premium-features.premium-features/enable-enhancements?              {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
-    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
-    schema.core/both                                                             {:namespaces ["metabase.*"]}
-    schema.core/either                                                           {:namespaces ["metabase.*"]}}}
+    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
   {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
@@ -552,7 +546,7 @@
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
-  metabase.premium-features.core/define-premium-feature                                 clojure.core/def
+  metabase.premium-features.settings/define-premium-feature                             clojure.core/def
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
