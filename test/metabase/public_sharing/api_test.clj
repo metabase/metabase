@@ -1571,6 +1571,130 @@
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red")))))))))))))
 
+;;; -------------------------------------- Param remapping endpoints ---------------------------------------
+
+(deftest dashboard-param-value-remapping-test
+  (let [id-param-id   "id-param-id"
+        list-param-id "static-labeled-list"
+        uuid (str (random-uuid))]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid uuid
+                                                        :parameters [{:name      "ID"
+                                                                      :id        id-param-id
+                                                                      :type      :id}
+                                                                     {:name                 "Static Category label"
+                                                                      :id                   list-param-id
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values [["A frican" "Af"]
+                                                                                                      ["American" "Am"]
+                                                                                                      ["A   sian" "As"]]}}]}
+                   :model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Card {people-card-id :id} {:dataset_query (mt/mbql-query people)}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            orders-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :orders :user_id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            people-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      people-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :people :id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}]
+      (let [url #(str "public/dashboard/" uuid "/params/" %1 "/remapping?value=" %2)]
+        (is (= [1 "Hudson Borer"]
+               (client/client :get 200 (url id-param-id 1))))
+        (is (= [(str Integer/MAX_VALUE)]
+               (client/client :get 200 (url id-param-id Integer/MAX_VALUE))))
+        (is (= ["A   sian" "As"]
+               (client/client :get 200 (url list-param-id "A   sian"))))))))
+
+(deftest card-param-value-remapping-test
+  (let [param-static-list          "_STATIC_CATEGORY_"
+        param-static-list-label    "_STATIC_CATEGORY_LABEL_"
+        param-card                 "_CARD_"
+        param-field-values         "name_param_id"
+        param-labeled-field-values "id"]
+    (mt/with-temp
+      [:model/Card source-card {:database_id   (mt/id)
+                                :table_id      (mt/id :venues)
+                                :dataset_query (mt/mbql-query venues {:limit 5})}
+       :model/Card field-filter-card {:public_uuid (str (random-uuid))
+                                      :dataset_query
+                                      {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                  :template-tags {"NAME" {:id           param-field-values
+                                                                          :name         "NAME"
+                                                                          :display_name "Name"
+                                                                          :type         :dimension
+                                                                          :dimension    [:field (mt/id :venues :name) nil]
+                                                                          :required     true}}}}
+                                      :name       "native card with field filter"
+                                      :parameters [{:id     param-field-values
+                                                    :type   :string/=
+                                                    :target [:dimension [:template-tag "NAME"]]
+                                                    :name   "Name"
+                                                    :slug   "NAME"}]}
+       :model/Card name-mapped-card  {:public_uuid (str (random-uuid))
+                                      :dataset_query
+                                      {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                  :template-tags {"id" {:id           param-labeled-field-values
+                                                                        :name         "ID"
+                                                                        :display_name "Id"
+                                                                        :type         :dimension
+                                                                        :dimension    [:field (mt/id :people :id) nil]
+                                                                        :required     true}}}}
+                                      :name       "native card with named field filter"
+                                      :parameters [{:id     param-labeled-field-values
+                                                    :type   :number/>=
+                                                    :target [:dimension [:template-tag "id"]]
+                                                    :name   "Id"
+                                                    :slug   "id"}]}
+       :model/Card card        {:public_uuid (str (random-uuid))
+                                :database_id   (mt/id)
+                                :dataset_query (mt/mbql-query venues)
+                                :parameters    [{:name                 "Static Category"
+                                                 :slug                 "static_category"
+                                                 :id                   param-static-list
+                                                 :type                 "category"
+                                                 :values_source_type   "static-list"
+                                                 :values_source_config {:values ["African" "American" "Asian"]}}
+                                                {:name                 "Static Category label"
+                                                 :slug                 "static_category_label"
+                                                 :id                   param-static-list-label
+                                                 :type                 "category"
+                                                 :values_source_type   "static-list"
+                                                 :values_source_config {:values [["Af rican" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                                {:name                 "Card as source"
+                                                 :slug                 "card"
+                                                 :id                   param-card
+                                                 :type                 "category"
+                                                 :values_source_type   "card"
+                                                 :values_source_config {:card_id     (:id source-card)
+                                                                        :value_field (mt/$ids $venues.name)}}]
+                                :table_id      (mt/id :venues)}]
+      (let [request #(client/client :get 200
+                                    (format "public/card/%s/params/%s/remapping?value=%s" (:public_uuid %1) %2 %3))]
+        (are [card value-source value] (= [value] (request card value-source value))
+          field-filter-card param-field-values      "20th Century Cafe"
+          field-filter-card param-field-values      "Not a value in the DB"
+          card              param-card              "33 Taps"
+          card              param-card              "Not provided by the card"
+          card              param-static-list       "African"
+          card              param-static-list       "Whatever"
+          card              param-static-list-label "European")
+        (is (= ["Af rican" "Af"] (request card param-static-list-label "Af rican")))
+        (is (= [42 "Reyes Strosin"] (request name-mapped-card param-labeled-field-values "42")))))))
+
+
 ;;; --------------------------------------------- Pivot tables ---------------------------------------------
 
 (deftest pivot-public-card-test

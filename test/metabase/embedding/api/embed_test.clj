@@ -1876,7 +1876,106 @@
             (let [token (dash-token dashboard-id {:params params})
                   value (first expected)
                   url   (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" value)]
-              (is (= expected (mt/user-http-request :crowberto :get 200 url))))))))))
+              (is (= expected (client/client :get 200 url))))))))))
+
+(deftest card-param-value-remapping-test
+  (let [param-static-list          "_STATIC_CATEGORY_"
+        param-static-list-label    "_STATIC_CATEGORY_LABEL_"
+        param-card                 "_CARD_"
+        param-field-values         "name_param_id"
+        param-labeled-field-values "id"
+        param-not-enabled          "not-enabled-id"]
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp
+        [:model/Card source-card {:database_id   (mt/id)
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (mt/mbql-query venues {:limit 5})}
+         :model/Card field-filter-card {:enable_embedding true
+                                        :dataset_query
+                                        {:database (mt/id)
+                                         :type     :native
+                                         :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}} and {{PRICE}}"
+                                                    :template-tags {"NAME" {:id           param-field-values
+                                                                            :name         "NAME"
+                                                                            :display_name "Name"
+                                                                            :type         :dimension
+                                                                            :dimension    [:field (mt/id :venues :name) nil]
+                                                                            :required     true}
+                                                                    "PRICE" {:id           param-not-enabled
+                                                                             :name         "PRICE"
+                                                                             :display_name "Price"
+                                                                             :type         :dimension
+                                                                             :dimension    [:field (mt/id :venues :price) nil]
+                                                                             :required     true}}}}
+                                        :name       "native card with field filter"
+                                        :parameters [{:id     param-field-values
+                                                      :type   :string/=
+                                                      :target [:dimension [:template-tag "NAME"]]
+                                                      :name   "Name"
+                                                      :slug   "name"}
+                                                     {:id     param-not-enabled
+                                                      :type   :number/>=
+                                                      :target [:dimension [:template-tag "PRICE"]]
+                                                      :name   "Price"
+                                                      :slug   "price"}]
+                                        :embedding_params {:name :enabled
+                                                           :price :locked}}
+         :model/Card name-mapped-card {:enable_embedding true
+                                       :dataset_query
+                                       {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                   :template-tags {"id" {:id           param-labeled-field-values
+                                                                         :name         "ID"
+                                                                         :display_name "Id"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :people :id) nil]
+                                                                         :required     true}}}}
+                                       :name       "native card with named field filter"
+                                       :parameters [{:id     param-labeled-field-values
+                                                     :type   :number/>=
+                                                     :target [:dimension [:template-tag "id"]]
+                                                     :name   "Id"
+                                                     :slug   "id"}]
+                                       :embedding_params {:id :enabled}}
+         :model/Card card {:enable_embedding true
+                           :database_id   (mt/id)
+                           :dataset_query (mt/mbql-query venues)
+                           :parameters    [{:name                 "Static Category"
+                                            :slug                 "static_category"
+                                            :id                   param-static-list
+                                            :type                 "category"
+                                            :values_source_type   "static-list"
+                                            :values_source_config {:values ["African" "American" "Asian"]}}
+                                           {:name                 "Static Category label"
+                                            :slug                 "static_category_label"
+                                            :id                   param-static-list-label
+                                            :type                 "category"
+                                            :values_source_type   "static-list"
+                                            :values_source_config {:values [["Af rican" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                           {:name                 "Card as source"
+                                            :slug                 "card"
+                                            :id                   param-card
+                                            :type                 "category"
+                                            :values_source_type   "card"
+                                            :values_source_config {:card_id     (:id source-card)
+                                                                   :value_field (mt/$ids $venues.name)}}]
+                           :embedding_params (zipmap [:static_category :static_category_label :card] (repeat :enabled))
+                           :table_id      (mt/id :venues)}]
+        (let [url #(format "embed/card/%s/params/%s/remapping?value=%s" (card-token %1) %2 %3)
+              request #(client/client :get 200 (url %1 %2 %3))]
+          (are [card value-source value] (= [value] (request card value-source value))
+            field-filter-card param-field-values      "20th Century Cafe"
+            field-filter-card param-field-values      "Not a value in the DB"
+            card              param-card              "33 Taps"
+            card              param-card              "Not provided by the card"
+            card              param-static-list       "African"
+            card              param-static-list       "Whatever"
+            card              param-static-list-label "European")
+          (is (= ["Af rican" "Af"] (request card param-static-list-label "Af rican")))
+          (is (= [42 "Reyes Strosin"] (request name-mapped-card param-labeled-field-values "42")))
+          (is (= "Cannot get remapped value for parameter: \"price\" is not an enabled parameter."
+                 (client/client :get 400 (url field-filter-card param-not-enabled "3")))))))))
 
 ;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
 

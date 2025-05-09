@@ -166,14 +166,19 @@
   [field-ids]
   (when (and (seq field-ids) (every? pos-int? field-ids))
     (let [field-id-set (set field-ids)
-          field-id->fk-target-field-id (t2/select-pk->fn :fk_target_field_id :model/Field :id [:in field-id-set])]
-      ;; when every field could be found
-      (when (= (count field-id-set) (count field-id->fk-target-field-id))
+          fields (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-id-set])]
+      ;; when every field could be found and all are keys
+      (when (and (= (count field-id-set) (count fields))
+                 (every? (fn [{:keys [semantic_type fk_target_field_id]}]
+                           (or (isa? semantic_type :type/PK)
+                               (and (isa? semantic_type :type/FK)
+                                    fk_target_field_id)))
+                         fields))
         ;; pk->fks maps PK field IDs to FK field IDs pointing to them,
         ;; plus nil to the field IDs in `field-ids` that are not FKs
-        (let [pk->fks (-> field-id->fk-target-field-id
-                          (->> (group-by val))
-                          (update-vals #(into #{} (map key) %)))]
+        (let [pk->fks (-> fields
+                          (->> (group-by :fk_target_field_id))
+                          (update-vals #(into #{} (map :id) %)))]
           (case (count pk->fks)
             ;; there is a single group so it's either one PK mapped to its FKs, or nil mapped to non-FKs
             1 (-> pk->fks first key)
