@@ -340,5 +340,5 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [notebook-editor-def]: https://www.metabase.com/glossary/notebook-editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
-[sql-reference-guide]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides
+[sql-reference-guide]: https://www.metabase.com/learn/sql/debugging-sql/sql-syntax#common-sql-reference-guides
 [sumif]: ./sumif.md
