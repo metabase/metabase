@@ -20,7 +20,8 @@ export type DashboardSidebarName =
   | "sharing"
   | "info"
   | "addEditableTable"
-  | "configureEditableTable";
+  | "configureEditableTable"
+  | "analyze";
 
 interface BaseSidebarState {
   name?: DashboardSidebarName;
