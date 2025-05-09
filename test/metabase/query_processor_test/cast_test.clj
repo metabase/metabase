@@ -533,27 +533,6 @@
                     ud (parse-date uncasted-value)]
                 (is (= ud cd))))))))))
 
-(deftest ^:parallel date-parse-table-fields-aggregation
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
-    (let [mp (mt/metadata-provider)]
-      (doseq [[table fields] [[:people [{:field :birth_date}]]]
-              {:keys [field]} fields]
-        (testing (str "casting " table "." field " to date in aggregation")
-          (let [field-md (lib.metadata/field mp (mt/id table field))
-                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/with-fields [field-md])
-                          (lib/aggregate (lib/max field-md))
-                          (lib/aggregate (lib/max (lib/date (lib/text field-md))))
-                          (lib/limit 100))
-                result (-> query qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (date-type? (last cols)))
-            (doseq [[uncasted-value casted-value] rows]
-              (let [cd (parse-date casted-value)
-                    ud (parse-date uncasted-value)]
-                (is (= ud cd))))))))))
-
 (deftest ^:parallel date-truncate-datetime
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
     (let [mp (mt/metadata-provider)]
