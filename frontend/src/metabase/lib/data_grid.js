@@ -11,7 +11,9 @@ export function isPivotGroupColumn(col) {
 
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
-export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const PREAGG_COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const UNAGG_COLUMN_SPLIT_SETTING =
+  "pivot_table.unaggregated_column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
@@ -144,7 +146,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
   }
 
   // provide some column metadata to maintain consistency
-  const cols = pivotValues.map(function(value, idx) {
+  const cols = pivotValues.map(function (value, idx) {
     if (idx === 0) {
       // first column is always the coldef of the normal column
       return data.cols[normalCol];
