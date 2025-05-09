@@ -1,4 +1,4 @@
-(ns metabase.task.creator-sentiment-emails
+(ns metabase.product-feedback.task.creator-sentiment-emails
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]

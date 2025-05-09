@@ -519,6 +519,11 @@
            metabase.premium-features.init}
    :uses #{api config db internal-stats plugins settings util}}
 
+  product-feedback
+  {:api  #{metabase.product-feedback.api
+           metabase.product-feedback.init}
+   :uses #{analytics api channel config db driver premium-features settings task util}}
+
   public-sharing
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
@@ -679,13 +684,10 @@
 
   task
   {:api #{metabase.task.bootstrap
-          metabase.task.core
-          metabase.task.init}
+          metabase.task.core}
    :uses #{analytics
-           channel
            config
            db
-           driver
            plugins
            premium-features
            settings

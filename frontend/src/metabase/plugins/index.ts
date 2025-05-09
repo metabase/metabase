@@ -60,16 +60,17 @@ import type {
   CollectionInstanceAnaltyicsConfig,
   DashCardId,
   Dashboard,
+  DashboardId,
   DatabaseId,
   Database as DatabaseType,
   Dataset,
   DatasetError,
   DatasetErrorType,
-  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
   Pulse,
   Revision,
   TableId,
@@ -744,9 +745,14 @@ export const PLUGIN_DB_ROUTING = {
 };
 
 export const PLUGIN_API = {
-  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
-  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
-    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
-  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
-    `/api/field/${fieldId}/search/${searchFieldId}`,
+  getRemappedCardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getRemappedDashboardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };

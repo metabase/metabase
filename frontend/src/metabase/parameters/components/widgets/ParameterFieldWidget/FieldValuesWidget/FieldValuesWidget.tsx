@@ -3,7 +3,6 @@ import {
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -12,7 +11,12 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useGetRemappedFieldValueQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetRemappedCardParameterValueQuery,
+  useGetRemappedDashboardParameterValueQuery,
+  useGetRemappedParameterValueQuery,
+} from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
@@ -37,10 +41,15 @@ import {
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
+  CardId,
   Dashboard,
+  DashboardId,
   FieldValue,
   Parameter,
+  ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -55,7 +64,6 @@ import {
   canUseCardEndpoints,
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
-  getFieldsRemappingInfo,
   getLabel,
   getOption,
   getTokenFieldPlaceholder,
@@ -99,7 +107,7 @@ export interface IFieldValuesWidgetProps {
   alwaysShowOptions?: boolean;
   showOptionsInPopover?: boolean;
 
-  parameter?: Parameter;
+  parameter: Parameter;
   parameters?: Parameter[];
   fields: Field[];
   dashboard?: Dashboard | null;
@@ -267,11 +275,7 @@ export const FieldValuesWidgetInner = forwardRef<
   const updateRemappings = (options: FieldValue[]) => {
     if (showRemapping(fields)) {
       const [field] = fields;
-      if (
-        field.remappedField() === field.searchField(disablePKRemappingForSearch)
-      ) {
-        dispatch(addRemappings(field.id, options));
-      }
+      dispatch(addRemappings(field.id, options));
     }
   };
 
@@ -320,6 +324,9 @@ export const FieldValuesWidgetInner = forwardRef<
         fields,
         formatOptions,
         value,
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         autoLoad: true,
         compact: false,
         displayValue: option?.[1],
@@ -333,6 +340,9 @@ export const FieldValuesWidgetInner = forwardRef<
         fields,
         formatOptions,
         value: option[0],
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         autoLoad: false,
         displayValue: option[1],
       });
@@ -389,18 +399,21 @@ export const FieldValuesWidgetInner = forwardRef<
     disableSearch,
     options,
   });
-  const customOptions = useMemo(() => {
-    const customValues = parameter?.values_source_config?.values ?? [];
-    return customValues.map(getOption).filter(isNotNull);
-  }, [parameter]);
-  const isNumericParameter = isNumeric(fields[0], parameter);
+  const isNumericParameter = isNumeric(parameter, fields);
+
+  const parseNumericValue = (value: string) => {
+    const number = parseNumber(value);
+    return typeof number === "bigint" ? String(number) : number;
+  };
 
   const parseFreeformValue = (value: string | undefined) => {
-    if (isNumericParameter) {
-      const number = typeof value === "string" ? parseNumber(value) : null;
-      return typeof number === "bigint" ? String(number) : number;
+    if (value == null) {
+      return null;
     }
-    return parseStringValue(value);
+
+    return isNumericParameter
+      ? parseNumericValue(value)
+      : parseStringValue(value);
   };
 
   return (
@@ -468,9 +481,11 @@ export const FieldValuesWidgetInner = forwardRef<
             }}
             renderValue={({ value }) => (
               <RemappedValue
-                value={value}
+                parameter={parameter}
                 fields={fields}
-                customOptions={customOptions}
+                dashboardId={dashboard?.id}
+                cardId={question?.id()}
+                value={isNumericParameter ? parseNumericValue(value) : value}
               />
             )}
             renderOption={({ option }) => (
@@ -478,12 +493,7 @@ export const FieldValuesWidgetInner = forwardRef<
             )}
             onChange={(values) => {
               if (isNumericParameter) {
-                onChange(
-                  values.map((value) => {
-                    const number = parseNumber(value);
-                    return typeof number === "bigint" ? String(number) : number;
-                  }),
-                );
+                onChange(values.map(parseNumericValue));
               } else {
                 onChange(values);
               }
@@ -560,8 +570,8 @@ function getNothingFoundMessage({
     return undefined;
   }
   if (fields.length === 1 && fields[0] != null) {
-    const remappingInfo = getFieldsRemappingInfo(fields);
-    const searchField = remappingInfo?.searchField ?? fields[0];
+    const [field] = fields;
+    const searchField = field.searchField();
     return t`No matching ${searchField?.display_name} found.`;
   } else {
     return t`No matching result`;
@@ -660,9 +670,12 @@ function renderOptions({
 }
 
 function renderValue({
+  parameter,
+  cardId,
+  dashboardId,
   fields,
-  formatOptions,
   value,
+  formatOptions,
   autoLoad,
   compact,
   displayValue,
@@ -670,6 +683,9 @@ function renderValue({
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
+  parameter?: Parameter;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
@@ -678,6 +694,9 @@ function renderValue({
     <ValueComponent
       value={value}
       column={fields[0]}
+      parameter={parameter}
+      cardId={cardId}
+      dashboardId={dashboardId}
       maximumFractionDigits={20}
       remap={displayValue || showRemapping(fields)}
       displayValue={displayValue}
@@ -689,34 +708,66 @@ function renderValue({
 }
 
 type RemappedValueProps = {
-  value: string;
-  fields: (Field | null)[];
-  customOptions: ComboboxItem[];
+  parameter: Parameter;
+  fields: Field[];
+  value: ParameterValueOrArray | null;
+  dashboardId?: DashboardId;
+  cardId?: CardId;
 };
 
-function RemappedValue({ fields, value, customOptions }: RemappedValueProps) {
-  const matchedOption = customOptions.find((option) => option.value === value);
-  const remappingInfo = getFieldsRemappingInfo(fields);
-  const { data: remappedData } = useGetRemappedFieldValueQuery(
-    matchedOption == null && remappingInfo != null
+function RemappedValue({
+  parameter,
+  fields,
+  value,
+  dashboardId,
+  cardId,
+}: RemappedValueProps) {
+  const field = fields[0];
+  const isRemapped =
+    (showRemapping(fields) && field?.remappedField() != null) ||
+    getSourceType(parameter) === "static-list";
+
+  const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
+    dashboardId != null && value != null && isRemapped
       ? {
-          fieldId: remappingInfo.fieldId,
-          remappedFieldId: remappingInfo.searchFieldId,
+          dashboard_id: dashboardId,
+          parameter_id: parameter.id,
           value,
         }
       : skipToken,
   );
 
-  if (matchedOption != null) {
-    return matchedOption.label;
-  }
+  const { data: cardData } = useGetRemappedCardParameterValueQuery(
+    cardId != null && value != null && isRemapped
+      ? {
+          card_id: cardId,
+          parameter_id: parameter.id,
+          value,
+        }
+      : skipToken,
+  );
 
+  const { data: parameterData } = useGetRemappedParameterValueQuery(
+    dashboardId == null && cardId == null && value != null && isRemapped
+      ? {
+          parameter: normalizeParameter(parameter),
+          field_ids: fields.map(({ id }) => Number(id)),
+          value,
+        }
+      : skipToken,
+  );
+
+  const remappedData = dashboardData ?? cardData ?? parameterData;
   if (remappedData == null) {
     return value;
   }
 
   const remappedValue = getValue(remappedData);
   const remappedLabel = getLabel(remappedData);
+  if (remappedLabel == null) {
+    return value;
+  }
+
   return (
     <MultiAutocompleteValue
       value={String(remappedValue)}
@@ -727,12 +778,13 @@ function RemappedValue({ fields, value, customOptions }: RemappedValueProps) {
 
 type RemappedOptionProps = {
   option: ComboboxItem;
-  fields: (Field | null)[];
+  fields: Field[];
 };
 
 function RemappedOption({ option, fields }: RemappedOptionProps) {
-  const remappingInfo = getFieldsRemappingInfo(fields);
-  if (remappingInfo == null) {
+  const field = fields[0];
+  const isRemapped = showRemapping(fields) && field?.remappedField() != null;
+  if (!isRemapped) {
     return option.label;
   }
 
