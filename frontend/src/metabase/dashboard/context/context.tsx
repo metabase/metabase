@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
@@ -26,11 +27,11 @@ import type {
 
 import { type ReduxProps, connector } from "./context.redux";
 
-type DashboardLoadingState = {
-  isLoading: boolean;
+export type DashboardContextErrorState = {
+  error: FailedFetchDashboardResult | null;
 };
 
-type OwnProps = {
+export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: Query;
   onLoad?: (dashboard: Dashboard) => void;
@@ -41,27 +42,30 @@ type OwnProps = {
     | null;
 };
 
-type OwnResult = {
+export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
 };
 
-type DashboardControls = DashboardFullscreenControls &
+export type DashboardControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
 
-export type DashboardContextProps = OwnProps & Partial<DashboardControls>;
+export type DashboardContextProps = DashboardContextOwnProps &
+  Partial<DashboardControls>;
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type ContextReturned = OwnResult &
-  OwnProps &
+type ContextReturned = DashboardContextOwnResult &
+  DashboardContextOwnProps &
   ReduxProps &
   Required<DashboardControls> &
-  DashboardLoadingState;
+  DashboardContextErrorState;
 
-const DashboardContext = createContext<ContextReturned | undefined>(undefined);
+export const DashboardContext = createContext<ContextReturned | undefined>(
+  undefined,
+);
 
 const DashboardContextProviderInner = ({
   dashboardId,
@@ -101,6 +105,8 @@ const DashboardContextProviderInner = ({
   isEditing,
   isNavigatingBackToDashboard,
   parameterValues,
+  isLoading,
+  isLoadingWithoutCards,
 
   // redux actions
   addCardToDashboard,
@@ -115,6 +121,10 @@ const DashboardContextProviderInner = ({
   navigateToNewCardFromDashboard,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
+  const [error, setError] = useState<FailedFetchDashboardResult | null>(null);
+  const previousIsLoading = usePrevious(isLoading);
+  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
+
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
@@ -145,18 +155,27 @@ const DashboardContextProviderInner = ({
     ],
   );
 
+  const handleError = useCallback(
+    (err: FailedFetchDashboardResult | Error) => {
+      const error = err instanceof Error ? { error: err, payload: err } : err;
+      onError?.(error);
+      setError(error);
+    },
+    [onError],
+  );
+
   useEffect(() => {
     const hasDashboardChanged = dashboardId !== previousDashboardId;
     if (hasDashboardChanged) {
+      setError(null);
       handleLoadDashboard(dashboardId)
         .then((result) => {
-          // TODO: Add onLoadWithoutCards here
           if (isFailedFetchDashboardResult(result)) {
-            onError?.(result);
+            handleError(result);
           }
         })
         .catch((err) => {
-          onError?.(err);
+          handleError(err);
         });
       return;
     }
@@ -172,31 +191,22 @@ const DashboardContextProviderInner = ({
       previousParameterValues,
     );
 
-    let cardResult: Promise<void> | undefined;
-    if (hasDashboardLoaded) {
-      cardResult = fetchDashboardCardData({ reload: false, clearCache: true });
-    } else if (hasTabChanged || hasParameterValueChanged) {
-      cardResult = fetchDashboardCardData();
-    }
-
-    if (cardResult) {
-      cardResult
-        .then(() => {
-          onLoad?.(dashboard);
-        })
-        .catch((err) => {
-          onError?.(err);
-        });
-    } else if (hasDashboardLoaded) {
-      onLoad?.(dashboard);
+    try {
+      if (hasDashboardLoaded) {
+        fetchDashboardCardData({ reload: false, clearCache: true });
+      } else if (hasTabChanged || hasParameterValueChanged) {
+        fetchDashboardCardData();
+      }
+    } catch (e) {
+      handleError?.(e as Error);
     }
   }, [
     dashboard,
     dashboardId,
     fetchDashboardCardData,
+    handleError,
     handleLoadDashboard,
     onError,
-    onLoad,
     parameterValues,
     previousDashboard,
     previousDashboardId,
@@ -205,11 +215,38 @@ const DashboardContextProviderInner = ({
     selectedTabId,
   ]);
 
-  useUnmount(() => {
-    cancelFetchDashboardCardData();
-  });
+  useEffect(() => {
+    if (
+      !isLoadingWithoutCards &&
+      previousIsLoadingWithoutCards &&
+      !error &&
+      dashboard
+    ) {
+      onLoadWithoutCards?.(dashboard);
+      // For whatever reason, isLoading waits for all cards to be loaded but doesn't account for the
+      // fact that there might be no dashcards. So onLoad never triggers when there are no cards,
+      // so this solves that issue
+      if (dashboard?.dashcards.length === 0) {
+        onLoad?.(dashboard);
+      }
+    }
+  }, [
+    previousIsLoadingWithoutCards,
+    dashboard,
+    onLoadWithoutCards,
+    error,
+    isLoadingWithoutCards,
+    onLoad,
+  ]);
+
+  useEffect(() => {
+    if (!isLoading && previousIsLoading && !error && dashboard) {
+      onLoad?.(dashboard);
+    }
+  }, [isLoading, previousIsLoading, dashboard, onLoad, error]);
 
   useUnmount(() => {
+    cancelFetchDashboardCardData();
     reset();
     closeDashboard();
   });
@@ -223,7 +260,9 @@ const DashboardContextProviderInner = ({
         onError,
 
         navigateToNewCardFromDashboard,
-        isLoading: !dashboard,
+        isLoading,
+        isLoadingWithoutCards,
+        error,
 
         isFullscreen,
         onFullscreenChange,

@@ -61,6 +61,8 @@ import {
   getIsEditing,
   getIsEditingParameter,
   getIsHeaderVisible,
+  getIsLoading,
+  getIsLoadingWithoutCards,
   getIsNavigatingBackToDashboard,
   getIsSharing,
   getLoadingStartTime,
@@ -72,7 +74,7 @@ import {
   getTabs,
 } from "../selectors";
 
-const mapStateToProps = (state: State) => ({
+export const mapStateToProps = (state: State) => ({
   dashboard: getDashboardComplete(state),
   parameters: getParameters(state),
   tabs: getTabs(state),
@@ -96,9 +98,11 @@ const mapStateToProps = (state: State) => ({
   isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
   selectedTabId: getSelectedTabId(state),
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+  isLoading: getIsLoading(state),
+  isLoadingWithoutCards: getIsLoadingWithoutCards(state),
 });
 
-const mapDispatchToProps = {
+export const mapDispatchToProps = {
   initialize,
   cancelFetchDashboardCardData,
   addCardToDashboard,
