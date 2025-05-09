@@ -45,7 +45,6 @@ export class Scalar extends Component {
   static canSavePng = false;
 
   static noHeader = true;
-  static supportsSeries = true;
 
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");

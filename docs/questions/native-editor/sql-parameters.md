@@ -439,4 +439,4 @@ More on [Dashboard filters][dashboard-filters].
 [sql-variables]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-variables
 [troubleshooting-filters]: ../../troubleshooting-guide/filters.md
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[basic-input]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables
+[basic-input]: https://www.metabase.com/learn/sql/working-with-sql/sql-variables
