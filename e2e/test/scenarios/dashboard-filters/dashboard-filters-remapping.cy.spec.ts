@@ -244,24 +244,23 @@ function testDashboardWidgetsRemapping() {
   });
   findWidget("PK->Name").should("contain.text", "Hudson Borer");
 
-  // TODO uncomment after fixing
-  // cy.log("FK->Name remapping");
-  // clearWidget("FK->Name");
-  // findWidget("FK->Name").click();
-  // H.popover().within(() => {
-  //   cy.findByPlaceholderText("Enter an ID").type("2,");
-  //   cy.findByText("Domenica Williamson").should("exist");
-  //   cy.button("Update filter").click();
-  // });
-  // findWidget("FK->Name").should("contain.text", "Domenica Williamson");
+  cy.log("FK->Name remapping");
+  clearWidget("FK->Name");
+  findWidget("FK->Name").click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("6,");
+    cy.findByText("Rene Muller").should("exist");
+    cy.button("Update filter").click();
+  });
+  findWidget("FK->Name").should("contain.text", "Rene Muller");
 
   cy.log("PK+FK->Name remapping");
   clearWidget("PK+FK->Name");
   findWidget("PK+FK->Name").click();
   H.popover().within(() => {
-    cy.findByPlaceholderText("Enter an ID").type("3,");
-    cy.findByText("Lina Heaney").should("exist");
+    cy.findByPlaceholderText("Enter an ID").type("7,");
+    cy.findByText("Roselyn Bosco").should("exist");
     cy.button("Update filter").click();
   });
-  findWidget("PK+FK->Name").should("contain.text", "Lina Heaney");
+  findWidget("PK+FK->Name").should("contain.text", "Roselyn Bosco");
 }
