@@ -544,9 +544,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
         expect(Object.keys(visualizerSettings)).to.have.length(3);
         expect(visualizerSettings).to.eql({
-          "card.title": "Orders by Created At (Month)",
           "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
           "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+          "card.title": "Orders by Created At (Month)",
         });
       });
     });
