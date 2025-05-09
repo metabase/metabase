@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import Link from "metabase/core/components/Link";
@@ -75,11 +75,10 @@ export function Results({
           );
 
           return (
-            <>
+            <Fragment key={key}>
               {type !== "database" && (
                 <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
                   <Track
-                    key={`${key}-track`}
                     start={
                       parentItem ? parentItem.start + 0.5 * parentItem.size : 0
                     }
@@ -97,6 +96,8 @@ export function Results({
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
                 }}
+                data-test-id="tree-item"
+                data-type={type}
               >
                 <MaybeLink
                   className={S.link}
@@ -130,7 +131,11 @@ export function Results({
                       {isLoading ? (
                         <Loading />
                       ) : (
-                        <Box pl="sm" className={S.label}>
+                        <Box
+                          pl="sm"
+                          className={S.label}
+                          data-test-id="tree-item-label"
+                        >
                           {label}
                         </Box>
                       )}
@@ -138,7 +143,7 @@ export function Results({
                   </Flex>
                 </MaybeLink>
               </Flex>
-            </>
+            </Fragment>
           );
         })}
       </Box>
@@ -169,12 +174,19 @@ function Delay({ delay, children }: { delay: number; children: ReactNode }) {
     setShow(true);
   }, [delay]);
 
-  return show ? children : null;
+  return show ? children : <span data-test-id="loading-placeholder" />;
 }
 
 function Loading() {
   const w = 20 + Math.random() * 80;
-  return <Skeleton radius="sm" width={`${w}%`} height={12} />;
+  return (
+    <Skeleton
+      radius="sm"
+      width={`${w}%`}
+      height={12}
+      data-test-id="loading-placeholder"
+    />
+  );
 }
 
 function Track({
