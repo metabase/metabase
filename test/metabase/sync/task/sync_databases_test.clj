@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]

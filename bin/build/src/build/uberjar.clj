@@ -81,8 +81,8 @@
         orphans    (remove (set sorted) ns-symbols)
         all        (concat orphans sorted)]
     (assert (contains? (set all) 'metabase.core.bootstrap))
-    (when (contains? ns-symbols 'metabase-enterprise.core)
-      (assert (contains? (set all) 'metabase-enterprise.core)))
+    (when (contains? ns-symbols 'metabase-enterprise.core.dummy-namespace)
+      (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
     all))
 
 (defn- compile-sources! [basis]

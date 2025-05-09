@@ -5,5 +5,5 @@
 ;;
 ;; <hr />
 
-(ns metabase-enterprise.core
+(ns metabase-enterprise.core.dummy-namespace
   "Empty namespace. This is here solely so we can try to require it and see whether or not EE code is on the classpath.")

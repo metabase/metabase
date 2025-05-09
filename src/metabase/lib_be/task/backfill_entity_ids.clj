@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

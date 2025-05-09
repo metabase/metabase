@@ -19,7 +19,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]

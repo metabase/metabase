@@ -497,8 +497,7 @@
   premium-features
   {:api  #{metabase.premium-features.api
            metabase.premium-features.core
-           metabase.premium-features.init
-           metabase.premium-features.token-check}
+           metabase.premium-features.init}
    :uses #{api config db internal-stats plugins settings util}}
 
   public-sharing
@@ -623,7 +622,7 @@
            metabase.settings.core
            metabase.settings.deprecated-grab-bag
            metabase.settings.init}
-   :uses #{api config db events models plugins premium-features server util enterprise/advanced-permissions}}
+   :uses #{api config db events models premium-features server util enterprise/advanced-permissions}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -660,8 +659,8 @@
    :uses #{analyze api audit-app config db driver events lib models query-processor settings task task-history util}}
 
   task
-  {:api #{metabase.task
-          metabase.task.bootstrap
+  {:api #{metabase.task.bootstrap
+          metabase.task.core
           metabase.task.init}
    :uses #{analytics
            channel
