@@ -137,7 +137,8 @@ export const SaveQuestionForm = ({
 
             <FormDashboardTabSelect
               name="dashboard_tab_id"
-              label={t`Which tab should this go on?`}
+              label={c("'this' refers to the question that's being saved")
+                .t`Which tab should this go on?`}
               dashboardId={values.dashboard_id}
               styles={{
                 label: {

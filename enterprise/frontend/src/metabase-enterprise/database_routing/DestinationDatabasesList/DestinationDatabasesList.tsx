@@ -61,8 +61,9 @@ export const DestinationDatabasesList = ({
                 td="underline"
                 to={Urls.viewDestinationDatabases(primaryDatabaseId)}
               >
-                {c("{0} is a number")
-                  .t`View all ${destinationDatabases.length}`}
+                {c(
+                  "{0} is a number. This text is short for 'View all N databases.'",
+                ).t`View all ${destinationDatabases.length}`}
               </Text>
             )}
           </>

@@ -66,7 +66,7 @@ const AuthCard = ({
 
   const footer = isEnvSetting ? (
     <Text>
-      {c("{0} is the env var name")
+      {c("{0} is the name of a variable")
         .jt`Set with env var ${(<Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>)}`}
     </Text>
   ) : null;
