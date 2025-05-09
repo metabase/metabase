@@ -17,7 +17,6 @@ import {
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
-  SettingKey,
 } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";
@@ -211,6 +210,7 @@ export function BasicAdminSettingInput({
           onBlur={() => onChange(localValue)}
           type={inputType ?? "text"}
           disabled={disabled}
+          autoFocus={autoFocus}
         />
       );
   }
