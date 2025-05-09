@@ -1,12 +1,13 @@
-(ns metabase.task
-  "Background task scheduling via Quartzite. Individual tasks are defined in `metabase.task.*`.
+(ns metabase.task.impl
+  "Background task scheduling via Quartzite. Individual tasks are defined in `metabase.<module>.task.*`.
 
   ## Regarding Task Initialization:
 
-  The most appropriate way to initialize tasks in any `metabase.task.*` namespace is to implement the `task-init`
-  function which accepts zero arguments. This function is dynamically resolved and called exactly once when the
-  application goes through normal startup procedures. Inside this function you can do any work needed and add your
-  task to the scheduler as usual via `schedule-task!`.
+  The most appropriate way to initialize tasks in any `metabase.<module>.task.*` namespace is to implement
+  the [[init!]] multimethod in your `<module>.task.<task>` namespace, then add that namespace to `<module>.init`, and
+  add `<module>.init` to `core.init` (as needed). All implementations of this method are called when the application
+  goes through normal startup procedures. Inside this function you can do any work needed and add your task to the
+  scheduler as usual via `schedule-task!`.
 
   ## Documentation
 
@@ -311,7 +312,6 @@
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
   (when-let [scheduler (scheduler)]
-    (qs/shutdown? scheduler)
     (let [job-key (->job-key job-key)]
       (try
         (assoc (job-detail->info (qs/get-job scheduler job-key))
