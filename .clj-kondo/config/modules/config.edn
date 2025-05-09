@@ -77,7 +77,6 @@
           metabase.api.dataset
           metabase.api.docs
           metabase.api.field
-          metabase.api.geojson
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
@@ -755,7 +754,7 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api enterprise/metabot-v3 premium-features util}}
+   :uses #{api enterprise/metabot-v3 premium-features}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
