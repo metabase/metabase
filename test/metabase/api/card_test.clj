@@ -3069,8 +3069,9 @@
 
 (deftest parameter-remapping-test
   (with-card-param-values-fixtures [{:keys [card field-filter-card name-mapped-card param-keys]}]
-    (let [request #(mt/user-http-request :crowberto :get 200
-                                         (format "card/%d/params/%s/remapping?value=%s" (:id %1) (param-keys %2) %3))]
+    (letfn [(request [{:keys [id] :as _card} value-source value]
+              (mt/user-http-request :crowberto :get 200
+                                    (format "card/%d/params/%s/remapping?value=%s" id (param-keys value-source) value)))]
       (are [card value-source value] (= [value] (request card value-source value))
         field-filter-card :field-values      "20th Century Cafe"
         field-filter-card :field-values      "Not a value in the DB"

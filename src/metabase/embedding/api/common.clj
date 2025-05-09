@@ -387,8 +387,8 @@
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
                                 (card/template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug) parameters))
-        slug->id            (into {} (map (juxt :slug :id) parameters))
+        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
@@ -431,8 +431,8 @@
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
                                 (card/template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug) parameters))
-        slug->id            (into {} (map (juxt :slug :id) parameters))
+        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
@@ -495,8 +495,8 @@
                                                           published-embedding-params
                                                           (get unsigned-token :_embedding_params))
                                                          published-embedding-params)
-        id->slug                                       (into {} (map (juxt :id :slug) parameters))
-        slug->id                                       (into {} (map (juxt :slug :id) parameters))
+        id->slug                                       (into {} (map (juxt :id :slug)) parameters)
+        slug->id                                       (set/map-invert id->slug)
         searched-param-slug                            (get id->slug searched-param-id)]
     (try
       ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
@@ -541,8 +541,8 @@
          dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
-         id->slug                   (into {} (map (juxt :id :slug) parameters))
-         slug->id                   (into {} (map (juxt :slug :id) parameters))
+         id->slug                   (into {} (map (juxt :id :slug)) parameters)
+         slug->id                   (set/map-invert id->slug)
          published-embedding-params (:embedding_params dashboard)
          ;; when previewing an embed, embedding-params should come from the token,
          ;; since a user may be changing them prior to publishing the Embed, which is what actually persists

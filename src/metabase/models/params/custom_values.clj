@@ -185,7 +185,7 @@
             ;; two groups can be a match if one group is nil mapped to a singleton set with a PK,
             ;; and the other group is the PK mapped to all the other field IDs in the input
             2 (when-let [pk (first (pk->fks nil))]
-                (when (= (conj (pk->fks pk #{}) pk) field-id-set)
+                (when (= (into #{pk} (pk->fks pk)) field-id-set)
                   pk))
             ;; more than two groups are always ambiguous, so no match
             nil))))))
