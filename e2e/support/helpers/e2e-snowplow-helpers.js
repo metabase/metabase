@@ -109,7 +109,7 @@ const getEventNames = (body) => {
     if (eventName) {
       return eventName;
     }
-    // get the eventType if it exists, print is as object so we can tell
+    // get the eventType if it exists, print it as object so we can tell
     if (event.eventType) {
       return {
         eventType: event.eventType,
