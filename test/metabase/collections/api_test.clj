@@ -1119,7 +1119,7 @@
                     :data
                     (map #(select-keys % [:here :id])))))))))
 
-(deftest children-sort-clause-test
+(deftest ^:parallel children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
@@ -1129,7 +1129,9 @@
                  [:= :collection_type collection/trash-collection-type] 1
                  :else 2]] :asc]
               [:%lower.name :asc]]
-             (api.collection/children-sort-clause {:official-collections-first? true} app-db)))))
+             (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
+
+(deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1152,7 +1154,9 @@
             [:%lower.name :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :postgres))))
+                                                 :official-collections-first? true} :postgres)))))
+
+(deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1179,7 +1183,9 @@
             [:%lower.name :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :mysql))))
+                                                 :official-collections-first? true} :mysql)))))
+
+(deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1202,42 +1208,29 @@
                                                  :sort-direction :desc
                                                  :official-collections-first? true} :mysql)))))
 
-(deftest snippet-collection-items-test
+(deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
+    ;; EE behavior is tested
+    ;; by [[metabase-enterprise.snippet-collections.api.native-query-snippet-test/snippet-collection-items-test]]
     (testing "Native query snippets should come back when fetching the items in a Collection in the `:snippets` namespace"
-      (mt/with-temp [:model/Collection         collection {:namespace "snippets", :name "My Snippet Collection"}
-                     :model/NativeQuerySnippet snippet    {:collection_id (:id collection), :name "My Snippet"}
-                     :model/NativeQuerySnippet archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]
-        (is (=? [{:id        (:id snippet)
-                  :name      "My Snippet"
-                  :entity_id (:entity_id snippet)
-                  :model     "snippet"}]
-                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
-        (testing "\nShould be able to fetch archived Snippets"
-          (is (=? [{:id        (:id archived)
-                    :name      "Archived Snippet"
-                    :entity_id (:entity_id archived)
-                    :model     "snippet"}]
-                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
-        (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-          (is (=? [{:id        (:id snippet)
-                    :name      "My Snippet"
-                    :entity_id (:entity_id snippet)
-                    :model     "snippet"}]
-                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
-        (testing "Snippets in nested collections should be returned as a flat list on OSS. In OSS Snippet collections are ignored"
-          (mt/with-premium-features #{}
-            (mt/with-temp [:model/Collection  sub-collection {:namespace "snippets"
-                                                              :name      "Nested Snippet Collection"
-                                                              :location  (collection/location-path collection)}
-                           :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
-                                                                  :name          "Nested Snippet"}]
-              ;; The response may contain snippets from other collections but should at least contain these two.
-              (is (set/subset? #{{:id (:id snippet), :name "My Snippet"}
-                                 {:id (:id sub-snippet), :name "Nested Snippet"}}
-                               (into #{}
-                                     (map #(select-keys % [:id :name]))
-                                     (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))))))))))
+      (testing "Snippets in nested collections should be returned as a flat list on OSS. In OSS Snippet collections are ignored"
+        (mt/with-premium-features #{}
+          (mt/with-temp [:model/Collection         collection     {:namespace "snippets", :name "My Snippet Collection"}
+                         :model/NativeQuerySnippet snippet        {:collection_id (:id collection), :name "My Snippet"}
+                         :model/NativeQuerySnippet _archived      {:collection_id (:id collection)
+                                                                   :name "Archived Snippet"
+                                                                   :archived true}
+                         :model/Collection         sub-collection {:namespace "snippets"
+                                                                   :name      "Nested Snippet Collection"
+                                                                   :location  (collection/location-path collection)}
+                         :model/NativeQuerySnippet sub-snippet    {:collection_id (:id sub-collection)
+                                                                   :name          "Nested Snippet"}]
+            ;; The response may contain snippets from other collections but should at least contain these two.
+            (is (set/subset? #{{:id (:id snippet), :name "My Snippet"}
+                               {:id (:id sub-snippet), :name "Nested Snippet"}}
+                             (into #{}
+                                   (map #(select-keys % [:id :name]))
+                                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
