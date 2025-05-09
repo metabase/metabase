@@ -32,7 +32,7 @@ export const PreviewTemplatePanel = ({
   const htmlContent = previewContent?.body?.[0]?.content;
 
   return (
-    <Flex direction="column" h="100%" gap="md" className={S.root}>
+    <Flex direction="column" mah="100%" gap="md" className={S.root}>
       <Flex gap="sm" align="center" h="1.625rem" className={S.header}>
         <Icon name="eye" size={16} />
         <Title size="h4">{t`Email message preview`}</Title>
@@ -92,13 +92,14 @@ export const PreviewTemplatePanel = ({
                 <Text size="sm">{previewContent.subject}</Text>
               </Box>
             </Box>
-            <Box>
-              {htmlContent ? (
-                <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-              ) : (
-                <Text c="text-medium">{t`(No body content)`}</Text>
-              )}
-            </Box>
+            {htmlContent ? (
+              <div
+                className={S.previewBody}
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            ) : (
+              <Text c="text-medium">{t`(No body content)`}</Text>
+            )}
           </Stack>
         ) : (
           !isLoading &&

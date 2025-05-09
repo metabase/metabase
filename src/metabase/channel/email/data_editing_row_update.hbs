@@ -1,11 +1,29 @@
 {{> metabase/channel/email/_header.hbs }}
   <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);">
-    <p>{{editor.first_name}} {{editor.last_name}} has updated a row in {{table.name}}.</p>
-    <p>Update:</p>
+    <p><strong>A record was <i>updated</i></strong> in Table {{table.name}}{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.</p>
+    <p><strong>Changed Fields:</strong></p>
     <ul>
       {{#each changes}}
-        <li>{{@key}}: {{@value.after}}</li>
+        <li><b>{{@key}}</b>: <s>{{@value.before}}</s> -> {{@value.after}}</li>
       {{/each}}
     </ul>
+
+    <p><strong>Current Record Details</strong></p>
+    <table style="width: 100%; border-collapse: collapse; font-family: inherit;">
+      <thead>
+        <tr style="border-bottom: 2px solid #ededed;">
+          <th style="border-bottom: 2px solid #ededed; text-align: left; padding: 10px 0 10px 0; font-weight: bold; font-size: 18px; border-collapse: collapse;">Field</th>
+          <th style="border-bottom: 2px solid #ededed; text-align: left; padding: 10px 0 10px 0; font-weight: bold; font-size: 18px; border-collapse: collapse;">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each record}}
+          <tr style="border-bottom: 1px solid #ededed;">
+            <td style="border-bottom: 1px solid #ededed; padding: 10px 0 10px 0; font-size: 17px; color: #222; font-weight: normal; border-collapse: collapse;">{{@key}}</td>
+            <td style="border-bottom: 1px solid #ededed; padding: 10px 0 10px 0; text-align: left; font-size: 17px; color: #222; font-weight: normal; border-collapse: collapse;">{{@value}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
   </div>
 {{> metabase/channel/email/_footer.hbs }}

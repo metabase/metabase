@@ -32,12 +32,14 @@
                                                                                               "{{/each}}\n")}}
                    [:notification/system-event :event/row.updated] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# A record was updated in \"{{table.name}}\" by {{editor.common_name}}\n\n"
-                                                                                              "\n\n"
-                                                                                              "## Update:"
-                                                                                              "\n\n"
+                                                                                   :body (str "**A record was _updated_** in [Table {{table.name}}]({{table.url}}) by {{editor.common_name}}\n\n"
+                                                                                              "**Changed Fields**\n\n"
                                                                                               "{{#each changes}}\n"
-                                                                                              "- {{@key}} : {{@value.after}}\n"
+                                                                                              "• **{{@key}}**: ~~{{@value.before}}~~ → ~{{@value.after}}~\n"
+                                                                                              "{{/each}}\n\n\n"
+                                                                                              "**Current Record Details**\n"
+                                                                                              "{{#each record}}\n"
+                                                                                              "• **{{@key}}**: {{@value}}\n"
                                                                                               "{{/each}}\n")}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
@@ -81,3 +83,5 @@
   (some-> (get template-lookup channel-type)
           (get (notification-info->path payload-type payload))
           resolve-template))
+
+
