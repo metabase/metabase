@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
@@ -243,6 +244,14 @@
       (doseq [[channel-type assert-fn] channel-type->assert-fn]
         (testing (format "chanel-type = %s" channel-type)
           (assert-fn (get channel-type->captured-message channel-type)))))))
+
+(defn slack-message->boolean [{:keys [attachments] :as result}]
+  (assoc result :attachments (for [attachment-info attachments]
+                               (if (:rendered-info attachment-info)
+                                 (update attachment-info
+                                         :rendered-info
+                                         (fn [ri] (m/map-vals some? ri)))
+                                 attachment-info))))
 
 (defn do-with-mock-inbox-email!
   "Helper function that mocks email/send-email! to capture emails in a vector and returns them."

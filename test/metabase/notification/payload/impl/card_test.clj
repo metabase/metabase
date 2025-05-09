@@ -88,7 +88,7 @@
                            (conj (default-slack-blocks card-id false)
                                  {:type "section" :text {:type "plain_text" :text "Hello world!!!"}})
                            :channel "#general"}
-                          message)))
+                          (notification.tu/slack-message->boolean message))))
 
                 :channel/http
                 (fn [[req]]
@@ -133,7 +133,7 @@
         (fn [[message]]
           (is (=? {:channel "#general"
                    :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
-                  message)))}))))
+                  (notification.tu/slack-message->boolean message))))}))))
 
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
@@ -171,7 +171,7 @@
                   (fn [[message]]
                     (is (=? {:blocks  (default-slack-blocks (-> notification :payload :card_id) true)
                              :channel "#general"}
-                            message)))
+                            (notification.tu/slack-message->boolean message))))
                   :channel/http
                   (fn [[req]]
                     (is (=? {:body {:type               "alert"

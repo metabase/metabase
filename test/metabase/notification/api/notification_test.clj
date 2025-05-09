@@ -1075,34 +1075,15 @@
                                                    (assoc notification :handlers [notification.tu/default-slack-handler]))))))))))
 
 (deftest notification-payload-card-test
-  (mt/with-temp [:model/Card {card-id :id
-                              card-name :name} {:dataset_query (mt/mbql-query categories {:limit 5})}]
-    (testing "slack has a simplified payload"
-      (let [result (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                         {:notification {:payload_type :notification/card
-                                                         :payload      {:card_id card-id}
-                                                         :creator_id   (mt/user->id :crowberto)}
-                                          :channel_type :channel/slack})]
-        (testing "the sample data has only 2 rows, no matter the limit"
-          (is (= {:card    {:id card-id :name card-name}
-                  :creator {:common_name "Crowberto Corv"
-                            :email       "crowberto@metabase.com"
-                            :first_name  "Crowberto"
-                            :last_name   "Corv"}
-                  :rows [{:ID 1 :Name "African"}
-                         {:ID 2 :Name "American"}]}
-                 (:payload result))))))
-
-    (testing "email"
-      (let [result (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                         {:notification {:payload_type :notification/card
-                                                         :payload      {:card_id card-id}
-                                                         :creator_id   (mt/user->id :crowberto)}
-                                          :channel_type :channel/email})
-            card-result (-> result :payload :payload :card_part :result)]
-        (testing "the sample data has only 2 rows, no matter the limit"
-          (is (= 2 (:row_count card-result)))
-          (is (= [[1 "African"] [2 "American"]] (-> card-result :data :rows))))))))
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query categories {:limit 5})}]
+    (let [result (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                       {:payload_type :notification/card
+                                        :payload      {:card_id card-id}
+                                        :creator_id   (mt/user->id :crowberto)})
+          card-result (-> result :payload :payload :card_part :result)]
+      (testing "the sample data has only 2 rows, no matter the limit"
+        (is (= 2 (:row_count card-result)))
+        (is (= [[1 "African"] [2 "American"]] (-> card-result :data :rows)))))))
 
 (deftest default-template-notification-card-test
   (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 5})}]
