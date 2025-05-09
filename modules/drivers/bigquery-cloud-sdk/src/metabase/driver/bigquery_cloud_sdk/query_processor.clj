@@ -212,10 +212,6 @@
   [driver [_ value]]
   (h2x/maybe-cast "STRING" (sql.qp/->honeysql driver value)))
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :date]
-  [driver [_ value]]
-  [:parse_date "%Y-%m-%d" (sql.qp/->honeysql driver value)])
-
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
 ;; but uses a new record type rather than attaching metadata to everything
