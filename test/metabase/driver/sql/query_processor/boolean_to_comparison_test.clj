@@ -15,6 +15,9 @@
      :fields      [[:expression "T"] [:expression "F"] [:expression "I"]]
      :filter      expression}))
 
+(defn- nested-filter-query [expression]
+  (mt/nest-query (basic-filter-query expression) 4))
+
 (deftest ^:parallel boolean->comparison-test
   (testing "boolean expressions"
     (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
@@ -41,6 +44,32 @@
       [:expression "I"]
       [:field "some-int" {:base-type :type/Integer}]
       [:field 123 {:base-type :type/Integer}])))
+
+(deftest ^:parallel boolean-expression-clause?-test
+  (testing "boolean expressions"
+    (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
+                    (sql.qp.boolean-to-comparison/boolean-expression-clause? clause))
+      [:expression "T"]
+      [:expression "F"]))
+
+  (testing "nested boolean expressions"
+    (are [clause] (binding [sql.qp/*inner-query* (:query (nested-filter-query clause))]
+                    (sql.qp.boolean-to-comparison/boolean-expression-clause? clause))
+      [:expression "T"]
+      [:expression "F"]))
+
+  (testing "non-boolean expressions"
+    (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
+                    (not (sql.qp.boolean-to-comparison/boolean-expression-clause? clause)))
+      0
+      1
+      "not a boolean"
+      [:value 1 nil]
+      [:expression "I"]
+      [:field "some-int" {:base-type :type/Integer}]
+      [:field "some-bool" {:base-type :type/Boolean}]
+      [:field 123 {:base-type :type/Integer}]
+      [:field 234 {:base-type :type/Boolean}])))
 
 (deftest ^:parallel case-boolean->comparison
   (are [clause expected] (= expected
