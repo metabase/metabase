@@ -3,7 +3,7 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import { type ComponentProps } from "react";
+import type { ComponentProps } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
