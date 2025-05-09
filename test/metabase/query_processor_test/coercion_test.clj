@@ -7,7 +7,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.types :as types]))
+
+(set! *warn-on-reflection* true)
 
 (deftest string-to-float-coercion-test
   (mt/test-drivers
@@ -79,3 +82,35 @@
                       (instance? BigDecimal coerced-number)))
               (is (= res
                      (biginteger coerced-number))))))))))
+
+(deftest date-to-datetime-coercion-test
+  (mt/test-drivers (mt/normal-drivers)
+    (doseq [[human-col table col] [["orders created_at (timestamptz)" :orders :created_at]
+                                   ["users last_login (timestamp)"    :users  :last_login]]]
+      (testing (format "DateTime->Date coercion works with %s" human-col)
+        (let [mp (lib.tu/merged-mock-metadata-provider
+                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  {:fields [{:id                (mt/id table col)
+                             :coercion-strategy :Coercion/DateTime->Date
+                             :effective-type    :type/Date}]})
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                        (lib/with-fields [(lib.metadata/field mp (mt/id table col))])
+                        (lib/limit 10))
+              result (qp/process-query query)
+              cols (mt/cols result)
+              rows (mt/rows result)
+              col (last cols)]
+          (is (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                                   :type/Text     ;; sqlite uses text :(
+                                                   :type/Date]))
+          (doseq [[date-col] rows]
+            (try
+              (let [date-val (-> date-col java.time.LocalDate/parse)]
+                (is date-val))
+              (catch Exception _ nil))
+            (try
+              (let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
+                (is (zero? (.getHour date-val)))
+                (is (zero? (.getMinute date-val)))
+                (is (zero? (.getSecond date-val))))
+              (catch Exception _ nil))))))))

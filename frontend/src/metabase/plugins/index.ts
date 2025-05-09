@@ -194,7 +194,7 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 
 // menu items in people management tab
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
-  (user: User) => { title: string; link: string }
+  (user: User) => React.ReactNode
 >;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
@@ -715,10 +715,6 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
-};
-
-export const PLUGIN_GO_MENU = {
-  getMenuItems: (_dispatch: any) => [] as Array<any>,
 };
 
 type DashCardMenuItemGetter = (
