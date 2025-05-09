@@ -20,6 +20,7 @@ import _ from "underscore";
 
 import {
   MIN_COLUMN_WIDTH,
+  ROW_ACTIONS_COLUMN_ID,
   ROW_ID_COLUMN_ID,
   TRUNCATE_LONG_CELL_WIDTH,
 } from "metabase/data-grid/constants";
@@ -34,6 +35,7 @@ import type {
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
+import { getActionsIdColumn } from "metabase/data-grid/utils/columns/row-actions-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { isNotNull } from "metabase/lib/types";
 
@@ -42,10 +44,28 @@ import { useCellSelection } from "./use-cell-selection";
 // Setting pageSize to -1 to render all items
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
-const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
-  _.uniq(
-    hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
-  );
+const getColumnOrder = (
+  dataColumnsOrder: string[],
+  {
+    hasRowIdColumn,
+    hasRowActionsColumn,
+  }: {
+    hasRowIdColumn: boolean;
+    hasRowActionsColumn: boolean;
+  },
+) => {
+  const resultColumnsOrder = [...dataColumnsOrder];
+
+  if (hasRowIdColumn) {
+    resultColumnsOrder.unshift(ROW_ID_COLUMN_ID);
+  }
+
+  if (hasRowActionsColumn) {
+    resultColumnsOrder.push(ROW_ACTIONS_COLUMN_ID);
+  }
+
+  return _.uniq(resultColumnsOrder);
+};
 
 export const useDataGridInstance = <TData, TValue>({
   data,
@@ -63,14 +83,20 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
+  rowActionsColumn,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
+  const hasRowActionsColumn =
+    rowActionsColumn != null && rowActionsColumn.actions.length > 0;
 
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
       controlledColumnOrder ?? columnsOptions.map((column) => column.id),
-      hasRowIdColumn,
+      {
+        hasRowIdColumn,
+        hasRowActionsColumn,
+      },
     ),
   );
 
@@ -95,8 +121,13 @@ export const useDataGridInstance = <TData, TValue>({
 
   // useEffect and useUpdateEffect is triggered after render, which causes flickering for controlled column order
   useLayoutEffect(() => {
-    setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
-  }, [controlledColumnOrder, hasRowIdColumn]);
+    setColumnOrder(
+      getColumnOrder(controlledColumnOrder ?? [], {
+        hasRowIdColumn,
+        hasRowActionsColumn,
+      }),
+    );
+  }, [controlledColumnOrder, hasRowActionsColumn, hasRowIdColumn]);
 
   const handleUpdateColumnExpanded = useCallback(
     (columnName: string, isExpanded = true) => {
@@ -134,6 +165,11 @@ export const useDataGridInstance = <TData, TValue>({
     const rowIdColumnDefinition =
       rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
 
+    const rowActionsColumnDefinition =
+      rowActionsColumn != null
+        ? getActionsIdColumn<TData, TValue>(rowActionsColumn)
+        : null;
+
     const dataColumns = columnsOptions.map((options) =>
       getDataColumn<TData, TValue>(
         options,
@@ -145,7 +181,11 @@ export const useDataGridInstance = <TData, TValue>({
       ),
     );
 
-    return [rowIdColumnDefinition, ...dataColumns].filter(isNotNull);
+    return [
+      rowIdColumnDefinition,
+      ...dataColumns,
+      rowActionsColumnDefinition,
+    ].filter(isNotNull);
   }, [
     rowId,
     columnsOptions,
@@ -154,6 +194,7 @@ export const useDataGridInstance = <TData, TValue>({
     expandedColumnsMap,
     truncateLongCellWidth,
     handleExpandButtonClick,
+    rowActionsColumn,
   ]);
 
   const wrappedColumnsOptions = useMemo(() => {
