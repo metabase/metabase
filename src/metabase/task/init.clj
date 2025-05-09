@@ -6,8 +6,7 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
-   [metabase.task.truncate-audit-tables]
-   [metabase.task.upgrade-checks]))
+   [metabase.task.truncate-audit-tables]))
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
