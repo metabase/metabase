@@ -6,9 +6,11 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.slack :as slack]
    [metabase.channel.template.core :as channel.template]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.params.shared :as shared.params]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
 
@@ -111,13 +113,41 @@
 ;;                                      Notification Card                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(mr/def ::notification.card.template.context
+  [:map {:closed true}
+   [:creator [:map {:closed true}
+              [:first_name [:maybe :string]]
+              [:last_name [:maybe :string]]
+              [:email :string]
+              [:common_name [:maybe :string]]]]
+   [:card [:map {:closed true}
+           [:id pos-int?]
+           [:name :string]]]
+   [:rows [:sequential [:map-of :string :any]]]])
+
+(mu/defmethod channel/template-context [:channel/slack :notification/card] :- ::notification.card.template.context
+  [_channel-type _notification-type notification-payload]
+  (lib.util.match/match-one
+    notification-payload
+    {:creator ?creator
+     :payload {:card_part {:card {:id   ?card_id
+                                  :name ?card_name}
+                           :result {:data {:cols ?result_cols
+                                           :rows ?result_rows}}}}}
+    {:creator  (select-keys ?creator [:first_name :last_name :email :common_name])
+     :card     {:id   ?card_id
+                :name ?card_name}
+     :rows     (let [col-names (map :display_name ?result_cols)]
+                 (for [row ?result_rows]
+                   (zipmap col-names row)))}))
+
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
-  [channel-type _payload-type {:keys [payload] :as notification-payload} template recipients]
+  [channel-type payload-type {:keys [payload] :as notification-payload} template recipients]
   ;; for alerts, we allow users to template the url card part only
   (let [link-template (or template
                           (channel.template/default-template :notification/card nil channel-type))
         card-url-text (markdown/process-markdown
-                       (channel.template/render-template link-template notification-payload)
+                       (channel.template/render-template link-template (channel/template-context channel-type payload-type notification-payload))
                        :slack)
         blocks        (concat [{:type "header"
                                 :text {:type "plain_text"
