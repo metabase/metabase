@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
-import { USER_STATUS } from "../constants";
+import { USER_STATUS, type UserStatus } from "../constants";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -14,7 +14,7 @@ const MIN_SEARCH_LENGTH = 2;
 export const usePeopleQuery = (pageSize: number) => {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
-  const [status, setStatus] = useState(USER_STATUS.active);
+  const [status, setStatus] = useState<UserStatus>(USER_STATUS.active);
   const [searchInputValue, setSearchInputValue] = useState("");
 
   const [searchText, setSearchText] = useState("");
@@ -31,7 +31,7 @@ export const usePeopleQuery = (pageSize: number) => {
     return () => clearTimeout(timerId);
   }, [searchInputValue, setPage]);
 
-  const updateStatus = (status: string) => {
+  const updateStatus = (status: UserStatus) => {
     setPage(0);
     setStatus(status);
   };
