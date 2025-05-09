@@ -91,7 +91,6 @@
      metabase.test.data.users/with-group-for-user
      metabase.test.data/with-empty-h2-app-db
      metabase.test.util.log/with-log-level
-     metabase.test.util.misc/with-single-admin-user
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
@@ -123,7 +122,6 @@
      metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
-     metabase.test/with-single-admin-user
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -579,13 +577,13 @@
   metabase.test/with-actions                                                            clojure.core/let
   metabase.test/with-grouper-batches!                                                   clojure.core/fn
   metabase.test/with-open-channels                                                      clojure.core/let
-  metabase.test/with-single-admin-user                                                  clojure.core/fn
+  metabase.test/with-single-admin-user!                                                 clojure.core/fn
   metabase.test/with-temp-dir                                                           clojure.core/let
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.test.gentest/defgentest                                                      clojure.test/deftest
-  metabase.upload-test/with-upload-table!                                               clojure.core/let
+  metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
   metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
@@ -636,6 +634,7 @@
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.api.user-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
+   metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
@@ -682,7 +681,7 @@
    metabase.request.core/with-current-request                                                                                hooks.common/with-used-first-arg
    metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg
    metabase.request.core/with-limit-and-offset                                                                               hooks.common/with-used-first-two-args
-   metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
+   metabase.sample-data.impl-test/with-temp-sample-database-db                                                               hooks.common/with-one-binding
    metabase.search.api-test/with-search-items-in-collection                                                                  hooks.metabase.search.api-test/with-search-items-in-collection
    metabase.search.api-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.server.streaming-response-test/with-start-execution-chan                                                         hooks.common/with-one-binding
@@ -772,7 +771,7 @@
    metabase.lib.filter/deffilter                                                           macros.metabase.lib.filter/deffilter
    metabase.models.params.chain-filter-test/chain-filter                                   macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                            macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.user-test/with-groups                                                   macros.metabase.models.user-test/with-groups
+   metabase.models.user-test/with-groups!                                                  macros.metabase.models.user-test/with-groups!
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
    metabase.query-analysis.models.query-analysis-test/with-test-setup                      macros.metabase.query-analysis.models.query-analysis-test/with-test-setup

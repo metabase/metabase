@@ -655,7 +655,8 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
-                                                             :database_indexed  true
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
@@ -670,7 +671,8 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
-                                                             :database_indexed  false
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
@@ -1165,6 +1167,14 @@
                 :tables             []}
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
+
+(deftest db-metadata-tables-have-non-nil-schemas
+  (mt/test-drivers (mt/normal-drivers)
+    (is (every? some?
+                (->> (mt/user-http-request :crowberto :get 200
+                                           (format "database/%d/metadata" (mt/id)))
+                     :tables
+                     (map :schema))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |

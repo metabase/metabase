@@ -10,7 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -34,7 +34,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
     (try
       (notify-database-updated driver database)
       (catch Throwable e
@@ -675,6 +675,7 @@
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection
 
+    ;; Index sync is turned off across the application as it is not used ATM.
     ;; Does the driver support column(s) support storing index info
     :index-info
 
@@ -731,6 +732,9 @@
 
     ;; Does this driver support the :distinct-where function?
     :distinct-where
+
+    ;; Does this driver support sandboxing with saved questions?
+    :saved-question-sandboxing
 
     ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
@@ -796,6 +800,7 @@
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
+                              :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 

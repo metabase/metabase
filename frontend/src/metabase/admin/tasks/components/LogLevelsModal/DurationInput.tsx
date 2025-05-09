@@ -15,7 +15,6 @@ export const DurationInput = () => {
         label={t`Duration`}
         name="duration"
         placeholder={t`Duration`}
-        required
         w={80}
       />
 

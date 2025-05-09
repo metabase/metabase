@@ -124,7 +124,11 @@ export const createMockTokenFeatures = (
   query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
+  metabot_v3: false,
+  ai_sql_fixer: false,
+  ai_sql_generation: false,
   database_routing: false,
+  "development-mode": false,
   ...opts,
 });
 
@@ -184,6 +188,9 @@ export const createMockSettings = (
   "email-smtp-security": "none",
   "email-smtp-username": null,
   "email-smtp-password": null,
+  "email-from-name": null,
+  "email-from-address": null,
+  "email-reply-to": null,
   "embedding-app-origin": "",
   "embedding-app-origins-sdk": "",
   "embedding-app-origins-interactive": "",

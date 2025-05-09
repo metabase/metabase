@@ -4,9 +4,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
@@ -142,7 +140,8 @@
   :getter     (fn []
                 (let [raw-vi (setting/get-value-of-type :json :version-info)
                       current-major (config/current-major-version)]
-                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)}))))
+                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)})))
+  :include-in-list? false)
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
@@ -294,14 +293,6 @@ x.com")
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
   :visibility :authenticated
   :encryption :when-encryption-key-set
-  :audit      :getter)
-
-(defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :public
   :audit      :getter)
 
 (defn- coerce-to-relative-url
@@ -743,14 +734,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter     (comp sort t/available-zone-ids)
   :doc        false)
 
-(defsetting has-sample-database?
-  "Whether this instance has a Sample Database database"
-  :type       :boolean
-  :visibility :authenticated
-  :setter     :none
-  :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
-  :doc        false)
-
 (defsetting password-complexity
   "Current password complexity requirements"
   :visibility :public
@@ -796,6 +779,10 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :embedding                      (premium-features/hide-embed-branding?)
                       :embedding_sdk                  (premium-features/enable-embedding-sdk-origins?)
                       :hosting                        (premium-features/is-hosted?)
+                      :llm_autodescription            (premium-features/enable-llm-autodescription?)
+                      :metabot_v3                     (premium-features/enable-metabot-v3?)
+                      :ai_sql_fixer                   (premium-features/enable-ai-sql-fixer?)
+                      :ai_sql_generation              (premium-features/enable-ai-sql-generation?)
                       :official_collections           (premium-features/enable-official-collections?)
                       :query_reference_validation     (premium-features/enable-query-reference-validation?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
@@ -808,8 +795,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :sso_ldap                       (premium-features/enable-sso-ldap?)
                       :sso_saml                       (premium-features/enable-sso-saml?)
                       :upload_management              (premium-features/enable-upload-management?)
-                      :whitelabel                     (premium-features/enable-whitelabeling?)
-                      :llm_autodescription            (premium-features/enable-llm-autodescription?)})
+                      :whitelabel                     (premium-features/enable-whitelabeling?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https
@@ -876,36 +862,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
 
-(defn- not-handling-api-request?
-  []
-  (nil? @api/*current-user*))
-
-(defsetting uploads-settings
-  (deferred-tru "Upload settings")
-  :encryption :when-encryption-key-set ; this doesn't really have an effect as this setting is not stored as a setting model
-  :visibility :authenticated
-  :export?    false ; the data is exported with a database export, so we don't need to export a setting
-  :type       :json
-  :audit      :getter
-  :getter     (fn []
-                (let [db (t2/select-one :model/Database :uploads_enabled true)]
-                  {:db_id        (:id db)
-                   :schema_name  (:uploads_schema_name db)
-                   :table_prefix (:uploads_table_prefix db)}))
-  :setter     (fn [{:keys [db_id schema_name table_prefix]}]
-                (cond
-                  (nil? db_id)
-                  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
-                                                                     :uploads_schema_name  nil
-                                                                     :uploads_table_prefix nil})
-                  (or (not-handling-api-request?)
-                      (mi/can-write? :model/Database db_id))
-                  (t2/update! :model/Database db_id {:uploads_enabled      true
-                                                     :uploads_schema_name  schema_name
-                                                     :uploads_table_prefix table_prefix})
-                  :else
-                  (api/throw-403))))
-
 (defsetting attachment-table-row-limit
   (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
   :visibility :internal
@@ -933,13 +889,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                     id)))
   :doc        false)
 
-(defsetting sql-parsing-enabled
-  (deferred-tru "SQL Parsing is disabled")
-  :visibility :internal
-  :export?    false
-  :default    true
-  :type       :boolean)
-
 (defsetting bug-reporting-enabled
   (deferred-tru "Enable bug report submissions.")
   :visibility :public
@@ -948,63 +897,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    false
   :setter     :none
   :audit      :getter)
-
-;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-;;; !!                                                                                                !!
-;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
-;;; !!                                                                                                !!
-;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
-;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Deprecated uploads settings begin
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
-;; to migrate to the new way to set uploads settings.
-
-(defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :boolean
-  :default    false
-  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
-
-(defsetting uploads-database-id
-  (deferred-tru "Database ID for uploads")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
-
-(defsetting uploads-schema-name
-  (deferred-tru "Schema name for uploads")
-  :deprecated "0.50.0"
-  :encryption :no
-  :visibility :internal
-  :export?    false
-  :type       :string
-  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
-
-(defsetting uploads-table-prefix
-  (deferred-tru "Prefix for upload table names")
-  :encryption :no
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :string
-  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Deprecated uploads settings end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

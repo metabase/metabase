@@ -4,9 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
-import { newVersionAvailable } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
@@ -17,25 +15,20 @@ import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { CloudPanel } from "../components/CloudPanel";
-import { BccToggleWidget } from "../components/Email/BccToggleWidget";
-import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
   EmbeddingSdkSettings,
   EmbeddingSettings,
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
+import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
+import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
 import { UpdatesSettingsPage } from "../components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "../components/SettingsPages/UploadSettingsPage";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
-import {
-  PublicLinksActionListing,
-  PublicLinksDashboardListing,
-  PublicLinksQuestionListing,
-} from "../components/widgets/PublicLinksListing";
-import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
 import { NotificationSettings } from "../notifications/NotificationSettings";
 import SlackSettings from "../slack/containers/SlackSettings";
 
@@ -83,47 +76,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
   email: {
     name: t`Email`,
     order: 40,
-    component: SettingsEmailForm,
-    settings: [
-      {
-        key: "email-from-name",
-        display_name: t`From Name`,
-        placeholder: "Metabase",
-        type: "string",
-        required: false,
-      },
-      {
-        key: "email-from-address",
-        display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
-        type: "string",
-        required: true,
-        validations: [["email", t`That's not a valid email address`]],
-      },
-      {
-        key: "email-reply-to",
-        display_name: t`Reply-To Address`,
-        placeholder: "metabase-replies@yourcompany.com",
-        type: "string",
-        required: false,
-        widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email address`]],
-      },
-      {
-        key: "bcc-enabled?",
-        display_name: t`Add Recipients as CC or BCC`,
-        description: t`Control the visibility of alerts and subscriptions recipients.`,
-        options: [
-          { value: true, name: t`BCC - Hide recipients` },
-          {
-            value: false,
-            name: t`CC - Disclose recipients`,
-          },
-        ],
-        defaultValue: true,
-        widget: BccToggleWidget,
-      },
-    ],
+    component: EmailSettingsPage,
+    settings: [],
   },
   "email/smtp": {
     component: SMTPConnectionForm,
@@ -293,39 +247,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: UploadSettingsPage,
     settings: [],
   },
-
   "public-sharing": {
     name: t`Public Sharing`,
     order: 90,
-    settings: [
-      {
-        key: "enable-public-sharing",
-        display_name: t`Enable Public Sharing`,
-        description: t`Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards.`,
-        type: "boolean",
-      },
-      {
-        key: "-public-sharing-dashboards",
-        display_name: t`Shared Dashboards`,
-        widget: PublicLinksDashboardListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-      {
-        key: "-public-sharing-questions",
-        display_name: t`Shared Questions`,
-        widget: PublicLinksQuestionListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-      {
-        key: "-public-sharing-actions",
-        display_name: t`Shared Action Forms`,
-        widget: PublicLinksActionListing,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-public-sharing"],
-      },
-    ],
+    component: PublicSharingSettingsPage,
+    settings: [],
   },
   "embedding-in-other-applications": {
     key: "enable-embedding",
@@ -382,23 +308,40 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  appearance: {
+    // OSS Version
+    name: t`Appearance`,
+    getHidden: (settings) => settings["token-features"]?.whitelabel,
+    order: 133,
+    component: () => <AppearanceSettingsPage />,
+    isUpsell: true,
+    settings: [],
+  },
+  whitelabel: {
+    // EE Version
+    name: t`Appearance`,
+    getHidden: (settings) => !settings["token-features"]?.whitelabel,
+    order: 134,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/branding": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/conceal-metabase": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="conceal-metabase" />,
+    settings: [],
+  },
   cloud: {
     name: t`Cloud`,
     getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
-    order: 132,
+    order: 140,
     component: CloudPanel,
-    settings: [],
-    isUpsell: true,
-  },
-  whitelabel: {
-    name: t`Appearance`,
-    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
-    order: 133,
-    component: (props) => (
-      <UpsellWhitelabel {...props} source="settings-appearance" />
-    ),
     settings: [],
     isUpsell: true,
   },
@@ -436,25 +379,6 @@ export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
   (settings) => {
     return settings.version?.tag;
-  },
-);
-
-export const getLatestVersion = createSelector(
-  getDerivedSettingValues,
-  (settings) => {
-    const updateChannel = settings["update-channel"] ?? "latest";
-    return settings["version-info"]?.[updateChannel]?.version;
-  },
-);
-
-export const getNewVersionAvailable = createSelector(
-  getCurrentVersion,
-  getLatestVersion,
-  (currentVersion, latestVersion) => {
-    return newVersionAvailable({
-      currentVersion,
-      latestVersion,
-    });
   },
 );
 

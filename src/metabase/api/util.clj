@@ -41,13 +41,6 @@
   (validation/check-has-application-permission :monitoring)
   (logger/messages))
 
-(api.macros/defendpoint :get "/stats"
-  "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
-  what is being phoned home."
-  []
-  (validation/check-has-application-permission :monitoring)
-  (analytics/legacy-anonymous-usage-stats))
-
 (api.macros/defendpoint :get "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
@@ -141,5 +134,5 @@
   (api/check-superuser)
   {:status 200
    :body (merge
-          (open-api/root-open-api-object @(requiring-resolve 'metabase.api.routes/routes))
+          (open-api/root-open-api-object @(requiring-resolve 'metabase.api-routes.core/routes))
           {:servers [{:url "" :description "Metabase API"}]})})

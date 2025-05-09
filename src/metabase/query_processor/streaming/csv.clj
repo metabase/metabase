@@ -59,7 +59,7 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
-(defn- get-formatter
+(defn get-formatter
   "Returns a memoized formatter for a column"
   [timezone settings format-rows?]
   (memoize

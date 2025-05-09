@@ -6,6 +6,7 @@
 *.po~
 *.sqlite
 *.trace.db
+*.trace.db.old
 *.xcworkspacedata
 .DS_Store
 .\#*
@@ -133,6 +134,10 @@ modules/drivers/*/.lsp/*
 
 # jar downloader
 /jars/
+
+# metabot
+llm-payloads
+
 /bin/bb
 
 .aider*

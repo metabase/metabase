@@ -127,7 +127,9 @@
          (sequential? collapsed-subtotal)
          (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
                               :isCollapsed)]
-           (assoc-in tree key-path true))))
+           (if-not (nil? (get-in tree key-path))
+             (assoc-in tree key-path true)
+             tree))))
      tree
      parsed-collapsed-subtotals)))
 
@@ -337,11 +339,13 @@
 (defn- create-subtotal-node
   "Creates a subtotal node for the given row item."
   [row-item]
-  {:value (i18n/tru "Totals for {0}" (:value row-item))
-   :rawValue (:rawValue row-item)
-   :span 1
-   :isSubtotal true
-   :children []})
+  (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
+                         (:value row-item))]
+    {:value (i18n/tru "Totals for {0}" subtotal-val)
+     :rawValue (:rawValue row-item)
+     :span 1
+     :isSubtotal true
+     :children []}))
 
 (defn- subtotal-permitted?
   "Returns true if subtotals are enabled for this column and visible for this row."

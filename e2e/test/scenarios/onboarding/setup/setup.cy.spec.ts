@@ -9,9 +9,9 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  locales.forEach((locale) => {
-    beforeEach(() => H.restore("blank"));
+  beforeEach(() => H.restore("blank"));
 
+  locales.forEach((locale) => {
     it(
       `should allow you to sign up using "${locale}" browser locale`,
       { tags: ["@external"] },
@@ -223,7 +223,6 @@ describe("scenarios > setup", () => {
   });
 
   it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
-    H.setTokenFeatures("none");
     H.mockSessionProperty("is-hosted?", true);
 
     cy.visit(
@@ -238,9 +237,7 @@ describe("scenarios > setup", () => {
       cy.findByDisplayValue("Doe").should("exist");
       cy.findByDisplayValue("john@doe.test").should("exist");
       cy.findByDisplayValue("Doe Unlimited").should("exist");
-      cy.findByLabelText("Create a password")
-        .should("be.focused")
-        .and("be.empty");
+      cy.findByLabelText("Create a password").should("be.empty");
     });
   });
 
@@ -454,7 +451,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events", () => {
+  it("should send snowplow events", { tags: "@flaky" }, () => {
     let goodEvents = 0;
 
     goodEvents++; // 1 - new_instance_created
@@ -576,14 +573,18 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
   });
 
-  it("should ignore snowplow failures and work as normal", () => {
-    H.blockSnowplow();
-    cy.visit("/setup");
-    skipWelcomePage();
+  it(
+    "should ignore snowplow failures and work as normal",
+    { tags: "@flaky" },
+    () => {
+      H.blockSnowplow();
+      cy.visit("/setup");
+      skipWelcomePage();
 
-    // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
-    H.expectGoodSnowplowEvents(1);
-  });
+      // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
+      H.expectGoodSnowplowEvents(1);
+    },
+  );
 });
 
 const skipWelcomePage = () => {

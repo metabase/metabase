@@ -91,7 +91,7 @@
      metabase.query-processor.streaming.interface/begin!
      metabase.query-processor.streaming.interface/finish!
      metabase.query-processor.streaming.interface/write-row!
-     metabase.sample-data/try-to-extract-sample-database!
+     metabase.sample-data.impl/try-to-extract-sample-database!
      metabase.settings.models.setting-test/test-user-local-allowed-setting!
      metabase.settings.models.setting-test/test-user-local-only-setting!
      metabase.settings.models.setting.cache/restore-cache!
@@ -126,7 +126,7 @@
      metabase.test/initialize-if-needed!
      metabase.test/test-helpers-set-global-values!
      metabase.test/with-temp-env-var-value!
-     metabase.upload-test/set-local-infile!
+     metabase.upload.impl-test/set-local-infile!
      metabase.util.files/create-dir-if-not-exists!
      metabase.util.ssh-test/start-mock-servers!
      metabase.util.ssh-test/stop-mock-servers!}}}}

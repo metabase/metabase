@@ -351,6 +351,9 @@
 (derive :Coercion/UNIXMicroSeconds->DateTime :Coercion/UNIXTime->Temporal)
 (derive :Coercion/UNIXNanoSeconds->DateTime :Coercion/UNIXTime->Temporal)
 
+(derive :Coercion/Temporal->Temporal :Coercion/*)
+(derive :Coercion/DateTime->Date :Coercion/Temporal->Temporal)
+
 (derive :Coercion/String->Number :Coercion/*)
 (derive :Coercion/String->Float :Coercion/String->Number)
 
@@ -460,6 +463,8 @@
 (coercion-hierarchies/define-types! :Coercion/ISO8601->Time              :type/Text                     :type/Time)
 
 (coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
+
+(coercion-hierarchies/define-types! :Coercion/DateTime->Date  :type/DateTime :type/Date)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
 

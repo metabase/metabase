@@ -101,7 +101,7 @@ describe("Components > FieldValuesWidget > utils", () => {
     describe("when the field is remapped to a searchable field", () => {
       const stringField = metadata.field(PRODUCTS.TITLE);
       const remappedField = metadata.field(PRODUCTS.CATEGORY).clone();
-      remappedField.remappedField = () => stringField;
+      remappedField.remappedExternalField = () => stringField;
 
       it("should return the remapped field", () => {
         expect(searchField(remappedField)).toBe(stringField);
@@ -113,10 +113,10 @@ describe("Components > FieldValuesWidget > utils", () => {
         const numberField = metadata.field(ORDERS.TOTAL);
 
         const remappedField = metadata.field(PRODUCTS.CATEGORY).clone();
-        remappedField.remappedField = () => numberField;
+        remappedField.remappedExternalField = () => numberField;
 
         const nonSearchableRemappedField = metadata.field(PRODUCTS.ID);
-        nonSearchableRemappedField.remappedField = () => numberField;
+        nonSearchableRemappedField.remappedExternalField = () => numberField;
 
         expect(searchField(remappedField)).toBe(remappedField);
         expect(searchField(nonSearchableRemappedField)).toBeNull();
