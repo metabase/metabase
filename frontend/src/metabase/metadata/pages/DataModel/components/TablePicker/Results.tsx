@@ -48,7 +48,7 @@ export function Results({
         return;
       }
 
-      virtual.scrollToIndex(index, { behavior: "smooth" });
+      virtual.scrollToIndex(index);
     },
     [path.tableId, items, virtual],
   );
