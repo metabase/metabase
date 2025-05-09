@@ -21,6 +21,7 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
@@ -37,6 +38,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -877,13 +879,27 @@
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
 
+(defn- get-param-or-throw
+  [card param-key]
+  (u/prog1 (m/find-first #(= (:id %) param-key)
+                         (or (seq (:parameters card))
+                             ;; some older cards or cards in e2e just use the template tags on native queries
+                             (card/template-tag-parameters card)))
+    (when-not <>
+      (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
+                      {:status-code 400})))))
+
+(defn- param->field-id
+  [card param]
+  (when-let [field-clause (params/param-target->field-clause (:target param) card)]
+    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
+
 (defn mapping->field-values
   "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
   chain-filter issues or dashcards to worry about."
   [card param query]
-  (when-let [field-clause (params/param-target->field-clause (:target param) card)]
-    (when-let [field-id (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/search-values-from-field-id field-id query))))
+  (when-let [field-id (param->field-id card param)]
+    (api.field/search-values-from-field-id field-id query)))
 
 (mu/defn param-values
   "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.
@@ -897,13 +913,7 @@
   ([card      :- ms/Map
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
-   (let [param (get (m/index-by :id (or (seq (:parameters card))
-                                        ;; some older cards or cards in e2e just use the template tags on native queries
-                                        (card/template-tag-parameters card)))
-                    param-key)]
-     (when-not param
-       (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:status-code 400})))
+   (let [param (get-param-or-throw card param-key)]
      (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
 
 (api.macros/defendpoint :get "/:card-id/params/:param-key/values"
@@ -929,50 +939,27 @@
                                          [:query     ms/NonBlankString]]]
   (param-values (api/read-check :model/Card card-id) param-key query))
 
-(defn-  from-csv!
-  "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
-  [{:keys [collection-id filename file]}]
-  (try
-    (let [uploads-db-settings (public-settings/uploads-settings)
-          model (upload/create-csv-upload! {:collection-id collection-id
-                                            :filename      filename
-                                            :file          file
-                                            :schema-name   (:schema_name uploads-db-settings)
-                                            :table-prefix  (:table_prefix uploads-db-settings)
-                                            :db-id         (or (:db_id uploads-db-settings)
-                                                               (throw (ex-info (tru "The uploads database is not configured.")
-                                                                               {:status-code 422})))})]
-      {:status  200
-       :body    (:id model)
-       :headers {"metabase-table-id" (str (:table-id model))}})
-    (catch Throwable e
-      {:status (or (-> e ex-data :status-code)
-                   500)
-       :body   {:message (or (ex-message e)
-                             (tru "There was an error uploading the file"))}})
-    (finally (io/delete-file file :silently))))
+(defn param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
+  [card param-key value]
+  (or (let [param (get-param-or-throw card param-key)]
+        (custom-values/parameter-remapped-value
+         param
+         value
+         #(when-let [field-id (param->field-id card param)]
+            (-> (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+                :values
+                first))))
+      [value]))
 
-;;; TODO -- why the HECC does the endpoint for creating a TABLE live in `/api/card/`?
-(api.macros/defendpoint :post "/from-csv"
-  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
-  {:multipart true}
-  ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
-  [_route-params
-   _query-params
-   _body
-   {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
-   :- [:map
-       [:multipart-params
-        [:map
-         ["collection_id" [:maybe
-                           {:decode/api (fn [collection-id]
-                                          (when-not (= collection-id "root")
-                                            collection-id))}
-                           pos-int?]]
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (from-csv! {:collection-id collection-id
-              :filename      (:filename file)
-              :file          (:tempfile file)}))
+(api.macros/defendpoint :get "/:id/params/:param-key/remapping"
+  "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
+
+    ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
+    GET /api/card/1/params/abc/remapping?value=100"
+  [{:keys [id param-key]} :- [:map
+                              [:id ms/PositiveInt]
+                              [:param-key :string]]
+   {:keys [value]}        :- [:map [:value :string]]]
+  (-> (api/read-check :model/Card id)
+      (param-remapped-value param-key (codec/url-decode value))))

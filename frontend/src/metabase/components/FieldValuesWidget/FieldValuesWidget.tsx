@@ -1,12 +1,22 @@
 import cx from "classnames";
-import type { StyleHTMLAttributes } from "react";
-import { forwardRef, useEffect, useRef, useState } from "react";
-import { useMount, usePrevious, useUnmount } from "react-use";
+import {
+  type StyleHTMLAttributes,
+  forwardRef,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useMount, usePrevious } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { ListField } from "metabase/components/ListField";
+import {
+  skipToken,
+  useGetRemappedCardParameterValueQuery,
+  useGetRemappedDashboardParameterValueQuery,
+  useGetRemappedParameterValueQuery,
+} from "metabase/api";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
@@ -26,10 +36,15 @@ import {
 import { addRemappings } from "metabase/redux/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
+  CardId,
   Dashboard,
+  DashboardId,
   FieldValue,
   Parameter,
+  ParameterValueOrArray,
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -42,8 +57,8 @@ import {
   canUseCardEndpoints,
   canUseDashboardEndpoints,
   canUseParameterEndpoints,
-  dedupeValues,
-  getNonVirtualFields,
+  getLabel,
+  getOption,
   getTokenFieldPlaceholder,
   getValue,
   getValuesMode,
@@ -84,7 +99,7 @@ export interface IFieldValuesWidgetProps {
   alwaysShowOptions?: boolean;
   showOptionsInPopover?: boolean;
 
-  parameter?: Parameter;
+  parameter: Parameter;
   parameters?: Parameter[];
   fields: Field[];
   dashboard?: Dashboard | null;
@@ -315,11 +330,7 @@ export const FieldValuesWidgetInner = forwardRef<
   const updateRemappings = (options: FieldValue[]) => {
     if (showRemapping(fields)) {
       const [field] = fields;
-      if (
-        field.remappedField() === field.searchField(disablePKRemappingForSearch)
-      ) {
-        dispatch(addRemappings(field.id, options));
-      }
+      dispatch(addRemappings(field.id, options));
     }
   };
 
@@ -372,6 +383,9 @@ export const FieldValuesWidgetInner = forwardRef<
         fields,
         formatOptions,
         value,
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         autoLoad: true,
         compact: false,
         displayValue: option?.[1],
@@ -385,6 +399,9 @@ export const FieldValuesWidgetInner = forwardRef<
         fields,
         formatOptions,
         value: option[0],
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         autoLoad: false,
         displayValue: option[1],
       });
@@ -441,13 +458,21 @@ export const FieldValuesWidgetInner = forwardRef<
     disableSearch,
     options,
   });
+  const isNumericParameter = isNumeric(parameter, fields);
+
+  const parseNumericValue = (value: string) => {
+    const number = parseNumber(value);
+    return typeof number === "bigint" ? String(number) : number;
+  };
 
   const parseFreeformValue = (value: string | undefined) => {
-    if (isNumeric(fields[0], parameter)) {
-      const number = typeof value === "string" ? parseNumber(value) : null;
-      return typeof number === "bigint" ? String(number) : number;
+    if (value == null) {
+      return null;
     }
-    return parseStringValue(value);
+
+    return isNumericParameter
+      ? parseNumericValue(value)
+      : parseStringValue(value);
   };
 
   return (
@@ -482,6 +507,57 @@ export const FieldValuesWidgetInner = forwardRef<
             options={options}
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
+          />
+        ) : multi ? (
+          <MultiAutocomplete
+            value={value.filter(isNotNull).map((value) => String(value))}
+            data={options
+              .filter((option) => getValue(option) != null)
+              .map((option) => getOption(option))
+              .filter(isNotNull)}
+            placeholder={tokenFieldPlaceholder}
+            rightSection={isLoading ? <Loader size="xs" /> : undefined}
+            nothingFoundMessage={getNothingFoundMessage({
+              fields,
+              loadingState,
+              lastValue,
+            })}
+            autoFocus={autoFocus}
+            w={COMBOBOX_WIDTH}
+            comboboxProps={{
+              width: DROPDOWN_WIDTH,
+              position: "bottom-start",
+            }}
+            data-testid="token-field"
+            parseValue={(value) => {
+              if (isNumericParameter) {
+                const number = parseNumber(value);
+                return number != null ? String(number) : null;
+              } else {
+                const string = value.trim();
+                return string.length > 0 ? string : null;
+              }
+            }}
+            renderValue={({ value }) => (
+              <RemappedValue
+                parameter={parameter}
+                fields={fields}
+                dashboardId={dashboard?.id}
+                cardId={question?.id()}
+                value={isNumericParameter ? parseNumericValue(value) : value}
+              />
+            )}
+            renderOption={({ option }) => (
+              <RemappedOption option={option} fields={fields} />
+            )}
+            onChange={(values) => {
+              if (isNumericParameter) {
+                onChange(values.map(parseNumericValue));
+              } else {
+                onChange(values);
+              }
+            }}
+            onSearchChange={onInputChange}
           />
         ) : (
           <TokenField
@@ -540,6 +616,27 @@ const LoadingState = () => (
     <LoadingSpinner size={16} />
   </div>
 );
+
+function getNothingFoundMessage({
+  fields,
+  loadingState,
+  lastValue,
+}: {
+  fields: (Field | null)[];
+  loadingState: LoadingStateType;
+  lastValue: string;
+}) {
+  if (loadingState !== "LOADED" || lastValue.length === 0) {
+    return undefined;
+  }
+  if (fields.length === 1 && fields[0] != null) {
+    const [field] = fields;
+    const searchField = field.searchField();
+    return t`No matching ${searchField?.display_name} found.`;
+  } else {
+    return t`No matching result`;
+  }
+}
 
 const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
   if (fields.length === 1 && !!fields[0]) {
@@ -632,9 +729,12 @@ function renderOptions({
 }
 
 function renderValue({
+  parameter,
+  cardId,
+  dashboardId,
   fields,
-  formatOptions,
   value,
+  formatOptions,
   autoLoad,
   compact,
   displayValue,
@@ -642,6 +742,9 @@ function renderValue({
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
+  parameter?: Parameter;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   autoLoad?: boolean;
   compact?: boolean;
   displayValue?: string;
@@ -650,6 +753,9 @@ function renderValue({
     <ValueComponent
       value={value}
       column={fields[0]}
+      parameter={parameter}
+      cardId={cardId}
+      dashboardId={dashboardId}
       maximumFractionDigits={20}
       remap={displayValue || showRemapping(fields)}
       displayValue={displayValue}
@@ -658,4 +764,88 @@ function renderValue({
       compact={compact}
     />
   );
+}
+
+type RemappedValueProps = {
+  parameter: Parameter;
+  fields: Field[];
+  value: ParameterValueOrArray | null;
+  dashboardId?: DashboardId;
+  cardId?: CardId;
+};
+
+function RemappedValue({
+  parameter,
+  fields,
+  value,
+  dashboardId,
+  cardId,
+}: RemappedValueProps) {
+  const field = fields[0];
+  const isRemapped =
+    (showRemapping(fields) && field?.remappedField() != null) ||
+    getSourceType(parameter) === "static-list";
+
+  const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
+    dashboardId != null && value != null && isRemapped
+      ? {
+          dashboard_id: dashboardId,
+          parameter_id: parameter.id,
+          value,
+        }
+      : skipToken,
+  );
+
+  const { data: cardData } = useGetRemappedCardParameterValueQuery(
+    cardId != null && value != null && isRemapped
+      ? {
+          card_id: cardId,
+          parameter_id: parameter.id,
+          value,
+        }
+      : skipToken,
+  );
+
+  const { data: parameterData } = useGetRemappedParameterValueQuery(
+    dashboardId == null && cardId == null && value != null && isRemapped
+      ? {
+          parameter: normalizeParameter(parameter),
+          field_ids: fields.map(({ id }) => Number(id)),
+          value,
+        }
+      : skipToken,
+  );
+
+  const remappedData = dashboardData ?? cardData ?? parameterData;
+  if (remappedData == null) {
+    return value;
+  }
+
+  const remappedValue = getValue(remappedData);
+  const remappedLabel = getLabel(remappedData);
+  if (remappedLabel == null) {
+    return value;
+  }
+
+  return (
+    <MultiAutocompleteValue
+      value={String(remappedValue)}
+      label={String(remappedLabel ?? remappedValue)}
+    />
+  );
+}
+
+type RemappedOptionProps = {
+  option: ComboboxItem;
+  fields: Field[];
+};
+
+function RemappedOption({ option, fields }: RemappedOptionProps) {
+  const field = fields[0];
+  const isRemapped = showRemapping(fields) && field?.remappedField() != null;
+  if (!isRemapped) {
+    return option.label;
+  }
+
+  return <MultiAutocompleteOption value={option.value} label={option.label} />;
 }
