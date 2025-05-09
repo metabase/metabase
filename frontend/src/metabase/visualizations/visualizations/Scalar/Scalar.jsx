@@ -207,66 +207,72 @@ export class Scalar extends Component {
     };
 
     return (
-      <ScalarWrapper>
-        <div
-          className={cx(
-            DashboardS.CardTitle,
-            CS.textDefault,
-            CS.textSmaller,
-            CS.absolute,
-            CS.top,
-            CS.right,
-            CS.p1,
-            CS.px2,
-          )}
-        >
-          {actionButtons}
-        </div>
-        <ScalarContainer
-          className={cx(
-            DashboardS.fullscreenNormalText,
-            DashboardS.fullscreenNightText,
-            EmbedFrameS.fullscreenNightText,
-          )}
-          data-testid="scalar-container"
-          tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== displayValue}
-          isClickable={isClickable}
-        >
-          <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
-            <ScalarValue
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={getValueHeight(height, { isDashboard, showSmallTitle })}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue}
-              width={getValueWidth(width)}
-            />
-          </span>
-        </ScalarContainer>
+      height !== null &&
+      width !== null && (
+        <ScalarWrapper>
+          <div
+            className={cx(
+              DashboardS.CardTitle,
+              CS.textDefault,
+              CS.textSmaller,
+              CS.absolute,
+              CS.top,
+              CS.right,
+              CS.p1,
+              CS.px2,
+            )}
+          >
+            {actionButtons}
+          </div>
+          <ScalarContainer
+            className={cx(
+              DashboardS.fullscreenNormalText,
+              DashboardS.fullscreenNightText,
+              EmbedFrameS.fullscreenNightText,
+            )}
+            data-testid="scalar-container"
+            tooltip={fullScalarValue}
+            alwaysShowTooltip={fullScalarValue !== displayValue}
+            isClickable={isClickable}
+          >
+            <span
+              onClick={handleClick}
+              ref={(scalar) => (this._scalar = scalar)}
+            >
+              <ScalarValue
+                fontFamily={fontFamily}
+                gridSize={gridSize}
+                height={getValueHeight(height, { isDashboard, showSmallTitle })}
+                totalNumGridCols={totalNumGridCols}
+                value={displayValue}
+                width={getValueWidth(width)}
+              />
+            </span>
+          </ScalarContainer>
 
-        {isDashboard &&
-          showTitle &&
-          (showSmallTitle ? (
-            <LabelIcon
-              data-testid="scalar-title-icon"
-              name="ellipsis"
-              tooltip={settings["card.title"]}
-              size={TITLE_ICON_SIZE}
-            />
-          ) : (
-            <ScalarTitle
-              lines={titleLinesCount}
-              title={settings["card.title"]}
-              description={settings["card.description"]}
-              onClick={
-                onChangeCardAndRun
-                  ? () => onChangeCardAndRun({ nextCard: card })
-                  : undefined
-              }
-            />
-          ))}
-      </ScalarWrapper>
+          {isDashboard &&
+            showTitle &&
+            (showSmallTitle ? (
+              <LabelIcon
+                data-testid="scalar-title-icon"
+                name="ellipsis"
+                tooltip={settings["card.title"]}
+                size={TITLE_ICON_SIZE}
+              />
+            ) : (
+              <ScalarTitle
+                lines={titleLinesCount}
+                title={settings["card.title"]}
+                description={settings["card.description"]}
+                onClick={
+                  onChangeCardAndRun
+                    ? () => onChangeCardAndRun({ nextCard: card })
+                    : undefined
+                }
+              />
+            ))}
+        </ScalarWrapper>
+      )
     );
   }
 }

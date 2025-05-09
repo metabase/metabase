@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
-import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
+import DashboardGridS from "metabase/dashboard/components/DashboardGrid/DashboardGrid.module.css";
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";

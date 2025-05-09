@@ -68,8 +68,12 @@ type OwnProps<T extends { id: number | null }> = {
   margin?: Record<string, [number, number]>;
 };
 
+export type GridLayoutProps<T extends { id: number | null }> = OwnProps<T> &
+  OmittedPropsFromGridLayout &
+  RequiredPropsFromGridLayout;
+
 export function GridLayout<T extends { id: number | null }>(
-  props: OwnProps<T> & OmittedPropsFromGridLayout & RequiredPropsFromGridLayout,
+  props: GridLayoutProps<T>,
 ) {
   const {
     items,
