@@ -16,7 +16,7 @@
     "./nextjs": {
       "types": "./dist/nextjs.d.ts",
       "require": "./dist/nextjs.cjs",
-      "import": "./dist/nextjs.mjs"
+      "import": "./dist/nextjs.js"
     },
     "./styles.css": "./dist/index.css",
     "./package.json": "./package.json"
