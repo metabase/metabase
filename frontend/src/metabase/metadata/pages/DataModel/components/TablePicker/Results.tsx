@@ -3,12 +3,11 @@ import cx from "classnames";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon, Skeleton } from "metabase/ui";
 
 import S from "./Results.module.css";
 import type { FlatItem, TreePath } from "./types";
-import { getIconForType, getUrl, hasChildren } from "./utils";
+import { getIconForType, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
@@ -19,10 +18,12 @@ export function Results({
   items,
   toggle,
   path,
+  onItemClick,
 }: {
   items: FlatItem[];
   toggle?: (key: string, value?: boolean) => void;
   path: TreePath;
+  onItemClick?: (path: TreePath) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -98,50 +99,43 @@ export function Results({
                 }}
                 data-test-id="tree-item"
                 data-type={type}
-              >
-                <MaybeLink
-                  className={S.link}
-                  to={
-                    // Only change url when we're expanding items
-                    // or when we're selecting a table
-                    value && (type === "table" || !isExpanded)
-                      ? getUrl(value)
-                      : undefined
+                onClick={() => {
+                  toggle?.(key);
+                  virtual.measureElement(
+                    ref.current?.querySelector(`[data-index='${index}']`),
+                  );
+
+                  if (value && !isExpanded) {
+                    onItemClick?.(value);
                   }
-                  onClick={() => {
-                    toggle?.(key);
-                    virtual.measureElement(
-                      ref.current?.querySelector(`[data-index='${index}']`),
-                    );
-                  }}
-                >
-                  <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
-                    <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
-                      {hasChildren(type) && (
-                        <Icon
-                          name="chevronright"
-                          size={10}
-                          color="var(--mb-color-text-light)"
-                          className={cx(S.chevron, {
-                            [S.expanded]: isExpanded,
-                          })}
-                        />
-                      )}
-                      <Icon name={getIconForType(type)} className={S.icon} />
-                      {isLoading ? (
-                        <Loading />
-                      ) : (
-                        <Box
-                          pl="sm"
-                          className={S.label}
-                          data-test-id="tree-item-label"
-                        >
-                          {label}
-                        </Box>
-                      )}
-                    </Delay>
-                  </Flex>
-                </MaybeLink>
+                }}
+              >
+                <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
+                  <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
+                    {hasChildren(type) && (
+                      <Icon
+                        name="chevronright"
+                        size={10}
+                        color="var(--mb-color-text-light)"
+                        className={cx(S.chevron, {
+                          [S.expanded]: isExpanded,
+                        })}
+                      />
+                    )}
+                    <Icon name={getIconForType(type)} className={S.icon} />
+                    {isLoading ? (
+                      <Loading />
+                    ) : (
+                      <Box
+                        pl="sm"
+                        className={S.label}
+                        data-test-id="tree-item-label"
+                      >
+                        {label}
+                      </Box>
+                    )}
+                  </Delay>
+                </Flex>
               </Flex>
             </Fragment>
           );
@@ -149,18 +143,6 @@ export function Results({
       </Box>
     </Box>
   );
-}
-
-function MaybeLink(props: {
-  to?: string;
-  onClick?: () => void;
-  className?: string;
-  children: ReactNode;
-}) {
-  if (props.to !== undefined) {
-    return <Link {...props} to={props.to} />;
-  }
-  return <span {...props} />;
 }
 
 function Delay({ delay, children }: { delay: number; children: ReactNode }) {

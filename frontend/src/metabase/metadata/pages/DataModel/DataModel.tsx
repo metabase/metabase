@@ -12,7 +12,7 @@ import S from "./DataModel.module.css";
 import {
   FieldSection,
   PreviewSection,
-  TablePicker,
+  RouterTablePicker,
   TableSection,
 } from "./components";
 import type { RouteParams } from "./types";
@@ -54,7 +54,7 @@ export const DataModel = ({ params }: Props) => {
           {t`Data model`}
         </Title>
 
-        <TablePicker
+        <RouterTablePicker
           databaseId={databaseId}
           schemaId={schemaId}
           tableId={tableId}

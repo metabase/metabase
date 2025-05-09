@@ -1,5 +1,4 @@
 import { useDeferredValue, useEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -10,15 +9,15 @@ import { Box, Icon, Input, Stack } from "metabase/ui";
 
 import { Results } from "./Results";
 import type { TreePath } from "./types";
-import {
-  flatten,
-  getUrl,
-  useExpandedState,
-  useSearch,
-  useTableLoader,
-} from "./utils";
+import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
-export function TablePicker(props: TreePath) {
+export function TablePicker({
+  value,
+  onChange,
+}: {
+  value: TreePath;
+  onChange: (path: TreePath) => void;
+}) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
@@ -34,18 +33,24 @@ export function TablePicker(props: TreePath) {
       </Box>
 
       {deferredQuery === "" ? (
-        <Tree {...props} />
+        <Tree value={value} onChange={onChange} />
       ) : (
-        <Search query={deferredQuery} path={props} />
+        <Search query={deferredQuery} path={value} onChange={onChange} />
       )}
     </Stack>
   );
 }
 
-function Tree(props: TreePath) {
-  const { databaseId, schemaId } = props;
-  const { isExpanded, toggle } = useExpandedState(props);
-  const { tree } = useTableLoader(props);
+function Tree({
+  value,
+  onChange,
+}: {
+  value: TreePath;
+  onChange: (path: TreePath) => void;
+}) {
+  const { databaseId, schemaId } = value;
+  const { isExpanded, toggle } = useExpandedState(value);
+  const { tree } = useTableLoader(value);
 
   const items = flatten(tree, { isExpanded, addLoadingNodes: true });
   const dispatch = useDispatch();
@@ -65,15 +70,30 @@ function Tree(props: TreePath) {
       const schema = database.children[0];
       if (schema.type === "schema" && schemaId !== schema.value.schemaId) {
         toggle(schema.key, true);
-        dispatch(push(getUrl(schema.value)));
+        onChange(schema.value);
       }
     }
-  }, [databaseId, schemaId, tree, dispatch, toggle, isExpanded]);
+  }, [databaseId, schemaId, tree, dispatch, toggle, isExpanded, onChange]);
 
-  return <Results items={items} toggle={toggle} path={props} />;
+  return (
+    <Results
+      items={items}
+      toggle={toggle}
+      path={value}
+      onItemClick={onChange}
+    />
+  );
 }
 
-function Search({ query, path }: { query: string; path: TreePath }) {
+function Search({
+  query,
+  path,
+  onChange,
+}: {
+  query: string;
+  path: TreePath;
+  onChange: (path: TreePath) => void;
+}) {
   const debouncedQuery = useDebouncedValue(query, 300);
   const { tree, isLoading } = useSearch(debouncedQuery);
 
@@ -91,5 +111,5 @@ function Search({ query, path }: { query: string; path: TreePath }) {
     );
   }
 
-  return <Results items={items} path={path} />;
+  return <Results items={items} path={path} onItemClick={onChange} />;
 }
