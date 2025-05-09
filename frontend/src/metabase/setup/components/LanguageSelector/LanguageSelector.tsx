@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import { findWhere } from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -29,6 +30,7 @@ export const LanguageSelector = ({ w }: { w: number }) => {
   return (
     <Select
       w={w}
+      aria-label={t`Select a language`}
       data={languages}
       value={locale?.name || "English"}
       onChange={handleLocaleChange}
