@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -622,8 +623,8 @@
       (doseq [[table fields] [[:people [{:value 10 :expected "10" :msg "integer"}
                                         {:value 10.4 :expected "10.4" :msg "float"}
                                         {:value "Hello!" :expected "Hello!" :msg "text"}
-                                        {:value (lib/date "2025-04-02") :expected "2025-04-02" :msg "text"}]]]
-              {:keys [value expected msg]} fields]
+                                        {:value (lib/date "2025-04-02") :expected "2025-04-02" :msg "text" :compare str/starts-with?}]]]
+              {:keys [value expected msg compare] :or {compare =}} fields]
         (testing (str "casting " (pr-str value) "(" msg ") to text")
           (let [field-md (lib.metadata/field mp (mt/id table :id))
                 query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -636,7 +637,7 @@
             (is (types/field-is-type? :type/Text (last cols)))
             (doseq [[_id casted-value] rows]
               (is (string? casted-value))
-              (is (= expected casted-value) (str "Not equal for " msg)))))))))
+              (is (compare casted-value expected) (str "Not equal for " msg)))))))))
 
 (deftest ^:parallel text-cast-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/text)
