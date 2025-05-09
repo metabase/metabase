@@ -87,6 +87,11 @@ export type Options = {
    */
   idAlias?: string;
   /**
+   * Alias a question entity_id in order to use it later with `cy.get("@" + alias).
+   * Defaults to "questionEntityId".
+   */
+  entityIdAlias?: string;
+  /**
    * We need distinctive endpoint aliases for cases where we have multiple questions or nested questions.
    * Defaults to "cardQuery".
    */
@@ -134,6 +139,7 @@ export const question = (
     visitQuestion: shouldVisitQuestion = false,
     wrapId = false,
     idAlias = "questionId",
+    entityIdAlias = "questionEntityId",
     interceptAlias = "cardQuery",
   }: Options = {},
 ) => {
@@ -159,6 +165,7 @@ export const question = (
        * })
        */
       if (wrapId) {
+        cy.wrap(body.entity_id).as(entityIdAlias);
         cy.wrap(body.id).as(idAlias);
       }
 
