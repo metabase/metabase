@@ -32,7 +32,7 @@ export default (ComposedComponent) =>
           this.props.fetchRemapping({
             parameter: this.props.parameter,
             value: this.props.value,
-            fieldId: this.props.column.id,
+            field: this.props.column,
             cardId: this.props.cardId,
             dashboardId: this.props.dashboardId,
           });
@@ -50,7 +50,7 @@ export default (ComposedComponent) =>
           this.props.fetchRemapping({
             parameter: nextProps.parameter,
             value: nextProps.value,
-            fieldId: nextProps.column.id,
+            field: this.props.column,
             cardId: nextProps.cardId,
             dashboardId: nextProps.dashboardId,
           });

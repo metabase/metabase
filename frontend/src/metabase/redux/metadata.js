@@ -9,7 +9,6 @@ import Tables from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -202,10 +201,8 @@ export const addRemappings = (fieldId, remappings) => {
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
-  ({ parameter, value, fieldId, cardId, dashboardId }) =>
+  ({ parameter, value, field, cardId, dashboardId }) =>
     async (dispatch, getState) => {
-      const metadata = getMetadata(getState());
-      const field = metadata.field(fieldId);
       if (
         field == null ||
         field.remappedField() == null ||
@@ -246,7 +243,7 @@ export const fetchRemapping = createThunkAction(
         const remapping = await entityCompatibleQuery(
           {
             parameter: normalizeParameter(parameter),
-            field_ids: [fieldId],
+            field_ids: [field.id],
             value,
           },
           dispatch,

@@ -25,16 +25,20 @@ describe("scenarios > dashboard > filters > remapping", () => {
       H.editDashboard();
       mapDashboardParameters();
       H.saveDashboard();
-      testDashboardWidgets();
+
+      testDefaultValuesRemapping();
+      testDashboardWidgetsRemapping();
 
       H.visitPublicDashboard(dashboardId);
-      testDashboardWidgets();
+      testDefaultValuesRemapping();
+      testDashboardWidgetsRemapping();
 
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
       });
-      testDashboardWidgets();
+      testDefaultValuesRemapping();
+      testDashboardWidgetsRemapping();
     });
   });
 });
@@ -65,6 +69,10 @@ function addExternalRemapping() {
 
 function findWidget(name: string) {
   return H.dashboardParametersContainer().findByText(name).parents("fieldset");
+}
+
+function clearWidget(name: string) {
+  findWidget(name).icon("close").click();
 }
 
 function createDashboard() {
@@ -122,30 +130,35 @@ function createDashboard() {
         slug: "p1",
         name: "Internal",
         type: "number/=",
+        default: [1],
       }),
       createMockParameter({
         id: "p2",
         slug: "p2",
         name: "FK",
         type: "id",
+        default: [2],
       }),
       createMockParameter({
         id: "p3",
         slug: "p3",
         name: "PK->Name",
         type: "id",
+        default: [3],
       }),
       createMockParameter({
         id: "p4",
         slug: "p4",
         name: "FK->Name",
         type: "id",
+        default: [4],
       }),
       createMockParameter({
         id: "p5",
         slug: "p5",
         name: "PK+FK->Name",
         type: "id",
+        default: [5],
       }),
     ],
     enable_embedding: true,
@@ -193,48 +206,61 @@ function mapDashboardParameters() {
   H.selectDashboardFilter(H.getDashboardCard(1), "ID");
 }
 
-function testDashboardWidgets() {
+function testDefaultValuesRemapping() {
+  findWidget("Internal").should("contain.text", "N1");
+  findWidget("FK").should("contain.text", "Small Marble Shoes");
+  findWidget("PK->Name").should("contain.text", "Lina Heaney");
+  findWidget("FK->Name").should("contain.text", "Arnold Adams");
+  findWidget("PK+FK->Name").should("contain.text", "Dominique Leffler");
+}
+
+function testDashboardWidgetsRemapping() {
   cy.log("internal remapping");
+  clearWidget("Internal");
   findWidget("Internal").click();
   H.popover().within(() => {
     cy.findByText("N5").click();
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
   });
   findWidget("Internal").should("contain.text", "N5");
 
   cy.log("FK remapping");
+  clearWidget("FK");
   findWidget("FK").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Rustic Paper Wallet").should("exist");
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
   });
   findWidget("FK").should("contain.text", "Rustic Paper Wallet");
 
   cy.log("PK->Name remapping");
+  clearWidget("PK->Name");
   findWidget("PK->Name").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Hudson Borer").should("exist");
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
   });
   findWidget("PK->Name").should("contain.text", "Hudson Borer");
 
-  // cy.log("FK->Name remapping");
-  // findWidget("FK->Name").click();
-  // H.popover().within(() => {
-  //   cy.findByPlaceholderText("Enter an ID").type("2,");
-  //   cy.findByText("Domenica Williamson").should("exist");
-  //   cy.button("Add filter").click();
-  // });
-  // findWidget("FK->Name").should("contain.text", "Domenica Williamson");
-
-  cy.log("PK+FK->Name remapping");
-  findWidget("PK+FK->Name").click();
+  cy.log("FK->Name remapping");
+  clearWidget("FK->Name");
+  findWidget("FK->Name").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("2,");
     cy.findByText("Domenica Williamson").should("exist");
-    cy.button("Add filter").click();
+    cy.button("Update filter").click();
   });
-  findWidget("PK+FK->Name").should("contain.text", "Domenica Williamson");
+  findWidget("FK->Name").should("contain.text", "Domenica Williamson");
+
+  cy.log("PK+FK->Name remapping");
+  clearWidget("PK+FK->Name");
+  findWidget("PK+FK->Name").click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("3,");
+    cy.findByText("Lina Heaney").should("exist");
+    cy.button("Update filter").click();
+  });
+  findWidget("PK+FK->Name").should("contain.text", "Lina Heaney");
 }
