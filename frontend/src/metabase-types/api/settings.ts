@@ -402,6 +402,7 @@ interface PublicSettings {
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
+  "enable-sandboxes?": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
