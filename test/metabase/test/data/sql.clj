@@ -366,7 +366,7 @@
 
 ;; With bigquery, ->honeysql returns `db`.`orders`.`created_at`, but for whatever reason, the query actually wants
 ;; `db.orders`.`created_at`.
-(defmethod tx/field-reference :bigquery
+(defmethod tx/field-reference :bigquery-cloud-sdk
   ([driver field-id]
    (let [parent-method (get-method tx/field-reference :sql/test-extensions)
          full-reference (parent-method driver field-id)
