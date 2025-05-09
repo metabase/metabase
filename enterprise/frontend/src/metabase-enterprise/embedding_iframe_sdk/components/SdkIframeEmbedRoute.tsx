@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -18,24 +17,8 @@ import { SdkIframeInvalidLicenseError } from "./SdkIframeError";
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus();
 
-  const authConfig = useMemo(() => {
-    if (!embedSettings) {
-      return;
-    }
-
-    // TODO: add support for SSO auth once the new SSO implementation on the SDK is ready
-    if (!embedSettings.instanceUrl || !embedSettings.apiKey) {
-      return;
-    }
-
-    return defineMetabaseAuthConfig({
-      metabaseInstanceUrl: embedSettings.instanceUrl,
-      apiKey: embedSettings.apiKey,
-    });
-  }, [embedSettings]);
-
   // The SDK will show its own loading indicator, so we don't need to show it twice.
-  if (embedSettings === null || !authConfig) {
+  if (!embedSettings || !embedSettings.instanceUrl || !embedSettings.apiKey) {
     return null;
   }
 
@@ -48,6 +31,11 @@ export const SdkIframeEmbedRoute = () => {
   }
 
   const { theme, locale } = embedSettings;
+
+  const authConfig = defineMetabaseAuthConfig({
+    metabaseInstanceUrl: embedSettings.instanceUrl,
+    apiKey: embedSettings.apiKey,
+  });
 
   return (
     <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
