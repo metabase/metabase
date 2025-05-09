@@ -132,9 +132,10 @@
   {:api  #{metabase.api-routes.core}
    :uses :any}
 
-  audit
-  {:api  #{metabase.audit}
-   :uses #{db settings}}
+  audit-app
+  {:api  #{metabase.audit-app.core
+           metabase.audit-app.init}
+   :uses #{api db events models premium-features settings task task-history util}}
 
   auth-provider
   {:api  #{metabase.auth-provider.core}
@@ -315,7 +316,7 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{channel driver models util view-log}}
+   :uses #{audit-app channel driver models util view-log}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -403,7 +404,6 @@
 
   models
   {:api #{metabase.models.application-permissions-revision
-          metabase.models.audit-log
           metabase.models.card
           metabase.models.card.metadata
           metabase.models.dashboard
@@ -436,7 +436,7 @@
    :uses #{analytics
            analyze
            api
-           audit
+           audit-app
            cache
            channel
            collections
@@ -503,7 +503,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.util}
-   :uses #{api audit collections config db models premium-features request server settings util}}
+   :uses #{api audit-app collections config db models premium-features request server settings util}}
 
   pivot
   {:api #{metabase.pivot.core}
@@ -575,7 +575,7 @@
    :uses #{analytics
            analyze
            api
-           audit
+           audit-app
            cache
            config
            driver
@@ -616,7 +616,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit collections config db driver models permissions premium-features settings request startup task util}}
+   :uses #{analytics api audit-app collections config db driver models permissions premium-features settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -675,7 +675,7 @@
           metabase.sync.schedules
           metabase.sync.task.sync-databases
           metabase.sync.util}
-   :uses #{analyze api audit config db driver events lib models query-processor settings task task-history util}}
+   :uses #{analyze api audit-app config db driver events lib models query-processor settings task task-history util}}
 
   task
   {:api #{metabase.task.bootstrap
@@ -689,9 +689,7 @@
            plugins
            premium-features
            settings
-           task-history
-           util
-           enterprise/task}}
+           util}}
 
   task-history
   {:api  #{metabase.task-history.api
@@ -746,7 +744,7 @@
   view-log
   {:api  #{metabase.view-log.core
            metabase.view-log.init}
-   :uses #{analytics api events models premium-features util}}
+   :uses #{analytics api audit-app events models premium-features util}}
 
 
   xrays
@@ -792,7 +790,7 @@
   enterprise/audit-app
   {:api  #{metabase-enterprise.audit-app.api.routes}
    :uses #{api
-           audit
+           audit-app
            db
            driver
            lib
@@ -852,7 +850,7 @@
 
   enterprise/impersonation
   {:api #{metabase-enterprise.impersonation.api}
-   :uses #{api audit driver lib models premium-features query-processor util enterprise/sandbox}}
+   :uses #{api audit-app driver lib models premium-features query-processor util enterprise/sandbox}}
 
   enterprise/internal-stats
   {:api #{}
@@ -879,7 +877,7 @@
   {:api #{metabase-enterprise.sandbox.api.routes
           metabase-enterprise.sandbox.api.util}
    :uses #{api
-           audit
+           audit-app
            db
            driver
            legacy-mbql
@@ -921,10 +919,6 @@
   {:api  #{metabase-enterprise.stale.api
            metabase-enterprise.stale.init}
    :uses #{analytics api collections embedding models premium-features request settings util}}
-
-  enterprise/task
-  {:api  #{metabase-enterprise.task.truncate-audit-tables}
-   :uses #{premium-features}}
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}

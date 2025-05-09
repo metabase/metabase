@@ -9,7 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
@@ -22,7 +22,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -1407,14 +1406,6 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
-
-;;; ------------------------------------------------ Audit Log --------------------------------------------------------
-
-(defmethod audit-log/model-details :model/Card
-  [{card-type :type, :as card} _event-type]
-  (merge (select-keys card [:name :description :database_id :table_id])
-          ;; Use `model` instead of `dataset` to mirror product terminology
-         {:model? (= (keyword card-type) :model)}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

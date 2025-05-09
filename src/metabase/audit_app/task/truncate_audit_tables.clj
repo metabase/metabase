@@ -1,13 +1,12 @@
-(ns metabase.task.truncate-audit-tables
-  "Tasks for truncating audit-related tables, particularly `audit_log`, `view_log`, and `query_execution`, based on a configured retention policy."
+(ns metabase.audit-app.task.truncate-audit-tables
+  "Tasks for truncating audit-related tables, particularly `audit_log`, `view_log`, and `query_execution`, based on a
+  configured retention policy."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.task-history.core :as task-history]
@@ -17,10 +16,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; Load EE implementation if available
-(when config/ee-available?
-  (classloader/require 'metabase-enterprise.task.truncate-audit-tables))
 
 (def min-retention-days
   "Minimum allowed value for `audit-max-retention-days`."
@@ -120,7 +115,7 @@ If set to 0, Metabase will keep all rows.")
 
 (defenterprise audit-models-to-truncate
   "List of models to truncate. OSS implementation only truncates `query_execution` table."
-  metabase-enterprise.task.truncate-audit-tables
+  metabase-enterprise.audit-app.task.truncate-audit-tables
   []
   [{:model :model/QueryExecution :timestamp-col :started_at}])
 

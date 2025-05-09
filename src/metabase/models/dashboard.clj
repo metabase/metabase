@@ -3,12 +3,11 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
@@ -461,24 +460,6 @@
      ;; parameter with values_source_type = "card" will depend on a card
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
-
-;;; ------------------------------------------------ Audit Log --------------------------------------------------------
-
-(defmethod audit-log/model-details :model/Dashboard
-  [dashboard event-type]
-  (case event-type
-    (:dashboard-create :dashboard-delete :dashboard-read)
-    (select-keys dashboard [:description :name])
-
-    (:dashboard-add-cards :dashboard-remove-cards)
-    (-> (select-keys dashboard [:description :name :parameters :dashcards])
-        (update :dashcards (fn [dashcards]
-                             (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [:model/Card :name :description :card_schema], :id card_id)
-                                   (assoc :id id)
-                                   (assoc :card_id card_id))))))
-
-    {}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

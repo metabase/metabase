@@ -1,9 +1,9 @@
-(ns metabase.audit
+(ns metabase.audit-app.impl
   "Namespace for anything related to the Audit subsystem (aka Metabase Analytics) which needs to be accessible in the
   OSS product. EE-only code is located in `metabase-enterprise.audit-app.audit`."
   (:require
+   [metabase.audit-app.settings :as audit.settings]
    [metabase.db :as mdb]
-   [metabase.settings.core :refer [defsetting]]
    [toucan2.core :as t2]))
 
 ;; NOTE: Constants like `audit-db-id` and the entity IDs of audit collections are placed in OSS code because audit
@@ -13,15 +13,6 @@
 (def audit-db-id
   "ID of Audit DB which is loaded when running an EE build."
   13371337)
-
-(defsetting last-analytics-checksum
-  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
-  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
-  :type       :integer
-  :visibility :internal
-  :audit      :never
-  :doc        false
-  :export?    false)
 
 (def ^:private default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
@@ -42,7 +33,7 @@
   "Returns the object from entity id and model. Memoizes from entity id.
   Should only be used for audit/pre-loaded objects."
   [model entity-id]
-  (memoized-select-audit-entity* (last-analytics-checksum) model entity-id))
+  (memoized-select-audit-entity* (audit.settings/last-analytics-checksum) model entity-id))
 
 (defn default-custom-reports-collection
   "Default custom reports collection."

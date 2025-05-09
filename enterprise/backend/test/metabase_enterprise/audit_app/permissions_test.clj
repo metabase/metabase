@@ -5,7 +5,7 @@
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.collection.graph :refer [update-graph!]]

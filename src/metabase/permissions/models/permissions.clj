@@ -170,7 +170,7 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]

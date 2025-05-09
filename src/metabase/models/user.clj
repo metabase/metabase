@@ -7,7 +7,6 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -514,20 +513,3 @@
   :export?    false
   :visibility :authenticated
   :type       :string)
-
-;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
-
-(defmethod audit-log/model-details :model/User
-  [entity event-type]
-  (case event-type
-    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships])
-    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships])
-    :password-reset-initiated  (select-keys entity [:token])
-    :password-reset-successful (select-keys entity [:token])
-    {}))

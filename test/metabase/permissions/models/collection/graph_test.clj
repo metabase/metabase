@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]

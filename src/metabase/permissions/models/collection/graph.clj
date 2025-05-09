@@ -5,7 +5,7 @@
    [clojure.data :as data]
    [com.climate.claypoole :as cp]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.db.query :as mdb.query]
    [metabase.permissions.core :as perms]

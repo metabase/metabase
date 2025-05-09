@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -1718,6 +1718,7 @@
                  (serdes/raw-hash ["grandchild" :yolocorp c2-hash (:created_at c3)])
                  (serdes/identity-hash c3))))))))
 
+;;; TODO -- does this belong here, or in the `audit-app` module?
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
     (mt/with-temp [:model/Collection audit-collection {:type "instance-analytics"}

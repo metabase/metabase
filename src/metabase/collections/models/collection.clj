@@ -10,7 +10,7 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config :as config :refer [*request-id*]]
    [metabase.db :as mdb]
