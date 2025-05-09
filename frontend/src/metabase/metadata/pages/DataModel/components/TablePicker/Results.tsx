@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import _ from "underscore";
 
 import { Box, Flex, Icon, Skeleton } from "metabase/ui";
@@ -12,7 +12,6 @@ import { getIconForType, hasChildren } from "./utils";
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
 const INDENT_OFFSET = 18;
-const LOADING_TIMEOUT = 50;
 
 export function Results({
   items,
@@ -90,15 +89,13 @@ export function Results({
           return (
             <Fragment key={key}>
               {type !== "database" && (
-                <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
-                  <Track
-                    start={
-                      parentItem ? parentItem.start + 0.5 * parentItem.size : 0
-                    }
-                    end={start + 0.5 * size}
-                    level={level}
-                  />
-                </Delay>
+                <Track
+                  start={
+                    parentItem ? parentItem.start + 0.5 * parentItem.size : 0
+                  }
+                  end={start + 0.5 * size}
+                  level={level}
+                />
               )}
               <Flex
                 key={key}
@@ -120,30 +117,28 @@ export function Results({
                 }}
               >
                 <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
-                  <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
-                    {hasChildren(type) && (
-                      <Icon
-                        name="chevronright"
-                        size={10}
-                        color="var(--mb-color-text-light)"
-                        className={cx(S.chevron, {
-                          [S.expanded]: isExpanded,
-                        })}
-                      />
-                    )}
-                    <Icon name={getIconForType(type)} className={S.icon} />
-                    {isLoading ? (
-                      <Loading />
-                    ) : (
-                      <Box
-                        pl="sm"
-                        className={S.label}
-                        data-test-id="tree-item-label"
-                      >
-                        {label}
-                      </Box>
-                    )}
-                  </Delay>
+                  {hasChildren(type) && (
+                    <Icon
+                      name="chevronright"
+                      size={10}
+                      color="var(--mb-color-text-light)"
+                      className={cx(S.chevron, {
+                        [S.expanded]: isExpanded,
+                      })}
+                    />
+                  )}
+                  <Icon name={getIconForType(type)} className={S.icon} />
+                  {isLoading ? (
+                    <Loading />
+                  ) : (
+                    <Box
+                      pl="sm"
+                      className={S.label}
+                      data-test-id="tree-item-label"
+                    >
+                      {label}
+                    </Box>
+                  )}
                 </Flex>
               </Flex>
             </Fragment>
@@ -152,20 +147,6 @@ export function Results({
       </Box>
     </Box>
   );
-}
-
-function Delay({ delay, children }: { delay: number; children: ReactNode }) {
-  const [show, setShow] = useState(delay === 0);
-
-  useEffect(() => {
-    if (delay > 0) {
-      const timeout = setTimeout(() => setShow(true), delay);
-      return () => clearTimeout(timeout);
-    }
-    setShow(true);
-  }, [delay]);
-
-  return show ? children : <span data-test-id="loading-placeholder" />;
 }
 
 function Loading() {
