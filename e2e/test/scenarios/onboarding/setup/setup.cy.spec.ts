@@ -246,8 +246,6 @@ describe("scenarios > setup", () => {
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
     );
 
-    skipWelcomePage();
-
     cy.findByTestId("setup-forms").within(() => {
       const password = "12341234";
       cy.findByDisplayValue("John").should("exist");
