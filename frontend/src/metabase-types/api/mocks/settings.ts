@@ -200,6 +200,7 @@ export const createMockSettings = (
   "enable-embedding-interactive": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
+  "enable-sandboxes?": true,
   "expand-browse-in-nav": true,
   "expand-bookmarks-in-nav": true,
   "query-caching-ttl-ratio": 10,
