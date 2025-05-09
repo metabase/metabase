@@ -3,7 +3,13 @@
 
 const path = require("path");
 
-const SCRIPT_TAG_PATH = path.resolve(__dirname, "embed.v1.ts");
+const ENTERPRISE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/metabase-enterprise";
+
+const SCRIPT_TAG_PATH = path.resolve(
+  ENTERPRISE_SRC_PATH,
+  "embedding_iframe_sdk/embed.v1.ts",
+);
 
 const BUILD_PATH = path.resolve(
   __dirname,
