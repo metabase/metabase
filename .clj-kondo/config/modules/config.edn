@@ -206,7 +206,7 @@
            metabase.collections.models.collection.root}
    :uses #{api
            api-keys
-           audit
+           audit-app
            config
            db
            driver
