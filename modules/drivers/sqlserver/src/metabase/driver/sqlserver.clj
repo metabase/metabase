@@ -505,6 +505,23 @@
       ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
       (update new-hsql :group-by distinct))))
 
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :fields]
+  [driver _ honeysql-form {fields :fields :as query}]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :fields])
+        boolean-expression-clause? sql.qp.boolean-to-comparison/boolean-expression-clause?
+        maybe-cast-honeysql-field (fn [honeysql-field]
+                                    ;; honeysql-field is a vector [[field-or-value] [optional-alias]]
+                                    (update honeysql-field 0 #(h2x/maybe-cast :bit %)))]
+    (-> (parent-method driver :fields honeysql-form query)
+        ;; Insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is preserved in results
+        ;; metadata, so downstream questions and query stages can use the column in contexts where a boolean is
+        ;; required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool ...`.
+        (update :select (fn [honeysql-fields]
+                          (mapv #(cond-> %1
+                                   (boolean-expression-clause? %2) maybe-cast-honeysql-field)
+                                honeysql-fields
+                                fields))))))
+
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
   [subclauses]

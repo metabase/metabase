@@ -543,20 +543,20 @@
                     (orders-query {:filter true-value})
                     :expected-sql
                     {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
+                             "  TOP(1) CAST(? AS bit) AS MyTrue"
                              "FROM"
                              "  dbo.orders"
                              "WHERE"
                              "  ? = ?"]
                      :params [1 1 1]}
                     :expected-rows
-                    [[1]]}
+                    [[true]]}
                    {:desc "false filter"
                     :query
                     (orders-query {:filter false-value})
                     :expected-sql
                     {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
+                             "  TOP(1) CAST(? AS bit) AS MyTrue"
                              "FROM"
                              "  dbo.orders"
                              "WHERE"
@@ -569,14 +569,14 @@
                     (orders-query {:filter [:not false-value]})
                     :expected-sql
                     {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
+                             "  TOP(1) CAST(? AS bit) AS MyTrue"
                              "FROM"
                              "  dbo.orders"
                              "WHERE"
                              "  NOT (? = ?)"]
                      :params [1 0 1]}
                     :expected-rows
-                    [[1]]}
+                    [[true]]}
                    {:desc "nested logical operators"
                     :query
                     (orders-query {:filter [:and
@@ -586,7 +586,7 @@
                                              [:expression "MyTrue"]]]})
                     :expected-sql
                     {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
+                             "  TOP(1) CAST(? AS bit) AS MyTrue"
                              "FROM"
                              "  dbo.orders"
                              "WHERE"
@@ -597,7 +597,7 @@
                              "  )"]
                      :params [1 0 1 0 1 1 1]}
                     :expected-rows
-                    [[1]]}
+                    [[true]]}
                    {:desc "case expression"
                     :query
                     (orders-query {:expressions {"MyTrue"  true-value
@@ -623,14 +623,14 @@
                     (orders-query {:filter [:= true-value true-value]})
                     :expected-sql
                     {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
+                             "  TOP(1) CAST(? AS bit) AS MyTrue"
                              "FROM"
                              "  dbo.orders"
                              "WHERE"
                              "  ? = ?"]
                      :params [1 1 1]}
                     :expected-rows
-                    [[1]]}]]
+                    [[true]]}]]
             (testing (format "\n%s\nMBQL query = %s\n" desc query)
               (testing "Should generate the correct SQL query"
                 (is (= expected-sql
