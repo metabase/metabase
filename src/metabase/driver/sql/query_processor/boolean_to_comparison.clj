@@ -80,9 +80,9 @@
 
   Both the input `clause` and the output are MBQL.
 
-  If `boolean-field-types` is provided, it will override the set of types that will are considered boolean for
-  a :field ref. This is useful for drivers that do not have a separately distinguishable boolean type (for example
-  Oracle uses a numeric type)."
+  If `boolean-field-types` is provided, it will override the set of types that are considered boolean for a :field
+  ref. This is useful for drivers that do not have a separately distinguishable boolean type (for example Oracle uses
+  a numeric type)."
   ([clause]
    (boolean->comparison clause default-boolean-types))
   ([clause boolean-field-types]
