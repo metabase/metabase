@@ -1,4 +1,6 @@
-(ns watch.watcher
+(ns ^:clj-reload/no-unload
+ ^:clj-reload/no-reload
+ watch.watcher
   (:require
    [clj-reload.core :as reload]
    [dev :as dev]
@@ -13,12 +15,11 @@
   "Reloads the system when a file changes."
   [change]
   (log/warn "Change detected. Reloading system. " (pr-str change) " ...")
-  (reload/reload))
+  (reload/reload {:throw :false}))
 
 (def ^:private paths
   ["src" "test" "enterprise/backend" "modules"])
 
-#_:clj-kondo/ignore
 (defonce watcher
   (do
     (log/warn "Watching paths:" paths)

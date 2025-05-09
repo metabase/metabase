@@ -135,11 +135,6 @@
                 [:tuple [:enum "bash" "zsh" "fish"]]]
    :task     (task! (autotab/instructions parsed))}
 
-  start-watcher
-  {:doc      "hot-reloads for clojure files"
-   :requires [[mage.be-dev :refer [nrepl-eval]]]
-   :task (task! (nrepl-eval "watch.watcher" "::ok"))}
-
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; - hidden from `./bin/mage` listing and `bb tasks`
