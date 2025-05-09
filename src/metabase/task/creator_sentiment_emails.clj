@@ -11,8 +11,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -90,7 +89,7 @@
           all-creators  (fetch-creators (premium-features/enable-whitelabeling?))
           this-week?    (fn [c] (= current-week (-> c :email hash (mod 52))))
           recipients    (filter this-week? all-creators)
-          blob          (if (public-settings/anon-tracking-enabled)
+          blob          (if (analytics/anon-tracking-enabled)
                           (fn [creator]
                             (user-instance-info instance-data creator))
                           (constantly nil))]

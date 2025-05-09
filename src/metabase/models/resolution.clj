@@ -15,7 +15,7 @@
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
-    :model/AuditLog                          metabase.models.audit-log
+    :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.models.card
@@ -82,7 +82,7 @@
     :model/User                              metabase.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
-    :model/ViewLog                           metabase.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

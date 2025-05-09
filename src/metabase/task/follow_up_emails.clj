@@ -5,11 +5,11 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -31,9 +31,10 @@
 (defn- send-follow-up-email!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
   []
-  ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure email hasn't been sent yet
+  ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure
+  ;; email hasn't been sent yet
   (when (and (email/email-configured?)
-             (public-settings/anon-tracking-enabled)
+             (analytics/anon-tracking-enabled)
              (email/surveys-enabled)
              (not (follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to

@@ -56,7 +56,9 @@
     [:schema [:ref ::expression/temporal]]))
 
 (mbql-clause/define-tuple-mbql-clause :date :- :type/Date
-  [:schema [:ref ::expression/string]])
+  [:schema [:or
+            [:ref ::expression/string]      ;; parse string as date
+            [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

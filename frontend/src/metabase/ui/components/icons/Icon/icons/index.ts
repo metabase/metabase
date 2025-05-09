@@ -309,6 +309,8 @@ import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
+import redo_component from "./redo.svg?component";
+import redo_source from "./redo.svg?source";
 import reference_component from "./reference.svg?component";
 import reference_source from "./reference.svg?source";
 import refresh_component from "./refresh.svg?component";
@@ -399,6 +401,8 @@ import triangle_right_component from "./triangle_right.svg?component";
 import triangle_right_source from "./triangle_right.svg?source";
 import unarchive_component from "./unarchive.svg?component";
 import unarchive_source from "./unarchive.svg?source";
+import undo_component from "./undo.svg?component";
+import undo_source from "./undo.svg?source";
 import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
@@ -1090,6 +1094,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: return_component,
       source: return_source,
     },
+    redo: {
+      component: redo_component,
+      source: redo_source,
+    },
     reference: {
       component: reference_component,
       source: reference_source,
@@ -1219,6 +1227,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     unarchive: {
       component: unarchive_component,
       source: unarchive_source,
+    },
+    undo: {
+      component: undo_component,
+      source: undo_source,
     },
     unknown: {
       component: unknown_component,
@@ -1471,6 +1483,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "question"
+  | "redo"
   | "return"
   | "reference"
   | "refresh"
@@ -1504,6 +1517,7 @@ export type IconName =
   | "triangle_left"
   | "triangle_right"
   | "unarchive"
+  | "undo"
   | "unknown"
   | "unpin"
   | "unsubscribe"

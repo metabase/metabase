@@ -298,19 +298,10 @@ export const SettingsApi = {
 };
 
 export const PermissionsApi = {
-  groups: GET("/api/permissions/group"),
-  groupDetails: GET("/api/permissions/group/:id"),
   graph: GET("/api/permissions/graph"),
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  memberships: GET("/api/permissions/membership"),
-  createMembership: POST("/api/permissions/membership"),
-  deleteMembership: DELETE("/api/permissions/membership/:id"),
-  updateMembership: PUT("/api/permissions/membership/:id"),
-  clearGroupMembership: PUT("/api/permissions/membership/:id/clear"),
-  updateGroup: PUT("/api/permissions/group/:id"),
-  deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
 export const PersistedModelsApi = {
@@ -334,7 +325,7 @@ export const UtilApi = {
   password_check: POST("/api/util/password_check"),
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
-  bug_report_details: GET("/api/util/bug_report_details"),
+  bug_report_details: GET("/api/bug-reporting/details"),
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath

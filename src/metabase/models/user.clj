@@ -6,7 +6,6 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -418,7 +417,7 @@
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
 
-;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
+;; NB: Settings are also defined where they're used
 
 (defsetting last-acknowledged-version
   (deferred-tru "The last version for which a user dismissed the ''What''s new?'' modal.")
@@ -514,20 +513,3 @@
   :export?    false
   :visibility :authenticated
   :type       :string)
-
-;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
-
-(defmethod audit-log/model-details :model/User
-  [entity event-type]
-  (case event-type
-    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships])
-    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships])
-    :password-reset-initiated  (select-keys entity [:token])
-    :password-reset-successful (select-keys entity [:token])
-    {}))
