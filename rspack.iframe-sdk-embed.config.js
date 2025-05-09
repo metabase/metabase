@@ -11,10 +11,7 @@ const SCRIPT_TAG_PATH = path.resolve(
   "embedding_iframe_sdk/embed.v1.ts",
 );
 
-const BUILD_PATH = path.resolve(
-  __dirname,
-  "../../../../../resources/frontend_client",
-);
+const BUILD_PATH = __dirname + "/resources/frontend_client";
 
 module.exports = {
   name: "iframe_sdk_embed_v1",
