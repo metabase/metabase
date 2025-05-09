@@ -263,6 +263,95 @@ H.describeWithSnowplowEE(
         });
       });
     });
+
+    describe("Public questions with parameters", () => {
+      before(() => {
+        H.restore("default");
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
+
+        H.createNativeQuestion(
+          {
+            native: {
+              query: "SELECT * FROM orders WHERE TOTAL > {{ minimum }}",
+
+              "template-tags": {
+                minimum: {
+                  id: "930e4001",
+                  name: "minimum",
+                  "display-name": "Minimum",
+                  type: "number",
+                  default: "10",
+                },
+              },
+            },
+            parameters: [
+              {
+                id: "930e4001",
+                slug: "minimum",
+                name: "minimum",
+                type: "number",
+                default: 10,
+                target: ["variable", ["template-tag", "minimum"]],
+              },
+            ],
+          },
+          {
+            visitQuestion: true,
+          },
+        );
+
+        H.openSharingMenu("Create a public link");
+
+        H.popover()
+          .findByTestId("public-link-input")
+          .should("contain.value", "/public/")
+          .invoke("val")
+          .then((url) => {
+            if (typeof url === "string") {
+              cy.signOut();
+              cy.visit(url);
+            }
+          });
+      });
+
+      it("should not pass all the parameters to the public link", () => {
+        waitLoading();
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
+
+        cy.location("pathname").then((pathname) => {
+          const uuid = pathname.split("/").at(-1);
+
+          H.downloadAndAssert(
+            {
+              publicUuid: uuid,
+              fileType: "csv",
+              questionId: ORDERS_BY_YEAR_QUESTION_ID,
+              isDashboard: false,
+              isEmbed: true,
+            },
+            H.assertNotEmptyObject,
+          );
+
+          cy.get<{ request: Request }>("@fileDownload").then(({ request }) => {
+            const url = new URL(request.url);
+            const parameters = JSON.parse(
+              url.searchParams.get("parameters") ?? "[]",
+            );
+
+            cy.wrap(parameters).should("have.length", 1);
+            cy.wrap(parameters[0]).should("have.property", "id");
+            cy.wrap(parameters[0]).should("have.property", "value");
+            cy.wrap(parameters[0]).should("not.have.property", "type");
+            cy.wrap(parameters[0]).should("not.have.property", "target");
+          });
+        });
+      });
+    });
   },
 );
 

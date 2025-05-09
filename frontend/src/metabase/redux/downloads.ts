@@ -202,11 +202,18 @@ const getDatasetParams = ({
       };
     }
     if (resource === "question" && uuid) {
+      const parameters = (result?.json_query?.parameters ?? []).map(
+        (param) => ({
+          id: param.id,
+          value: param.value,
+        }),
+      );
+
       return {
         method: "GET",
         url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
         params: new URLSearchParams({
-          parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+          parameters: JSON.stringify(parameters),
         }),
       };
     }
