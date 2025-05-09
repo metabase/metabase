@@ -31,7 +31,7 @@ const MetabaseProvider = ({
 }) => {
   const Provider = dynamic(
     () =>
-      import("@metabase/embedding-sdk-react").then((m) => {
+      import("./index.mjs").then((m) => {
         return { default: m.MetabaseProvider };
       }),
     {
