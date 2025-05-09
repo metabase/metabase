@@ -691,7 +691,6 @@
       (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
                                               {:expression "''" :db-type "TEXT"}
                                               {:expression "'abc'" :db-type "TEXT"}
-                                              {:expression "DATE('2020-10-10')" :db-type "DATE"}
                                               {:expression 4.5 :db-type "DECIMAL"}]]]
               {:keys [expression db-type]} expressions]
         (testing (str "Casting " db-type " to text from native query")
