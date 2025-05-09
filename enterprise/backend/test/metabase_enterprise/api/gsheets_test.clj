@@ -5,13 +5,13 @@
    [java-time.api :as t]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import [java.time
-            LocalDate
-            LocalTime
-            ZoneId
-            ZonedDateTime]))
+   [metabase.test :as mt])
+  (:import
+   (java.time
+    LocalDate
+    LocalTime
+    ZoneId
+    ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
