@@ -45,7 +45,12 @@
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
    With two args, uses the provided port number. Returns and formats the evaluation results."
   ([nns code]
-   (nrepl-eval (or nns "user") code (slurp ".nrepl-port")))
+   (nrepl-eval (or nns "user") code (try (slurp ".nrepl-port")
+                                         (catch Exception _
+                                           (throw (ex-info
+                                                   (str
+                                                    "Unable to find .nrepl-port, is the server's repl running?"
+                                                    " See: the :dev-start alias in deps.edn") {}))))))
   ([nns code port]
    (try (let [port (safe-parse-int port)
               s (java.net.Socket. "localhost" port)

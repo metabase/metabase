@@ -872,8 +872,8 @@
 
   ;; Watch and Reload clojure code. Will not start a repl.
   ;; Reccomended way to use this:
-  ;;   start the server with `clojure -M:dev:dev-start` you can start the watcher from CLI with:
-  ;;   ./bin/mage -repl --namespace watch.watcher
+  ;;   1) start the server with `clojure -M:dev:dev-start`
+  ;;   2) ./bin/mage start-watcher
   :watch {:extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}
 
