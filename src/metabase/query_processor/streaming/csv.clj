@@ -3,7 +3,6 @@
    [clojure.data.csv]
    [medley.core :as m]
    [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]

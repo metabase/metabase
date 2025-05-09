@@ -4,7 +4,6 @@
   (:require
    [medley.core :as m]
    [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]

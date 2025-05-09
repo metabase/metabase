@@ -663,7 +663,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
-               {col-settings ::mb.viz/column-settings :as viz-settings}]
+               viz-settings]
         (let [pivot-spec       (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
