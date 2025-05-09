@@ -1,11 +1,10 @@
 (ns metabase.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -387,12 +386,6 @@
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))
-
-;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
-
-(defmethod audit-log/model-details :model/Table
-  [table _event-type]
-  (select-keys table [:id :name :db_id]))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

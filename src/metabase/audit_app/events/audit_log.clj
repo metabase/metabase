@@ -1,8 +1,8 @@
-(ns metabase.events.audit-log
+(ns metabase.audit-app.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
-   [metabase.models.audit-log :as audit-log]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

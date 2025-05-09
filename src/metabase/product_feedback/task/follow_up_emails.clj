@@ -1,4 +1,4 @@
-(ns metabase.task.follow-up-emails
+(ns metabase.product-feedback.task.follow-up-emails
   "Tasks which follow up with Metabase users."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
