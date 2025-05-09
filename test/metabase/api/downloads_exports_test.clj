@@ -228,7 +228,7 @@
                                                      :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse)))))
 
-(defn all-downloads
+(defn- all-downloads
   [card-or-dashcard opts]
   (merge
    (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
@@ -238,7 +238,7 @@
    {:dashcard-download (card-download card-or-dashcard opts)
     :public-dashcard-download (public-dashcard-download card-or-dashcard opts)}))
 
-(defn all-outputs!
+(defn- all-outputs!
   [card-or-dashcard opts]
   (cond-> (merge
            (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)

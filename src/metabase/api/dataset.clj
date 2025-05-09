@@ -200,9 +200,7 @@
   [_route-params
    _query-params
    {:keys [database] :as query} :- [:map
-                                    [:database {:optional true} [:maybe ms/PositiveInt]]]]
-  (when-not database
-    (throw (Exception. (str (tru "`database` is required for all queries.")))))
+                                    [:database ms/PositiveInt]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]

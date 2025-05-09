@@ -1208,37 +1208,36 @@
       (mt/with-temp [:model/Collection         collection {:namespace "snippets", :name "My Snippet Collection"}
                      :model/NativeQuerySnippet snippet    {:collection_id (:id collection), :name "My Snippet"}
                      :model/NativeQuerySnippet archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]
-        (is (partial= [{:id        (:id snippet)
-                        :name      "My Snippet"
-                        :entity_id (:entity_id snippet)
-                        :model     "snippet"}]
-                      (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
-
+        (is (=? [{:id        (:id snippet)
+                  :name      "My Snippet"
+                  :entity_id (:entity_id snippet)
+                  :model     "snippet"}]
+                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
         (testing "\nShould be able to fetch archived Snippets"
-          (is (partial= [{:id        (:id archived)
-                          :name      "Archived Snippet"
-                          :entity_id (:entity_id archived)
-                          :model     "snippet"}]
-                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
-
+          (is (=? [{:id        (:id archived)
+                    :name      "Archived Snippet"
+                    :entity_id (:entity_id archived)
+                    :model     "snippet"}]
+                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
         (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-          (is (partial= [{:id        (:id snippet)
-                          :name      "My Snippet"
-                          :entity_id (:entity_id snippet)
-                          :model     "snippet"}]
-                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
-
-        (testing "Snippets in nested collections should be returned as a flat list on OSS"
+          (is (=? [{:id        (:id snippet)
+                    :name      "My Snippet"
+                    :entity_id (:entity_id snippet)
+                    :model     "snippet"}]
+                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
+        (testing "Snippets in nested collections should be returned as a flat list on OSS. In OSS Snippet collections are ignored"
           (mt/with-premium-features #{}
             (mt/with-temp [:model/Collection  sub-collection {:namespace "snippets"
                                                               :name      "Nested Snippet Collection"
                                                               :location  (collection/location-path collection)}
                            :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
                                                                   :name          "Nested Snippet"}]
-              (is (=?
-                   [{:id (:id snippet), :name "My Snippet"}
-                    {:id (:id sub-snippet), :name "Nested Snippet"}]
-                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
+              ;; The response may contain snippets from other collections but should at least contain these two.
+              (is (set/subset? #{{:id (:id snippet), :name "My Snippet"}
+                                 {:id (:id sub-snippet), :name "Nested Snippet"}}
+                               (into #{}
+                                     (map #(select-keys % [:id :name]))
+                                     (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))))))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 

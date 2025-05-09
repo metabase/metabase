@@ -360,13 +360,13 @@
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
-  [_ {:keys [archived?]}]
+  [_collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
    :where  [:= :archived (boolean archived?)]})
 
 (defmethod collection-children-query :snippet
-  [_ collection options]
+  [_model collection options]
   (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
