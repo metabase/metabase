@@ -22,130 +22,155 @@ const darken = (color: string | undefined, amount: number) =>
 const lighten = (color: string | undefined, amount: number) =>
   Color(color).lighten(amount).rgb().toString();
 
-describe(
-  "scenarios > embedding-sdk > interactive-question > theming",
-  // realHover color check is flaky 10% of the time so a retry is added
-  { retries: { runMode: 2, openMode: 2 } },
-  () => {
-    beforeEach(() => {
-      signInAsAdminAndEnableEmbeddingSdk();
+describe("scenarios > embedding-sdk > interactive-question > theming", () => {
+  beforeEach(() => {
+    signInAsAdminAndEnableEmbeddingSdk();
 
-      createQuestion({
-        name: "47563",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          limit: 2,
-        },
-      }).then(({ body: question }) => {
-        cy.wrap(question.id).as("questionId");
-      });
-
-      cy.signOut();
-
-      mockAuthProviderAndJwtSignIn();
+    createQuestion({
+      name: "47563",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+        breakout: [["field", ORDERS.PRODUCT_ID, null]],
+        limit: 2,
+      },
+    }).then(({ body: question }) => {
+      cy.wrap(question.id).as("questionId");
     });
 
-    it("derives dynamic css variables for dark theme", () => {
-      const theme: MetabaseTheme = {
-        colors: {
-          background: "rgb(22, 26, 29)",
-          "background-hover": "rgb(14, 17, 20)",
-          "background-disabled": "rgb(45, 45, 48)",
-          "text-primary": "rgb(255, 255, 255)",
-          brand: "rgb(253, 121, 168)",
-        },
-      };
+    cy.signOut();
 
-      cy.get<number>("@questionId").then((questionId) => {
-        mountSdkContent(
-          <Box bg={theme.colors?.background} h="100vh">
-            <InteractiveQuestion questionId={questionId} />
-          </Box>,
-          { theme },
+    mockAuthProviderAndJwtSignIn();
+  });
+
+  it("derives dynamic css variables for dark theme", () => {
+    const theme: MetabaseTheme = {
+      colors: {
+        background: "rgb(22, 26, 29)",
+        "background-hover": "rgb(14, 17, 20)",
+        "background-disabled": "rgb(45, 45, 48)",
+        "text-primary": "rgb(255, 255, 255)",
+        brand: "rgb(253, 121, 168)",
+      },
+    };
+
+    setupInteractiveQuestion(theme);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+
+      const buttonHoverBg = lighten(theme.colors?.background, 0.5);
+
+      const customColumn = "[aria-label='Custom column']";
+
+      // Should be the lightened version of the background color
+      cy.findByTestId("notebook-button")
+        .should("be.visible")
+        .realHover()
+        .should(($el) => haveBackgroundColor($el, buttonHoverBg));
+
+      // Should be the lightened version of the background color
+      cy.findByTestId("chart-type-selector-button")
+        .should("be.visible")
+        .realHover()
+        .should(($el) => haveBackgroundColor($el, buttonHoverBg));
+
+      cy.findByTestId("notebook-button").click();
+
+      // Should be the lightened version of the background color, same as the notebook button hover.
+      cy.get(customColumn).should(($el) =>
+        haveBackgroundColor($el, buttonHoverBg),
+      );
+
+      // Hover should be a less lightened version of the background color.
+      cy.get(customColumn)
+        .should("be.visible")
+        .realHover()
+        .should(($el) =>
+          haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
         );
-      });
-
-      getSdkRoot().within(() => {
-        cy.findByText("Product ID").should("be.visible");
-
-        const buttonHoverBg = lighten(theme.colors?.background, 0.5);
-
-        const customColumn = "[aria-label='Custom column']";
-
-        // Should be the lightened version of the background color
-        cy.findByTestId("notebook-button")
-          .should("be.visible")
-          .realHover()
-          .should(($el) => haveBackgroundColor($el, buttonHoverBg));
-
-        // Should be the lightened version of the background color
-        cy.findByTestId("chart-type-selector-button")
-          .should("be.visible")
-          .realHover()
-          .should(($el) => haveBackgroundColor($el, buttonHoverBg));
-
-        cy.findByTestId("notebook-button").click();
-
-        // Should be the lightened version of the background color, same as the notebook button hover.
-        cy.get(customColumn).should(($el) =>
-          haveBackgroundColor($el, buttonHoverBg),
-        );
-
-        // Hover should be a less lightened version of the background color.
-        cy.get(customColumn)
-          .should("be.visible")
-          .realHover()
-          .should(($el) =>
-            haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
-          );
-      });
     });
+  });
 
-    it("derives dynamic css variables for light theme", () => {
-      const theme: MetabaseTheme = {
-        colors: {
-          background: "rgb(255, 255, 255)",
-          "background-hover": "rgb(245, 245, 245)",
-          "background-disabled": "rgb(230, 230, 230)",
-          "text-primary": "rgb(51, 51, 51)",
-          brand: "rgb(253, 121, 168)",
-        },
-      };
+  it("derives dynamic css variables for light theme", () => {
+    const theme: MetabaseTheme = {
+      colors: {
+        background: "rgb(255, 255, 255)",
+        "background-hover": "rgb(245, 245, 245)",
+        "background-disabled": "rgb(230, 230, 230)",
+        "text-primary": "rgb(51, 51, 51)",
+        brand: "rgb(253, 121, 168)",
+      },
+    };
 
-      cy.get<number>("@questionId").then((questionId) => {
-        mountSdkContent(
-          <Box bg={theme.colors?.background} h="100vh">
-            <InteractiveQuestion questionId={questionId} />
-          </Box>,
-          { theme },
+    setupInteractiveQuestion(theme);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+
+      const customColumn = "[aria-label='Custom column']";
+
+      cy.findByTestId("notebook-button").click();
+
+      // Should be the slightly darker version of the background color, same as the notebook button hover
+      cy.get(customColumn).should(($el) =>
+        haveBackgroundColor($el, darken(theme.colors?.background, 0.05)),
+      );
+
+      // Hover should be an even darker version of the background color
+      cy.get(customColumn)
+        .should("be.visible")
+        .realHover()
+        .should(($el) =>
+          haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
         );
-      });
-
-      getSdkRoot().within(() => {
-        cy.findByText("Product ID").should("be.visible");
-
-        const customColumn = "[aria-label='Custom column']";
-
-        cy.findByTestId("notebook-button").click();
-
-        // Should be the slightly darker version of the background color, same as the notebook button hover
-        cy.get(customColumn).should(($el) =>
-          haveBackgroundColor($el, darken(theme.colors?.background, 0.05)),
-        );
-
-        // Hover should be an even darker version of the background color
-        cy.get(customColumn)
-          .should("be.visible")
-          .realHover()
-          .should(($el) =>
-            haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
-          );
-      });
     });
-  },
-);
+  });
+
+  it.only("table cell color should follow the background color", () => {
+    const theme: MetabaseTheme = {
+      colors: {
+        background: "rgb(200, 210, 220)",
+      },
+    };
+
+    setupInteractiveQuestion(theme);
+
+    getSdkRoot().within(() => {
+      // Wait for table to render
+      cy.findByTestId("cell-data")
+        .first()
+        .should(($el) => {
+          expect(haveBackgroundColor($el, theme.colors!.background!)).to.be
+            .true;
+        });
+    });
+  });
+
+  it.only("table.cell.backgroundColor should override table cell color", () => {
+    const theme: MetabaseTheme = {
+      colors: { background: "rgb(200, 210, 220)" },
+      components: {
+        table: { cell: { backgroundColor: "rgb(123, 111, 222)" } },
+      },
+    };
+
+    setupInteractiveQuestion(theme);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("cell-data")
+        .first()
+        .should(($el) => {
+          expect(
+            haveBackgroundColor(
+              $el,
+              theme.components!.table!.cell!.backgroundColor!,
+            ),
+          ).to.be.true;
+        });
+    });
+  });
+});
 
 /**
  * Using should("have.css", "background-color") causes off-by-one error that causes the test to fail.
@@ -159,4 +184,15 @@ export function haveBackgroundColor(
   const style = window.getComputedStyle(element);
 
   return style.backgroundColor === expected;
+}
+
+function setupInteractiveQuestion(theme: MetabaseTheme) {
+  cy.get<number>("@questionId").then((questionId) => {
+    mountSdkContent(
+      <Box bg={theme.colors?.background} h="100vh">
+        <InteractiveQuestion questionId={questionId} />
+      </Box>,
+      { sdkProviderProps: { theme } },
+    );
+  });
 }
