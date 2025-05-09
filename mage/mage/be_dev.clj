@@ -94,6 +94,11 @@
 
   (nrepl-eval "metabase.logger-test" "(do (println :!! hi) hi)" 59498)
 
-  (nrepl-eval "metabase.logger-test" "*ns*" 59498)
+  (nrepl-eval "metabase.logger-test" "*ns*")
+
+  (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)")
+  (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)")
+
+  (nrepl-eval "")
 
   (println code-str))
