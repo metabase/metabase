@@ -26,18 +26,18 @@ describe("scenarios > dashboard > filters > remapping", () => {
       mapDashboardParameters();
       H.saveDashboard();
 
-      testDefaultValuesRemapping();
+      testDashboardDefaultValuesRemapping();
       testDashboardWidgetsRemapping();
 
       H.visitPublicDashboard(dashboardId);
-      testDefaultValuesRemapping();
+      testDashboardDefaultValuesRemapping();
       testDashboardWidgetsRemapping();
 
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
       });
-      testDefaultValuesRemapping();
+      testDashboardDefaultValuesRemapping();
       testDashboardWidgetsRemapping();
     });
   });
@@ -206,7 +206,7 @@ function mapDashboardParameters() {
   H.selectDashboardFilter(H.getDashboardCard(1), "ID");
 }
 
-function testDefaultValuesRemapping() {
+function testDashboardDefaultValuesRemapping() {
   findWidget("Internal").should("contain.text", "N1");
   findWidget("FK").should("contain.text", "Small Marble Shoes");
   findWidget("PK->Name").should("contain.text", "Lina Heaney");
