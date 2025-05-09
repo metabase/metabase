@@ -78,7 +78,7 @@ export function assertCurrentVisualization(name: VisualizationDisplay) {
 
 export function selectVisualization(visualization: VisualizationDisplay) {
   cy.findByTestId("viz-picker-main").within(() => {
-    cy.icon(visualization as any).click();
+    cy.findByTestId(visualization).click();
   });
 }
 
@@ -110,6 +110,54 @@ export function deselectColumnFromColumnsList(
 
 export function verticalWell() {
   return cy.findByTestId("vertical-well");
+}
+
+export function assertWellItems(items: {
+  horizontal?: string[];
+  vertical?: string[];
+  pieMetric?: string[];
+  pieDimensions?: string[];
+}) {
+  const { horizontal, vertical, pieMetric, pieDimensions } = items;
+
+  if (horizontal) {
+    horizontalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", horizontal.length);
+      horizontal.forEach((item) => {
+        cy.findByText(item).should("exist");
+      });
+    });
+  }
+
+  if (vertical) {
+    verticalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", vertical.length);
+      vertical.forEach((item) => {
+        cy.findByText(item).should("exist");
+      });
+    });
+  }
+
+  if (pieMetric) {
+    pieMetricWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", pieMetric.length);
+      pieMetric.forEach((item) => {
+        cy.findByText(item).should("exist");
+      });
+    });
+  }
+
+  if (pieDimensions) {
+    pieDimensionWell().within(() => {
+      cy.findAllByTestId("well-item").should(
+        "have.length",
+        pieDimensions.length,
+      );
+      pieDimensions.forEach((item) => {
+        cy.findByText(item).should("exist");
+      });
+    });
+  }
 }
 
 export function horizontalWell() {

@@ -18,7 +18,8 @@ type NativeQuestionDetailsWithName = NativeQuestionDetails & {
   name: string;
 };
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, ACCOUNTS, ACCOUNTS_ID } =
+  SAMPLE_DATABASE;
 
 // Not using the one from "metabase/visualizer/utils"
 // because it creates a circular dependency
@@ -58,6 +59,20 @@ export const ORDERS_COUNT_BY_PRODUCT_CATEGORY: StructuredQuestionDetailsWithName
       "graph.metrics": ["count"],
     },
   };
+
+export const ACCOUNTS_COUNT_BY_COUNTRY: StructuredQuestionDetailsWithName = {
+  display: "bar",
+  name: "Accounts by Country",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ACCOUNTS.COUNTRY, null]],
+  },
+  visualization_settings: {
+    "graph.dimensions": ["COUNTRY"],
+    "graph.metrics": ["count"],
+  },
+};
 
 export const ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY: StructuredQuestionDetailsWithName =
   {

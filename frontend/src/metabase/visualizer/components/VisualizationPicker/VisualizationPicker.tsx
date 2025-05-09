@@ -56,7 +56,7 @@ export function VisualizationPicker({
           value: o.value,
           label: (
             <Center key={i} onClick={() => onChange(o.value)} p="sm">
-              <Icon name={o.icon} />
+              <Icon data-testid={o.value} name={o.icon} />
             </Center>
           ),
         }))}
