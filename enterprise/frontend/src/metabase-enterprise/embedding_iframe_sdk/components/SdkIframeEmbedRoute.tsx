@@ -7,8 +7,8 @@ import {
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
+import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
@@ -39,7 +39,7 @@ export const SdkIframeEmbedRoute = () => {
     return null;
   }
 
-  const hasEmbedTokenFeature = hasPremiumFeature("embedding_iframe_sdk");
+  const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
 
   // If the parent page is not running on localhost and
   // the token feature is not present, we show an error message
