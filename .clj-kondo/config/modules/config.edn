@@ -58,7 +58,9 @@
            premium-features
            settings
            task
-           util}}
+           util
+           version}}
+
   analyze
   {:api  #{metabase.analyze.core metabase.analyze.query-results}
    :uses #{config driver legacy-mbql lib models sync util}}
@@ -711,10 +713,16 @@
   {:api :any
    :uses #{config db driver legacy-mbql lib models plugins settings}}
 
+  version
+  {:api  #{metabase.version.core
+           metabase.version.init}
+   :uses #{config settings task util}}
+
   view-log
   {:api  #{metabase.view-log.core
            metabase.view-log.init}
    :uses #{analytics api audit-app events models premium-features util}}
+
 
   xrays
   {:api  #{metabase.xrays.api
