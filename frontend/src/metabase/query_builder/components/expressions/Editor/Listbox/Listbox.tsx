@@ -136,7 +136,7 @@ function Footer() {
   return (
     <Box className={S.footer}>
       {c(
-        "{0} is the icon for the arrow up and arrow down keys, {1} is the icon for the enter/return key",
+        "{0} is an icon representing the up and down arrows on a keyboard. {1} is an icon representing the Enter key",
       ).jt`${(
         <>
           <KeyIcon name="arrow_up" key="arrow_up" />
