@@ -28,7 +28,7 @@
   1000)
 
 (defsetting backfill-card-metadata-analysis-repeat-ms
-  (deferred-tru "Period between runs of backfill job for metadata analysis on cards, in ms. Minimum is 1000, a lower setting will disable the job.")
+  (deferred-tru "Period between runs of backfill job for metadata analysis on cards, in ms. Minimum is 1000, lower settings will be rounded up to 1000. 0 disables the job.")
   :type       :integer
   :visibility :internal
   :audit      :never
@@ -37,15 +37,15 @@
 
 ;; ## Analysis internals
 (defn- infer-idents-for-result-metadata
-  "Computes `:ident`s for a card which does not current have them defined.
+  "Computes `:ident`s for a card which does not currently have them defined.
 
   For native queries, the `:ident`s are always based directly on the column names. In particular, the legacy
   `:field_ref`'s name for the column is preferred, since it is disambiguated and matches the query results, while
   `:name` does not. If the input query has no `:result_metadata`, then we can do nothing.
 
-  For MBQL queries, we run metadata inference on the card. If the card depends on a
-
-  "
+  For MBQL queries, we run metadata inference on the card. If the card depends on a card whose metadata or idents
+  cannot be determined, then some idents will be blank, and this card will be marked as `:blocked` by
+  [[backfill-idents-for-card!]]."
   [result-metadata {query :dataset_query, eid :entity_id, :as card}]
   (case (:type query)
     ;; For native queries, the `:ident`s are always based directly on the column names.
@@ -142,13 +142,14 @@
 (defn- batched-metadata-analysis!
   "Runs a batch of metadata analysis, one card at a time."
   []
-  ;; First, drain the on-demand set of cards!
-  (when-let [needed (seq @card/cards-for-priority-analysis)]
-    (u/prog1 (t2/update! :model/Card
-                         :id [:in needed]
-                         :metadata_analysis_state :not-started ; Don't set priority if they were analyzed in the meantime.
-                         {:metadata_analysis_state :priority})
-      (log/debugf "Marked %d cards as :priority for analysis" (or <> 0))))
+  ;; First, drain the on-demand set of cards.
+  (let [[priority-cards _new-val] (reset-vals! card/cards-for-priority-analysis #{})]
+    (doseq [needed-batch (partition-all 1000 priority-cards)]
+      (u/prog1 (t2/update! :model/Card
+                           :id [:in needed-batch]
+                           :metadata_analysis_state :not-started ; Skip cards that were analyzed in the meantime.
+                           {:metadata_analysis_state :priority})
+        (log/debugf "Marked %d cards as :priority for analysis" (or <> 0)))))
   (let [prioritized (t2/select :model/Card :metadata_analysis_state :priority {:limit *batch-size*})
         headroom    (- *batch-size* (count prioritized))
         extras      (when (pos? headroom)

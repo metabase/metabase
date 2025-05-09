@@ -11312,7 +11312,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v55.2025-05-05T15:02:19
+      id: v55.2025-05-09T15:22:19
       author: bshepherdson
       comment: Creating index on the metadata_analysis_blocker
       preConditions:
@@ -11330,7 +11330,7 @@ databaseChangeLog:
             indexName: idx_report_card_metadata_analysis_blocker
 
   - changeSet:
-      id: v55.2025-05-05T21:03:09
+      id: v55.2025-05-09T15:26:09
       author: bshepherdson
       comment: FK constraint and index for Card.metadata_analysis_blocker
       preConditions:
