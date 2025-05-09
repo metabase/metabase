@@ -1345,6 +1345,11 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByTestId("dashboard-name-heading").should("be.visible");
       cy.button(/Edited.*by/).should("be.visible");
+
+      H.dashboardHeader().findByRole("img", { name: /info/i }).click();
+      H.modal()
+        .findByRole("heading", { name: /entity id/i })
+        .should("not.exist");
     });
 
     it("should hide the dashboard header by a param", () => {

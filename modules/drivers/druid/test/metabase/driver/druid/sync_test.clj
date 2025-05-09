@@ -78,6 +78,6 @@
                         druid.client/GET (fn [_url & params] (vreset! get-args (apply hash-map params)) nil)]
            ;; Just fill in the params with internally modified `dbms-version`.
             (druid.sync/dbms-version db-with-auth-details)
-            (is (= true        (:auth-enabled     @get-args)))
+            (is (true?        (:auth-enabled     @get-args)))
             (is (= "admin"     (:auth-username    @get-args)))
             (is (= "password1" (:auth-token-value @get-args)))))))))

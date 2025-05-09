@@ -2,26 +2,23 @@ import { type Route, type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
+import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
 import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
 
 interface DashboardLeaveConfirmationModalProps extends WithRouterProps {
-  isEditing: boolean;
-  isDirty: boolean;
   route: Route;
 }
 
 export const DashboardLeaveConfirmationModal = withRouter(
-  ({
-    isEditing,
-    isDirty,
-    router,
-    route,
-  }: DashboardLeaveConfirmationModalProps) => {
+  ({ router, route }: DashboardLeaveConfirmationModalProps) => {
+    const isEditing = useSelector(getIsEditing);
+    const isDirty = useSelector(getIsDirty);
+
     const dispatch = useDispatch();
 
     const { opened, close, confirm, nextLocation } = useConfirmRouteLeaveModal({

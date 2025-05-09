@@ -83,7 +83,7 @@
           yaml/parse-string))
 
 (defn- init-plugin-with-info!
-  "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
+  "Initialize plugin using parsed info from a plugin manifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
   [info]
   (plugins.init/init-plugin-with-info! info))
@@ -163,7 +163,7 @@
     (try
       (init-plugin! path)
       (catch Throwable e
-        (log/errorf e "Failied to initialize plugin %s" (.getFileName path))))))
+        (log/errorf e "Failed to initialize plugin %s" (.getFileName path))))))
 
 (defn- load! []
   (log/infof "Loading plugins in %s..." (str (plugins-dir)))

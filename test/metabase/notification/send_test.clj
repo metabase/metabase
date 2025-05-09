@@ -5,7 +5,7 @@
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.slack :as slack]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]

@@ -30,7 +30,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Bad Error"
              (sut/with-cluster-lock ::test-lock (throw (ex-info "Bad Error" {})))))))
-    (testing "cluster locking test error if lock is released"
+    (testing "cluster locking test no error if lock is released"
       (let [fin-chan (a/chan)]
         (future (sut/with-cluster-lock ::test-lock (a/<!! fin-chan)))
         (future (Thread/sleep 500) (a/>!! fin-chan :done))

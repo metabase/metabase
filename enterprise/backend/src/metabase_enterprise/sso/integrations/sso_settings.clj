@@ -4,9 +4,8 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
    [metabase-enterprise.scim.api :as scim]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting :refer [defsetting define-multi-setting-impl]]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

@@ -525,6 +525,124 @@
                           :columns
                           (map :base_type)))))))))))
 
+(deftest ^:parallel top-level-boolean-expressions-test
+  (mt/test-driver :sqlserver
+    (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
+      (let [true-value  [:value true {:base_type :type/Boolean}]
+            false-value [:value false {:base_type :type/Boolean}]]
+        (letfn [(orders-query [args]
+                  (-> (mt/mbql-query orders
+                        {:expressions {"MyTrue"  true-value
+                                       "MyFalse" false-value}
+                         :fields      [[:expression "MyTrue"]]
+                         :limit       1})
+                      (update :query merge args)))]
+          (doseq [{:keys [desc query expected-sql expected-rows]}
+                  [{:desc "true filter"
+                    :query
+                    (orders-query {:filter true-value})
+                    :expected-sql
+                    {:query ["SELECT"
+                             "  TOP(1) ? AS MyTrue"
+                             "FROM"
+                             "  dbo.orders"
+                             "WHERE"
+                             "  ? = ?"]
+                     :params [1 1 1]}
+                    :expected-rows
+                    [[1]]}
+                   {:desc "false filter"
+                    :query
+                    (orders-query {:filter false-value})
+                    :expected-sql
+                    {:query ["SELECT"
+                             "  TOP(1) ? AS MyTrue"
+                             "FROM"
+                             "  dbo.orders"
+                             "WHERE"
+                             "  ? = ?"]
+                     :params [1 0 1]}
+                    :expected-rows
+                    []}
+                   {:desc "not filter"
+                    :query
+                    (orders-query {:filter [:not false-value]})
+                    :expected-sql
+                    {:query ["SELECT"
+                             "  TOP(1) ? AS MyTrue"
+                             "FROM"
+                             "  dbo.orders"
+                             "WHERE"
+                             "  NOT (? = ?)"]
+                     :params [1 0 1]}
+                    :expected-rows
+                    [[1]]}
+                   {:desc "nested logical operators"
+                    :query
+                    (orders-query {:filter [:and
+                                            [:not false-value]
+                                            [:or
+                                             [:expression "MyFalse"]
+                                             [:expression "MyTrue"]]]})
+                    :expected-sql
+                    {:query ["SELECT"
+                             "  TOP(1) ? AS MyTrue"
+                             "FROM"
+                             "  dbo.orders"
+                             "WHERE"
+                             "  NOT (? = ?)"
+                             "  AND ("
+                             "    (? = ?)"
+                             "    OR (? = ?)"
+                             "  )"]
+                     :params [1 0 1 0 1 1 1]}
+                    :expected-rows
+                    [[1]]}
+                   {:desc "case expression"
+                    :query
+                    (orders-query {:expressions {"MyTrue"  true-value
+                                                 "MyFalse" false-value
+                                                 "MyCase"  [:case [[[:expression "MyFalse"] false-value]
+                                                                   [[:expression "MyTrue"]  true-value]]]}
+                                   :fields [[:expression "MyCase"]]})
+                    :expected-sql
+                    {:query ["SELECT"
+                             "  TOP(1) CASE"
+                             "    WHEN ? = ? THEN ?"
+                             "    WHEN ? = ? THEN ?"
+                             "  END AS MyCase"
+                             "FROM"
+                             "  dbo.orders"]
+                     :params [0 1 0 1 1 1]}
+                    :expected-rows
+                    [[1]]}
+                   ;; only top-level booleans should be transformed; otherwise an expression like 1 = 1 gets compiled
+                   ;; to (1 = 1) = (1 = 1)
+                   {:desc "non-top-level booleans"
+                    :query
+                    (orders-query {:filter [:= true-value true-value]})
+                    :expected-sql
+                    {:query ["SELECT"
+                             "  TOP(1) ? AS MyTrue"
+                             "FROM"
+                             "  dbo.orders"
+                             "WHERE"
+                             "  ? = ?"]
+                     :params [1 1 1]}
+                    :expected-rows
+                    [[1]]}]]
+            (testing (format "\n%s\nMBQL query = %s\n" desc query)
+              (testing "Should generate the correct SQL query"
+                (is (= expected-sql
+                       (-> query
+                           qp.compile/compile
+                           (update :query pretty-sql)))))
+              (testing "Should return correct results"
+                (is (= expected-rows
+                       (->> query
+                            qp/process-query
+                            mt/rows)))))))))))
+
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
     (testing "Should match datetime fields even in non-default timezone (#30454)"

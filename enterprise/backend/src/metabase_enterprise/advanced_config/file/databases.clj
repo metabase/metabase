@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]

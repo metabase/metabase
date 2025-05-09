@@ -15,7 +15,7 @@
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.channel.email.messages :as messages]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -111,7 +111,6 @@
                   :collection_authority_level
                   :can_write
                   :param_fields
-                  :param_values
                   [:moderation_reviews :moderator_details]
                   [:collection :is_personal :effective_location]))))
 
@@ -405,6 +404,27 @@
                                                     (dissoc :id :entity_id :created_at :updated_at))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
+(defn- update-colvalmap-setting
+  "Visualizer dashcards have unique visualization settings which embed column id remapping metadata
+  This function iterates through the `:columnValueMapping` viz setting and updates referenced card ids
+
+  col->val-source can look like:
+  {:COLUMN_2 [{:sourceId 'card:<OLD_CARD_ID>', :originalName 'sum', :name 'COLUMN_2'}], ...}"
+  [col->val-source id->new-card]
+  (let [update-cvm-item (fn [item]
+                          (if-let [source-id (:sourceId item)]
+                            (if-let [[_ card-id] (and (string? source-id)
+                                                      (re-find #"^card:(\d+)$" source-id))]
+                              (if-let [new-card (get id->new-card (Long/parseLong card-id))]
+                                (assoc item :sourceId (str "card:" (:id new-card)))
+                                item)
+                              item)
+                            item))
+        update-cvm      (fn [cvm]
+                          (when (map? cvm)
+                            (update-vals cvm #(mapv update-cvm-item %))))]
+    (update-cvm col->val-source)))
+
 (defn update-cards-for-copy
   "Update dashcards in a dashboard for copying.
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
@@ -449,7 +469,9 @@
                                          (keep (fn [card]
                                                  (when-let [id' (new-id (:id card))]
                                                    (assoc card :id id')))
-                                               series)))))))
+                                               series)))
+                    (m/update-existing-in [:visualization_settings :visualization :columnValuesMapping]
+                                          update-colvalmap-setting id->new-card)))))
           dashcards)))
 
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"

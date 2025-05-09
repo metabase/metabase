@@ -3,7 +3,8 @@ import { t } from "ttag";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import * as Lib from "metabase-lib";
 
-import { getClauseDefinition, getMBQLName, isDefinedClause } from "../config";
+import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
+import { CompileError, isExpressionError } from "../errors";
 import {
   isBigIntLiteral,
   isBooleanLiteral,
@@ -11,7 +12,7 @@ import {
   isIntegerLiteral,
   isStringLiteral,
 } from "../literal";
-import type { Kind } from "../resolver";
+import type { Resolver } from "../resolver";
 import type { ExpressionType } from "../types";
 
 import {
@@ -35,12 +36,6 @@ import {
   SUB,
 } from "./syntax";
 import { type Node, type NodeType, assert, check } from "./types";
-
-type Resolver = (
-  kind: "field" | "segment" | "metric",
-  name: string,
-  node?: Node,
-) => Lib.ExpressionParts | Lib.ExpressionArg;
 
 type CompileFn = (
   node: Node,
@@ -73,7 +68,7 @@ function getTypeForExpressionMode(
   return expressionMode;
 }
 
-function fallbackResolver(_kind: Kind, name: string, _node?: Node) {
+function fallbackResolver(_type: ExpressionType, name: string, _node?: Node) {
   return {
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
@@ -86,7 +81,7 @@ function compileNode(
   ctx: Context,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   const fn = COMPILE.get(node.type);
-  assert(fn, `Invalid node type: ${node.type}`);
+  assert(fn, t`Invalid node type: ${node.type}`);
   return fn(node, ctx);
 }
 
@@ -128,38 +123,6 @@ function compileValue(
   };
 }
 
-function getKindForType(type: ExpressionType): Kind {
-  switch (type) {
-    case "boolean":
-      return "segment";
-    case "aggregation":
-      return "metric";
-    default:
-      return "field";
-  }
-}
-
-function compileDimension(name: string, node: Node, ctx: Context) {
-  assert(typeof name === "string", t`Invalid dimension name: ${name}`);
-
-  try {
-    const kind = getKindForType(ctx.type);
-    const dimension = ctx.resolver(kind, name, node);
-    return withNode(node, dimension);
-  } catch (err) {
-    const operator = getMBQLName(name);
-    const clause = operator && getClauseDefinition(operator);
-    if (clause && clause?.args.length === 0) {
-      return withNode(node, {
-        operator,
-        options: {},
-        args: [],
-      });
-    }
-    throw err;
-  }
-}
-
 function compileField(
   node: Node,
   ctx: Context,
@@ -167,7 +130,8 @@ function compileField(
   assert(node.type === FIELD, t`Invalid node type`);
   assert(node.token?.value, t`Empty field value`);
 
-  return compileDimension(node.token.value, node, ctx);
+  const name = node.token.value;
+  return compileDimension(node, name, ctx);
 }
 
 function compileIdentifier(
@@ -175,10 +139,34 @@ function compileIdentifier(
   ctx: Context,
 ): Lib.ExpressionParts | Lib.ExpressionArg {
   assert(node.type === IDENTIFIER, t`Invalid node type`);
-  assert(node.token?.text, t`Empty token text`);
+  assert(node.token?.value, t`Empty token text`);
 
-  const name = node.token.text;
-  return compileDimension(name, node, ctx);
+  const name = node.token.value;
+  return compileDimension(node, name, ctx);
+}
+
+function compileDimension(
+  node: Node,
+  name: string,
+  ctx: Context,
+): Lib.ExpressionParts | Lib.ExpressionArg {
+  assert(name, t`Empty dimension name`);
+  try {
+    const dimension = ctx.resolver(ctx.type, name, node);
+    return withNode(node, dimension);
+  } catch (err) {
+    if (!isExpressionError(err) || !err.friendly) {
+      throw err;
+    }
+    const operator = getMBQLName(name);
+    const clause = operator && getClauseDefinition(operator);
+    if (clause && clause.args.length === 0) {
+      // Add custom error message for zero-arg functions to help users
+      // that might be used to the no-parenthesis syntax which is no longer valid.
+      throw new CompileError(t`${err.message}. Use ${name}() instead.`, node);
+    }
+    throw err;
+  }
 }
 
 function compileGroup(
@@ -222,7 +210,10 @@ function compileLogicalOr(node: Node, ctx: Context): Lib.ExpressionParts {
 function compileComparisonOp(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === COMPARISON, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
+  assert(
+    isDefinedClause(node.token.text),
+    t`Invalid operator: ${node.token.text}`,
+  );
 
   return compileInfixOp(node.token.text, node, ctx);
 }
@@ -230,7 +221,10 @@ function compileComparisonOp(node: Node, ctx: Context): Lib.ExpressionParts {
 function compileEqualityOp(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === EQUALITY, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
+  assert(
+    isDefinedClause(node.token.text),
+    t`Invalid operator: ${node.token.text}`,
+  );
 
   return compileInfixOp(node.token.text, node, ctx);
 }
@@ -359,7 +353,10 @@ function compileAdditionOp(node: Node, ctx: Context): Lib.ExpressionParts {
 function compileMulDivOp(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === MULDIV_OP, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
-  assert(isOperator(node.token.text), t`Invalid operator: ${node.token.text}`);
+  assert(
+    isDefinedClause(node.token.text),
+    t`Invalid operator: ${node.token.text}`,
+  );
 
   return compileInfixOp(node.token.text, node, ctx);
 }
@@ -442,11 +439,6 @@ function withNode<T>(node: Node, expressionParts: T): T {
     });
   }
   return expressionParts;
-}
-
-function isOperator(op: string): op is Lib.ExpressionOperator {
-  const res = getMBQLName(op);
-  return res != null;
 }
 
 const COMPILE = new Map<NodeType, CompileFn>([
