@@ -101,7 +101,7 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   };
 
   const dataSources = rawSeries.map(({ card }) =>
-    createDataSource("card", card.id, card.name),
+    createDataSource("card", card.entity_id, card.name),
   );
 
   const allColumnInfos: ColumnInfo[][] = rawSeries.map(

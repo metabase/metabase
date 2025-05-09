@@ -10,7 +10,7 @@ import { extractReferencedColumns } from "./column";
 
 export function createDataSource(
   type: VisualizerDataSourceType,
-  sourceId: number,
+  sourceId: string,
   name: string,
 ): VisualizerDataSource {
   return {
@@ -23,22 +23,16 @@ export function createDataSource(
 
 export function parseDataSourceId(id: VisualizerDataSourceId) {
   const [type, sourceId] = id.split(":");
-  return { type, sourceId: Number(sourceId) };
+  return { type, sourceId };
 }
 
-export function isDataSourceId(id: string): id is VisualizerDataSourceId {
-  try {
-    const { type, sourceId } = parseDataSourceId(id as VisualizerDataSourceId);
-    return type === "card" && Number.isSafeInteger(sourceId);
-  } catch {
-    return false;
-  }
-}
+const DATA_SOURCE_NAME_REF_PREFIX = "$_";
+const DATA_SOURCE_NAME_REF_SUFFIX = "_name";
 
 export function createDataSourceNameRef(
   id: VisualizerDataSourceId,
 ): VisualizerDataSourceNameReference {
-  return `$_${id}_name`;
+  return `${DATA_SOURCE_NAME_REF_PREFIX}${id}${DATA_SOURCE_NAME_REF_SUFFIX}`;
 }
 
 export function isDataSourceNameRef(
@@ -46,14 +40,16 @@ export function isDataSourceNameRef(
 ): value is VisualizerDataSourceNameReference {
   return (
     typeof value === "string" &&
-    value.startsWith("$_") &&
-    value.endsWith("_name")
+    value.startsWith(DATA_SOURCE_NAME_REF_PREFIX) &&
+    value.endsWith(DATA_SOURCE_NAME_REF_SUFFIX)
   );
 }
 
 export function getDataSourceIdFromNameRef(str: string) {
-  const [, dataSourceId] = str.split("_");
-  return dataSourceId;
+  return str.substring(
+    DATA_SOURCE_NAME_REF_PREFIX.length,
+    str.length - DATA_SOURCE_NAME_REF_SUFFIX.length,
+  );
 }
 
 export function getDataSourceIdsFromColumnValueMappings(
@@ -61,15 +57,4 @@ export function getDataSourceIdsFromColumnValueMappings(
 ) {
   const referencedColumns = extractReferencedColumns(columnValuesMapping);
   return Array.from(new Set(referencedColumns.map((ref) => ref.sourceId)));
-}
-
-export function getCardIdsFromColumnValueMappings(
-  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
-) {
-  const usedDataSourceIds =
-    getDataSourceIdsFromColumnValueMappings(columnValuesMapping);
-  return usedDataSourceIds.map((id) => {
-    const { sourceId } = parseDataSourceId(id);
-    return sourceId;
-  });
 }
