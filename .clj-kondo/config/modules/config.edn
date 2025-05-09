@@ -709,7 +709,7 @@
   view-log
   {:api  #{metabase.view-log.core
            metabase.view-log.init}
-   :uses #{analytics api events models premium-features util}}
+   :uses #{analytics api audit-app events models premium-features util}}
 
   xrays
   {:api  #{metabase.xrays.api
