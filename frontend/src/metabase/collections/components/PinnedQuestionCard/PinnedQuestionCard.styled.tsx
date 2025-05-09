@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import Link from "metabase/core/components/Link";
-import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
+import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption/LegendCaption.styled";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import StaticSkeleton from "metabase/visualizations/components/skeletons/StaticSkeleton";
 
