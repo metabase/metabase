@@ -36,7 +36,7 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
   };
 
   return (
-    <Modal opened title="Create user" padding="xl" onClose={onClose}>
+    <Modal opened title={t`Create user`} padding="xl" onClose={onClose}>
       <UserForm
         initialValues={{}}
         submitText={t`Create`}
