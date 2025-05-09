@@ -81,7 +81,7 @@
 (defn- unsaved-card-download
   [card {:keys [export-format format-rows pivot]}]
   (testing "Sanity check"
-    (mt/with-current-user :crowberto
+    (mt/with-test-user :crowberto
       (assert (mi/can-read? (mt/db))))
     (when-let [table-id (get-in card [:dataset_query :source-table])]
       (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
