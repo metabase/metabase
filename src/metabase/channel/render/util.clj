@@ -67,6 +67,7 @@
           :semantic_type :type/Category}])
 
       ;; For all other chart types, create visualization columns from column mappings
+      ;; TODO: Non scalar visualizer funnels are currently not officially supported
       :else
       (reduce
        (fn [columns [viz-col-name column-mappings]]
