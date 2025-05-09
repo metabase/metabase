@@ -1,0 +1,11 @@
+{{> metabase/channel/email/_header.hbs }}
+  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); ">
+    <p>{{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}</p>
+    <p>Deleted row:</p>
+    <ul>
+      {{#each record}}
+        <li>{{@key}}: {{@value}}</li>
+      {{/each}}
+    </ul>
+  </div>
+{{> metabase/channel/email/_footer.hbs }}

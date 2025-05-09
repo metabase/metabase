@@ -2,13 +2,16 @@ import type {
   CardId,
   ChannelApiResponse,
   CreateAlertNotificationRequest,
+  CreateTableNotificationRequest,
   NotificationChannel,
   NotificationHandler,
+  NotificationTriggerEvent,
   ScheduleSettings,
+  TableId,
   UserId,
 } from "metabase-types/api";
 
-import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
+import type { NotificationTriggerOption } from "./modals/AlertsModals/CreateOrEditQuestionAlertModal/types";
 
 export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
 export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
@@ -111,10 +114,42 @@ export const getDefaultQuestionAlertRequest = ({
     subscriptions: [
       {
         type: "notification-subscription/cron",
-        event_name: null,
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
         ui_display_type: "cron/builder",
       },
     ],
+  };
+};
+
+export const getDefaultTableNotificationRequest = ({
+  tableId,
+  eventName,
+  currentUserId,
+  channelSpec,
+  hookChannels,
+  userCanAccessSettings,
+}: {
+  tableId: TableId;
+  eventName: NotificationTriggerEvent;
+  currentUserId: UserId;
+  channelSpec: ChannelApiResponse;
+  hookChannels: NotificationChannel[];
+  userCanAccessSettings: boolean;
+}): CreateTableNotificationRequest => {
+  return {
+    payload_type: "notification/system-event",
+    payload: {
+      event_name: eventName,
+      table_id: tableId,
+    },
+    payload_id: null,
+    handlers: getDefaultChannelConfig({
+      channelSpec,
+      hookChannels,
+      currentUserId,
+      userCanAccessSettings,
+    }),
+    // TODO: Extract to generateExpression after code reorganization
+    condition: ["=", ["context", "args", "table_id"], tableId],
   };
 };

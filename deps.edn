@@ -36,7 +36,7 @@
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
-  com.clojure-goes-fast/jvm-alloc-rate-meter{:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
+  com.clojure-goes-fast/jvm-alloc-rate-meter {:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.0"}              ; trans dep of commons-codec
@@ -44,7 +44,7 @@
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
-                                            {:mvn/version "4.3.1"}              ; templating engine
+  {:mvn/version "4.3.1"}              ; templating engine
   com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
                                              :git/url "https://github.com/pangloss/transducers"}
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1295"}           ; Honey SQL 2. SQL generation from Clojure data maps
@@ -60,8 +60,7 @@
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.taoensso/nippy                        {:mvn/version "3.5.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
-  com.vladsch.flexmark/flexmark-ext-autolink
-  {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
+  com.vladsch.flexmark/flexmark-ext-autolink {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
   commons-codec/commons-codec               {:mvn/version "1.18.0"}             ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.19.0"}             ; Apache Commons -- useful IO util fns
   commons-net/commons-net                   {:mvn/version "3.11.1"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
@@ -841,7 +840,16 @@
   ;;    clj -X:dev:ee:ee-dev:test:test/notification
   :test/notification
   {:exec-args {:only ["test/metabase/notification"
-                      "test/metabase/channel"]}}
+                      "test/metabase/channel"
+                      "test/metabase/pulse"
+                      metabase-enterprise.data-editing.notification-test
+                      metabase.dashboard-subscription-test]}}
+
+  ;; clj -X:dev:ee:ee-dev:test:test/workflow
+  :test/workflow
+  {:exec-args {:only ["test/metabase/actions"
+                      "enterprise/backend/test/metabase_enterprise/data_editing"
+                      metabase.driver.sql-jdbc.actions-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;

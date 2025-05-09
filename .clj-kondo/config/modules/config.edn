@@ -35,7 +35,7 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
-   :uses #{analytics api driver legacy-mbql lib model-persistence models query-processor search settings util}}
+   :uses #{analytics api driver events legacy-mbql lib model-persistence models query-processor search settings util}}
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
@@ -285,9 +285,8 @@
            util}}
 
   events
-  {:api  #{metabase.events.core
-           metabase.events.init}
-   :uses #{channel driver models util view-log}}
+  {:api  #{metabase.events.core metabase.events.init}
+   :uses #{api config channel driver models notification premium-features util view-log}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -456,6 +455,7 @@
            driver
            events
            models
+           lib
            permissions
            premium-features
            settings
@@ -463,6 +463,7 @@
            request
            task
            task-history
+           types
            util}}
 
   permissions
@@ -788,15 +789,21 @@
 
   enterprise/core
   {:api  #{metabase-enterprise.core.init}
-   :uses :any}
+   :uses #{enterprise/advanced-config enterprise/cache enterprise/enhancements enterprise/data-editing enterprise/stale}}
 
   enterprise/dashboard-subscription-filters
   {:api  #{}
    :uses #{premium-features}}
 
   enterprise/data-editing
-  {:api  #{metabase-enterprise.data-editing.api}
-   :uses #{api actions util}}
+  {:api  #{metabase-enterprise.data-editing.core
+           metabase-enterprise.data-editing.api
+           metabase-enterprise.data-editing.init}
+   :uses #{api actions driver events lib models notification query-processor upload util}}
+
+  enterprise/data-editing-public
+  {:api #{}
+   :uses #{api actions enterprise/data-editing driver events lib query-processor upload util}}
 
   enterprise/database-routing
   {:api #{metabase-enterprise.database-routing.api}

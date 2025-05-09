@@ -311,10 +311,13 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
+  noResults?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsSeries?: boolean;
+  disableReplaceCard?: boolean;
+  disableNavigateToNewCardFromDashboard?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
@@ -331,4 +334,6 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+
+  additionalDashcardActionButtons?: React.FC<{ dashcard?: DashboardCard }>[];
 };

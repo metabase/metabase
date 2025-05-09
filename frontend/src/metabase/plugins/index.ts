@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import React, {
   type ComponentType,
   type HTMLAttributes,
@@ -58,11 +59,13 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   DashCardId,
   Dashboard,
   DatabaseId,
   Database as DatabaseType,
   Dataset,
+  DatasetData,
   DatasetError,
   DatasetErrorType,
   FieldId,
@@ -75,6 +78,7 @@ import type {
   TableId,
   Timeline,
   User,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
@@ -745,6 +749,36 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+    location: Location<{ filter?: string }>;
+  }>,
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
+    dashcardId: number;
+    cardId: number;
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    className?: string;
+    visualizationSettings?: VisualizationSettings;
+    question: Question;
+  }>,
 };
 
 export const PLUGIN_API = {

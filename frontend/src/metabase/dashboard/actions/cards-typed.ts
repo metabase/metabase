@@ -1,13 +1,20 @@
 import { createAction } from "@reduxjs/toolkit";
 
+import { datasetApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
-import { createThunkAction } from "metabase/lib/redux";
-import { loadMetadataForCard } from "metabase/questions/actions";
+import {
+  type DispatchFn as Dispatch,
+  createThunkAction,
+} from "metabase/lib/redux";
+import {
+  loadMetadataForCard,
+  loadMetadataForTable,
+} from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
 import type {
   Card,
@@ -16,9 +23,11 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  TableId,
   VirtualCard,
+  VirtualCardDisplay,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type { GetState } from "metabase-types/store";
 
 import {
   trackCardCreated,
@@ -46,7 +55,11 @@ import {
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
-import { cancelFetchCardData, fetchCardData } from "./data-fetching";
+import {
+  cancelFetchCardData,
+  fetchCardData,
+  setEditingDashcardData,
+} from "./data-fetching";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -189,6 +202,43 @@ export const addMarkdownDashCardToDashboard =
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
+
+export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
+  tableId: TableId;
+};
+
+export const addEditableTableDashCardToDashboard =
+  ({ dashId, tabId, tableId }: AddEditableTableDashCardToDashboardOpts) =>
+  (dispatch: Dispatch) => {
+    // this should work as a virtual card until dashboard is saved, then it becomes a normal card. Hence the typecast
+    const card = createVirtualCard("table-editable" as VirtualCardDisplay);
+
+    dispatch(
+      addDashCardToDashboard({
+        dashId,
+        tabId,
+        dashcardOverrides: {
+          card: card as VirtualCard,
+          visualization_settings: {
+            table_id: tableId,
+            "editableTable.enabledActions": [
+              {
+                id: "row/create",
+                enabled: true,
+              },
+              {
+                id: "row/delete",
+                enabled: true,
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    dispatch(loadMetadataForTable(tableId));
+  };
+
 export const addIFrameDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
@@ -228,7 +278,7 @@ export const replaceCard =
       .getObject(getState(), { entityId: nextCardId })
       .card();
 
-    await dispatch(
+    dispatch(
       setDashCardAttributes({
         id: dashcardId,
         attributes: {
@@ -325,5 +375,48 @@ const undoTrashDashboardQuestion = createThunkAction(
         }),
       );
       dispatch(undoRemoveCardFromDashboard({ dashcardId }));
+    },
+);
+
+export const UPDATE_EDITABLE_TABLE_CARD_QUERY_IN_EDIT_MODE =
+  "metabase/dashboard/UPDATE_EDITABLE_TABLE_CARD_QUERY_IN_EDIT_MODE";
+export const updateEditableTableCardQueryInEditMode = createThunkAction(
+  UPDATE_EDITABLE_TABLE_CARD_QUERY_IN_EDIT_MODE,
+  ({
+    dashcardId,
+    cardId,
+    newCard,
+  }: {
+    dashcardId: DashCardId;
+    cardId: DashboardCard["card_id"];
+    newCard: Card;
+  }) =>
+    async (dispatch: Dispatch) => {
+      // set data override to null to show loading state
+      dispatch(setEditingDashcardData(dashcardId, cardId, null));
+
+      const card: Card = {
+        ...newCard,
+        // @ts-expect-error - we don't have a type for Store card with additional state
+        isDirty: true,
+      };
+
+      dispatch(
+        setDashCardAttributes({
+          id: dashcardId,
+          attributes: {
+            card: card,
+          },
+        }),
+      );
+
+      // NOTE: we cannot do data loading inside an action, as we don't support ad-hoc queries as a dashcard
+      const action = dispatch(
+        // TODO: set "dashboard" context for api request ?
+        datasetApi.endpoints.getAdhocQuery.initiate(newCard.dataset_query),
+      );
+      const cardData = await action.unwrap();
+
+      dispatch(setEditingDashcardData(dashcardId, cardId, cardData));
     },
 );

@@ -3,6 +3,7 @@
   (:require
    [metabase.actions.actions]
    [metabase.actions.error]
+   [metabase.actions.events]
    [metabase.actions.execution]
    [metabase.actions.http-action]
    [metabase.actions.models]
@@ -19,6 +20,10 @@
  [metabase.actions.actions
   cached-value
   check-actions-enabled!
+  check-data-editing-enabled-for-database!
+  cached-database
+  cached-database-via-table-id
+  handle-effects!*
   perform-action!
   perform-action!*]
  [metabase.actions.error
@@ -34,4 +39,6 @@
   apply-json-query]
  [metabase.actions.models
   dashcard->action
-  select-action])
+  select-action]
+ [metabase.actions.events
+  publish-action-success!])

@@ -6,13 +6,18 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.models.channel :as models.channel]
+   [metabase.channel.template.core :as channel.template]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -32,7 +37,9 @@
 
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
-  [{:keys [creator_id creator_or_recipient_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
+  [{:keys [creator_id creator_or_recipient_id recipient_id card_id
+           payload_type include_inactive legacy-active legacy-user-id
+           table_id]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {:select-distinct [:notification.*]}
                               creator_id
@@ -60,6 +67,14 @@
                                     [:= :notification_card.id :notification.payload_id]
                                     [:= :notification.payload_type "notification/card"]])
                                   (sql.helpers/where [:= :notification_card.card_id card_id]))
+
+                              table_id
+                              (-> (sql.helpers/left-join
+                                   :notification_system_event
+                                   [:and
+                                    [:= :notification_system_event.id :notification.payload_id]
+                                    [:= :notification.payload_type "notification/system-event"]])
+                                  (sql.helpers/where [:= :notification_system_event.table_id table_id]))
 
                               (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
@@ -90,22 +105,26 @@
   - `creator_id`: if provided returns only notifications created by this user
   - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
   - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient
-  - `card_id`: if provided returns only notification that has card_id as payload"
+  - `card_id`: if provided returns only notification that has card_id as payload
+  - `table_id`: if provided returns only system event notification that is associated with a table
+  - `payload_type`: if provided returns only notification with this payload type"
   [_route-params
-   {:keys [creator_id creator_or_recipient_id recipient_id card_id include_inactive payload_type]} :-
+   {:keys [creator_id creator_or_recipient_id recipient_id card_id table_id include_inactive payload_type]} :-
    [:map
     [:creator_id              {:optional true} ms/PositiveInt]
     [:recipient_id            {:optional true} ms/PositiveInt]
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
     [:card_id                 {:optional true} ms/PositiveInt]
+    [:table_id                {:optional true} ms/PositiveInt]
     [:include_inactive        {:optional true} ms/BooleanValue]
-    [:pyaload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
+    [:payload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
   (list-notifications {:creator_id              creator_id
                        :recipient_id            recipient_id
                        :creator_or_recipient_id creator_or_recipient_id
                        :card_id                 card_id
                        :include_inactive        include_inactive
-                       :payload_type            payload_type}))
+                       :payload_type            payload_type
+                       :table_id                table_id}))
 
 (api.macros/defendpoint :get "/:id"
   "Get a notification by id."
@@ -149,6 +168,63 @@
       (send-you-were-added-card-notification-email! notification))
     (events/publish-event! :event/notification-create {:object notification :user-id api/*current-user-id*})
     notification))
+
+(defn- sample-payload
+  "Generate a sample payload for a notification."
+  [notification channel-type]
+  (case (:payload_type notification)
+    :notification/system-event
+    (channel/template-context (:payload_type notification)
+                              channel-type
+                              (notification/sample-payload notification))
+
+    ;; else
+    (binding [notification.payload.execute/*query-max-bare-rows* 2]
+      (channel/template-context channel-type
+                                (:payload_type notification)
+                                (notification/notification-payload notification)))))
+
+(api.macros/defendpoint :post "/payload"
+  "Return the payload of a notification"
+  [_route _query {:keys [notification channel_type]} :- [:map {:closed true}
+                                                         [:notification ::models.notification/NotificationWithPayload]
+                                                         [:channel_type :keyword]]]
+  (api/create-check :model/Notification notification)
+  {:payload (sample-payload notification channel_type)
+   :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
+
+(defn- sample-recipient
+  [channel-type]
+  (case channel-type
+    :channel/email
+    {:type :notification-recipient/user
+     :user_id 13371337
+     :user    {:first_name "Bot"
+               :last_name  "Meta"
+               :email      "bot@metabase.com"}}
+
+    :channel/slack
+    {:type :notificaiton-recipient/raw-value
+     :details {:value "#metabase-example-channel"}}))
+
+(api.macros/defendpoint :post "/preview_template"
+  "Preview a notification payload. Optionally can provide a custom input for rendering"
+  [_route _query
+   {:keys [notification template custom_context]} :- [:map
+                                                      [:notification ::models.notification/NotificationWithPayload]
+                                                      [:template ::models.channel/ChannelTemplate]
+                                                      [:payload {:optional true} :any]]]
+  (api/create-check :model/Notification notification)
+  (let [sample-notification-context (if custom_context
+                                      (mu/validate-throw (notification/notification-payload-schema notification) custom_context)
+                                      (sample-payload notification (:channel_type template)))]
+    {:context  sample-notification-context
+     :rendered (first (channel/render-notification
+                       (:channel_type template)
+                       (:payload_type notification)
+                       sample-notification-context
+                       template
+                       [(sample-recipient (:channel_type template))]))}))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
@@ -206,6 +282,16 @@
       true
       (notification/send-notification! :notification/sync? true))))
 
+(api.macros/defendpoint :post "/default_template"
+  "Get default templates for a notification."
+  [_params
+   _query
+   {:keys [notification channel_types] :as _body} :- [:map
+                                                      [:notification ::models.notification/NotificationWithPayload]
+                                                      [:channel_types {:optional true} [:sequential :keyword]]]]
+  (zipmap channel_types
+          (map #(channel.template/default-template (:payload_type notification) (:payload notification) %) channel_types)))
+
 (defn- promote-to-t2-instance
   [notification]
   (->  (t2/instance :model/Notification notification)
@@ -233,14 +319,14 @@
   (let [notification (get-notification notification-id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
     (models.notification/unsubscribe-user! notification-id user-id)
-    (u/prog1 (get-notification notification-id)
-      (when (card-notification? <>)
-        (u/ignore-exceptions
-          (messages/send-you-unsubscribed-notification-card-email!
-           (update <> :payload t2/hydrate :card)
-           [(:email @api/*current-user*)])))
-      (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
-                                                              :user-id api/*current-user-id*}))))
+    (when (card-notification? notification)
+      (u/ignore-exceptions
+        (messages/send-you-unsubscribed-notification-card-email!
+         notification
+         [(:email @api/*current-user*)])))
+    (events/publish-event! :event/notification-unsubscribe {:object {:id notification-id}
+                                                            :user-id api/*current-user-id*})
+    notification))
 
 (api.macros/defendpoint :post "/:id/unsubscribe"
   "Unsubscribe current user from a notification."

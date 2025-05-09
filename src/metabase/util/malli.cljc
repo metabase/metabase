@@ -2,8 +2,10 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.defn :as mu.defn]
+       ([metabase.config :as config]
+        [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
+        [malli.generator :as mg]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
    [clojure.core :as core]
@@ -95,7 +97,7 @@
               ~error-context-symb  {:fn-name        '~(or (some-> (resolve multifn) symbol)
                                                           (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
-              f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
+              f#                   ~(mu.fn/instrumented-fn-form-with-schema error-context-symb (mu.fn/parse-fn-tail fn-tail))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))
@@ -139,3 +141,31 @@
         (recur ret (nnext kvs)))
       (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
+
+#?(:clj
+   (defn- require-all-keys
+     "Ensure maps has no optional keys, maybe is required."
+     [schema]
+     (mc/walk
+      schema
+      (fn [schema _path children _options]
+        (case (mc/type schema)
+          :map
+          (mc/-set-children schema
+                            (mapv (fn [[k p s]]
+                                    [k (dissoc p :optional) s]) children))
+          :maybe
+          (first children)
+
+          schema)))))
+
+#?(:clj
+   (defn generate-example
+     "Generate an example value for a schema. By default will include all optional keys."
+     [schema & {:keys [seed include-optional-keys?]
+                :or {include-optional-keys? true}
+                :as _opts}]
+     (let [seed   (or seed (when config/is-prod? 42))
+           schema (cond-> schema
+                    include-optional-keys? require-all-keys)]
+       (mg/generate schema {:seed seed}))))

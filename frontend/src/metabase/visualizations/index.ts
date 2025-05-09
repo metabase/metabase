@@ -154,6 +154,12 @@ export const extractRemappedColumns = (data: DatasetData) => {
     remapping: col.remapped_to != null ? new Map() : undefined,
   }));
 
+  cols.forEach((col) => {
+    if (col.remapped_from != null && col.remapped_from_index != null) {
+      cols[col.remapped_from_index].remapped_to_column = col;
+    }
+  });
+
   const rows = data.rows.map((row) =>
     row.filter((value, colIndex) => {
       const col = cols[colIndex];
@@ -166,7 +172,6 @@ export const extractRemappedColumns = (data: DatasetData) => {
           console.warn("Invalid remapped_from", col);
           return true;
         }
-        cols[col.remapped_from_index].remapped_to_column = col;
         cols[col.remapped_from_index].remapping?.set(
           row[col.remapped_from_index],
           row[colIndex],
