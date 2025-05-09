@@ -1159,7 +1159,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Unknown Field: abcdef/i);
+    cy.contains(/^Unknown column: abcdef/i);
   });
 
   it("should fail on expression validation errors", () => {
@@ -1697,13 +1697,13 @@ describe("scenarios > question > custom column > function browser", () => {
     });
   });
 
-  it("should not insert parens when the clause has no arguments", () => {
+  it("should insert parens even when the clause has no arguments", () => {
     H.expressionEditorWidget().button("Function browser").click();
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("now");
       cy.findByText("now").click();
     });
-    H.CustomExpressionEditor.value().should("equal", "now");
+    H.CustomExpressionEditor.value().should("equal", "now()");
   });
 });
 

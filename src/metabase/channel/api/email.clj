@@ -8,7 +8,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))

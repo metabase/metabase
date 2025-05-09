@@ -8,20 +8,16 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.driver :as driver]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.logger :as logger]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.system-info :as u.system-info]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,13 +35,6 @@
   []
   (validation/check-has-application-permission :monitoring)
   (logger/messages))
-
-(api.macros/defendpoint :get "/stats"
-  "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
-  what is being phoned home."
-  []
-  (validation/check-has-application-permission :monitoring)
-  (analytics/legacy-anonymous-usage-stats))
 
 (api.macros/defendpoint :get "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
@@ -86,38 +75,6 @@
   (future (send-feedback! comments source email))
   api/generic-204-no-content)
 
-(defn- metabase-info
-  "Make it easy for the user to tell us what they're using"
-  []
-  (merge
-   {:databases            (t2/select-fn-set :engine :model/Database)
-    :run-mode             (config/config-kw :mb-run-mode)
-    :plan-alias           (or (premium-features/plan-alias) "")
-    :version              config/mb-version-info
-    :settings             {:report-timezone (driver/report-timezone)}
-    :hosting-env          (analytics/environment-type)
-    :application-database (mdb/db-type)}
-   (when-not (premium-features/is-hosted?)
-     {:application-database-details (t2/with-connection [^java.sql.Connection conn]
-                                      (let [metadata (.getMetaData conn)]
-                                        {:database    {:name    (.getDatabaseProductName metadata)
-                                                       :version (.getDatabaseProductVersion metadata)}
-                                         :jdbc-driver {:name    (.getDriverName metadata)
-                                                       :version (.getDriverVersion metadata)}}))})
-   (when (premium-features/airgap-enabled)
-     {:airgap-token       :enabled
-      :max-users          (premium-features/max-users-allowed)
-      :current-user-count (premium-features/active-users-count)
-      :valid-thru         (:valid-thru (premium-features/token-status))})))
-
-(api.macros/defendpoint :get "/bug_report_details"
-  "Returns version and system information relevant to filing a bug report against Metabase."
-  []
-  (validation/check-has-application-permission :monitoring)
-  (cond-> {:metabase-info (metabase-info)}
-    (not (premium-features/is-hosted?))
-    (assoc :system-info (u.system-info/system-info))))
-
 (api.macros/defendpoint :get "/diagnostic_info/connection_pool_info"
   "Returns database connection pool info for the current Metabase instance."
   []
@@ -132,4 +89,13 @@
    _query-params
    {:keys [entity_ids]} :- [:map
                             [:entity_ids :map]]]
-  {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
+  {:entity_ids (eid-translation/model->entity-ids->ids entity_ids)})
+
+(api.macros/defendpoint :get "/openapi"
+  "Return the OpenAPI specification for the Metabase API."
+  []
+  (api/check-superuser)
+  {:status 200
+   :body (merge
+          (open-api/root-open-api-object @(requiring-resolve 'metabase.api-routes.core/routes))
+          {:servers [{:url "" :description "Metabase API"}]})})

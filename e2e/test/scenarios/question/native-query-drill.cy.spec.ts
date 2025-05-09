@@ -364,7 +364,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestion(pinMapQuestionDetails, { visitQuestion: true });
       cy.findByTestId("visualization-root").realHover();
       cy.findByTestId("visualization-root").within(() => {
-        cy.findByText("Save as default view").should("be.visible");
+        cy.findByText("Set as default view").should("be.visible");
         cy.findByText("Draw box to filter").click();
       });
       applyBoxFilter({
@@ -380,7 +380,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestion(gridMapQuestionDetails, { visitQuestion: true });
       cy.findByTestId("visualization-root").realHover();
       cy.findByTestId("visualization-root").within(() => {
-        cy.findByText("Save as default view").should("be.visible");
+        cy.findByText("Set as default view").should("be.visible");
         cy.findByText("Draw box to filter").should("not.exist");
       });
     });

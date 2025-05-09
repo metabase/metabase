@@ -11,23 +11,24 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.channel.slack :as slack]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.integrations.slack :as slack]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.version.core :as version]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -121,7 +122,7 @@
    :running_on                           (environment-type)
    :startup_time_millis                  (int (public-settings/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
-   :check_for_updates                    (public-settings/check-for-updates)
+   :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
@@ -342,11 +343,6 @@
   []
   {:segments (t2/count :model/Segment)})
 
-(defn- metric-metrics
-  "Get metrics based on Metrics."
-  []
-  {:metrics (t2/count :model/LegacyMetric)})
-
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
@@ -474,7 +470,6 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
-                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -747,7 +742,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 
@@ -817,7 +812,9 @@
     :enabled   (premium-features/enable-database-auth-providers?)}
    {:name      :database-routing
     :available (premium-features/enable-database-routing?)
-    :enabled   (premium-features/enable-database-routing?)}
+    :enabled   (if (premium-features/enable-database-routing?)
+                 (t2/exists? :model/DatabaseRouter)
+                 false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -842,6 +839,15 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-sql-fixer
+    :available (premium-features/enable-ai-sql-fixer?)
+    :enabled   (premium-features/enable-ai-sql-fixer?)}
+   {:name      :ai-sql-generation
+    :available (premium-features/enable-ai-sql-generation?)
+    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -939,7 +945,7 @@
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
-  (when (public-settings/anon-tracking-enabled)
+  (when (analytics.settings/anon-tracking-enabled)
     (let [start-time-ms                  (System/currentTimeMillis)
           {:keys [stats snowplow-stats]} (generate-instance-stats!)
           end-time-ms                    (System/currentTimeMillis)

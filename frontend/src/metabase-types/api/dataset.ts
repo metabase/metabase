@@ -37,6 +37,14 @@ export interface DatasetColumn {
   description?: string | null;
   source: string;
   aggregation_index?: number;
+  database_type?: string;
+  active?: boolean;
+  entity_id?: string;
+  fk_field_id?: number;
+  nfc_path?: string[] | null;
+  parent_id?: number | null;
+  position?: number;
+  source_alias?: string;
 
   aggregation_type?: AggregationType;
 
@@ -56,6 +64,8 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
+  ident?: string;
+  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
@@ -96,13 +106,8 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error?:
-    | string
-    | {
-        status: number; // HTTP status code
-        data?: string;
-      };
-  error_type?: string;
+  error?: DatasetError;
+  error_type?: DatasetErrorType;
   error_is_curated?: boolean;
   context?: string;
   status?: string;
@@ -113,6 +118,18 @@ export interface Dataset {
   /** A date in ISO 8601 format */
   started_at?: string;
 }
+
+export type DatasetError =
+  | string
+  | {
+      status: number; // HTTP status code
+      data?: string;
+    };
+
+export type DatasetErrorType =
+  | "invalid-query"
+  | "missing-required-parameter"
+  | string;
 
 export interface EmbedDatasetData {
   rows: RowValues[];
@@ -132,7 +149,7 @@ interface SuccessEmbedDataset {
 }
 
 export interface ErrorEmbedDataset {
-  error_type: string;
+  error_type: DatasetErrorType;
   error: string;
   status: string;
 }
@@ -147,7 +164,7 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
-} & Pick<Dataset, "data" | "error">;
+} & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };

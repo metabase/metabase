@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.util]
    [metabase.http-client :as client]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.premium-features.core :as premium-features]
@@ -154,7 +155,17 @@
                                           {:table_id             table-id
                                            :group_id             group-id
                                            :card_id              card-id
-                                           :attribute_remappings {"foo" 1}})))))))))
+                                           :attribute_remappings {"foo" 1}}))))))
+      (testing "A database without the saved question sandboxing features returns a 400 error"
+        (with-redefs [driver.util/supports? (fn [_ feature _] (not= feature :saved-question-sandboxing))]
+          (mt/with-temp [:model/Card {card-id :id}]
+            (with-gtap-cleanup!
+              (is (=? {:message  "Sandboxing with a saved question is not enabled for this database."}
+                      (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
+                                            {:table_id             table-id
+                                             :group_id             group-id
+                                             :card_id              card-id
+                                             :attribute_remappings {"foo" 1}}))))))))))
 
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"

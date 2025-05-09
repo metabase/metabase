@@ -10,14 +10,14 @@
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.init]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
@@ -213,8 +213,8 @@
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
     (mt/with-temp [:model/User user {:is_superuser true}]
-      (is (= true
-             (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+      (is (true?
+           (t2/exists? :model/PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -236,36 +236,35 @@
   (when (seq groups-or-ids)
     (t2/select-fn-set :name :model/PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
 
-(defn- do-with-group [group-properties group-members f]
+(defn- do-with-group! [group-properties group-members f]
   (mt/with-temp [:model/PermissionsGroup group group-properties]
-    (doseq [member group-members]
-      (t2/insert! :model/PermissionsGroupMembership
-                  {:group_id (u/the-id group)
-                   :user_id  (if (keyword? member)
-                               (mt/user->id member)
-                               (u/the-id member))}))
+    (perms/add-users-to-groups! (for [member group-members]
+                                  {:user (if (keyword? member)
+                                           (mt/user->id member)
+                                           (u/the-id member))
+                                   :group group}))
     (f group)))
 
-(defmacro ^:private with-groups [[group-binding group-properties members & more-groups] & body]
+(defmacro ^:private with-groups! [[group-binding group-properties members & more-groups] & body]
   (if (seq more-groups)
-    `(with-groups [~group-binding ~group-properties ~members]
-       (with-groups ~more-groups
+    `(with-groups! [~group-binding ~group-properties ~members]
+       (with-groups! ~more-groups
          ~@body))
-    `(do-with-group ~group-properties ~members (fn [~group-binding] ~@body))))
+    `(do-with-group! ~group-properties ~members (fn [~group-binding] ~@body))))
 
 (deftest group-ids-test
   (testing "the `group-ids` hydration function"
     (testing "should work as expected"
-      (with-groups [_ {:name "Group 1"} #{:lucky :rasta}
-                    _ {:name "Group 2"} #{:lucky}
-                    _ {:name "Group 3"} #{}]
+      (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
+                     _ {:name "Group 2"} #{:lucky}
+                     _ {:name "Group 3"} #{}]
         (is (= #{"All Users" "Group 2" "Group 1"}
                (group-names (user/group-ids (mt/user->id :lucky)))))))
 
     (testing "should be a single DB call"
-      (with-groups [_ {:name "Group 1"} #{:lucky}
-                    _ {:name "Group 2"} #{:lucky}
-                    _ {:name "Group 3"} #{}]
+      (with-groups! [_ {:name "Group 1"} #{:lucky}
+                     _ {:name "Group 2"} #{:lucky}
+                     _ {:name "Group 3"} #{}]
         (let [lucky-id (mt/user->id :lucky)]
           (t2/with-call-count [call-count]
             (user/group-ids lucky-id)
@@ -279,9 +278,9 @@
 (deftest add-group-ids-test
   (testing "the `add-group-ids` hydration function"
     (testing "should do a batched hydate"
-      (with-groups [_ {:name "Group 1"} #{:lucky :rasta}
-                    _ {:name "Group 2"} #{:lucky}
-                    _ {:name "Group 3"} #{}]
+      (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
+                     _ {:name "Group 2"} #{:lucky}
+                     _ {:name "Group 3"} #{}]
         (let [users (user/add-group-ids (map test.users/fetch-user [:lucky :rasta]))]
           (is (= {"Lucky" #{"All Users" "Group 1" "Group 2"}
                   "Rasta" #{"All Users" "Group 1"}}
@@ -306,9 +305,9 @@
                    (mapv :group_ids users)))))))
 
     (testing "should be done in a single DB call"
-      (with-groups [_ {:name "Group 1"} #{:lucky :rasta}
-                    _ {:name "Group 2"} #{:lucky}
-                    _ {:name "Group 3"} #{}]
+      (with-groups! [_ {:name "Group 1"} #{:lucky :rasta}
+                     _ {:name "Group 2"} #{:lucky}
+                     _ {:name "Group 3"} #{}]
         (let [users (mapv test.users/fetch-user [:lucky :rasta])]
           (t2/with-call-count [call-count]
             (dorun (user/add-group-ids users))
@@ -327,28 +326,28 @@
 (deftest set-permissions-groups-test
   (testing "set-permissions-groups!"
     (testing "should be able to add a User to new groups"
-      (with-groups [group-1 {:name "Group 1"} #{}
-                    group-2 {:name "Group 2"} #{}]
+      (with-groups! [group-1 {:name "Group 1"} #{}
+                     group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-1 group-2})
         (is (= #{"All Users" "Group 1" "Group 2"}
                (user-group-names :lucky)))))
 
     (testing "should be able to remove a User from groups"
-      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
-                    _group-2 {:name "Group 2"} #{:lucky}]
+      (with-groups! [_group-1 {:name "Group 1"} #{:lucky}
+                     _group-2 {:name "Group 2"} #{:lucky}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
 
     (testing "should be able to add & remove groups at the same time! :wow:"
-      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
-                    group-2 {:name "Group 2"} #{}]
+      (with-groups! [_group-1 {:name "Group 1"} #{:lucky}
+                     group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}
                (user-group-names :lucky)))))
 
     (testing "should throw an Exception if you attempt to remove someone from All Users"
-      (with-groups [group-1 {:name "Group 1"} #{}]
+      (with-groups! [group-1 {:name "Group 1"} #{}]
         (is (thrown? Exception
                      (user/set-permissions-groups! (mt/user->id :lucky) #{group-1})))))
 
@@ -359,8 +358,8 @@
                (user-group-names user)))
 
         (testing "their is_superuser flag should be set to true"
-          (is (= true
-                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+          (is (true?
+               (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp [:model/User user {:is_superuser true}]
@@ -380,13 +379,13 @@
           (mt/with-temp [:model/User user {:is_superuser true}]
             (u/ignore-exceptions
               (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
-            (is (= true
-                   (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
+            (is (true?
+                 (t2/select-one-fn :is_superuser :model/User :id (u/the-id user)))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
         (mt/with-temp [:model/User _]
-          (with-groups [group {:name "Group"} {}]
+          (with-groups! [group {:name "Group"} {}]
             (u/ignore-exceptions
               (user/set-permissions-groups! (test.users/fetch-user :lucky) #{group})))
           (is (= #{"All Users"}

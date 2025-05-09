@@ -90,7 +90,6 @@ The SDK doesn't support:
 - Alerts
 - Server-side rendering (SSR)
 - Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
-- React 19
 
 ## Issues, feature requests and support
 

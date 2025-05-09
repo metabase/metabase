@@ -34,7 +34,9 @@ describe("issue 11727", { tags: "@external" }, () => {
       H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Query results will appear here.").should("be.visible");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
     });
   });
 });
@@ -544,5 +546,38 @@ describe("issue 56570", () => {
   it("should not push the toolbar off-screen (metabase#56570)", () => {
     cy.findByTestId("visibility-toggler").click();
     cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+  });
+});
+
+describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
+  });
+});
+
+describe("issue 57441", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to create a new snippet from the sidebar (metabase#57441)", () => {
+    H.startNewNativeQuestion();
+
+    H.createSnippet({ name: "snippet 1", content: "select 1" });
+
+    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
+    H.rightSidebar().icon("add").click();
+    H.popover().findByText("New snippet").click();
+    H.modal().findByText("Create your new snippet").should("be.visible");
   });
 });

@@ -1031,3 +1031,37 @@
                      (map
                       #(select-keys % [:display_name :field_ref :source_alias :ident])
                       metadata))))))))))
+
+(deftest ^:parallel breakout-of-model-field-ident-test
+  (testing "breakout of model field"
+    (mt/with-temp [:model/Card model (mt/card-with-metadata
+                                      {:dataset_query (mt/mbql-query orders)
+                                       :type          :model})]
+      (testing "inner model has correct idents"
+        (is (=? (for [col-key [:id :user_id :product_id :subtotal :tax :total :discount :created_at :quantity]]
+                  {:ident             (lib/model-ident (mt/ident :orders col-key) (:entity_id model))
+                   :model/inner_ident (mt/ident :orders col-key)})
+                (:result_metadata model))))
+      (testing "outer breakout gets correct ident"
+        (let [query (mt/mbql-query orders {:source-table (str "card__" (:id model))
+                                           :aggregation  [[:count]]
+                                           :breakout     [!month.$created_at]})
+              brk-ident (get-in query [:query :breakout-idents 0])
+              agg-ident (get-in query [:query :aggregation-idents 0])]
+          (is (=? [{:name  "CREATED_AT"
+                    :ident brk-ident}
+                   {:name  "count"
+                    :ident agg-ident}]
+                  (mt/cols (mt/process-query query))))
+          (testing "even when outer query is a model"
+            (mt/with-temp [:model/Card model2 (mt/card-with-metadata {:dataset_query query
+                                                                      :type          :model})]
+              ;; Inner idents are the unadorned breakout and aggregation idents.
+              ;; Outer idents are only wrapped with the outer model.
+              (is (=? [{:name              "CREATED_AT"
+                        :model/inner_ident brk-ident
+                        :ident             (lib/model-ident brk-ident (:entity_id model2))}
+                       {:name              "count"
+                        :model/inner_ident agg-ident
+                        :ident             (lib/model-ident agg-ident (:entity_id model2))}]
+                      (:result_metadata model2))))))))))

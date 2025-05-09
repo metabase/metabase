@@ -40,7 +40,7 @@ export const ChartTypeDropdown = ({
     visualizationType: CardDisplayType,
   ): {
     value: CardDisplayType;
-    label: Visualization["uiName"];
+    label: ReturnType<Visualization["getUiName"]>;
     iconName: IconName;
   } | null => {
     const visualization = visualizations.get(visualizationType);
@@ -50,7 +50,7 @@ export const ChartTypeDropdown = ({
 
     return {
       value: visualizationType,
-      label: visualization.uiName,
+      label: visualization.getUiName(),
       iconName: visualization.iconName,
     };
   };

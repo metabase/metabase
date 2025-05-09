@@ -39,13 +39,12 @@ function legacyScalarSettingsToFormatOptions(settings) {
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
 export class Scalar extends Component {
-  static uiName = t`Number`;
+  static getUiName = () => t`Number`;
   static identifier = "scalar";
   static iconName = "number";
   static canSavePng = false;
 
   static noHeader = true;
-  static supportsSeries = true;
 
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
@@ -64,7 +63,9 @@ export class Scalar extends Component {
 
   static settings = {
     ...fieldSetting("scalar.field", {
-      title: t`Field to show`,
+      get title() {
+        return t`Field to show`;
+      },
       getDefault: ([
         {
           data: { cols },

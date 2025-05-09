@@ -70,6 +70,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   creator?: CreatorInfo;
   "last-edit-info"?: LastEditInfo;
+  table_id?: TableId;
 }
 
 export interface PublicCard {

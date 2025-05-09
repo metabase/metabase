@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -23,7 +24,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh])
   (:import
-   (java.sql Clob ResultSet ResultSetMetaData)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -70,7 +71,8 @@
                               :datetime-diff             true
                               :expression-literals       true
                               :full-join                 false
-                              :index-info                true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                false
                               :now                       true
                               :percentile-aggregations   false
                               :regex                     true
@@ -621,3 +623,6 @@
   {:metabase.upload/int     #{:metabase.upload/float}
    :metabase.upload/boolean #{:metabase.upload/int
                               :metabase.upload/float}})
+
+(defmethod sql-jdbc/impl-query-canceled? :h2 [_ ^SQLException e]
+  (= (.getErrorCode e) 57014))

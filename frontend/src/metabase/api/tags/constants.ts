@@ -15,6 +15,7 @@ export const TAG_TYPES = [
   "field",
   "field-values",
   "indexed-entity",
+  "logger-preset",
   "model-index",
   "notification",
   "parameter-values",

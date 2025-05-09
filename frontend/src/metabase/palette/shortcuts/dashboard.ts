@@ -1,58 +1,117 @@
 import { t } from "ttag";
 
+import { ELLIPSIS } from "../constants";
+
 export const dashboardShortcuts = {
   "dashboard-bookmark": {
-    name: t`Bookmark Dashboard`,
+    get name() {
+      return t`Bookmark Dashboard`;
+    },
     shortcut: ["o"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When viewing`,
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When viewing`;
+    },
   },
   "dashboard-add-filter": {
-    name: t`Add Filter`,
+    get name() {
+      return t`Add Filter`;
+    },
     shortcut: ["f"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When editing`,
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
+  },
+  "dashboard-toggle-add-question-sidepanel": {
+    get name() {
+      return t`Open Add Question Side Sheet`;
+    },
+    shortcut: ["a"],
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
   },
   "dashboard-add-notebook-question": {
-    name: t`Add Notebook Question`,
-    shortcut: ["a q"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When editing`,
+    get name() {
+      return t`Add Notebook Question`;
+    },
+    shortcut: ["q"],
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
   },
   "dashboard-add-native-question": {
-    name: t`Add Native Question`,
-    shortcut: ["a n"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When editing`,
+    get name() {
+      return t`Add Native Question`;
+    },
+    shortcut: ["n"],
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
   },
   "dashboard-cancel-edit": {
-    name: t`Cancel Edit Dashboard`,
+    get name() {
+      return t`Cancel Edit Dashboard`;
+    },
     shortcut: ["e"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When editing`,
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
   },
   "dashboard-send-to-trash": {
-    name: t`Send tashboard to trash`,
+    get name() {
+      return t`Send tashboard to trash`;
+    },
     shortcut: ["$mod+backspace"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When viewing`,
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When viewing`;
+    },
   },
   "dashboard-toggle-info-sidebar": {
-    name: t`Toggle Dashboard Info`,
+    get name() {
+      return t`Toggle Dashboard Info`;
+    },
     shortcut: ["]"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When viewing`,
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When viewing`;
+    },
   },
   "dashboard-edit": {
-    name: t`Edit Dashboard`,
-    shortcutGroup: "dashboard",
+    get name() {
+      return t`Edit Dashboard`;
+    },
+    shortcutGroup: "dashboard" as const,
     shortcut: ["e"],
-    shortcutContext: t`When viewing`,
+    get shortcutContext() {
+      return t`When viewing`;
+    },
   },
   "dashboard-save": {
-    name: t`Save Dashboard`,
+    get name() {
+      return t`Save Dashboard`;
+    },
     shortcut: ["s"],
-    shortcutGroup: "dashboard",
-    shortcutContext: t`When editing`,
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
+  },
+  "dashboard-change-tab": {
+    get name() {
+      return t`Change dashboard tab`;
+    },
+    shortcut: ["([1-9])"],
+    shortcutDisplay: ["1", "2", "3", ELLIPSIS],
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When viewing`;
+    },
   },
 };

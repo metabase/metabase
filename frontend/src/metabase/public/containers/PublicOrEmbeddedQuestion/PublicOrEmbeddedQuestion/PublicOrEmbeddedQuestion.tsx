@@ -7,7 +7,7 @@ import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { setErrorPage } from "metabase/redux/app";
-import { addFields, addParamValues } from "metabase/redux/metadata";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import {
@@ -75,9 +75,6 @@ export const PublicOrEmbeddedQuestion = ({
         throw { status: 404 };
       }
 
-      if (card.param_values) {
-        await dispatch(addParamValues(card.param_values));
-      }
       if (card.param_fields) {
         await dispatch(addFields(card.param_fields));
       }

@@ -14,8 +14,8 @@
   (testing "valid paths"
     (doseq [path valid-paths]
       (testing (pr-str path)
-        (is (= true
-               (perms.u/valid-path? path)))))))
+        (is (true?
+             (perms.u/valid-path? path)))))))
 
 (deftest ^:parallel valid-path-test-2
   (testing "invalid paths"

@@ -18,11 +18,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.secret :as secret]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.field-values :as sync.field-values]
@@ -655,7 +655,8 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
-                                                             :database_indexed  true
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
@@ -670,7 +671,8 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
-                                                             :database_indexed  false
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
@@ -1166,6 +1168,14 @@
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
 
+(deftest db-metadata-tables-have-non-nil-schemas
+  (mt/test-drivers (mt/normal-drivers)
+    (is (every? some?
+                (->> (mt/user-http-request :crowberto :get 200
+                                           (format "database/%d/metadata" (mt/id)))
+                     :tables
+                     (map :schema))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1386,11 +1396,11 @@
             ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
             ;; however if something went wrong, don't hang forever, eventually timeout and fail
             (testing "sync called?"
-              (is (= true
-                     (deref sync-called? long-timeout :sync-never-called))))
+              (is (true?
+                   (deref sync-called? long-timeout :sync-never-called))))
             (testing "analyze called?"
-              (is (= true
-                     (deref analyze-called? long-timeout :analyze-never-called))))
+              (is (true?
+                   (deref analyze-called? long-timeout :analyze-never-called))))
             (testing "audit log entry generated"
               (is (= db-id
                      (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))))))))

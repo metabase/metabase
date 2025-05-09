@@ -17,7 +17,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(declare ^:private fix-incoming-idents valid-ident?)
+(declare ^:private fix-incoming-idents)
 
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
@@ -144,21 +144,22 @@ saved later when it is ready."
   minutes."
   (u/minutes->ms 15))
 
-(defn- valid-ident?
-  "Validates that model columns have idents that always start with `model[CardEntityId]__`, and that all idents are
-  nonempty strings.
+;; TODO: Bring this back once we can count on idents again.
+#_(defn- valid-ident?
+    "Validates that model columns have idents that always start with `model[CardEntityId]__`, and that all idents are
+    nonempty strings.
 
-  Note that this **does not** check that `:type :native` queries have native idents - SQL-based sandboxing stores
-  `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
-  ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
-  ;; At least this checks that we never store `native[]__`, ie. native queries without a card entity_id.
-  ([column card]
-   (valid-ident? column (= (:type card) :model) (:entity_id card)))
-  ([column model? entity-id]
-   (let [valid-fn (cond
-                    model?               lib/valid-model-ident?
-                    :else                lib/valid-basic-ident?)]
-     (valid-fn column entity-id))))
+    Note that this **does not** check that `:type :native` queries have native idents - SQL-based sandboxing stores
+    `:native` queries but returns MBQL-like metadata with IDs and the Field `entity_id`s as idents."
+    ;; TODO: That limitation that prevents checking native queries have native-looking :idents is unfortunate.
+    ;; At least this checks that we never store `native[]__`, ie. native queries without a card entity_id.
+    ([column card]
+     (valid-ident? column (= (:type card) :model) (:entity_id card)))
+    ([column model? entity-id]
+     (let [valid-fn (cond
+                      model?               lib/valid-model-ident?
+                      :else                lib/valid-basic-ident?)]
+       (valid-fn column entity-id))))
 
 (mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
@@ -211,7 +212,8 @@ saved later when it is ready."
     (let [eid (:entity_id card)]
       (map (fn [col]
              (cond-> col
-               (not (lib/valid-model-ident? col eid)) (lib/add-model-ident eid)))))
+               (and (lib/valid-basic-ident? col eid)
+                    (not (lib/valid-model-ident? col eid))) (lib/add-model-ident eid)))))
     identity))
 
 (defn infer-metadata-with-model-overrides
@@ -246,7 +248,7 @@ saved later when it is ready."
   - Be for an inner query, not for a model, and need to be wrapped with the [[lib/model-ident]]."
   [results-metadata card]
   ;; It's important that the placeholders are handled first, otherwise the check for double-wrapping will fail.
-  (into [] (comp (map #(update % :ident lib/replace-placeholder-idents (:entity_id card)))
+  (into [] (comp (map #(m/update-existing % :ident lib/replace-placeholder-idents (:entity_id card)))
                  (xform-maybe-fix-idents-for-model card))
         results-metadata))
 
@@ -292,10 +294,11 @@ saved later when it is ready."
 
 (defn assert-valid-idents!
   "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
-  [{cols :result_metadata :as card}]
-  (lib/assert-idents-present! cols {:card-id (:id card)})
-  (when-let [invalid (seq (remove #(or (nil? (:ident %))
-                                       (valid-ident? % card))
-                                  cols))]
-    (throw (ex-info "Some columns in :result_metadata have bad :idents!"
-                    {:invalid invalid}))))
+  [{_cols :result_metadata :as _card}]
+  ;; TODO: Bring back these safety checks when we can rely on card having `:ident`s.
+  #_(lib/assert-idents-present! cols {:card-id (:id card)})
+  #_(when-let [invalid (seq (remove #(or (nil? (:ident %))
+                                         (valid-ident? % card))
+                                    cols))]
+      (log/warnf "Some columns in :result_metadata (card %d %s %s) have bad :idents! Query %s and bad columns %s"
+                 (:id card) (:entity_id card) (str (:type card)) (:dataset_query card) invalid)))

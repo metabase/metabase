@@ -6,7 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import QuestionDownloadPopover from "metabase/query_builder/components/QuestionDownloadPopover";
+import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
@@ -62,7 +62,7 @@ export function PublicOrEmbeddedQuestionView({
 
   const questionResultDownloadButton =
     result && downloadsEnabled ? (
-      <QuestionDownloadPopover
+      <PublicOrEmbeddedQuestionDownloadPopover
         className={cx(
           CS.m1,
           CS.textMediumHover,
