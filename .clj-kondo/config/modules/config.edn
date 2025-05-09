@@ -77,7 +77,6 @@
           metabase.api.dataset
           metabase.api.docs
           metabase.api.field
-          metabase.api.geojson
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
@@ -92,6 +91,7 @@
            analyze
            api-routes
            channel
+           classloader
            config
            database-routing
            db
@@ -105,7 +105,6 @@
            model-persistence
            models
            permissions
-           plugins
            premium-features
            pulse
            query-processor
@@ -187,6 +186,11 @@
            types
            util}}
 
+  classloader
+  {:api  #{metabase.classloader.core
+           metabase.classloader.init}
+   :uses #{util}}
+
   cloud-migration
   {:api  #{metabase.cloud-migration.api
            metabase.cloud-migration.core
@@ -197,7 +201,7 @@
   {:api  #{metabase.cmd
            metabase.cmd.copy
            metabase.cmd.dump-to-h2}
-   :uses #{api api-routes config db legacy-mbql models plugins query-processor search settings util}}
+   :uses #{api api-routes classloader config db legacy-mbql models query-processor search settings util}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
@@ -220,7 +224,7 @@
 
   db
   {:api  #{metabase.db metabase.db.metadata-queries metabase.db.query metabase.db.setup}
-   :uses #{auth-provider config connection-pool driver legacy-mbql lib plugins query-processor task util}}
+   :uses #{auth-provider classloader config connection-pool driver legacy-mbql lib query-processor task util}}
 
   driver
   {:api #{metabase.driver
@@ -249,6 +253,7 @@
    :uses #{actions
            api
            auth-provider
+           classloader
            config
            connection-pool
            database-routing
@@ -258,7 +263,6 @@
            logger
            models
            notification
-           plugins
            premium-features
            settings
            pulse
@@ -366,7 +370,7 @@
 
   logger
   {:api  #{metabase.logger metabase.logger.init}
-   :uses #{config plugins}}
+   :uses #{classloader config}}
 
   login-history
   {:api #{metabase.login-history.api
@@ -423,6 +427,7 @@
            audit
            cache
            channel
+           classloader
            config
            db
            driver
@@ -432,7 +437,6 @@
            moderation
            notification
            permissions
-           plugins
            premium-features
            settings
            public-sharing
@@ -484,21 +488,21 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.util}
-   :uses #{api audit config db models plugins premium-features request server settings util}}
+   :uses #{api audit classloader config db models premium-features request server settings util}}
 
   pivot
   {:api #{metabase.pivot.core}
    :uses #{util models}}
 
   plugins
-  {:api  #{metabase.plugins metabase.plugins.classloader}
-   :uses #{config driver util}}
+  {:api  #{metabase.plugins.core}
+   :uses #{classloader config driver util}}
 
   premium-features
   {:api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{api config db internal-stats plugins settings util}}
+   :uses #{api classloader config db internal-stats settings util}}
 
   public-sharing
   {:api  #{metabase.public-sharing.api
@@ -511,7 +515,7 @@
            metabase.pulse.core
            metabase.pulse.init
            metabase.pulse.task.send-pulses}
-   :uses #{api channel config db driver events models notification permissions plugins premium-features
+   :uses #{api channel classloader config db driver events models notification permissions premium-features
            query-processor request task task-history util
            enterprise/advanced-permissions enterprise/sandbox}}
 
@@ -605,7 +609,7 @@
 
   server
   {:api #{metabase.server.core
-          metabase.server.middleware.json
+          metabase.server.init
           metabase.server.middleware.session
           metabase.server.streaming-response}
    :uses #{analytics api api-keys api-routes config core db driver embedding models premium-features settings session request util enterprise/sso}}
@@ -622,7 +626,7 @@
            metabase.settings.core
            metabase.settings.deprecated-grab-bag
            metabase.settings.init}
-   :uses #{api config db events models premium-features server util enterprise/advanced-permissions}}
+   :uses #{api config db events models premium-features util enterprise/advanced-permissions}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -664,10 +668,10 @@
           metabase.task.init}
    :uses #{analytics
            channel
+           classloader
            config
            db
            driver
-           plugins
            premium-features
            settings
            task-history
@@ -717,7 +721,7 @@
 
   util
   {:api :any
-   :uses #{config db driver legacy-mbql lib models plugins settings}}
+   :uses #{classloader config db driver legacy-mbql lib models settings}}
 
   version
   {:api  #{metabase.version.core
@@ -751,7 +755,7 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api enterprise/metabot-v3 premium-features util}}
+   :uses #{api enterprise/metabot-v3 premium-features}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -774,6 +778,7 @@
   {:api  #{metabase-enterprise.audit-app.api.routes}
    :uses #{api
            audit
+           classloader
            db
            driver
            lib
@@ -861,13 +866,13 @@
           metabase-enterprise.sandbox.api.util}
    :uses #{api
            audit
+           classloader
            db
            driver
            legacy-mbql
            lib
            models
            permissions
-           plugins
            premium-features
            query-processor
            request

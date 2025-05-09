@@ -170,11 +170,11 @@
   (:require
    [clojure.string :as str]
    [metabase.audit :as audit]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]

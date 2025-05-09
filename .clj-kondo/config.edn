@@ -651,6 +651,8 @@
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.models.collection-test/with-collection-hierarchy!                                                                hooks.common/let-one-with-optional-value
+   metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
+   metabase.classloader.impl/require                                                                                         hooks.clojure.core.require/lint-require
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
    metabase.models.dashboard-test/with-dash-in-collection!                                                                   hooks.common/with-three-bindings
@@ -658,7 +660,6 @@
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
-   metabase.plugins.classloader/require                                                                                      hooks.clojure.core.require/lint-require
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding

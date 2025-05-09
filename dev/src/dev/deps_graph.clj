@@ -65,7 +65,8 @@
   '#{require
      clojure.core/require
      classloader/require
-     metabase.plugins.classloader/require
+     metabase.classloader.core/require
+     metabase.classloader.impl/require
      requiring-resolve
      clojure.core/requiring-resolve})
 
