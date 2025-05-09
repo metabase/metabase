@@ -5,9 +5,9 @@
    [flatland.ordered.map :as ordered-map]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.driver :as driver]
    [metabase.logger :as logger]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -15,12 +15,6 @@
    (java.util.concurrent.atomic AtomicInteger)))
 
 (set! *warn-on-reflection* true)
-
-(defn- loaded-drivers
-  "Returns the names of all loaded drivers"
-  []
-  (into [] (comp (filter simple-keyword?) (map name))
-        (sort (descendants driver/hierarchy ::driver/driver))))
 
 (defn- all-namespace-names
   []
@@ -47,15 +41,32 @@
 
 (defn- presets
   []
-  (let [namespace-names (all-namespace-names)]
-    [{:id :sync
-      :display_name (tru "Sync issue troubleshooting")
-      :loggers (->> (-> [(logger "metabase.driver")]
-                        (into (loggers-under "metabase.sync" namespace-names))
-                        (into (comp (map #(str "metabase.driver." %))
-                                    (mapcat #(loggers-under % namespace-names)))
-                              (sort (loaded-drivers))))
-                    (sort-by :name))}]))
+  [{:id :sync
+    :display_name (tru "Sync issue troubleshooting")
+    :loggers (doto (->> (concat (loggers-under "metabase.sync")
+                                (loggers-under "metabase.driver.sql-jdbc.sync"))
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Sync preset is empty"))))}
+   {:id :linkedfilters
+    :display_name (tru "Linked filters troubleshooting")
+    :loggers (doto (->> (loggers-under "metabase.models.params.chain-filter")
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Linked filters preset is empty"))))}
+   {:id :serialization
+    :display_name (tru "Serialization troubleshooting")
+    :loggers (doto (->> (cons (logger "metabase.models.serialization")
+                              (loggers-under "metabase-enterprise.serialization"))
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}])
 
 (api.macros/defendpoint :get "/presets" :- [:sequential
                                             [:map

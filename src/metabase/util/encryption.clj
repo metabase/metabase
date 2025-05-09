@@ -1,6 +1,16 @@
 (ns metabase.util.encryption
   "Utility functions for encrypting and decrypting strings using AES256 CBC + HMAC SHA512 and the
-  `MB_ENCRYPTION_SECRET_KEY` env var."
+  `MB_ENCRYPTION_SECRET_KEY` env var.
+
+  You can generate a new key with something like
+
+  ```clj
+  (let [ba (byte-array 32)
+        _  (.nextBytes (java.security.SecureRandom.) ba)
+        k  (codecs/bytes->b64-str ba)]
+    (alter-var-root #'env/env assoc :mb-encryption-secret-key k)
+    k)
+  ```"
   (:require
    [buddy.core.bytes :as bytes]
    [buddy.core.codecs :as codecs]
@@ -40,6 +50,9 @@
 
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
+;;
+;; TODO -- we should probably put a watch on `env/env` so if it changes this gets recaclulated as needed... or just make
+;; it a memoized function or something
 (defonce ^:private ^{:tag 'bytes} default-secret-key
   (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
 

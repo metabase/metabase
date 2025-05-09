@@ -44,6 +44,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     databases,
     isShowingNewbModal,
     isShowingTimelineSidebar,
+    isShowingAIQuestionAnalysisSidebar,
     queryBuilderMode,
     closeQbNewbModal,
     onDismissToast,
@@ -163,6 +164,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const showLeftSidebar =
     isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
   const showRightSidebar =
+    isShowingAIQuestionAnalysisSidebar ||
     isShowingTimelineSidebar ||
     isShowingQuestionInfoSidebar ||
     isShowingQuestionSettingsSidebar ||

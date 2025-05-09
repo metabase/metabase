@@ -4,7 +4,7 @@
   adding query ViewLogs, storing exceptions and formatting the results.
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
-  event -- see [[metabase.events.view-log]]."
+  event -- see [[metabase.view-log.events.view-log]]."
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]

@@ -712,7 +712,8 @@
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
-  string StringExpressionArg)
+  string [:or StringExpressionArg
+          DateTimeExpressionArg])
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date))

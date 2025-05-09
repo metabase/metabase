@@ -60,9 +60,11 @@ export const GroupSelect = ({
 }: GroupSelectProps) => {
   const triggerElement = (
     <div className={cx(CS.flex, CS.alignCenter)}>
-      <span className={cx(CS.mr1, CS.textMedium)}>
-        <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
-      </span>
+      <GroupSummary
+        mr="0.5rem"
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+      />
       <Icon className={CS.textLight} name="chevrondown" size={10} />
     </div>
   );

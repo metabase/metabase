@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - master
+      - metabot-v3-main
       - feature-visualizer
       - internal-tools
     paths-ignore:

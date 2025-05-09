@@ -4,6 +4,7 @@ import NewItemMenu from "metabase/containers/NewItemMenu";
 import type { CollectionId } from "metabase-types/api";
 
 import { NewButton, NewButtonText } from "./NewItemButton.styled";
+import { trackAppNewButtonClicked } from "./analytics";
 
 export interface NewItemButtonProps {
   collectionId?: CollectionId;
@@ -13,7 +14,12 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
   return (
     <NewItemMenu
       trigger={
-        <NewButton primary icon="add" aria-label={t`New`}>
+        <NewButton
+          primary
+          icon="add"
+          aria-label={t`New`}
+          onClick={() => trackAppNewButtonClicked()}
+        >
           <NewButtonText>{t`New`}</NewButtonText>
         </NewButton>
       }

@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import type React from "react";
 import { forwardRef } from "react";
 
-import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
+import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 /**
  * Injects CSS variables and styles to the SDK components underneath them.

@@ -1,11 +1,10 @@
 import { msgid, ngettext, t } from "ttag";
 
 import type { UserGroupType } from "metabase/admin/types";
-import CS from "metabase/css/core/index.css";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
-interface GroupSummaryProps {
+interface GroupSummaryProps extends BoxProps {
   groups: UserGroupType[];
   selectedGroupIds: number[];
 }
@@ -13,6 +12,7 @@ interface GroupSummaryProps {
 export const GroupSummary = ({
   groups,
   selectedGroupIds,
+  ...props
 }: GroupSummaryProps) => {
   const adminGroup = groups.find(isAdminGroup);
   const otherGroups = groups.filter(
@@ -22,31 +22,35 @@ export const GroupSummary = ({
 
   if (adminGroup && selectedGroupIds.includes(adminGroup.id)) {
     return (
-      <span>
+      <Box component="span" {...props}>
         <Box component="span" c="filter">
           {t`Admin`}
         </Box>
         {otherGroups.length > 0 && " " + t`and` + " "}
         {otherGroups.length > 0 && (
-          <span className={CS.textBrand}>
+          <Box component="span" c="brand">
             {((n) => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
               otherGroups.length,
             )}
-          </span>
+          </Box>
         )}
-      </span>
+      </Box>
     );
   } else if (otherGroups.length === 1) {
-    return <span className={CS.textBrand}>{otherGroups[0].name}</span>;
+    return (
+      <Box component="span" c="brand" {...props}>
+        {otherGroups[0].name}
+      </Box>
+    );
   } else if (otherGroups.length > 1) {
     return (
-      <span className={CS.textBrand}>
+      <Box component="span" c="brand" {...props}>
         {((n) => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
           otherGroups.length,
         )}
-      </span>
+      </Box>
     );
   } else {
-    return <span>{t`Default`}</span>;
+    return <Box {...props}>{t`Default`}</Box>;
   }
 };

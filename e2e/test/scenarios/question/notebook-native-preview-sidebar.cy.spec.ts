@@ -140,7 +140,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options").should("be.visible");
 
     resizeScreen("small");

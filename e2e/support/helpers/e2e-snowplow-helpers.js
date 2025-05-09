@@ -36,7 +36,8 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
   retrySnowplowRequest(
     "micro/good",
     ({ body }) => {
-      lastReceivedEvent = body?.[0].event?.unstruct_event?.data?.data;
+      lastReceivedEvent =
+        body?.[0]?.event?.unstruct_event?.data?.data ?? body?.[0];
       lastFoundEventCount = body.filter((snowplowEvent) =>
         isDeepMatch(
           snowplowEvent?.event?.unstruct_event?.data?.data,
@@ -101,10 +102,45 @@ function isArrayDeepMatch(array, partialArray) {
   return true;
 }
 
+const getEventNames = (body) => {
+  return body?.map((event) => {
+    // get the event name if it exists
+    const eventName = event?.event?.unstruct_event?.data?.data?.event;
+    if (eventName) {
+      return eventName;
+    }
+    // get the eventType if it exists, print it as object so we can tell
+    if (event.eventType) {
+      return {
+        eventType: event.eventType,
+      };
+    }
+    // fallback to logging it
+    console.log("[not able to parse event name]", event);
+    return "[not able to parse event name]";
+  });
+};
+
 export const expectGoodSnowplowEvents = (count) => {
-  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
-    .its("body")
-    .should("have.length", count);
+  return retrySnowplowRequest(
+    "micro/good",
+    ({ body }) => body.length >= count,
+    ({ body }) => {
+      // this gets printed when the timeout is reached, meaning that we never reach the count we expect
+      const eventNamesReceived = getEventNames(body);
+      return `Timeout while waiting for ${count} good Snowplow events, reached ${eventNamesReceived.length} events. ${eventNamesReceived ? `Events names received: ${JSON.stringify(eventNamesReceived, null, 2)}` : ""}`;
+    },
+  ).then(({ body }) => {
+    const eventNamesReceived = getEventNames(body);
+
+    if (body.length !== count) {
+      // this gets called when the number of events is greater than what we expected
+      throw new Error(
+        `Expected ${count} good Snowplow events, but got ${eventNamesReceived.length}. ${eventNamesReceived ? `Events names received: ${JSON.stringify(eventNamesReceived, null, 2)}` : ""}`,
+      );
+    }
+    return cy.wrap(body);
+  });
 };
 
 export const expectNoBadSnowplowEvents = () => {
@@ -138,7 +174,7 @@ const retrySnowplowRequest = (
     } else {
       const message =
         typeof messageOrMessageFn === "function"
-          ? messageOrMessageFn()
+          ? messageOrMessageFn(response)
           : messageOrMessageFn;
       throw new Error("Snowplow retry timeout " + message);
     }

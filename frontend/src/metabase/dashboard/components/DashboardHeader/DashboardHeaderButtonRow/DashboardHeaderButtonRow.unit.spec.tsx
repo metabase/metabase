@@ -98,6 +98,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: null,
   },
+  [DASHBOARD_ACTION.ANALYZE_DASHBOARD]: {
+    icon: "metabot",
+    tooltip: "Explain this dashboard",
+  },
 };
 
 const setup = ({

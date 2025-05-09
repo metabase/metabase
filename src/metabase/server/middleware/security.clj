@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.config :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.request.core :as request]
@@ -120,7 +121,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
-                                  (when (public-settings/anon-tracking-enabled)
+                                  (when (analytics/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
@@ -158,7 +159,7 @@
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
-                                 (when (public-settings/anon-tracking-enabled)
+                                 (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?

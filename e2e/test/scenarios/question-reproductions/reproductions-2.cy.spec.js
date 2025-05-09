@@ -183,9 +183,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
   });
 
   it("should show Models tab after creation the first model (metabase#24878)", () => {
-    cy.visit("/");
-
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText(/use the notebook/i)
       .click();
@@ -500,7 +498,7 @@ describe("issue 30165", () => {
     cy.get("@dataset.all").should("have.length", 0);
     cy.get("@cardQuery.all").should("have.length", 0);
     cy.findByTestId("query-builder-main")
-      .findByText("Query results will appear here.")
+      .findByText("Here's where your results will appear")
       .should("be.visible");
   });
 });

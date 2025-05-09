@@ -1797,7 +1797,6 @@ describe("issue 48878", () => {
     // Create a dummy model so that GET /api/search does not return the model want to test.
     // If we don't do this, GET /api/search will return and put card object with dataset_query
     // attribute in the redux store (entity framework) which would prevent the issue from happening.
-    cy.visit("/model/new");
     createModel({
       name: "Dummy model",
       query: "select 1",
@@ -1805,8 +1804,6 @@ describe("issue 48878", () => {
 
     cy.log("create model");
 
-    cy.button("New").click();
-    H.popover().findByText("Model").click();
     createModel({
       name: "SQL Model",
       query: "select * from orders limit 5",
@@ -1863,6 +1860,7 @@ describe("issue 48878", () => {
   }
 
   function createModel({ name, query }) {
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use a native query")
       .click();

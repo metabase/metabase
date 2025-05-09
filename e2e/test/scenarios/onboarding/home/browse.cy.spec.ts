@@ -102,6 +102,35 @@ H.describeWithSnowplow("scenarios > browse", () => {
     });
   });
 
+  it("tracks when a new model creation is initiated", () => {
+    cy.visit("/browse/models");
+    cy.findByTestId("browse-models-header")
+      .findByLabelText("Create a new model")
+      .should("be.visible")
+      .click();
+    cy.location("pathname").should("eq", "/model/new");
+    H.expectNoBadSnowplowEvents();
+    H.expectGoodSnowplowEvent({
+      event: "plus_button_clicked",
+      triggered_from: "model",
+    });
+  });
+
+  it("tracks when a new metric creation is initiated", () => {
+    cy.visit("/browse/metrics");
+    cy.findByTestId("browse-metrics-header")
+      .findByLabelText("Create a new metric")
+      .should("be.visible")
+      .click();
+    cy.findByTestId("entity-picker-modal").should("be.visible");
+
+    H.expectNoBadSnowplowEvents();
+    H.expectGoodSnowplowEvent({
+      event: "plus_button_clicked",
+      triggered_from: "metric",
+    });
+  });
+
   it("browsing to a database only triggers a request for schemas for that specific database", () => {
     cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schemas`).as(
       "schemasForSampleDatabase",

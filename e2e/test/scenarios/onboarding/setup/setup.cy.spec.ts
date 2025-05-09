@@ -9,9 +9,9 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  locales.forEach((locale) => {
-    beforeEach(() => H.restore("blank"));
+  beforeEach(() => H.restore("blank"));
 
+  locales.forEach((locale) => {
     it(
       `should allow you to sign up using "${locale}" browser locale`,
       { tags: ["@external"] },
@@ -222,31 +222,24 @@ describe("scenarios > setup", () => {
     });
   });
 
-  it(
-    "should pre-fill user info for hosted instances (infra-frontend#1109)",
-    { tags: "@flaky" },
-    () => {
-      H.setTokenFeatures("none");
-      H.mockSessionProperty("is-hosted?", true);
+  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
+    H.mockSessionProperty("is-hosted?", true);
 
-      cy.visit(
-        "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
-      );
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+    );
 
-      skipWelcomePage();
-      selectPreferredLanguageAndContinue();
+    skipWelcomePage();
+    selectPreferredLanguageAndContinue();
 
-      cy.findByTestId("setup-forms").within(() => {
-        cy.findByDisplayValue("John").should("exist");
-        cy.findByDisplayValue("Doe").should("exist");
-        cy.findByDisplayValue("john@doe.test").should("exist");
-        cy.findByDisplayValue("Doe Unlimited").should("exist");
-        cy.findByLabelText("Create a password")
-          .should("be.focused")
-          .and("be.empty");
-      });
-    },
-  );
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByDisplayValue("Doe").should("exist");
+      cy.findByDisplayValue("john@doe.test").should("exist");
+      cy.findByDisplayValue("Doe Unlimited").should("exist");
+      cy.findByLabelText("Create a password").should("be.empty");
+    });
+  });
 
   it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";

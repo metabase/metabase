@@ -1,9 +1,7 @@
-import cx from "classnames";
-import { type ChangeEvent, type Ref, forwardRef } from "react";
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
-import CS from "metabase/css/core/index.css";
+import { Button, Flex, Input } from "metabase/ui";
 
 interface AddRowProps {
   value: string;
@@ -16,56 +14,47 @@ interface AddRowProps {
   children?: React.ReactNode;
 }
 
-export const AddRow = forwardRef(function AddRow(
-  {
-    value,
-    isValid,
-    placeholder,
-    onKeyDown,
-    onChange,
-    onDone,
-    onCancel,
-    children,
-  }: AddRowProps,
-  ref: Ref<HTMLDivElement>,
-) {
-  return (
-    <div
-      ref={ref}
-      className={cx(
-        CS.my2,
-        CS.pl1,
-        CS.p1,
-        CS.bordered,
-        CS.borderBrand,
-        CS.rounded,
-        CS.relative,
-        CS.flex,
-        CS.alignCenter,
-      )}
+export const AddRow = ({
+  value,
+  isValid,
+  placeholder,
+  onKeyDown,
+  onChange,
+  onDone,
+  onCancel,
+  children,
+}: AddRowProps) => (
+  <Flex
+    my="1rem"
+    p="0.5rem"
+    display="relative"
+    align="center"
+    bd="1px solid var(--mb-color-brand)"
+    style={{ borderRadius: "0.5rem" }}
+  >
+    {children}
+    <Input
+      type="text"
+      variant="unstyled"
+      flex="1 0 auto"
+      fz="lg"
+      styles={{ input: { background: "transparent" } }}
+      value={value}
+      placeholder={placeholder}
+      autoFocus
+      onKeyDown={onKeyDown}
+      onChange={onChange}
+    />
+    <Button variant="subtle" bg="transparent" onClick={onCancel} mr="sm">
+      {t`Cancel`}
+    </Button>
+    <Button
+      variant={isValid ? "filled" : "outline"}
+      bg={!isValid ? "transparent" : ""}
+      disabled={!isValid}
+      onClick={onDone}
     >
-      {children}
-      <input
-        className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        autoFocus
-        onKeyDown={onKeyDown}
-        onChange={onChange}
-      />
-      <span className={CS.link} onClick={onCancel}>
-        {t`Cancel`}
-      </span>
-      <button
-        className={cx(ButtonsS.Button, CS.ml2, {
-          [ButtonsS.ButtonPrimary]: !!isValid,
-        })}
-        disabled={!isValid}
-        onClick={onDone}
-      >
-        {t`Add`}
-      </button>
-    </div>
-  );
-});
+      {t`Add`}
+    </Button>
+  </Flex>
+);

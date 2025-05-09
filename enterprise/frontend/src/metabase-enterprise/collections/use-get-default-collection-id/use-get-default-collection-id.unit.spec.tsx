@@ -1,5 +1,5 @@
 import {
-  setupAuditEndpoints,
+  setupAuditInfoEndpoint,
   setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -53,7 +53,7 @@ const setup = ({
   hasRootAccess?: boolean;
 }) => {
   setupCollectionByIdEndpoint({ collections });
-  setupAuditEndpoints();
+  setupAuditInfoEndpoint();
 
   const entitiesState = createMockEntitiesState({
     collections: [

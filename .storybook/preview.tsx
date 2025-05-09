@@ -18,7 +18,7 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
 import { css, Global, useTheme } from "@emotion/react";
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
+import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
 // Any story name changes are also reflected in the loki.config.js storiesFilter array.
@@ -72,7 +72,7 @@ const globalStyles = css`
 `;
 
 const decorators = [
-  Story => {
+  (Story) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }

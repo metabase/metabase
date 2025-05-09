@@ -1,23 +1,56 @@
-import _ from "underscore";
-
-import Group from "metabase/entities/groups";
-import { connect } from "metabase/lib/redux";
+import {
+  useCreatePermissionsGroupMutation,
+  useDeletePermissionsGroupMutation,
+  useListPermissionsGroupsQuery,
+  useUpdatePermissionsGroupMutation,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
+import type { Group } from "metabase-types/api";
 
 import { GroupsListing } from "../components/GroupsListing";
 
-const mapStateToProps = (state: State, props: { entityQuery: unknown }) => ({
-  groups: Group.selectors.getList(state, props),
-  isAdmin: getUserIsAdmin(state),
-});
+export const GroupsListingApp = () => {
+  const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
 
-const mapDispatchToProps = {
-  delete: PLUGIN_GROUP_MANAGERS.deleteGroup ?? Group.actions.delete,
+  const { data, isLoading, error } = useListPermissionsGroupsQuery();
+  const groups = data ?? [];
+
+  const [createGroup] = useCreatePermissionsGroupMutation();
+  const [updateGroup] = useUpdatePermissionsGroupMutation();
+  const [deleteGroup] = useDeletePermissionsGroupMutation();
+
+  const handleCreate = async (group: { name: string }) => {
+    await createGroup(group).unwrap();
+  };
+
+  const handleUpdate = async (group: { id: number; name: string }) => {
+    await updateGroup(group).unwrap();
+  };
+
+  const handleDelete = async (
+    group: Omit<Group, "members">,
+    groupCount: number,
+  ) => {
+    if (PLUGIN_GROUP_MANAGERS.deleteGroup) {
+      await dispatch(PLUGIN_GROUP_MANAGERS.deleteGroup(group, groupCount));
+    } else {
+      await deleteGroup(group.id).unwrap();
+    }
+  };
+
+  return (
+    <LoadingAndErrorWrapper error={error} loading={isLoading}>
+      <GroupsListing
+        isAdmin={isAdmin}
+        groups={groups}
+        create={handleCreate}
+        update={handleUpdate}
+        delete={handleDelete}
+      />
+    </LoadingAndErrorWrapper>
+  );
 };
-
-export const GroupsListingApp = _.compose(
-  Group.loadList({ reload: true }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(GroupsListing);

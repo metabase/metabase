@@ -41,7 +41,6 @@ import {
   setParameterType,
   setSharing,
   setSidebar,
-  showAddParameterPopover,
   toggleSidebar,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
@@ -72,6 +71,7 @@ import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
+import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import {
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
@@ -155,7 +155,6 @@ const mapDispatchToProps = {
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
-  showAddParameterPopover,
   removeParameter,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
@@ -228,7 +227,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     setParameterSourceType,
     setParameterSourceConfig,
     setParameterFilteringParameters,
-    showAddParameterPopover,
     removeParameter,
     onReplaceAllDashCardVisualizationSettings,
     onUpdateDashCardVisualizationSettings,
@@ -326,6 +324,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   useDashboardUrlQuery(router, location);
+  useRegisterDashboardMetabotContext();
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
@@ -388,7 +387,6 @@ const DashboardApp = (props: DashboardAppProps) => {
         setParameterSourceType={setParameterSourceType}
         setParameterSourceConfig={setParameterSourceConfig}
         setParameterFilteringParameters={setParameterFilteringParameters}
-        showAddParameterPopover={showAddParameterPopover}
         removeParameter={removeParameter}
         onReplaceAllDashCardVisualizationSettings={
           onReplaceAllDashCardVisualizationSettings
