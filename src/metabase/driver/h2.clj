@@ -71,7 +71,8 @@
                               :datetime-diff             true
                               :expression-literals       true
                               :full-join                 false
-                              :index-info                true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                false
                               :now                       true
                               :percentile-aggregations   false
                               :regex                     true

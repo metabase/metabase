@@ -134,7 +134,6 @@ export type DashboardProps = {
     parameterId: ParameterId,
     filteringParameters: ParameterId[],
   ) => void;
-  showAddParameterPopover: () => void;
   removeParameter: (id: ParameterId) => void;
 
   onReplaceAllDashCardVisualizationSettings: (
@@ -512,6 +511,7 @@ function Dashboard(props: DashboardProps) {
                       reportAutoScrolledToDashcard={
                         reportAutoScrolledToDashcard
                       }
+                      handleSetEditing={handleSetEditing}
                     />
                   </FullWidthContainer>
                 )}
@@ -519,7 +519,6 @@ function Dashboard(props: DashboardProps) {
 
               <DashboardSidebars
                 dashboard={dashboard}
-                showAddParameterPopover={props.showAddParameterPopover}
                 removeParameter={props.removeParameter}
                 addCardToDashboard={props.addCardToDashboard}
                 clickBehaviorSidebarDashcard={

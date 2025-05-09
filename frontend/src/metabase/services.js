@@ -298,19 +298,10 @@ export const SettingsApi = {
 };
 
 export const PermissionsApi = {
-  groups: GET("/api/permissions/group"),
-  groupDetails: GET("/api/permissions/group/:id"),
   graph: GET("/api/permissions/graph"),
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  memberships: GET("/api/permissions/membership"),
-  createMembership: POST("/api/permissions/membership"),
-  deleteMembership: DELETE("/api/permissions/membership/:id"),
-  updateMembership: PUT("/api/permissions/membership/:id"),
-  clearGroupMembership: PUT("/api/permissions/membership/:id/clear"),
-  updateGroup: PUT("/api/permissions/group/:id"),
-  deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
 export const PersistedModelsApi = {

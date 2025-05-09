@@ -249,6 +249,10 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import metabot_component from "./metabot.svg?component";
+import metabot_source from "./metabot.svg?source";
+import metabot_sad_component from "./metabot_sad.svg?component";
+import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
 import model_component from "./model.svg?component";
@@ -305,6 +309,8 @@ import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
+import redo_component from "./redo.svg?component";
+import redo_source from "./redo.svg?source";
 import reference_component from "./reference.svg?component";
 import reference_source from "./reference.svg?source";
 import refresh_component from "./refresh.svg?component";
@@ -359,6 +365,8 @@ import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
 import stepped_source from "./stepped.svg?source";
+import stop_component from "./stop.svg?component";
+import stop_source from "./stop.svg?source";
 import store_component from "./store.svg?component";
 import store_source from "./store.svg?source";
 import straight_component from "./straight.svg?component";
@@ -393,6 +401,8 @@ import triangle_right_component from "./triangle_right.svg?component";
 import triangle_right_source from "./triangle_right.svg?source";
 import unarchive_component from "./unarchive.svg?component";
 import unarchive_source from "./unarchive.svg?source";
+import undo_component from "./undo.svg?component";
+import undo_source from "./undo.svg?source";
 import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
@@ -916,6 +926,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    metabot: {
+      component: metabot_component,
+      source: metabot_source,
+    },
+    metabot_sad: {
+      component: metabot_sad_component,
+      source: metabot_sad_source,
+    },
     metric: {
       component: metric_component,
       source: metric_source,
@@ -1076,6 +1094,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: return_component,
       source: return_source,
     },
+    redo: {
+      component: redo_component,
+      source: redo_source,
+    },
     reference: {
       component: reference_component,
       source: reference_source,
@@ -1148,6 +1170,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: star_component,
       source: star_source,
     },
+    stop: {
+      component: stop_component,
+      source: stop_source,
+    },
     store: {
       component: store_component,
       source: store_source,
@@ -1201,6 +1227,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     unarchive: {
       component: unarchive_component,
       source: unarchive_source,
+    },
+    undo: {
+      component: undo_component,
+      source: undo_source,
     },
     unknown: {
       component: unknown_component,
@@ -1412,6 +1442,8 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "metabot"
+  | "metabot_sad"
   | "metric"
   | "model"
   | "model_with_badge"
@@ -1451,6 +1483,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "question"
+  | "redo"
   | "return"
   | "reference"
   | "refresh"
@@ -1470,6 +1503,7 @@ export type IconName =
   | "sparkles"
   | "star_filled"
   | "star"
+  | "stop"
   | "store"
   | "string"
   | "sun"
@@ -1483,6 +1517,7 @@ export type IconName =
   | "triangle_left"
   | "triangle_right"
   | "unarchive"
+  | "undo"
   | "unknown"
   | "unpin"
   | "unsubscribe"
