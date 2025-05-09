@@ -32,9 +32,9 @@
   :export?    false
   :type       :integer
   :visibility :internal
-  :doc "If Metabase stops sending notifications like alerts, it may be because long-running 
-  queries are clogging the notification queue. You may be able to unclog the queue by 
-  increasihg the size of the thread pool dedicated to notifications.")
+  :doc "If Metabase stops sending notifications like alerts, it may be because long-running
+  queries are clogging the notification queue. You may be able to unclog the queue by
+  increasing the size of the thread pool dedicated to notifications.")
 
 (def ^:private default-retry-config
   {:max-attempts            (if config/is-dev? 2 7)
