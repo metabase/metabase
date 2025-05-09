@@ -71,7 +71,10 @@
            (boolean-typed-clause? clause))))
 
 (defn boolean-expression-clause?
-  "Is `clause` an :expression clause with :type/Boolean or a literal boolean :value?"
+  "Is `clause` an :expression clause with :type/Boolean or a literal boolean :value?
+
+  This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
+  expression refs by name, if necessary, to determine whether their value is a boolean literal."
   [clause]
   (and (mbql.u/is-clause? :expression clause)
        (or (boolean-typed-clause? clause)
