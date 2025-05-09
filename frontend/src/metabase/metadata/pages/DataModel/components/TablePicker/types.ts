@@ -8,36 +8,41 @@ export type TreePath = {
   tableId?: TableId;
 };
 
-type RootNode = {
+export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode;
+
+export type RootNode = {
   type: "root";
+  key: string;
   label: "";
-  children: TreeNode[];
+  value: Record<string, never>;
+  children: DatabaseNode[];
 };
 
-export type TreeNode = RootNode | (Item & { children: TreeNode[] });
-
-export type DatabaseItem = {
+export type DatabaseNode = {
   type: "database";
   label: string;
   key: NodeKey;
   value: { databaseId: DatabaseId };
+  children: SchemaNode[];
 };
 
-export type SchemaItem = {
+export type SchemaNode = {
   type: "schema";
   label: string;
   key: string;
   value: { databaseId: DatabaseId; schemaId: SchemaId };
+  children: TableNode[];
 };
 
-export type TableItem = {
+export type TableNode = {
   type: "table";
   label: string;
   key: string;
   value: { databaseId: DatabaseId; schemaId: SchemaId; tableId: TableId };
+  children: [];
 };
 
-export type Item = DatabaseItem | SchemaItem | TableItem;
+export type Item = Omit<DatabaseNode | SchemaNode | TableNode, "children">;
 
 export type ItemType = Item["type"];
 
