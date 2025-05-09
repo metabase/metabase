@@ -8,6 +8,7 @@
   (:require
    [metabase.activity-feed.init]
    [metabase.analytics.init]
+   [metabase.bug-reporting.init]
    [metabase.cache.init]
    [metabase.channel.init]
    [metabase.cloud-migration.init]
@@ -15,6 +16,7 @@
    [metabase.driver.init]
    [metabase.embedding.init]
    [metabase.events.init]
+   [metabase.geojson.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
    [metabase.logger.init]
@@ -39,6 +41,7 @@
    [metabase.tiles.init]
    [metabase.upload.init]
    [metabase.user-key-value.init]
+   [metabase.version.init]
    [metabase.view-log.init]
    [metabase.xrays.init]))
 

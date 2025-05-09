@@ -1,6 +1,7 @@
 import {
   type ColumnSizingState,
   type PaginationState,
+  type RowSelectionState,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -51,13 +52,16 @@ export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
+  columnPinning: controlledColumnPinning,
   sorting,
   defaultRowHeight = 36,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
+  columnRowSelectOptions,
   theme,
   pageSize,
+  enableRowSelection,
   enableSelection,
   onColumnResize,
   onColumnReorder,
@@ -144,10 +148,15 @@ export const useDataGridInstance = <TData, TValue>({
       ),
     );
 
-    return [rowIdColumnDefinition, ...dataColumns].filter(isNotNull);
+    const columns = columnRowSelectOptions
+      ? [columnRowSelectOptions, rowIdColumnDefinition, ...dataColumns]
+      : [rowIdColumnDefinition, ...dataColumns];
+
+    return columns.filter(isNotNull);
   }, [
     rowId,
     columnsOptions,
+    columnRowSelectOptions,
     columnSizingMap,
     measuredColumnSizingMap,
     expandedColumnsMap,
@@ -179,15 +188,18 @@ export const useDataGridInstance = <TData, TValue>({
   const enablePagination =
     pagination?.pageSize !== DISABLED_PAGINATION_STATE.pageSize;
 
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
   const table = useReactTable({
     data,
     columns,
     state: {
       columnSizing: columnSizingMap,
       columnOrder,
-      columnPinning: { left: [ROW_ID_COLUMN_ID] },
+      columnPinning: controlledColumnPinning ?? { left: [ROW_ID_COLUMN_ID] },
       sorting,
       pagination,
+      rowSelection,
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -198,6 +210,8 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection,
   });
 
   const measureRowHeight = useCallback(
