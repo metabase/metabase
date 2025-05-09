@@ -1694,7 +1694,6 @@
         (is (= ["Af rican" "Af"] (request card param-static-list-label "Af rican")))
         (is (= [42 "Reyes Strosin"] (request name-mapped-card param-labeled-field-values "42")))))))
 
-
 ;;; --------------------------------------------- Pivot tables ---------------------------------------------
 
 (deftest pivot-public-card-test
