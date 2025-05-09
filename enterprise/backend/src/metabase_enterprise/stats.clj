@@ -1,5 +1,6 @@
 (ns metabase-enterprise.stats
   (:require
+   [metabase-enterprise.advanced-config.models.notification :as advanced-config.models.notification]
    [metabase-enterprise.scim.api :as scim-api]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.driver :as driver]
