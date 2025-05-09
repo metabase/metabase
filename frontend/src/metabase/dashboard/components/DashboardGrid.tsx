@@ -367,35 +367,6 @@ class DashboardGridInner extends Component<
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
   }
 
-  renderAddSeriesModal() {
-    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const { addSeriesModalDashCard } = this.state;
-
-    const isOpen =
-      !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
-    return (
-      <Modal
-        className={cx(
-          ModalS.Modal,
-          DashboardS.Modal,
-          DashboardS.AddSeriesModal,
-        )}
-        data-testid="add-series-modal"
-        isOpen={isOpen}
-      >
-        {isOpen && (
-          <AddSeriesModal
-            dashcard={addSeriesModalDashCard}
-            dashcardData={this.props.dashcardData}
-            fetchCardData={this.props.fetchCardData}
-            setDashCardAttributes={this.props.setDashCardAttributes}
-            onClose={() => this.setState({ addSeriesModalDashCard: null })}
-          />
-        )}
-      </Modal>
-    );
-  }
-
   onDrag = () => {
     if (!this.state.isDragging) {
       this.setState({ isDragging: true });
@@ -577,7 +548,9 @@ class DashboardGridInner extends Component<
 
   render() {
     const { dashboard, width, forwardedRef } = this.props;
-    const { replaceCardModalDashCard } = this.state;
+    const { replaceCardModalDashCard, addSeriesModalDashCard } = this.state;
+    const isAddSeriesOpen =
+      !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
     return (
       <Flex
         align="center"
@@ -592,7 +565,25 @@ class DashboardGridInner extends Component<
         }}
       >
         {width > 0 ? this.renderGrid() : <div />}
-        {this.renderAddSeriesModal()}
+        {isAddSeriesOpen && (
+          <Modal
+            className={cx(
+              ModalS.Modal,
+              DashboardS.Modal,
+              DashboardS.AddSeriesModal,
+            )}
+            data-testid="add-series-modal"
+            isOpen={isAddSeriesOpen}
+          >
+            <AddSeriesModal
+              dashcard={addSeriesModalDashCard}
+              dashcardData={this.props.dashcardData}
+              fetchCardData={this.props.fetchCardData}
+              setDashCardAttributes={this.props.setDashCardAttributes}
+              onClose={() => this.setState({ addSeriesModalDashCard: null })}
+            />
+          </Modal>
+        )}
         <ReplaceCardModal
           isOpen={
             !!replaceCardModalDashCard &&
