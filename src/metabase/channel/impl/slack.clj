@@ -146,9 +146,11 @@
   ;; for alerts, we allow users to template the url card part only
   (let [link-template (or template
                           (channel.template/default-template :notification/card nil channel-type))
-        card-url-text (markdown/process-markdown
-                       (channel.template/render-template link-template (channel/template-context channel-type payload-type notification-payload))
-                       :slack)
+        _             (assert link-template "No template found")
+        card-url-text (some->> (update-in notification-payload [:payload :card_part] channel.shared/maybe-realize-data-rows)
+                               (channel/template-context channel-type payload-type)
+                               (channel.template/render-template link-template)
+                               (#(markdown/process-markdown % :slack)))
         blocks        (concat [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)

@@ -244,14 +244,6 @@
         (testing (format "chanel-type = %s" channel-type)
           (assert-fn (get channel-type->captured-message channel-type)))))))
 
-(defn slack-message->boolean [{:keys [attachments] :as result}]
-  (assoc result :attachments (for [attachment-info attachments]
-                               (if (:rendered-info attachment-info)
-                                 (update attachment-info
-                                         :rendered-info
-                                         (fn [ri] (m/map-vals some? ri)))
-                                 attachment-info))))
-
 (defn do-with-mock-inbox-email!
   "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
   [thunk]
