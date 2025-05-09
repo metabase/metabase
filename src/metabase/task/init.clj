@@ -8,8 +8,7 @@
   (:require
    [metabase.task.creator-sentiment-emails]
    [metabase.task.follow-up-emails]
-   [metabase.task.truncate-audit-tables]
-   [metabase.task.upgrade-checks]))
+   [metabase.task.truncate-audit-tables]))
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
