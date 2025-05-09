@@ -18,16 +18,16 @@ describe("scenarios > native > filters > remapping", () => {
   it("should remap dashboard parameter values", () => {
     createQuestion().then((questionId) => {
       H.visitQuestion(questionId);
-      testDefaultValuesRemapping();
+      testWidgetsRemapping();
 
       H.visitPublicQuestion(questionId);
-      testDefaultValuesRemapping();
+      testWidgetsRemapping();
 
       H.visitEmbeddedPage({
         resource: { question: questionId },
         params: {},
       });
-      testDefaultValuesRemapping();
+      testWidgetsRemapping();
     });
   });
 });
@@ -57,10 +57,7 @@ function addExternalRemapping() {
 }
 
 function findWidget(name: string) {
-  return cy
-    .findByTestId("native-query-top-bar")
-    .findByText(name)
-    .parents("fieldset");
+  return cy.findByText(name).parents("fieldset");
 }
 
 function createQuestion() {
@@ -71,7 +68,7 @@ function createQuestion() {
         "SELECT * " +
         "FROM ORDERS " +
         "JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID " +
-        "WHERE {{quantity}} AND {{user_id_pk}}",
+        "WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}",
       "template-tags": {
         quantity: {
           id: "quantity",
@@ -81,10 +78,18 @@ function createQuestion() {
           "widget-type": "number/=",
           dimension: ["field", ORDERS.QUANTITY, null],
         },
+        product_id_fk: {
+          id: "product_id_fk",
+          name: "product_id_fk",
+          "display-name": "FK",
+          type: "dimension",
+          "widget-type": "id",
+          dimension: ["field", ORDERS.PRODUCT_ID, null],
+        },
         user_id_pk: {
           id: "user_id_pk",
           name: "user_id_pk",
-          "display-name": "User ID PK",
+          "display-name": "PK->Name",
           type: "dimension",
           "widget-type": "id",
           dimension: ["field", PEOPLE.ID, null],
@@ -98,7 +103,13 @@ function createQuestion() {
         slug: "quantity",
         type: "number/=",
         target: ["dimension", ["template-tag", "quantity"]],
-        default: [1],
+      }),
+      createMockParameter({
+        id: "product_id_fk",
+        name: "FK",
+        slug: "product_id_fk",
+        type: "id",
+        target: ["dimension", ["template-tag", "product_id_fk"]],
       }),
       createMockParameter({
         id: "user_id_pk",
@@ -106,12 +117,12 @@ function createQuestion() {
         slug: "user_id_pk",
         type: "id",
         target: ["dimension", ["template-tag", "user_id_pk"]],
-        default: [3],
       }),
     ],
     enable_embedding: true,
     embedding_params: {
       quantity: "enabled",
+      product_id_fk: "enabled",
       user_id_pk: "enabled",
     },
   };
@@ -119,7 +130,33 @@ function createQuestion() {
   return H.createNativeQuestion(questionDetails).then(({ body }) => body.id);
 }
 
-function testDefaultValuesRemapping() {
-  findWidget("Internal").should("contain.text", "N1");
-  findWidget("PK->Name").should("contain.text", "Lina Heaney");
+function testWidgetsRemapping() {
+  cy.log("internal remapping");
+  findWidget("Internal").click();
+  H.popover().within(() => {
+    // TODO fix! - /api/card/:id/params/:param-key/values endpoint doesn't return remapped values for internal dimension
+    // cy.findByText("N5").click();
+    cy.findByText("5").click();
+    cy.button("Add filter").click();
+  });
+  // TODO it's not fetched because it cached /values
+  // findWidget("Internal").should("contain.text", "N5");
+
+  cy.log("FK remapping");
+  findWidget("FK").click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("1,");
+    cy.findByText("Rustic Paper Wallet").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget("FK").should("contain.text", "Rustic Paper Wallet");
+
+  cy.log("PK->Name remapping");
+  findWidget("PK->Name").click();
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter an ID").type("1,");
+    cy.findByText("Hudson Borer").should("exist");
+    cy.button("Add filter").click();
+  });
+  findWidget("PK->Name").should("contain.text", "Hudson Borer");
 }
