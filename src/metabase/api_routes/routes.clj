@@ -22,6 +22,7 @@
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
+   [metabase.bug-reporting.api]
    [metabase.cache.api]
    [metabase.channel.api]
    [metabase.cloud-migration.api]
@@ -71,6 +72,7 @@
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
+         metabase.bug-reporting.api/keep-me
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.geojson.api/keep-me
@@ -133,6 +135,7 @@
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
+   "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
    "/card"                 (+auth 'metabase.api.card)
    "/cards"                (+auth 'metabase.api.cards)

@@ -791,15 +791,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                     id)))
   :doc        false)
 
-(defsetting bug-reporting-enabled
-  (deferred-tru "Enable bug report submissions.")
-  :visibility :public
-  :export?    false
-  :type       :boolean
-  :default    false
-  :setter     :none
-  :audit      :getter)
-
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
 ;;; !!                         DO NOT ADD ANY MORE SETTINGS IN THIS NAMESPACE                         !!
