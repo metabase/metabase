@@ -528,9 +528,9 @@
         (update :order-by distinct))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
-  [driver _ honeysql-form {clause :filter}]
-  (sql.helpers/where honeysql-form (->> (sql.qp.boolean-to-comparison/boolean->comparison clause)
-                                        (sql.qp/->honeysql driver))))
+  [driver _ honeysql-form query]
+  (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
+       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
