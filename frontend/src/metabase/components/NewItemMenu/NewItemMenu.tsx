@@ -10,6 +10,8 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import type { CollectionId } from "metabase-types/api";
 
+import { trackNewMenuItemClicked } from "./analytics";
+
 type NewMenuItem = {
   title: string;
   icon: string;
@@ -25,12 +27,9 @@ export interface NewItemMenuProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
-  appendMenuItems?: NewMenuItem[];
-  hasModels: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
-  hasDatabaseWithActionsEnabled: boolean;
   onCloseNavbar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
@@ -56,6 +55,7 @@ const NewItemMenu = ({
     const items: NewMenuItem[] = [];
 
     if (hasDataAccess) {
+      // TODO: Add anon tracking once we enable onClick
       items.push({
         title: t`Question`,
         icon: "insight",
@@ -70,6 +70,7 @@ const NewItemMenu = ({
     }
 
     if (hasNativeWrite) {
+      // TODO: Add anon tracking once we enable onClick
       items.push({
         title: hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`,
         icon: "sql",
@@ -87,7 +88,10 @@ const NewItemMenu = ({
     items.push({
       title: t`Dashboard`,
       icon: "dashboard",
-      action: () => dispatch(setOpenModal("dashboard")),
+      action: () => {
+        trackNewMenuItemClicked("dashboard");
+        dispatch(setOpenModal("dashboard"));
+      },
     });
 
     return items;
@@ -104,6 +108,8 @@ const NewItemMenu = ({
   return (
     <EntityMenu
       className={className}
+      // To the best of my knowledge, entity menu items with a `link` prop
+      // do not have `onClick`handlers. Hence, we cannot track their clicks.
       items={menuItems}
       trigger={trigger}
       triggerIcon={triggerIcon}
