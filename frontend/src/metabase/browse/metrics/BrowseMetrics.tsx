@@ -35,6 +35,7 @@ import {
 } from "../components/BrowseContainer.styled";
 
 import { MetricsTable } from "./MetricsTable";
+import { trackNewMetricInitiated } from "./analytics";
 import type { MetricFilterSettings, MetricResult } from "./types";
 
 const {
@@ -93,6 +94,7 @@ export function BrowseMetrics() {
                     variant="viewHeader"
                     component={ForwardRefLink}
                     to={newMetricLink}
+                    onClick={() => trackNewMetricInitiated()}
                   >
                     <Icon name="add" />
                   </ActionIcon>

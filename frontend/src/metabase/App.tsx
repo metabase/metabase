@@ -19,6 +19,7 @@ import { initializeIframeResizer } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { setErrorPage } from "metabase/redux/app";
 import {
   getErrorPage,
@@ -117,6 +118,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <PLUGIN_METABOT.Metabot />
             </AppContentContainer>
           </AppContainer>
           <Palette />
