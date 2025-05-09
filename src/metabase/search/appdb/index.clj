@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -256,13 +257,17 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [entries          (map document->entry documents)
+  (let [entries (map document->entry documents)
         ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated?  (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
+        active-updated? (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (log/trace "indexed documents for " <>)))))
+        (log/trace "indexed documents for " <>)
+        (analytics/set! :metabase-search/appdb-index-size
+                        (:count (t2/query-one {:select [[:%count.* :count]]
+                                               :from   [(active-table)]
+                                               :limit  1})))))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
@@ -277,8 +282,15 @@
   (index-docs! :search/updating document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
-  (doseq [table-name [(active-table) (pending-table)] :when table-name]
-    (t2/delete! table-name :model search-model :model_id [:in ids])))
+  (u/prog1 (->> [(active-table) (pending-table)]
+                (keep (fn [table-name]
+                        (when table-name
+                          {search-model (t2/delete! table-name :model search-model :model_id [:in (set ids)])})))
+                (apply merge-with +)
+                (into {})))
+  (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                           :from   [(active-table)]
+                                                                           :limit 1}))))
 
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."

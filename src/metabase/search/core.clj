@@ -2,6 +2,7 @@
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
    [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -10,6 +11,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
 
@@ -43,7 +45,12 @@
  [search.spec
   define-spec])
 
-(defmethod analytics/known-labels :metabase-search/index
+(defmethod analytics/known-labels :metabase-search/index-updates
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics/known-labels :metabase-search/index-reindexes
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
