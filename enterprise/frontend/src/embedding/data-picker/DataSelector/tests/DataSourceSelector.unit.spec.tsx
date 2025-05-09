@@ -1,7 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { getNextId } from "__support__/utils";
+import type { Database, Table } from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import {
   createMockSettingsState,
@@ -10,7 +14,7 @@ import {
 
 import { DataSourceSelector } from "../DataSelector";
 
-const databases = [createSampleDatabase()];
+const DATABASES = [createSampleDatabase()];
 
 const storeInitialState = createMockState({
   settings: createMockSettingsState({
@@ -20,18 +24,19 @@ const storeInitialState = createMockState({
 
 const AVAILABLE_MODELS: Record<AvailableModels, ("dataset" | "table")[]> = {
   "tables-only": ["table"],
-  "models-only": ["dataset"],
   "tables-and-models": ["dataset", "table"],
 };
 
-type AvailableModels = "tables-only" | "models-only" | "tables-and-models";
+type AvailableModels = "tables-only" | "tables-and-models";
 
 interface SetupOpts {
+  databases?: Database[];
   isJoinStep?: boolean;
   availableModels?: AvailableModels;
 }
 
 function setup({
+  databases = DATABASES,
   isJoinStep = false,
   availableModels = "tables-only",
 }: SetupOpts = {}) {
@@ -65,7 +70,7 @@ function setup({
       selectedDatabaseId={null}
       canSelectModel={true}
       canSelectTable={true}
-      triggerElement={<div />}
+      triggerElement={<div>Click me to open or close data picker</div>}
       setSourceTableFn={jest.fn()}
     />,
     { storeInitialState },
@@ -73,10 +78,108 @@ function setup({
 }
 
 describe("DataSourceSelector", () => {
-  it("should close the picker when clicking outside", async () => {
-    setup();
+  describe("only tables are available", () => {
+    const setupOpts: SetupOpts = {
+      availableModels: "tables-only",
+    };
 
-    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    it("should close the picker when clicking outside", async () => {
+      setup(setupOpts);
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByText("Click me to open or close data picker"),
+      );
+
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should show search input when there are 10 and more tables", async () => {
+      const sampleDatabase = createSampleDatabase();
+      const DB_ID = getNextId(sampleDatabase.id);
+      setup({
+        ...setupOpts,
+        databases: [
+          sampleDatabase,
+          createMockDatabase({
+            id: DB_ID,
+            name: "Many tables Database",
+            tables: [...createNNumberOfTables(10, DB_ID)],
+          }),
+        ],
+      });
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Many tables Database")).toBeInTheDocument();
+
+      await userEvent.click(await screen.findByText("Many tables Database"));
+      expect(await screen.findByText("Table 1")).toBeInTheDocument();
+      expect(await screen.findByText("Table 2")).toBeInTheDocument();
+      expect(await screen.findByText("Table 3")).toBeInTheDocument();
+      expect(await screen.findByText("Table 4")).toBeInTheDocument();
+      expect(await screen.findByText("Table 5")).toBeInTheDocument();
+      expect(await screen.findByText("Table 6")).toBeInTheDocument();
+      expect(await screen.findByText("Table 7")).toBeInTheDocument();
+      expect(await screen.findByText("Table 8")).toBeInTheDocument();
+      expect(await screen.findByText("Table 9")).toBeInTheDocument();
+      expect(await screen.findByText("Table 10")).toBeInTheDocument();
+
+      const searchBox = screen.getByPlaceholderText("Find...");
+      expect(searchBox).toBeInTheDocument();
+
+      // Assert that the search query is used.
+      await userEvent.type(searchBox, "Table 1");
+      expect(await screen.findByText("Table 1")).toBeInTheDocument();
+      expect(screen.queryByText("Table 2")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 3")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 4")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 5")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 6")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 7")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 8")).not.toBeInTheDocument();
+      expect(screen.queryByText("Table 9")).not.toBeInTheDocument();
+      expect(await screen.findByText("Table 10")).toBeInTheDocument();
+    });
+
+    it("should not show search input when there less than 10 tables", async () => {
+      setup(setupOpts);
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+
+      expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("both models and tables are available", () => {
+    const setupOpts: SetupOpts = {
+      availableModels: "tables-and-models",
+    };
+
+    it("should close the picker when clicking outside", async () => {
+      setup(setupOpts);
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByText("Click me to open or close data picker"),
+      );
+
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
   });
 });
+
+function createNNumberOfTables(numberOfTables: number, dbId: number): Table[] {
+  // To avoid having the same ID as the sample database tables
+  const STARTING_TABLE_ID = 100;
+  return Array.from({ length: numberOfTables }, (_, index) =>
+    createMockTable({
+      id: getNextId(index === 0 ? STARTING_TABLE_ID : undefined),
+      db_id: dbId,
+      display_name: `Table ${index + 1}`,
+    }),
+  );
+}
