@@ -552,7 +552,7 @@
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
   [_ bool]
-  (if bool 1 0))
+  [:inline (if bool 1 0)])
 
 (defmethod sql.qp/->honeysql [:sqlserver :and]
   [driver clause]
