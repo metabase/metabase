@@ -23,22 +23,22 @@ describe("scenarios > dashboard > filters > remapping", () => {
     createDashboard().then((dashboardId) => {
       H.visitDashboard(dashboardId);
       H.editDashboard();
-      mapDashboardParameters();
+      mapParameters();
       H.saveDashboard();
 
-      testDashboardDefaultValuesRemapping();
-      testDashboardWidgetsRemapping();
+      testDefaultValuesRemapping();
+      testWidgetsRemapping();
 
       H.visitPublicDashboard(dashboardId);
-      testDashboardDefaultValuesRemapping();
-      testDashboardWidgetsRemapping();
+      testDefaultValuesRemapping();
+      testWidgetsRemapping();
 
       H.visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
       });
-      testDashboardDefaultValuesRemapping();
-      testDashboardWidgetsRemapping();
+      testDefaultValuesRemapping();
+      testWidgetsRemapping();
     });
   });
 });
@@ -188,7 +188,7 @@ function createDashboard() {
   });
 }
 
-function mapDashboardParameters() {
+function mapParameters() {
   H.editingDashboardParametersContainer().findByText("Internal").click();
   H.selectDashboardFilter(H.getDashboardCard(0), "Quantity");
 
@@ -206,7 +206,7 @@ function mapDashboardParameters() {
   H.selectDashboardFilter(H.getDashboardCard(1), "ID");
 }
 
-function testDashboardDefaultValuesRemapping() {
+function testDefaultValuesRemapping() {
   findWidget("Internal").should("contain.text", "N1");
   findWidget("FK").should("contain.text", "Small Marble Shoes");
   findWidget("PK->Name").should("contain.text", "Lina Heaney");
@@ -214,7 +214,7 @@ function testDashboardDefaultValuesRemapping() {
   findWidget("PK+FK->Name").should("contain.text", "Dominique Leffler");
 }
 
-function testDashboardWidgetsRemapping() {
+function testWidgetsRemapping() {
   cy.log("internal remapping");
   clearWidget("Internal");
   findWidget("Internal").click();

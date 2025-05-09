@@ -59,7 +59,7 @@ export default (ComposedComponent) =>
 
       render() {
         const { metadata, fetchRemapping, ...props } = this.props;
-        const field = metadata.field(props.column && props.column.id);
+        const field = props.column;
         const displayValue = field && field.remappedValue(props.value);
         const displayColumn =
           (displayValue != null && field && field.remappedField()) || null;
