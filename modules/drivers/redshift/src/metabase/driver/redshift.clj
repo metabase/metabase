@@ -57,6 +57,11 @@
   [driver database & args]
   (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
 
+;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/dynamic-database-types-lookup :redshift
+  [driver database database-types]
+  ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
+
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
   ;; It does not return tables from datashares, which is a relatively new feature of redshift.
