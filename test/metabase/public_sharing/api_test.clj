@@ -13,7 +13,6 @@
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -945,11 +944,6 @@
 ;;; |                                        New FieldValues search endpoints                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- mbql-card-referencing-nothing []
-  {:dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table (mt/id :venues)}}})
-
 (defn mbql-card-referencing [table-kw field-kw]
   {:dataset_query
    {:database (mt/id)
@@ -957,110 +951,25 @@
     :query    {:source-table (mt/id table-kw)
                :filter       [:= [:field (mt/id table-kw field-kw) nil] "Krua Siri"]}}})
 
-(defn- mbql-card-referencing-venue-name []
-  (mbql-card-referencing :venues :name))
+(defn do-with-sharing-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
+                   :model/Card          card      (mbql-card-referencing table-kw field-kw)
+                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :target  [:dimension
+                                                                                   [:field
+                                                                                    (mt/id table-kw field-kw) nil]]}]}]
+      (f dashboard card dashcard))))
 
-(defn- sql-card-referencing-venue-name []
-  {:dataset_query
-   {:database (mt/id)
-    :type     :native
-    :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-               :template-tags {:x {:name         :x
-                                   :display-name "X"
-                                   :type         :dimension
-                                   :dimension    [:field (mt/id :venues :name) nil]}}}}})
-
-;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
-
-(deftest card-referencing-nothing
-  (mt/with-temp [:model/Card card (mbql-card-referencing-nothing)]
-    (is (= #{}
-           (#'api.public/card->referenced-field-ids card)))))
-
-(deftest it-should-pick-up-on-fields-referenced-in-the-mbql-query-itself
-  (mt/with-temp [:model/Card card (mbql-card-referencing-venue-name)]
-    (is (= #{(mt/id :venues :name)}
-           (#'api.public/card->referenced-field-ids card)))))
-
-(deftest ---as-well-as-template-tag--implict--params-for-sql-queries
-  (mt/with-temp [:model/Card card (sql-card-referencing-venue-name)]
-    (is (= #{(mt/id :venues :name)}
-           (#'api.public/card->referenced-field-ids card)))))
-
-;;; --------------------------------------- check-field-is-referenced-by-card ----------------------------------------
-
-(deftest check-that-the-check-succeeds-when-field-is-referenced
-  (mt/with-temp [:model/Card card (mbql-card-referencing-venue-name)]
-    (#'api.public/check-field-is-referenced-by-card (mt/id :venues :name) (u/the-id card))))
-
-(deftest check-that-exception-is-thrown-if-the-field-isn-t-referenced
-  (is (thrown?
-       Exception
-       (mt/with-temp [:model/Card card (mbql-card-referencing-venue-name)]
-         (#'api.public/check-field-is-referenced-by-card (mt/id :venues :category_id) (u/the-id card))))))
-
-;;; ----------------------------------------- check-search-field-is-allowed ------------------------------------------
-
-;; search field is allowed IF:
-;; A) search-field is the same field as the other one
-(deftest search-field-allowed-if-same-field-as-other-one
-  (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :id))
-  (is (thrown? Exception
-               (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :category_id)))))
-
-;; B) there's a Dimension that lists search field as the human_readable_field for the other field
-(deftest search-field-allowed-with-dimension
-  (is (mt/with-temp [:model/Dimension _ {:field_id (mt/id :venues :id), :human_readable_field_id (mt/id :venues :category_id)}]
-        (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :category_id)))))
-
-;; C) search-field is a Name Field belonging to the same table as the other field, which is a PK
-(deftest search-field-allowed-with-name-field
-  (is (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))
-
-;; not allowed if search field isn't a NAME
-(deftest search-field-not-allowed-if-search-field-isnt-a-name
-  (is (thrown? Exception
-               (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:semantic_type "type/Latitude"}
-                 (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))))
-
-(deftest not-allowed-if-search-field-belongs-to-a-different-table
-  (is (thrown? Exception
-               (mt/with-temp-vals-in-db :model/Field (mt/id :categories :name) {:semantic_type "type/Name"}
-                 (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :categories :name))))))
-
-;;; ------------------------------------- check-field-is-referenced-by-dashboard -------------------------------------
-
-(defn- dashcard-with-param-mapping-to-venue-id [dashboard card]
-  {:dashboard_id       (u/the-id dashboard)
-   :card_id            (u/the-id card)
-   :parameter_mappings [{:card_id (u/the-id card)
-                         :target  [:dimension [:field (mt/id :venues :id) nil]]}]})
-
-(deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
-  (is (mt/with-temp [:model/Dashboard     dashboard {}
-                     :model/Card          card {}
-                     :model/DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
-        (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard)))))
-
-(deftest field-not-found-on-dashcard
-  (is (thrown? Exception
-               (mt/with-temp [:model/Dashboard     dashboard {}
-                              :model/Card          card {}
-                              :model/DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
-                 (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))))
-
-;; ...*or* if it's a so-called "implicit" param (a Field Filter Template Tag (FFTT) in a SQL Card)
-(deftest implicit-param
-  (is (mt/with-temp [:model/Dashboard     dashboard {}
-                     :model/Card          card (sql-card-referencing-venue-name)
-                     :model/DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-        (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))
-
-  (is (thrown? Exception
-               (mt/with-temp [:model/Dashboard     dashboard {}
-                              :model/Card          card (sql-card-referencing-venue-name)
-                              :model/DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-                 (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard))))))
+(defmacro with-sharing-enabled-and-temp-dashcard-referencing!
+  {:style/indent 3}
+  [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
+  `(do-with-sharing-enabled-and-temp-dashcard-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+      ~@body)))
 
 ;;; ------------------------------------------- GET /api/public/action/:uuid -------------------------------------------
 

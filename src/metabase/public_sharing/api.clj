@@ -10,13 +10,10 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
-   [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
@@ -431,58 +428,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; -------------------------------------------------- Field Values --------------------------------------------------
-
-(defn- query->referenced-field-ids
-  "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
-  [query]
-  (lib.util.match/match (:query query) [:field id _] id))
-
-(defn- card->referenced-field-ids
-  "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
-  tags')."
-  [card]
-  (set (concat (query->referenced-field-ids (:dataset_query card))
-               (params/card->template-tag-field-ids card))))
-
-(defn- check-field-is-referenced-by-card
-  "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
-  cannot be found, throw an Exception."
-  [field-id card-id]
-  (let [card                 (api/check-404 (t2/select-one [:model/Card :dataset_query :card_schema] :id card-id))
-        referenced-field-ids (card->referenced-field-ids card)]
-    (api/check-404 (contains? referenced-field-ids field-id))))
-
-(defn- check-search-field-is-allowed
-  "Check whether a search Field is allowed to be used in conjunction with another Field. A search Field is allowed if
-  *any* of the following conditions is true:
-
-  *  `search-field-id` and `field-id` are both the same Field
-  *  `search-field-id` is equal to the other Field's Dimension's `human-readable-field-id`
-  *  field is a `:type/PK` Field and search field is a `:type/Name` Field belonging to the same Table.
-
-  If none of these conditions are met, you are not allowed to use the search field in combination with the other
-  field, and an 400 exception will be thrown."
-  [field-id search-field-id]
-  {:pre [(integer? field-id) (integer? search-field-id)]}
-  (api/check-400
-   (or (= field-id search-field-id)
-       (t2/exists? :model/Dimension :field_id field-id, :human_readable_field_id search-field-id)
-       ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
-       ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (t2/select-one-fn :table_id :model/Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
-         (t2/exists? :model/Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
-
-(defn- check-field-is-referenced-by-dashboard
-  "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
-  404 Exception."
-  [field-id dashboard-id]
-  (let [dashboard       (-> (t2/select-one :model/Dashboard :id dashboard-id)
-                            api/check-404
-                            (t2/hydrate [:dashcards :card]))
-        param-field-ids (params/dashcards->param-field-ids (:dashcards dashboard))]
-    (api/check-404 (contains? param-field-ids field-id))))
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 

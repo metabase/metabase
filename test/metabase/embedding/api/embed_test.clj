@@ -15,7 +15,6 @@
    [metabase.config :as config]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]

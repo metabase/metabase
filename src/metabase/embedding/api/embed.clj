@@ -22,7 +22,6 @@
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.events.core :as events]
-   [metabase.public-sharing.api :as api.public]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
