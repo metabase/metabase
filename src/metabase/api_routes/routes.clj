@@ -13,7 +13,6 @@
    [metabase.api.dataset]
    [metabase.api.docs]
    [metabase.api.field]
-   [metabase.api.geojson]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -28,6 +27,7 @@
    [metabase.cloud-migration.api]
    [metabase.config :as config]
    [metabase.embedding.api]
+   [metabase.geojson.api]
    [metabase.indexed-entities.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
@@ -66,7 +66,6 @@
          metabase.api.database/keep-me
          metabase.api.dataset/keep-me
          metabase.api.field/keep-me
-         metabase.api.geojson/keep-me
          metabase.api.logger/keep-me
          metabase.api.table/keep-me
          metabase.api.user/keep-me
@@ -74,6 +73,7 @@
          metabase.bookmarks.api/keep-me
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
+         metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -146,7 +146,7 @@
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
    "/field"                (+auth 'metabase.api.field)
-   "/geojson"              'metabase.api.geojson
+   "/geojson"              'metabase.geojson.api
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/logger"               (+auth 'metabase.api.logger)
