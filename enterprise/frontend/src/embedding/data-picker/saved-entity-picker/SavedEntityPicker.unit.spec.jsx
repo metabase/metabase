@@ -24,12 +24,12 @@ const COLLECTIONS = {
     id: CURRENT_USER.personal_collection_id,
     name: "My personal collection",
     personal_owner_id: CURRENT_USER.id,
-    here: ["card"],
+    here: ["dataset"],
   }),
   REGULAR: createMockCollection({
     id: 1,
     name: "Regular collection",
-    here: ["card"],
+    here: ["dataset"],
   }),
 };
 
@@ -48,17 +48,20 @@ function mockCollectionItemsEndpoint() {
         createMockCollectionItem({
           id: 2,
           name: "a",
+          model: "dataset",
         }),
         createMockCollectionItem({
           id: 3,
           name: "A",
+          model: "dataset",
         }),
         createMockCollectionItem({
           id: 1,
           name: "B",
+          model: "dataset",
         }),
       ],
-      models: ["card"],
+      models: ["dataset"],
       limit: null,
       offset: null,
     },
@@ -73,11 +76,7 @@ async function setup() {
   mockCollectionItemsEndpoint();
 
   renderWithProviders(
-    <SavedEntityPicker
-      type="question"
-      onSelect={jest.fn()}
-      onBack={jest.fn()}
-    />,
+    <SavedEntityPicker onSelect={jest.fn()} onBack={jest.fn()} />,
   );
   await waitForLoaderToBeRemoved();
 }
