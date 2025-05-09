@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
 import type { Route, WithRouterProps } from "react-router";
+import { push } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
@@ -84,6 +85,7 @@ export const DashboardApp = ({
       if (editingOnLoad) {
         onRefreshPeriodChange(null);
         dispatch(setEditingDashboard(dashboard));
+        dispatch(push({ ...location, hash: "" }));
       }
       if (addCardOnLoad != null) {
         const searchParams = new URLSearchParams(window.location.search);
