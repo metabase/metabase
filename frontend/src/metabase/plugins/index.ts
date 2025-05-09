@@ -40,6 +40,7 @@ import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
@@ -632,7 +633,7 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   areDownloadsEnabled: (_args: {
     hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
-  }) => ({ pdf: true, results: true }),
+  }): EmbedResourceDownloadOptions => ({ pdf: true, results: true }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {
