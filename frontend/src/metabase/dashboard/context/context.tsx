@@ -57,15 +57,15 @@ export type DashboardContextProps = DashboardContextOwnProps &
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type ContextReturned = DashboardContextOwnResult &
+export type DashboardContextReturned = DashboardContextOwnResult &
   DashboardContextOwnProps &
   ReduxProps &
   Required<DashboardControls> &
   DashboardContextErrorState;
 
-export const DashboardContext = createContext<ContextReturned | undefined>(
-  undefined,
-);
+export const DashboardContext = createContext<
+  DashboardContextReturned | undefined
+>(undefined);
 
 const DashboardContextProviderInner = ({
   dashboardId,

@@ -24,6 +24,7 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
@@ -121,6 +122,7 @@ const InteractiveDashboardInner = ({
     ({ question }) =>
       getEmbeddingMode({
         question,
+        queryMode: EmbeddingSdkMode,
         plugins: plugins as InternalMetabasePluginsConfig,
       }),
     [plugins],

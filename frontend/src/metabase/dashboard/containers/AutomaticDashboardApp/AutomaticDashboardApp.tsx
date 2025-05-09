@@ -3,16 +3,13 @@ import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
 import ActionButton from "metabase/components/ActionButton";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
@@ -47,10 +44,6 @@ const AutomaticDashboardAppInner = () => {
     setParameterValue,
     isHeaderVisible,
     tabs,
-    selectedTabId,
-    slowCards,
-    navigateToNewCardFromDashboard,
-    downloadsEnabled,
   } = useDashboardContext();
 
   const dispatch = useDispatch();
@@ -173,29 +166,7 @@ const AutomaticDashboardAppInner = () => {
               </FixedWidthContainer>
             </div>
           )}
-          <LoadingAndErrorWrapper
-            className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull)}
-            loading={!dashboard}
-            noBackground
-          >
-            {() =>
-              dashboard && (
-                <DashboardGridConnected
-                  isXray
-                  dashboard={dashboard}
-                  selectedTabId={selectedTabId}
-                  slowCards={slowCards}
-                  clickBehaviorSidebarDashcard={null}
-                  downloadsEnabled={downloadsEnabled}
-                  autoScrollToDashcardId={undefined}
-                  reportAutoScrolledToDashcard={_.noop}
-                  navigateToNewCardFromDashboard={
-                    navigateToNewCardFromDashboard ?? null
-                  }
-                />
-              )
-            }
-          </LoadingAndErrorWrapper>
+          <DashboardGridConnected isXray />
         </div>
         {more && (
           <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
