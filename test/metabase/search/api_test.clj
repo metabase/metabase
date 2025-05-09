@@ -1420,7 +1420,7 @@
           (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                  (get-available-models :archived "false"))))
         (testing "`archived-string` is 'true'"
-          (is (= #{"action" "collection"}
+          (is (= #{"action"}
                  (get-available-models :archived "true"))))))))
 
 (deftest filter-items-in-personal-collection-test
