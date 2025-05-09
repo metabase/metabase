@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
@@ -137,7 +137,8 @@ export const SaveQuestionForm = ({
 
             <FormDashboardTabSelect
               name="dashboard_tab_id"
-              label="Which tab should this go on?"
+              label={c("'this' refers to the question that's being saved")
+                .t`Which tab should this go on?`}
               dashboardId={values.dashboard_id}
               styles={{
                 label: {
