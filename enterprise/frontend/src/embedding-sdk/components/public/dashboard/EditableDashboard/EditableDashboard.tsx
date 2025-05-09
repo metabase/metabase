@@ -25,7 +25,7 @@ import { ConnectedDashboard } from "../ConnectedDashboard";
 import { InteractiveDashboardProvider } from "../InteractiveDashboard/context";
 import { useCommonDashboardParams } from "../use-common-dashboard-params";
 
-import { StyledPublicComponentWrapper } from "./EditableDashboard.styled.tsx";
+import { StyledPublicComponentWrapper } from "./EditableDashboard.styled";
 
 /**
  * @interface
