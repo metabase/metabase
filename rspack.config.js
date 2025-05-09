@@ -105,6 +105,7 @@ const config = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -388,17 +389,8 @@ if (devMode) {
 const additionalRspackConfig = [];
 
 if (process.env.MB_EDITION === "ee") {
-  const SDK_IFRAME_EMBED_PLUGIN_PATH = `${ENTERPRISE_SRC_PATH}/embedding_iframe_sdk`;
-
-  if (config.entry) {
-    config.entry["app-embed-sdk"] =
-      `${SDK_IFRAME_EMBED_PLUGIN_PATH}/app-embed-sdk.tsx`;
-  }
-
-  // Build the embed.js script for the sdk iframe embedding
-  additionalRspackConfig.push(
-    require(`${SDK_IFRAME_EMBED_PLUGIN_PATH}/rspack.embed.config.js`),
-  );
+  // Build the embed.js script for the sdk iframe embedding.
+  additionalRspackConfig.push(require("./rspack.iframe-sdk-embed.config"));
 }
 
 module.exports = [config, ...additionalRspackConfig];
