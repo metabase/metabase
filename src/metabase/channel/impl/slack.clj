@@ -138,8 +138,8 @@
      :card     {:id   ?card_id
                 :name ?card_name}
      :rows     (let [col-names (map :display_name ?result_cols)]
-                 (for [row ?result_rows]
-                   (zipmap col-names row)))}))
+                 (vec (for [row ?result_rows]
+                        (zipmap col-names row))))}))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/card] :- [:sequential SlackMessage]
   [channel-type payload-type {:keys [payload] :as notification-payload} template recipients]
