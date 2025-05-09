@@ -444,10 +444,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             value,
             rowIndex,
             col.name,
-          ) ??
-          // CSS variables is not supported as the cell uses hex values to detect light/dark color scheme.
-          tableTheme?.cell?.backgroundColor ??
-          theme.fn.themeColor("background"),
+          ) ?? tableTheme?.cell?.backgroundColor,
       );
 
       const formatter = columnFormatters[columnIndex];
