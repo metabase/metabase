@@ -426,9 +426,9 @@
 
 (deftest render-funnel-visualizer
   (testing "Visualizer funnel charts render"
-    (let [test-card-1 {:id 192 :name "SCALAR 3"}
-          test-card-2 {:id 191 :name "SCALAR 2"}
-          test-card-3 {:id 190 :name "SCALAR 1"}
+    (let [test-card-1 {:id 192 :entity_id "abc" :name "SCALAR 3"}
+          test-card-2 {:id 191 :entity_id "def" :name "SCALAR 2"}
+          test-card-3 {:id 190 :entity_id "ghi" :name "SCALAR 1"}
           test-dashcard {:series-results
                          [{:result {:data {:rows [[420]] :cols [{:name "count"}]}}
                            :card test-card-2}
@@ -444,11 +444,11 @@
                              :display_name "DIMENSION"}],
                            :columnValuesMapping
                            {:COLUMN_1
-                            [{:sourceId "card:192", :originalName "count", :name "COLUMN_1"}
-                             {:sourceId "card:191", :originalName "count", :name "COLUMN_2"}
-                             {:sourceId "card:190", :originalName "count", :name "COLUMN_3"}],
+                            [{:sourceId "card:abc", :originalName "count", :name "COLUMN_1"}
+                             {:sourceId "card:def", :originalName "count", :name "COLUMN_2"}
+                             {:sourceId "card:ghi", :originalName "count", :name "COLUMN_3"}],
                             :DIMENSION
-                            ["$_card:192_name" "$_card:191_name" "$_card:190_name"]},
+                            ["$_card:abc_name" "$_card:def_name" "$_card:ghi_name"]},
                            :settings
                            {:card.title "My new visualization",
                             :funnel.metric "COLUMN_1",
