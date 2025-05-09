@@ -70,7 +70,7 @@
       ;; TODO: Non scalar visualizer funnels are currently not officially supported
       :else
       (reduce
-       (fn [columns [viz-col-name column-mappings]]
+       (fn [columns [_ column-mappings]]
          (concat
           columns
           (filter some?
