@@ -1,16 +1,13 @@
 /* eslint-disable react/prop-types */
-
 import cx from "classnames";
 import { forwardRef } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { deletePermanently } from "metabase/archive/actions";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Modal from "metabase/components/Modal";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
@@ -37,7 +34,6 @@ import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
 import S from "./View.module.css";
-import { useModelRowActions } from "./use-model-row-actions";
 
 const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const {
@@ -91,19 +87,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingDataReference,
     isShowingSnippetSidebar,
   } = props;
-
-  const {
-    rowActions,
-    handleRowActionRun,
-    activeActionState,
-    handleExecuteModalClose,
-    handleActionSuccess,
-  } = useModelRowActions({
-    question,
-    datasetData: result?.data,
-  });
-
-  const isActionExecuteModalOpen = !!activeActionState;
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
@@ -242,8 +225,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
           <ViewMainContainer
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
-            rowActions={rowActions}
-            onRowActionRun={handleRowActionRun}
             {...props}
           />
           <ViewSidebar
@@ -263,18 +244,6 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
           onClose={() => closeQbNewbModal()}
         />
       )}
-
-      <Modal
-        isOpen={isActionExecuteModalOpen}
-        onClose={handleExecuteModalClose}
-      >
-        <ActionExecuteModal
-          actionId={activeActionState?.actionId}
-          initialValues={activeActionState?.rowData}
-          onClose={handleExecuteModalClose}
-          onSuccess={handleActionSuccess}
-        />
-      </Modal>
 
       <QueryModals
         onSave={onSave}

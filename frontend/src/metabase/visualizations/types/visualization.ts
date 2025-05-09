@@ -24,13 +24,11 @@ import type {
   DatasetData,
   RawSeries,
   RowValue,
-  RowValues,
   Series,
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
   VisualizationSettings,
-  WritebackAction,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
@@ -202,8 +200,6 @@ export type VisualizationPassThroughProps = {
   ) => ReactNode;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
-  rowActions?: WritebackAction[];
-  onRowActionRun?: (action: WritebackAction, rowData: RowValues) => void;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
   isEditing?: boolean;

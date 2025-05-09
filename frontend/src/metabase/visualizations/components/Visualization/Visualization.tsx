@@ -578,8 +578,6 @@ class Visualization extends PureComponent<
       totalNumGridCols,
       uuid,
       width: rawWidth,
-      rowActions,
-      onRowActionRun,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
@@ -819,8 +817,6 @@ class Visualization extends PureComponent<
                   width={rawWidth}
                   uuid={uuid}
                   token={token}
-                  rowActions={rowActions}
-                  onRowActionRun={onRowActionRun}
                   onActionDismissal={this.hideActions}
                   onChangeCardAndRun={
                     this.props.onChangeCardAndRun
