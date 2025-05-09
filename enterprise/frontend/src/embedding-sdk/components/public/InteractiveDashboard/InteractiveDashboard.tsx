@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef } from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -14,19 +14,17 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
-import { getEventHandlers } from "embedding-sdk/store/selectors";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { useSelector } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import type { Dashboard } from "metabase-types/api";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
@@ -84,31 +82,10 @@ const InteractiveDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
-  const sdkEventHandlers = useSelector(getEventHandlers);
-  // Hack: since we're storing functions in the redux store there are issues
-  // with timing and serialization. We'll need to do something about this in the future
-  const sdkEventHandlersRef = useRef(sdkEventHandlers);
-
-  useEffect(() => {
-    sdkEventHandlersRef.current = sdkEventHandlers;
-  }, [sdkEventHandlers]);
-
-  // Use the ref in your callbacks
-  const handleLoadWithoutCards = useCallback(
-    (dashboard: Dashboard) => {
-      onLoadWithoutCards?.(dashboard);
-      sdkEventHandlersRef.current?.onDashboardLoadWithoutCards?.(dashboard);
-    },
-    [onLoadWithoutCards],
-  );
-
-  const handleLoad = useCallback(
-    (dashboard: Dashboard) => {
-      onLoad?.(dashboard);
-      sdkEventHandlersRef.current?.onDashboardLoad?.(dashboard);
-    },
-    [onLoad],
-  );
+  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+    onLoad,
+    onLoadWithoutCards,
+  });
 
   const {
     displayOptions,
