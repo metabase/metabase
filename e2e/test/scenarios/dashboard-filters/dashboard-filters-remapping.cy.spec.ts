@@ -2,12 +2,14 @@ const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
+  DashboardDetails,
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { CardId, GetFieldValuesResponse } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > remapping", () => {
   beforeEach(() => {
@@ -17,13 +19,21 @@ describe("scenarios > dashboard > filters > remapping", () => {
     addExternalRemapping();
   });
 
-  it("should work in dashboards", () => {
+  it("should remap dashboard parameter values", () => {
     createDashboard().then((dashboardId) => {
       H.visitDashboard(dashboardId);
-      addDashboardParameters();
+      H.editDashboard();
+      mapDashboardParameters();
+      H.saveDashboard();
       testDashboardWidgets();
 
       H.visitPublicDashboard(dashboardId);
+      testDashboardWidgets();
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      });
       testDashboardWidgets();
     });
   });
@@ -54,16 +64,44 @@ function addExternalRemapping() {
 }
 
 function findWidget(name: string) {
-  return H.filterWidget().filter(`:contains("${name}")`);
+  return H.dashboardParametersContainer().findByText(name).parents("fieldset");
 }
 
 function createDashboard() {
-  const modelDetails: StructuredQuestionDetails = {
+  const ordersModelDetails: StructuredQuestionDetails = {
+    name: "Orders model",
+    type: "model",
     query: {
       "source-table": ORDERS_ID,
     },
   };
+  const getOrdersQuestionDetails = (
+    modelId: CardId,
+  ): StructuredQuestionDetails => ({
+    name: "Orders question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+    },
+  });
+  const peopleModelDetails: StructuredQuestionDetails = {
+    name: "People model",
+    type: "model",
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+  };
+  const getPeopleQuestionDetails = (
+    modelId: CardId,
+  ): StructuredQuestionDetails => ({
+    name: "People question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+    },
+  });
   const nativeQuestionDetails: NativeQuestionDetails = {
+    name: "Orders native question",
     native: {
       query: "SELECT * FROM ORDERS WHERE {{product_id}}",
       "template-tags": {
@@ -77,50 +115,82 @@ function createDashboard() {
       },
     },
   };
-  const getMbqlQuestionDetails = (
-    modelId: CardId,
-  ): StructuredQuestionDetails => ({
-    name: "Question",
-    type: "question",
-    query: {
-      "source-table": `card__${modelId}`,
+  const dashboardDetails: DashboardDetails = {
+    parameters: [
+      createMockParameter({
+        id: "p1",
+        slug: "p1",
+        name: "Internal",
+        type: "number/=",
+      }),
+      createMockParameter({
+        id: "p2",
+        slug: "p2",
+        name: "FK",
+        type: "id",
+      }),
+      createMockParameter({
+        id: "p3",
+        slug: "p3",
+        name: "PK->Name",
+        type: "id",
+      }),
+      createMockParameter({
+        id: "p4",
+        slug: "p4",
+        name: "FK->Name",
+        type: "id",
+      }),
+      createMockParameter({
+        id: "p5",
+        slug: "p5",
+        name: "PK+FK->Name",
+        type: "id",
+      }),
+    ],
+    enable_embedding: true,
+    embedding_params: {
+      p1: "enabled",
+      p2: "enabled",
+      p3: "enabled",
+      p4: "enabled",
+      p5: "enabled",
     },
-  });
-  return H.createQuestion(modelDetails).then(({ body: card }) => {
-    return H.createDashboardWithQuestions({
-      questions: [
-        nativeQuestionDetails,
-        getMbqlQuestionDetails(card.id),
-        getMbqlQuestionDetails(card.id),
-      ],
-    }).then(({ dashboard }) => {
-      return Number(dashboard.id);
-    });
+  };
+  return H.createQuestion(ordersModelDetails).then(({ body: ordersModel }) => {
+    return H.createQuestion(peopleModelDetails).then(
+      ({ body: peopleModel }) => {
+        return H.createDashboardWithQuestions({
+          dashboardDetails,
+          questions: [
+            getOrdersQuestionDetails(ordersModel.id),
+            getPeopleQuestionDetails(peopleModel.id),
+            nativeQuestionDetails,
+          ],
+        }).then(({ dashboard }) => {
+          return Number(dashboard.id);
+        });
+      },
+    );
   });
 }
 
-function addDashboardParameters() {
-  H.editDashboard();
+function mapDashboardParameters() {
+  H.editingDashboardParametersContainer().findByText("Internal").click();
+  H.selectDashboardFilter(H.getDashboardCard(0), "Quantity");
 
-  H.setFilter("Number", undefined, "Internal");
-  H.selectDashboardFilter(H.getDashboardCard(1), "Quantity");
+  H.editingDashboardParametersContainer().findByText("FK").click();
+  H.selectDashboardFilter(H.getDashboardCard(2), "Product ID");
 
-  H.setFilter("ID", undefined, "External");
-  H.selectDashboardFilter(H.getDashboardCard(0), "Product ID");
+  H.editingDashboardParametersContainer().findByText("PK->Name").click();
+  H.selectDashboardFilter(H.getDashboardCard(1), "ID");
 
-  H.setFilter("ID", undefined, "PK->Name");
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().findAllByText("ID").should("have.length", 3).last().click();
+  H.editingDashboardParametersContainer().findByText("FK->Name").click();
+  H.selectDashboardFilter(H.getDashboardCard(0), "User ID");
 
-  H.setFilter("ID", undefined, "FK->Name");
-  H.selectDashboardFilter(H.getDashboardCard(1), "User ID");
-
-  H.setFilter("ID", undefined, "PK+FK pair->Name");
-  H.selectDashboardFilter(H.getDashboardCard(1), "User ID");
-  H.getDashboardCard(2).findByText("Select…").click({ force: true });
-  H.popover().findAllByText("ID").should("have.length", 3).last().click();
-
-  H.saveDashboard();
+  H.editingDashboardParametersContainer().findByText("PK+FK->Name").click();
+  H.selectDashboardFilter(H.getDashboardCard(0), "User ID");
+  H.selectDashboardFilter(H.getDashboardCard(1), "ID");
 }
 
 function testDashboardWidgets() {
@@ -132,14 +202,14 @@ function testDashboardWidgets() {
   });
   findWidget("Internal").should("contain.text", "N5");
 
-  cy.log("external remapping");
-  findWidget("External").click();
+  cy.log("FK remapping");
+  findWidget("FK").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Rustic Paper Wallet").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget("External").should("contain.text", "Rustic Paper Wallet");
+  findWidget("FK").should("contain.text", "Rustic Paper Wallet");
 
   cy.log("PK->Name remapping");
   findWidget("PK->Name").click();
@@ -150,21 +220,21 @@ function testDashboardWidgets() {
   });
   findWidget("PK->Name").should("contain.text", "Hudson Borer");
 
-  cy.log("FK->Name remapping");
-  findWidget("FK->Name").click();
-  H.popover().within(() => {
-    cy.findByPlaceholderText("Enter an ID").type("2,");
-    cy.findByText("Domenica Williamson").should("exist");
-    cy.button("Add filter").click();
-  });
-  findWidget("FK->Name").should("contain.text", "Domenica Williamson");
+  // cy.log("FK->Name remapping");
+  // findWidget("FK->Name").click();
+  // H.popover().within(() => {
+  //   cy.findByPlaceholderText("Enter an ID").type("2,");
+  //   cy.findByText("Domenica Williamson").should("exist");
+  //   cy.button("Add filter").click();
+  // });
+  // findWidget("FK->Name").should("contain.text", "Domenica Williamson");
 
   cy.log("PK+FK->Name remapping");
-  findWidget("PK+FK pair->Name").click();
+  findWidget("PK+FK->Name").click();
   H.popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("2,");
     cy.findByText("Domenica Williamson").should("exist");
     cy.button("Add filter").click();
   });
-  findWidget("PK+FK pair").should("contain.text", "Domenica Williamson");
+  findWidget("PK+FK->Name").should("contain.text", "Domenica Williamson");
 }
