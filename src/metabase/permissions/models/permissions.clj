@@ -169,7 +169,7 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.models.interface :as mi]

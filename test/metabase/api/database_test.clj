@@ -9,6 +9,7 @@
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
    [metabase.api.test-util :as api.test-util]
+   [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -16,7 +17,6 @@
    [metabase.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.secret :as secret]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -466,7 +466,7 @@
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-            (is (= (audit-log/model-details db :model/Database)
+            (is (= (audit/model-details db :model/Database)
                    (->> (mt/latest-audit-log-entry "database-delete")
                         :details
                         normalize)))))))))

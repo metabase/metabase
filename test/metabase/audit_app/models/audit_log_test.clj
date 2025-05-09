@@ -1,11 +1,11 @@
-(ns metabase.models.audit-log-test
+(ns metabase.audit-app.models.audit-log-test
   (:require
    [clojure.test :refer :all]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [malli.generator :as mg]
-   [metabase.models.audit-log :as audit-log]
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

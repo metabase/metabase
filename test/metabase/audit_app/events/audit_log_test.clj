@@ -1,11 +1,11 @@
-(ns metabase.events.audit-log-test
+(ns metabase.audit-app.events.audit-log-test
   "Tests for `publish-event!` handlers which record events to the audit log. These tests generally call `publish-event!`
   with the appropriate arguments for a given event, and check that the correct data was written to the audit_log table.
   Integration tests that check that feature code is calling `publish-event!` in the correct places should be placed in
   the test code for the feature."
   (:require
    [clojure.test :refer :all]
-   [metabase.events.audit-log :as events.audit-log]
+   [metabase.audit-app.events.audit-log :as events.audit-log]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]

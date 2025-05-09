@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
