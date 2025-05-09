@@ -9,7 +9,6 @@ import type {
 } from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
-import { isNotFalsy } from "./../lib/types";
 import type { SetupStep } from "./types";
 
 const DEFAULT_LOCALES: LocaleData[] = [];
@@ -115,12 +114,9 @@ export const getSteps = createSelector(
       Object.values(tokenFeatures).some((value) => value === true);
     const hasAddedPaidPlanInPreviousStep = Boolean(licenseToken);
 
-    const shouldShowDBConnectionStep =
-      !isEmbeddingUseCase && usageReason !== "embedding";
+    const shouldShowDBConnectionStep = usageReason !== "embedding";
     const shouldShowLicenseStep =
-      !isEmbeddingUseCase &&
-      isEEBuild() &&
-      (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
+      isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
     // note: when hosting is true, we should be on cloud and therefore not show
     // the token step. There is an edge case that it's probably not possible in
@@ -132,27 +128,34 @@ export const getSteps = createSelector(
       tokenFeatures &&
       tokenFeatures["hosting"] &&
       !hasAddedPaidPlanInPreviousStep;
-    const shouldShowDataUsageStep = !isEmbeddingUseCase && !isHosted;
+    const shouldShowDataUsageStep = !isHosted;
 
-    const steps: { key: SetupStep; isActiveStep: boolean }[] = [
-      !isEmbeddingUseCase && { key: "welcome" as const },
-      !isEmbeddingUseCase && { key: "language" as const },
-      { key: "user_info" as const },
-      !isEmbeddingUseCase && { key: "usage_question" as const },
-      shouldShowDBConnectionStep && {
-        key: "db_connection" as const,
-      },
-      shouldShowLicenseStep && { key: "license_token" as const },
-      shouldShowDataUsageStep ? { key: "data_usage" as const } : null,
-      { key: "completed" as const },
-    ]
-      .filter(isNotFalsy)
-      .map(({ key }) => ({
-        key,
-        isActiveStep: activeStep === key,
-      }));
+    const maybeAddStep = (step: SetupStep, condition: boolean): SetupStep[] =>
+      condition ? [step] : [];
 
-    return steps;
+    const baseSteps: SetupStep[] = [
+      "welcome",
+      "language",
+      "user_info",
+      "usage_question",
+    ];
+    const completionStep: SetupStep[] = ["completed"];
+    const embeddingSteps: SetupStep[] = ["user_info", ...completionStep];
+
+    const steps = isEmbeddingUseCase
+      ? embeddingSteps
+      : [
+          ...baseSteps,
+          ...maybeAddStep("db_connection", shouldShowDBConnectionStep),
+          ...maybeAddStep("license_token", shouldShowLicenseStep),
+          ...maybeAddStep("data_usage", shouldShowDataUsageStep),
+          ...completionStep,
+        ];
+
+    return steps.map((key) => ({
+      key,
+      isActiveStep: activeStep === key,
+    }));
   },
 );
 
