@@ -114,7 +114,7 @@ export function Results({
                 onClick={() => {
                   toggle?.(key);
 
-                  if (value && !isExpanded) {
+                  if (value && (!isExpanded || type === "table")) {
                     onItemClick?.(value);
                   }
                 }}
