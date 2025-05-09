@@ -191,49 +191,7 @@
 ;;; |                                        FieldValues, Search, Remappings                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; -------------------------------------------------- Field Values --------------------------------------------------
-
-(api.macros/defendpoint :get "/card/:token/field/:field-id/values"
-  "Fetch FieldValues for a Field that is referenced by an embedded Card."
-  [{:keys [token field-id]} :- [:map
-                                [:token    string?]
-                                [:field-id ms/PositiveInt]]]
-  (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/card-and-field-id->values card-id field-id)))
-
-;;; --------------------------------------------------- Searching ----------------------------------------------------
-
-(api.macros/defendpoint :get "/card/:token/field/:field-id/search/:search-field-id"
-  "Search for values of a Field that is referenced by an embedded Card."
-  [{:keys [token field-id search-field-id]} :- [:map
-                                                [:token           string?]
-                                                [:field-id        ms/PositiveInt]
-                                                [:search-field-id ms/PositiveInt]]
-   {:keys [value limit]} :- [:map
-                             [:value ms/NonBlankString]
-                             [:limit {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
-
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
-
-(api.macros/defendpoint :get "/card/:token/field/:field-id/remapping/:remapped-id"
-  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
-  embedded Cards."
-  [{:keys [token field-id remapped-id]} :- [:map
-                                            [:token       string?]
-                                            [:field-id    ms/PositiveInt]
-                                            [:remapped-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
-  (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
 (api.macros/defendpoint :get ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                               :export-format api.dataset/export-format-regex]
