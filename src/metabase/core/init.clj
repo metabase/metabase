@@ -8,6 +8,7 @@
   (:require
    [metabase.activity-feed.init]
    [metabase.analytics.init]
+   [metabase.audit-app.init]
    [metabase.bug-reporting.init]
    [metabase.cache.init]
    [metabase.channel.init]
@@ -37,7 +38,6 @@
    [metabase.sso.init]
    [metabase.sync.init]
    [metabase.task-history.init]
-   [metabase.task.init]
    [metabase.testing-api.init]
    [metabase.tiles.init]
    [metabase.upload.init]

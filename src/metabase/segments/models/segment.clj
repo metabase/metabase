@@ -15,8 +15,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.audit-log :as audit-log]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -175,17 +173,6 @@
                :table_id   (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
-
-;;; ---------------------------------------------- Audit Log Table ----------------------------------------------------
-
-(defmethod audit-log/model-details :model/Segment
-  [metric _event-type]
-  (let [table-id (:table_id metric)
-        db-id    (database/table-id->database-id table-id)]
-    (assoc
-     (select-keys metric [:name :description :revision_message])
-     :table_id    table-id
-     :database_id db-id)))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -9,7 +9,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.settings.core :as setting]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

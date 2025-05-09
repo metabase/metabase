@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.channel.email :as email]
    [metabase.channel.template.core :as channel.template]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))

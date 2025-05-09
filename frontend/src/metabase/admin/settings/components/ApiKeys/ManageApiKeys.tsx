@@ -12,8 +12,6 @@ import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
 
-import { AuthTabs } from "../AuthTabs";
-
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
@@ -160,8 +158,7 @@ export const ManageApiKeys = () => {
         modal={modal}
         activeApiKey={activeApiKey}
       />
-      <AuthTabs activeKey="api-keys" />
-      <Stack pl="md" gap="lg">
+      <Stack gap="lg">
         <Group
           align="start"
           justify="space-between"
