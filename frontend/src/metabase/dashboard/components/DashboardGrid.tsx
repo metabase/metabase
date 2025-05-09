@@ -409,82 +409,6 @@ class DashboardGridInner extends Component<
     );
   }
 
-  renderGridItem = ({
-    item: dc,
-    breakpoint,
-    gridItemWidth,
-    totalNumGridCols,
-  }: {
-    item: DashboardCard;
-    breakpoint: GridBreakpoint;
-    gridItemWidth: number;
-    totalNumGridCols: number;
-  }) => {
-    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
-      this.props;
-    const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
-
-    const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
-      dc.card.display,
-      isEditing,
-    );
-
-    return (
-      <Box
-        key={String(dc.id)}
-        data-testid="dashcard-container"
-        className={cx(
-          DashboardS.DashCard,
-          EmbedFrameS.DashCard,
-          LegendS.DashCard,
-          S.DashboardCardContainer,
-          {
-            [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
-            [S.isAnimationDisabled]: this.state.isAnimationPaused,
-          },
-        )}
-      >
-        <DashCard
-          className={S.Card}
-          dashcard={dc}
-          slowCards={this.props.slowCards}
-          gridItemWidth={gridItemWidth}
-          totalNumGridCols={totalNumGridCols}
-          markNewCardSeen={this.props.markNewCardSeen}
-          isEditing={this.props.isEditing}
-          isEditingParameter={this.props.isEditingParameter}
-          isFullscreen={this.props.isFullscreen}
-          isNightMode={this.props.isNightMode}
-          isMobile={breakpoint === "mobile"}
-          isPublicOrEmbedded={this.props.isPublicOrEmbedded}
-          isXray={this.props.isXray}
-          withTitle={this.props.withCardTitle}
-          onRemove={this.onDashCardRemove}
-          onAddSeries={this.onDashCardAddSeries}
-          onReplaceCard={this.onReplaceCard}
-          onUpdateVisualizationSettings={
-            this.props.onUpdateDashCardVisualizationSettings
-          }
-          onReplaceAllDashCardVisualizationSettings={
-            this.props.onReplaceAllDashCardVisualizationSettings
-          }
-          getClickActionMode={this.props.getClickActionMode}
-          navigateToNewCardFromDashboard={
-            this.props.navigateToNewCardFromDashboard
-          }
-          onChangeLocation={this.props.onChangeLocation}
-          dashboard={this.props.dashboard}
-          showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
-          clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
-          downloadsEnabled={this.props.downloadsEnabled}
-          autoScroll={shouldAutoScrollTo}
-          isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dc)}
-          reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        />
-      </Box>
-    );
-  };
-
   render() {
     const { dashboard, width, forwardedRef } = this.props;
     const { replaceCardModalDashCard, addSeriesModalDashCard, layouts } =
@@ -525,7 +449,84 @@ class DashboardGridInner extends Component<
             isEditing={this.isEditingLayout}
             compactType="vertical"
             items={this.getVisibleCards()}
-            itemRenderer={this.renderGridItem}
+            itemRenderer={({
+              item: dc,
+              breakpoint,
+              gridItemWidth,
+              totalNumGridCols,
+            }) => {
+              const {
+                isEditing,
+                autoScrollToDashcardId,
+                reportAutoScrolledToDashcard,
+              } = this.props;
+              const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
+              const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
+                dc.card.display,
+                isEditing,
+              );
+              return (
+                <Box
+                  key={String(dc.id)}
+                  data-testid="dashcard-container"
+                  className={cx(
+                    DashboardS.DashCard,
+                    EmbedFrameS.DashCard,
+                    LegendS.DashCard,
+                    S.DashboardCardContainer,
+                    {
+                      [DashboardS.BrandColorResizeHandle]:
+                        shouldChangeResizeHandle,
+                      [S.isAnimationDisabled]: this.state.isAnimationPaused,
+                    },
+                  )}
+                >
+                  <DashCard
+                    className={S.Card}
+                    dashcard={dc}
+                    slowCards={this.props.slowCards}
+                    gridItemWidth={gridItemWidth}
+                    totalNumGridCols={totalNumGridCols}
+                    markNewCardSeen={this.props.markNewCardSeen}
+                    isEditing={this.props.isEditing}
+                    isEditingParameter={this.props.isEditingParameter}
+                    isFullscreen={this.props.isFullscreen}
+                    isNightMode={this.props.isNightMode}
+                    isMobile={breakpoint === "mobile"}
+                    isPublicOrEmbedded={this.props.isPublicOrEmbedded}
+                    isXray={this.props.isXray}
+                    withTitle={this.props.withCardTitle}
+                    onRemove={this.onDashCardRemove}
+                    onAddSeries={this.onDashCardAddSeries}
+                    onReplaceCard={this.onReplaceCard}
+                    onUpdateVisualizationSettings={
+                      this.props.onUpdateDashCardVisualizationSettings
+                    }
+                    onReplaceAllDashCardVisualizationSettings={
+                      this.props.onReplaceAllDashCardVisualizationSettings
+                    }
+                    getClickActionMode={this.props.getClickActionMode}
+                    navigateToNewCardFromDashboard={
+                      this.props.navigateToNewCardFromDashboard
+                    }
+                    onChangeLocation={this.props.onChangeLocation}
+                    dashboard={this.props.dashboard}
+                    showClickBehaviorSidebar={
+                      this.props.showClickBehaviorSidebar
+                    }
+                    clickBehaviorSidebarDashcard={
+                      this.props.clickBehaviorSidebarDashcard
+                    }
+                    downloadsEnabled={this.props.downloadsEnabled}
+                    autoScroll={shouldAutoScrollTo}
+                    isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(
+                      dc,
+                    )}
+                    reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+                  />
+                </Box>
+              );
+            }}
           />
         ) : (
           <div />
