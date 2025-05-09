@@ -1,5 +1,7 @@
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
+export type NodeKey = string;
+
 export type TreePath = {
   databaseId?: DatabaseId;
   schemaId?: SchemaId;
@@ -17,7 +19,7 @@ export type TreeNode = RootNode | (Item & { children: TreeNode[] });
 export type DatabaseItem = {
   type: "database";
   label: string;
-  key: string;
+  key: NodeKey;
   value: { databaseId: DatabaseId };
 };
 
@@ -44,6 +46,7 @@ export type FlatItem = LoadingItem | ExpandedItem;
 type ExpandedItem = Item & {
   isExpanded?: boolean;
   isLoading?: false;
+  parent?: NodeKey;
   level: number;
 };
 
@@ -55,4 +58,5 @@ type LoadingItem = {
   isExpanded?: boolean;
   value?: TreePath;
   label?: string;
+  parent?: NodeKey;
 };

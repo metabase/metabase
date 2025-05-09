@@ -56,12 +56,20 @@ export function Results({
       <Box style={{ height: virtual.getTotalSize() }}>
         {virtualItems.map(({ start, size, index }) => {
           const item = items[index];
-          const { value, label, type, isExpanded, isLoading, key, level } =
-            item;
+          const {
+            value,
+            label,
+            type,
+            isExpanded,
+            isLoading,
+            key,
+            level,
+            parent,
+          } = item;
           const isActive = type === "table" && _.isEqual(path, value);
 
-          const parentIndex = items.findIndex(findParentFor(item));
-          const parent = virtualItems.find(
+          const parentIndex = items.findIndex((item) => item.key === parent);
+          const parentItem = virtualItems.find(
             (item) => item.index === parentIndex,
           );
 
@@ -71,7 +79,9 @@ export function Results({
                 <Delay delay={isLoading ? 200 : 0}>
                   <Track
                     key={`${key}-track`}
-                    start={parent ? parent.start + 0.5 * parent.size : 0}
+                    start={
+                      parentItem ? parentItem.start + 0.5 * parentItem.size : 0
+                    }
                     end={start + 0.5 * size}
                     level={level}
                   />
@@ -190,24 +200,4 @@ function Track({
       }}
     />
   );
-}
-
-function findParentFor({ type, value }: FlatItem) {
-  return (item: FlatItem) => {
-    if (type === "database") {
-      return null;
-    }
-    if (type === "schema") {
-      return (
-        item.type === "database" && item.value?.databaseId === value?.databaseId
-      );
-    }
-    if (type === "table") {
-      return (
-        item.type === "schema" &&
-        item.value?.databaseId === value?.databaseId &&
-        item.value?.schemaId === value?.schemaId
-      );
-    }
-  };
 }

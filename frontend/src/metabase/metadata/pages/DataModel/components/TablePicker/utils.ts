@@ -17,6 +17,7 @@ import type {
   FlatItem,
   Item,
   ItemType,
+  NodeKey,
   SchemaItem,
   TableItem,
   TreeNode,
@@ -338,9 +339,10 @@ export function flatten(
     addLoadingNodes?: boolean;
     isExpanded?: (key: string) => boolean;
     level?: number;
+    parent?: NodeKey;
   } = {},
 ): FlatItem[] {
-  const { addLoadingNodes, isExpanded, level = 0 } = opts;
+  const { addLoadingNodes, isExpanded, level = 0, parent } = opts;
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
     if (addLoadingNodes && node.children.length === 0) {
@@ -354,26 +356,27 @@ export function flatten(
   }
 
   if (typeof isExpanded === "function" && !isExpanded(node.key)) {
-    return [{ ...node, level }];
+    return [{ ...node, level, parent }];
   }
 
   if (addLoadingNodes && node.children.length === 0) {
     const childType = getChildType(node.type);
     if (!childType) {
-      return [{ ...node, level }];
+      return [{ ...node, level, parent }];
     }
     return [
-      { ...node, isExpanded: true, level },
-      loadingNode(childType, level + 1, node.value),
+      { ...node, isExpanded: true, level, parent },
+      loadingNode(childType, level + 1, node),
     ];
   }
 
   return [
-    { ...node, level, isExpanded: true },
+    { ...node, isExpanded: true, level, parent },
     ...sort(node.children).flatMap((child) =>
       flatten(child, {
         ...opts,
         level: level + 1,
+        parent: node.key,
       }),
     ),
   ];
@@ -398,12 +401,13 @@ function sort(nodes: TreeNode[]): TreeNode[] {
 function loadingNode(
   type: ItemType,
   level: number,
-  value?: TreePath,
+  parent?: TreeNode,
 ): FlatItem {
   return {
     type,
     level,
-    value,
+    value: parent?.type === "root" ? undefined : parent.value,
+    parent: parent?.type === "root" ? undefined : parent.key,
     isLoading: true,
     key: Math.random().toString(),
   };
