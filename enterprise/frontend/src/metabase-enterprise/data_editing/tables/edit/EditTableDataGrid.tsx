@@ -1,3 +1,4 @@
+import type { Row } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
@@ -18,6 +19,7 @@ import type {
   FieldWithMetadata,
   RowValue,
   RowValues,
+  WritebackAction,
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
@@ -39,6 +41,8 @@ type EditTableDataGridProps = {
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
   cellsWithFailedUpdatesMap?: Record<RowPkValue, true>;
+  rowActions?: WritebackAction[];
+  onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
 };
 
 export const EditTableDataGrid = ({
@@ -49,6 +53,8 @@ export const EditTableDataGrid = ({
   columnsConfig,
   getColumnSortDirection,
   cellsWithFailedUpdatesMap,
+  rowActions,
+  onActionRun,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -156,6 +162,10 @@ export const EditTableDataGrid = ({
     columnSizingMap,
     columnsOptions,
     columnVisibility,
+    rowActionsColumn:
+      rowActions?.length && onActionRun
+        ? { actions: rowActions, onActionRun }
+        : undefined,
   });
 
   const handleCellClick = useCallback(

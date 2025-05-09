@@ -25,7 +25,7 @@ export class TableEditable extends Component<
   VisualizationProps,
   EditableTableState
 > {
-  static uiName = t`Editable Table`;
+  static getUiName = () => t`Editable Table`;
   static identifier = "table-editable";
   static iconName = "add_data";
 

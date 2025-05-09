@@ -4,6 +4,8 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import Modal from "metabase/components/Modal";
 import { NoDataError } from "metabase/components/errors/NoDataError";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -146,9 +148,19 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
-  const { hasCreateAction, hasDeleteAction } = useTableActions(
+  const {
+    hasCreateAction,
+    hasDeleteAction,
+    enabledRowActions,
+    handleRowActionRun,
+    activeActionState,
+    handleExecuteModalClose,
+  } = useTableActions({
     visualizationSettings,
-  );
+    datasetData: data,
+  });
+
+  const isActionExecuteModalOpen = !!activeActionState;
 
   const { getColumnSortDirection } = useTableSorting({
     question,
@@ -231,6 +243,8 @@ export const EditTableDashcardVisualization = ({
               onRowExpandClick={openEditRowModal}
               columnsConfig={columnsConfig}
               getColumnSortDirection={getColumnSortDirection}
+              rowActions={enabledRowActions}
+              onActionRun={handleRowActionRun}
             />
           </Box>
 
@@ -264,6 +278,16 @@ export const EditTableDashcardVisualization = ({
         isLoading={isInserting}
         columnsConfig={columnsConfig}
       />
+      <Modal
+        isOpen={isActionExecuteModalOpen}
+        onClose={handleExecuteModalClose}
+      >
+        <ActionExecuteModal
+          actionId={activeActionState?.actionId}
+          initialValues={activeActionState?.rowData}
+          onClose={handleExecuteModalClose}
+        />
+      </Modal>
     </Stack>
   );
 };
