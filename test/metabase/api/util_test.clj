@@ -50,14 +50,6 @@
     (testing "Call successful for superusers"
       (is (map? (mt/user-http-request :crowberto :get 200 "util/bug_report_details"))))))
 
-(deftest ^:parallel permissions-test-3
-  (testing "/util/stats"
-    (testing "Requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "util/stats"))))
-    (testing "Call successful for superusers"
-      (is (map? (mt/user-http-request :crowberto :get 200 "util/stats"))))))
-
 (deftest ^:parallel permissions-test-4
   (testing "/diagnostic_info/connection_pool_info"
     (testing "Requires superuser"

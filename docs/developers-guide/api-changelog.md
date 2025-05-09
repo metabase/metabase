@@ -8,6 +8,8 @@ title: API changelog
 
 - `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.
 
+- `GET /api/util/stats` has been renamed to `GET /api/analytics/anonymous-stats`.
+
 - `POST /api/util/product-feedback` has been renamed to `POST /api/product-feedback`.
 
 ## Metabase 0.54.0
