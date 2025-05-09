@@ -370,6 +370,19 @@ export function flatten(
     ];
   }
 
+  if (node.type === "schema" && node.label === "") {
+    // Hide nameless schemas in the tree
+    return [
+      ...sort(node.children).flatMap((child) =>
+        flatten(child, {
+          ...opts,
+          level,
+          parent,
+        }),
+      ),
+    ];
+  }
+
   return [
     { ...node, isExpanded: true, level, parent },
     ...sort(node.children).flatMap((child) =>
@@ -406,8 +419,8 @@ function loadingNode(
   return {
     type,
     level,
-    value: parent?.type === "root" ? undefined : parent.value,
-    parent: parent?.type === "root" ? undefined : parent.key,
+    value: parent?.type === "root" ? undefined : parent?.value,
+    parent: parent?.type === "root" ? undefined : parent?.key,
     isLoading: true,
     key: Math.random().toString(),
   };
