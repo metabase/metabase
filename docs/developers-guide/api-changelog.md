@@ -10,6 +10,8 @@ title: API changelog
 
 - `GET /api/util/stats` has been renamed to `GET /api/analytics/anonymous-stats`.
 
+- `GET /api/util/bug_report_details` has been renamed to `GET /api/bug-reporting/details`.
+
 - `POST /api/util/entity_id` has been renamed to `POST /api/eid-translation/translate`.
 
 ## Metabase 0.54.0

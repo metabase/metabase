@@ -77,7 +77,7 @@ function setupHosted(opts = {}) {
 
 describe("ProfileLink", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/util/bug_report_details", "mockBugReportDetails");
+    fetchMock.get("path:/api/bug-reporting/details", "mockBugReportDetails");
   });
 
   describe("self-hosted", () => {
