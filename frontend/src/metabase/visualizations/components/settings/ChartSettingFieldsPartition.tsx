@@ -28,9 +28,13 @@ import { ColumnItem } from "./ColumnItem";
 
 type AddBreakoutPopoverProps = {
   query: Lib.Query;
+  onAddBreakout: (column: Lib.ColumnMetadata) => void;
 };
 
-const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
+const AddBreakoutPopover = ({
+  query,
+  onAddBreakout,
+}: AddBreakoutPopoverProps) => {
   const [opened, { close, toggle }] = useDisclosure();
   return (
     <Popover
@@ -59,7 +63,7 @@ const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
           isMetric={false}
           breakout={undefined}
           breakoutIndex={undefined}
-          onAddBreakout={() => {}}
+          onAddBreakout={onAddBreakout}
           onUpdateBreakoutColumn={() => {}}
           onClose={close}
         />
@@ -240,9 +244,25 @@ export const ChartSettingFieldsPartition = ({
     [columns, value],
   );
 
+  const onAddBreakout = (
+    partition: keyof ColumnNameColumnSplitSetting,
+    column: Lib.ColumnMetadata,
+  ) => {
+    onChange({
+      ...value,
+      [partition]: columnAdd(
+        value[partition],
+        -1,
+        Lib.displayInfo(question.query(), -1, column).name,
+      ),
+    });
+  };
+
   const emptyColumnMessage = canEditColumns
     ? t`Add fields here`
     : t`Drag fields here`;
+
+  const query = question.query();
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -250,16 +270,19 @@ export const ChartSettingFieldsPartition = ({
         const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
         const AggregationOrBreakoutPopover =
-          partitionType === "metric"
-            ? AddAggregationPopover
-            : AddBreakoutPopover;
+          partitionType === "metric" ? (
+            <AddAggregationPopover query={query} />
+          ) : (
+            <AddBreakoutPopover
+              query={query}
+              onAddBreakout={(column) => onAddBreakout(partitionName, column)}
+            />
+          );
         return (
           <Box py="sm" key={partitionName}>
             <Flex align="center" justify="space-between">
               <Text c="text-medium">{title}</Text>
-              {canEditColumns && (
-                <AggregationOrBreakoutPopover query={question.query()} />
-              )}
+              {canEditColumns && AggregationOrBreakoutPopover}
             </Flex>
             <Droppable
               droppableId={partitionName}

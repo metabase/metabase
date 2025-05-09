@@ -9,7 +9,8 @@ import {
   COLUMN_SORT_ORDER,
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
-  COLUMN_SPLIT_SETTING,
+  PREAGG_COLUMN_SPLIT_SETTING,
+  UNAGG_COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
@@ -54,7 +55,7 @@ export const settings = {
   ...columnSettings({ hidden: true }),
   [COLLAPSED_ROWS_SETTING]: {
     hidden: true,
-    readDependencies: [COLUMN_SPLIT_SETTING],
+    readDependencies: [PREAGG_COLUMN_SPLIT_SETTING],
     getValue: (
       [{ data }]: Series,
       settings: Partial<VisualizationSettings> = {},
@@ -69,51 +70,48 @@ export const settings = {
       // `value` the is the actual data for this setting
       // `rows` is value we check against the current setting to see if we should use `value`
       const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
-      const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
+      const { rows: currentRows } = settings[PREAGG_COLUMN_SPLIT_SETTING] || {};
       if (!_.isEqual(rows, currentRows)) {
         return { value: [], rows: currentRows };
       }
       return { rows, value };
     },
   },
-  [COLUMN_SPLIT_SETTING]: {
+  [PREAGG_COLUMN_SPLIT_SETTING]: {
     get section() {
       return t`Columns`;
     },
     widget: "fieldsPartition",
     persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) => !data,
+    getHidden: ([{ data }]: [{ data: DatasetData }]) => {
+      return !data || !isPreaggregatedPivot(data.cols);
+    },
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
     ) => ({
       value: migratePivotColumnSplitSetting(
-        settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+        settings[PREAGG_COLUMN_SPLIT_SETTING] ?? {
+          rows: [],
+          columns: [],
+          values: [],
+        },
         data?.cols ?? [],
       ),
-      partitions: isPreaggregatedPivot(data.cols)
-        ? preAggPartitions
-        : partitions,
+      partitions: preAggPartitions,
       columns: data == null ? [] : data.cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {
         return getTitleForColumn(column, settings);
       },
-      // If there are any columns that might be part of a pre-aggregated pivot table,
-      // disable adding/removing columns.
-      canEditColumns: !isPreaggregatedPivot(data.cols),
+      canEditColumns: false,
     }),
     getValue: (
       [{ data }]: [{ data: DatasetData; card: Card }],
       settings: Partial<VisualizationSettings> = {},
     ) => {
-      const storedValue = settings[COLUMN_SPLIT_SETTING];
+      const storedValue = settings[PREAGG_COLUMN_SPLIT_SETTING];
       if (data == null) {
-        return undefined;
-      }
-
-      // TODO -- implement the right logic here
-      if (!isPreaggregatedPivot(data.cols)) {
         return undefined;
       }
 
@@ -154,6 +152,42 @@ export const settings = {
       }
 
       return addMissingCardBreakouts(setting, columnsToPartition);
+    },
+  },
+  [UNAGG_COLUMN_SPLIT_SETTING]: {
+    get section() {
+      return t`Columns`;
+    },
+    widget: "fieldsPartition",
+    persistDefault: true,
+    getHidden: ([{ data }]: [{ data: DatasetData }]) => {
+      return !data || isPreaggregatedPivot(data.cols);
+    },
+    getProps: (
+      [{ data }]: [{ data: DatasetData }],
+      settings: VisualizationSettings,
+    ) => ({
+      value: settings[UNAGG_COLUMN_SPLIT_SETTING] ?? {
+        rows: [],
+        columns: [],
+        values: [],
+      },
+      partitions: partitions,
+      columns: data == null ? [] : data.cols,
+      settings,
+      getColumnTitle: (column: DatasetColumn) => {
+        return getTitleForColumn(column, settings);
+      },
+      // If there are any columns that might be part of a pre-aggregated pivot table,
+      // disable adding/removing columns.
+      canEditColumns: true,
+    }),
+    getValue: (
+      _: [{ data: DatasetData; card: Card }],
+      settings: Partial<VisualizationSettings> = {},
+    ) => {
+      const storedValue = settings[UNAGG_COLUMN_SPLIT_SETTING];
+      return storedValue;
     },
   },
   "pivot.show_row_totals": {
@@ -307,7 +341,7 @@ export const _columnSettings = {
       { settings }: { settings: VisualizationSettings },
     ) => {
       // Default to showing totals if appropriate
-      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
+      const rows = settings[PREAGG_COLUMN_SPLIT_SETTING]?.rows || [];
 
       // `rows` can be either in a legacy format where it's a field ref, or in a new format where it's a column name.
       // All new questions visualized as pivot tables will have column name settings only. We migrate
@@ -325,7 +359,7 @@ export const _columnSettings = {
       columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
-      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
+      const rows = settings[PREAGG_COLUMN_SPLIT_SETTING]?.rows || [];
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
