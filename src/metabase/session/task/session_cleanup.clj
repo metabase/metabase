@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.session.models.session :as session]
-   [metabase.task :as task]))
+   [metabase.task.core :as task]))
 
 (set! *warn-on-reflection* true)
 
