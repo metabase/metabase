@@ -14,6 +14,7 @@ import type {
   Table,
   UserId,
   VirtualCardDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 
 import type {
@@ -171,6 +172,12 @@ export type QuestionDashboardCard = BaseDashboardCard & {
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
+};
+
+export type VisualizerDashboardCard = QuestionDashboardCard & {
+  visualization_settings: BaseDashboardCard["visualization_settings"] & {
+    visualization: VisualizerVizDefinition;
+  };
 };
 
 export type VirtualDashboardCard = BaseDashboardCard & {
