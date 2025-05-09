@@ -325,7 +325,7 @@ export const UtilApi = {
   password_check: POST("/api/util/password_check"),
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
-  bug_report_details: GET("/api/util/bug_report_details"),
+  bug_report_details: GET("/api/bug-reporting/details"),
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath

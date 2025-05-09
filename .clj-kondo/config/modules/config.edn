@@ -58,7 +58,9 @@
            premium-features
            settings
            task
-           util}}
+           util
+           version}}
+
   analyze
   {:api  #{metabase.analyze.core metabase.analyze.query-results}
    :uses #{config driver legacy-mbql lib models sync util}}
@@ -142,6 +144,11 @@
   bookmarks
   {:api  #{metabase.bookmarks.api}
    :uses #{api db models util}}
+
+  bug-reporting
+  {:api  #{metabase.bug-reporting.api
+           metabase.bug-reporting.init}
+   :uses #{analytics api config db driver premium-features settings util}}
 
   cache
   {:api  #{metabase.cache.api
@@ -292,6 +299,11 @@
   formatter
   {:api  #{metabase.formatter}
    :uses #{models settings query-processor types util}}
+
+  geojson
+  {:api  #{metabase.geojson.api
+           metabase.geojson.init}
+   :uses #{api settings util}}
 
   indexed-entities
   {:api  #{metabase.indexed-entities.api metabase.indexed-entities.init}
@@ -485,8 +497,7 @@
   premium-features
   {:api  #{metabase.premium-features.api
            metabase.premium-features.core
-           metabase.premium-features.init
-           metabase.premium-features.token-check}
+           metabase.premium-features.init}
    :uses #{api config db internal-stats plugins settings util}}
 
   public-sharing
@@ -611,7 +622,7 @@
            metabase.settings.core
            metabase.settings.deprecated-grab-bag
            metabase.settings.init}
-   :uses #{api config db events models plugins premium-features server util enterprise/advanced-permissions}}
+   :uses #{api config db events models premium-features server util enterprise/advanced-permissions}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -648,8 +659,8 @@
    :uses #{analyze api audit config db driver events lib models query-processor settings task task-history util}}
 
   task
-  {:api #{metabase.task
-          metabase.task.bootstrap
+  {:api #{metabase.task.bootstrap
+          metabase.task.core
           metabase.task.init}
    :uses #{analytics
            channel
@@ -708,10 +719,16 @@
   {:api :any
    :uses #{config db driver legacy-mbql lib models plugins settings}}
 
+  version
+  {:api  #{metabase.version.core
+           metabase.version.init}
+   :uses #{config settings task util}}
+
   view-log
   {:api  #{metabase.view-log.core
            metabase.view-log.init}
    :uses #{analytics api events models premium-features util}}
+
 
   xrays
   {:api  #{metabase.xrays.api
