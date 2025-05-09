@@ -70,7 +70,9 @@
        (or (boolean? (second clause))
            (boolean-typed-clause? clause))))
 
-(defn- boolean-expression-clause? [clause]
+(defn boolean-expression-clause?
+  "Is `clause` an :expression clause with :type/Boolean or a literal boolean :value?"
+  [clause]
   (and (mbql.u/is-clause? :expression clause)
        (or (boolean-typed-clause? clause)
            (boolean-value-clause? (mbql.u/expression-with-name sql.qp/*inner-query* (second clause))))))
