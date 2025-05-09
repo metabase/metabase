@@ -6,6 +6,7 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
+import { getBaseCondition } from "metabase/notifications/utils";
 import {
   Button,
   Flex,
@@ -25,7 +26,9 @@ import type {
   FieldWithMetadata,
   Literal,
   LogicalOperator,
+  MultipleConditionalAlertExpressions,
   NotificationTriggerEvent,
+  SingleConditionalAlertExpression,
   TableId,
 } from "metabase-types/api";
 import type { DatasetColumn } from "metabase-types/api/dataset";
@@ -446,9 +449,9 @@ export const AlertConditionBuilder = ({
   useEffect(() => {
     const expression = generateExpression(
       tableId,
+      eventType,
       conditions,
       logicalOperator,
-      eventType,
     );
     onChange?.(expression);
   }, [
@@ -549,7 +552,7 @@ function parseInitialExpression(
   const clientSideCondition = doesExpressionHaveClientSideConditions(
     initialExpression,
   )
-    ? initialExpression[2]
+    ? initialExpression[3]
     : null;
 
   if (!clientSideCondition) {
@@ -576,7 +579,7 @@ function parseInitialExpression(
           fieldRef[0] === "context" &&
           fieldRef.length > 1
         ) {
-          const columnName = fieldRef[3] as string;
+          const columnName = fieldRef[2] as string;
 
           return {
             conditions: [
@@ -616,7 +619,7 @@ function parseInitialExpression(
               fieldRef[0] === "context" &&
               fieldRef.length > 1
             ) {
-              const columnName = fieldRef[3] as string;
+              const columnName = fieldRef[2] as string;
 
               parsedConditions.push({
                 id: crypto.randomUUID(),
@@ -649,15 +652,11 @@ function parseInitialExpression(
 // Generate the expression based on current conditions
 function generateExpression(
   tableId: TableId,
+  eventType: NotificationTriggerEvent,
   conditions?: ConditionRow[],
   logicalOperator?: LogicalOperator,
-  eventType?: NotificationTriggerEvent,
 ): ConditionalAlertExpression {
-  const baseExpression: ConditionalAlertExpression = [
-    "=",
-    ["context", "table_id"],
-    tableId,
-  ];
+  const baseExpression = getBaseCondition(tableId, eventType);
 
   if (!conditions) {
     return baseExpression;
@@ -678,41 +677,31 @@ function generateExpression(
   // For 'create' and 'update' event, it will be under 'after' key.
   // For 'delete' event, it will be under 'before' key.
 
-  const payloadPath = [
-    "context",
-    "row_change",
-    eventType === "event/row.deleted" ? "before" : "after",
-  ];
+  const payloadPath = ["context", "record"];
 
   if (validConditions.length === 1) {
     const condition = validConditions[0];
 
     return [
-      "and",
-      baseExpression,
+      ...baseExpression,
       [
         condition.operator as ComparisonOperator,
         [...payloadPath, condition.columnName],
         condition.value,
-      ] as ConditionalAlertExpression,
+      ] as SingleConditionalAlertExpression,
     ];
   }
 
   return [
-    "and",
-    baseExpression,
+    ...baseExpression,
     [
-      // @ts-expect-error Write proper typing for Expression
-      logicalOperator,
-      ...validConditions.map(
-        (condition) =>
-          [
-            condition.operator as ComparisonOperator,
-            [...payloadPath, condition.columnName],
-            condition.value,
-          ] as ConditionalAlertExpression,
-      ),
-    ],
+      logicalOperator as LogicalOperator,
+      ...validConditions.map((condition) => [
+        condition.operator,
+        [...payloadPath, condition.columnName],
+        condition.value,
+      ]),
+    ] as MultipleConditionalAlertExpressions,
   ];
 }
 
@@ -741,7 +730,7 @@ function getColumnIcon(column: ConditionBuilderColumn) {
 function doesExpressionHaveClientSideConditions(
   expression?: ConditionalAlertExpression,
 ): expression is ConditionalAlertExpression {
-  return Array.isArray(expression) && Array.isArray(expression[2]);
+  return Array.isArray(expression) && Array.isArray(expression[3]);
 }
 
 function parseLiteral(
