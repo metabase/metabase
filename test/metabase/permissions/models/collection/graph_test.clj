@@ -5,7 +5,7 @@
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.audit :as audit]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
