@@ -515,42 +515,13 @@ class DashboardGridInner extends Component<
     );
   };
 
-  renderGrid() {
-    const { width } = this.props;
-    const { layouts } = this.state;
-    const rowHeight = this.getRowHeight();
-    return (
-      <GridLayout<DashboardCard>
-        className={cx({
-          [DashboardS.DashEditing]: this.isEditingLayout,
-          [DashboardS.DashDragging]: this.state.isDragging,
-          // we use this class to hide a dashcard actions
-          // panel during dragging
-          [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
-        })}
-        layouts={layouts}
-        breakpoints={GRID_BREAKPOINTS}
-        cols={GRID_COLUMNS}
-        width={width}
-        margin={{ desktop: [6, 6], mobile: [6, 10] }}
-        containerPadding={[0, 0]}
-        rowHeight={rowHeight}
-        onLayoutChange={this.onLayoutChange}
-        onDrag={this.onDrag}
-        onDragStop={this.onDragStop}
-        isEditing={this.isEditingLayout}
-        compactType="vertical"
-        items={this.getVisibleCards()}
-        itemRenderer={this.renderGridItem}
-      />
-    );
-  }
-
   render() {
     const { dashboard, width, forwardedRef } = this.props;
-    const { replaceCardModalDashCard, addSeriesModalDashCard } = this.state;
+    const { replaceCardModalDashCard, addSeriesModalDashCard, layouts } =
+      this.state;
     const isAddSeriesOpen =
       !!addSeriesModalDashCard && isQuestionDashCard(addSeriesModalDashCard);
+    const rowHeight = this.getRowHeight();
     return (
       <Flex
         align="center"
@@ -564,7 +535,31 @@ class DashboardGridInner extends Component<
           "--dashboard-fixed-width": FIXED_WIDTH,
         }}
       >
-        {width > 0 ? this.renderGrid() : <div />}
+        {width > 0 ? (
+          <GridLayout<DashboardCard>
+            className={cx({
+              [DashboardS.DashEditing]: this.isEditingLayout,
+              [DashboardS.DashDragging]: this.state.isDragging,
+              [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
+            })}
+            layouts={layouts}
+            breakpoints={GRID_BREAKPOINTS}
+            cols={GRID_COLUMNS}
+            width={width}
+            margin={{ desktop: [6, 6], mobile: [6, 10] }}
+            containerPadding={[0, 0]}
+            rowHeight={rowHeight}
+            onLayoutChange={this.onLayoutChange}
+            onDrag={this.onDrag}
+            onDragStop={this.onDragStop}
+            isEditing={this.isEditingLayout}
+            compactType="vertical"
+            items={this.getVisibleCards()}
+            itemRenderer={this.renderGridItem}
+          />
+        ) : (
+          <div />
+        )}
         {isAddSeriesOpen && (
           <Modal
             className={cx(
