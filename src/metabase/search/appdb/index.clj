@@ -282,15 +282,17 @@
   (index-docs! :search/updating document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
-  (u/prog1 (->> [(active-table) (pending-table)]
-                (keep (fn [table-name]
-                        (when table-name
-                          {search-model (t2/delete! table-name :model search-model :model_id [:in (set ids)])})))
-                (apply merge-with +)
-                (into {})))
-  (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                           :from   [(active-table)]
-                                                                           :limit 1}))))
+  (when (seq ids)
+    (u/prog1 (->> [(active-table) (pending-table)]
+                  (keep (fn [table-name]
+                          (when table-name
+                            {search-model (t2/delete! table-name :model search-model :model_id [:in (set ids)])})))
+                  (apply merge-with +)
+                  (into {}))
+      (when (active-table)
+        (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                                 :from   [(active-table)]
+                                                                                 :limit  1})))))))
 
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."
