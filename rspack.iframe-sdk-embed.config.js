@@ -14,7 +14,7 @@ module.exports = {
   name: "iframe_sdk_embed_v1",
   entry: SCRIPT_TAG_PATH,
   output: {
-    path: BUILD_PATH + "/app",
+    path: BUILD_PATH + "/app/dist",
     filename: "embed.v1.js",
     library: "metabase.embed",
     libraryTarget: "umd",

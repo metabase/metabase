@@ -1,7 +1,6 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { SdkIframeEmbedRoute } from "./components/SdkIframeEmbedRoute";
+import { PLUGIN_EMBEDDING_IFRAME_SDK } from "./plugins";
 
 function _init() {
   document.body.style.margin = "0";
@@ -10,13 +9,12 @@ function _init() {
   const rootElement = document.getElementById("root");
 
   if (!rootElement) {
+    console.error("no #root element found on sdk iframe embed route");
     return;
   }
 
   createRoot(rootElement).render(
-    <StrictMode>
-      <SdkIframeEmbedRoute />
-    </StrictMode>,
+    <PLUGIN_EMBEDDING_IFRAME_SDK.SdkIframeEmbedRoute />,
   );
 }
 

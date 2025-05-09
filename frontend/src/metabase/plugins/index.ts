@@ -551,7 +551,8 @@ export const PLUGIN_EMBEDDING_SDK = {
 };
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
-  isEnabled: () => false,
+  hasValidLicense: () => false,
+  SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
