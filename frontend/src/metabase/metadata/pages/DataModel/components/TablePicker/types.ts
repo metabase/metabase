@@ -42,7 +42,11 @@ export type TableNode = {
   children: [];
 };
 
-export type Item = Omit<DatabaseNode | SchemaNode | TableNode, "children">;
+export type DatabaseItem = Omit<DatabaseNode, "children">;
+export type SchemaItem = Omit<SchemaNode, "children">;
+export type TableItem = Omit<TableNode, "children">;
+
+export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export type ItemType = Item["type"];
 
