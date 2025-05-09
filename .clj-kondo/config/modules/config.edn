@@ -145,6 +145,11 @@
   {:api  #{metabase.bookmarks.api}
    :uses #{api db models util}}
 
+  bug-reporting
+  {:api  #{metabase.bug-reporting.api
+           metabase.bug-reporting.init}
+   :uses #{analytics api config db driver premium-features settings util}}
+
   cache
   {:api  #{metabase.cache.api
            metabase.cache.core
