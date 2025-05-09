@@ -4,7 +4,6 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import EmptyState from "metabase/components/EmptyState";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { useDispatch } from "metabase/lib/redux";
 import { Box, Icon, Input, Stack } from "metabase/ui";
 
 import { Results } from "./Results";
@@ -53,7 +52,6 @@ function Tree({
   const { tree } = useTableLoader(value);
 
   const items = flatten(tree, { isExpanded, addLoadingNodes: true });
-  const dispatch = useDispatch();
 
   useEffect(() => {
     // When we detect a database with just one schema, we automatically
@@ -73,7 +71,7 @@ function Tree({
         onChange(schema.value);
       }
     }
-  }, [databaseId, schemaId, tree, dispatch, toggle, isExpanded, onChange]);
+  }, [databaseId, schemaId, tree, toggle, isExpanded, onChange]);
 
   return (
     <Results
