@@ -5,13 +5,7 @@ import {
   handleActions,
 } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import {
-  EmailApi,
-  LdapApi,
-  SamlApi,
-  SettingsApi,
-  SlackApi,
-} from "metabase/services";
+import { EmailApi, SamlApi, SettingsApi, SlackApi } from "metabase/services";
 
 // ACTION TYPES AND ACTION CREATORS
 
@@ -134,19 +128,6 @@ export const updateSlackSettings = createThunkAction(
     };
   },
   {},
-);
-
-export const UPDATE_LDAP_SETTINGS =
-  "metabase/admin/settings/UPDATE_LDAP_SETTINGS";
-export const updateLdapSettings = createThunkAction(
-  UPDATE_LDAP_SETTINGS,
-  function (settings) {
-    return async function (dispatch) {
-      const result = await LdapApi.updateSettings(settings);
-      await dispatch(reloadSettings());
-      return result;
-    };
-  },
 );
 
 export const UPDATE_SAML_SETTINGS =
