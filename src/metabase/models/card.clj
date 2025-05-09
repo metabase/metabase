@@ -99,7 +99,7 @@
                  :executed    4
                  :failed      5
                  :blocked     6}
-        num->kw (into {} (map (fn [[k v]] [v k])) kw->num)]
+        num->kw (set/map-invert kw->num)]
     {:in  (merge kw->num                        ; Handle keywords
                  (update-keys kw->num str)      ; or strings
                  {nil (kw->num :not-started)})  ; or nil
@@ -851,9 +851,12 @@
     card))
 
 (defonce ^{:doc "Set of card IDs which have been read, which are in `:not-started` state.
-           These cards should be prioritized for analysis."}
+           These cards should be prioritized for analysis.
+
+           Starts as `nil`; the backfill job sets it to an empty set `#{}`. If the backfill job is not running, this
+           will remain `nil` and nothing be stored in it."}
   cards-for-priority-analysis
-  (atom #{}))
+  (atom nil))
 
 (def ^:dynamic *upstream-cards-without-idents*
   "Set of card IDs which were read during analysis of another card and which did not have valid idents
@@ -865,7 +868,9 @@
   we want to prioritize for analysis."
   [{state :metadata_analysis_state :as card}]
   ;; Mark :not-started cards as eligible for :priority analysis.
-  (when (= state :not-started)
+  ;; If the atom contains `nil`, do nothing - the backfill job isn't running.
+  (when (and (= state :not-started)
+             @cards-for-priority-analysis)
     (swap! cards-for-priority-analysis conj (:id card)))
   ;; When backfilling a card (indicated by `*upstream-cards-without-idents*`), if we see a card which is not :executed
   ;; or :analyzed it's a potential blocker - put it in the list of blockers.
@@ -884,12 +889,13 @@
   For a model, the ident must likewise be for this card, **and** `:model/inner_ident` must also be set to the
   corresponding unwrapped, inner ident."
   [{:keys [ident model/inner_ident] :as _column} {:keys [entity_id] :as card}]
-  (if (= (:type card) :model)
-    (and ident
-         (lib/valid-model-ident? ident entity_id)
-         inner_ident
-         (= ident (lib/model-ident inner_ident entity_id)))
-    (and ident (lib/valid-basic-ident? ident entity_id))))
+  (and ident
+       (lib/valid-basic-ident? ident entity_id)
+       ;; Either the card is not a model, or it has correct model idents.
+       (or (not= (:type card) :model)
+           (and inner_ident
+                (= ident (lib/model-ident inner_ident entity_id))
+                (lib/valid-model-ident? ident entity_id)))))
 
 (defn all-idents-valid?
   "If this card has `:result_metadata`, returns true iff all the columns have valid `:ident`s.
@@ -902,11 +908,12 @@
 
 (defn- populate-metadata-analysis-state [{state :metadata_analysis_state :as card}]
   (cond-> card
-    (string? state) (update :metadata_analysis_state keyword)
-    (not state)     (assoc :metadata_analysis_state   (if (all-idents-valid? card)
-                                                        :analyzed
-                                                        :not-started)
-                           :metadata_analysis_blocker nil)))
+    (string? state)                     (update :metadata_analysis_state keyword)
+    (not state)                         (assoc :metadata_analysis_state   (if (all-idents-valid? card)
+                                                                            :analyzed
+                                                                            :not-started)
+                                               :metadata_analysis_blocker nil)
+    (not (#{:blocked "blocked"} state)) (assoc :metadata_analysis_blocker nil)))
 
 (t2/define-after-select :model/Card
   [card]
