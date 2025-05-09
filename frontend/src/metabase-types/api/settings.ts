@@ -143,7 +143,7 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "error";
+  status: "not-connected" | "syncing" | "active" | "paused" | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -242,6 +242,9 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "metabot_v3",
+  "ai_sql_fixer",
+  "ai_sql_generation",
   "database_routing",
   "development-mode",
 ] as const;
@@ -494,9 +497,11 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
+export type ColorSettings = Record<string, string>;
+
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export interface EnterpriseSettings extends Settings {
-  "application-colors"?: Record<string, string>;
+  "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;

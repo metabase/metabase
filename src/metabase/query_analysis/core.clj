@@ -17,8 +17,7 @@
    [metabase.query-analysis.models.query-analysis]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
-   [metabase.query-analysis.settings]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.query-analysis.settings :as query-analysis.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.namespaces :as shared.ns]
@@ -33,7 +32,7 @@
   reference-errors]
  [nqa
   tables-for-native]
- [metabase.query-analysis.settings
+ [query-analysis.settings
   query-analysis-enabled])
 
 (def ^:private realtime-queue-capacity
@@ -92,7 +91,7 @@
   [query-type]
   (and (query-analysis-enabled)
        (case query-type
-         :native     (public-settings/sql-parsing-enabled)
+         :native     (query-analysis.settings/sql-parsing-enabled)
          :query      true
          :mbql/query true
          false)))

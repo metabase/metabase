@@ -9,8 +9,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -414,7 +414,7 @@
                             (fn [user-id] {:group group-id :user user-id})
                             user-ids)]
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
-      (perms-group-membership/add-users-to-groups! memberships))))
+      (perms/add-users-to-groups! memberships))))
 
 (api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."

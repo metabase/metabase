@@ -10,7 +10,6 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -1230,12 +1229,12 @@
                (mt/derecordize (t2/select-one [:model/User :is_active] :id (:id user)))))))
 
     (testing "Check that the last superuser cannot deactivate themselves"
-      (mt/with-single-admin-user [{id :id}]
+      (mt/with-single-admin-user! [{id :id}]
         (is (= "You cannot remove the last member of the 'Admin' group!"
                (mt/user-http-request id :delete 400 (format "user/%d" id))))))
 
     (testing "Check that the last non-archived superuser cannot deactivate themselves"
-      (mt/with-single-admin-user [{id :id}]
+      (mt/with-single-admin-user! [{id :id}]
         (mt/with-temp [:model/User _ {:is_active    false
                                       :is_superuser true}]
           (is (= "You cannot remove the last member of the 'Admin' group!"

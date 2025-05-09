@@ -91,7 +91,6 @@
      metabase.test.data.users/with-group-for-user
      metabase.test.data/with-empty-h2-app-db
      metabase.test.util.log/with-log-level
-     metabase.test.util.misc/with-single-admin-user
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
@@ -123,7 +122,6 @@
      metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
-     metabase.test/with-single-admin-user
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -579,7 +577,7 @@
   metabase.test/with-actions                                                            clojure.core/let
   metabase.test/with-grouper-batches!                                                   clojure.core/fn
   metabase.test/with-open-channels                                                      clojure.core/let
-  metabase.test/with-single-admin-user                                                  clojure.core/fn
+  metabase.test/with-single-admin-user!                                                 clojure.core/fn
   metabase.test/with-temp-dir                                                           clojure.core/let
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
@@ -773,7 +771,7 @@
    metabase.lib.filter/deffilter                                                           macros.metabase.lib.filter/deffilter
    metabase.models.params.chain-filter-test/chain-filter                                   macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                            macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.user-test/with-groups                                                   macros.metabase.models.user-test/with-groups
+   metabase.models.user-test/with-groups!                                                  macros.metabase.models.user-test/with-groups!
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
    metabase.query-analysis.models.query-analysis-test/with-test-setup                      macros.metabase.query-analysis.models.query-analysis-test/with-test-setup

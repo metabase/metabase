@@ -101,7 +101,6 @@
     :model/ModelIndex
     :model/ModelIndexValue
     ;; 48+
-    :model/TablePrivileges
     :model/AuditLog
     :model/RecentViews
     :model/UserParameterValue
@@ -337,8 +336,7 @@
     :model/ImplicitAction
     :model/HTTPAction
     :model/QueryAction
-    :model/ModelIndexValue
-    :model/TablePrivileges})
+    :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

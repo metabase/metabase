@@ -13,7 +13,7 @@
    [metabase.cache.core :as cache]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
@@ -1428,6 +1428,7 @@
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
+                  :entity-id           true
                   :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]

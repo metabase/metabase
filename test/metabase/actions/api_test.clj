@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.actions.api-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -106,7 +105,7 @@
                                     :model_id   card-id
                                     :kind       "row/create"
                                     :parameters [{:id "x" :type "number"}]}
-                          archived {:name                   "Archived example"
+                          _        {:name                   "Archived example"
                                     :type                   :query
                                     :model_id               card-id
                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})

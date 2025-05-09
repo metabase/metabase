@@ -5,13 +5,12 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.settings.deprecated-grab-bag :as public-settings]
@@ -121,8 +120,8 @@
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
-        (perms-group-membership/without-is-superuser-sync-on-add-to-admin-group
-         (perms-group-membership/add-user-to-groups! user-id (map u/the-id groups)))))))
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/add-user-to-groups! user-id (map u/the-id groups)))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -142,14 +141,14 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (perms-group-membership/without-is-superuser-sync-on-add-to-admin-group
-         (perms-group-membership/add-user-to-group! id (u/the-id (perms/admin-group))))
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/add-user-to-group! id (u/the-id (perms/admin-group))))
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
-        (perms-group-membership/without-is-superuser-sync-on-add-to-admin-group
-         (perms-group-membership/remove-user-from-group! id (u/the-id (perms/admin-group))))))
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/remove-user-from-group! id (u/the-id (perms/admin-group))))))
     ;; make sure email and locale are valid if set
     (when email
       (assert (u/email? email)))
@@ -413,13 +412,13 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-        (perms-group-membership/remove-user-from-groups! user-id to-remove)
-        (perms-group-membership/add-user-to-groups! user-id to-add)))
+        (perms/remove-user-from-groups! user-id to-remove)
+        (perms/add-user-to-groups! user-id to-add)))
     true))
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
 
-;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
+;; NB: Settings are also defined where they're used
 
 (defsetting last-acknowledged-version
   (deferred-tru "The last version for which a user dismissed the ''What''s new?'' modal.")

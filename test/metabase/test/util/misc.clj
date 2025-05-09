@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.init]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test.initialize :as initialize]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -35,7 +35,7 @@
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
 
-(defn do-with-single-admin-user
+(defn do-with-single-admin-user!
   [attributes thunk]
   (let [existing-admin-memberships (t2/select :model/PermissionsGroupMembership :group_id (:id (perms-group/admin)))
         _                          (t2/delete! (t2/table-name :model/PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
@@ -51,22 +51,22 @@
         (t2/delete! :model/User (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser true}))
-        (perms-group-membership/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]
-                                                       {:user user_id :group group_id :is-group-manager? is_group_manager}))))))
+        (perms/add-users-to-groups! (for [{:keys [user_id group_id is_group_manager]} existing-admin-memberships]
+                                      {:user user_id :group group_id :is-group-manager? is_group_manager}))))))
 
-(defmacro with-single-admin-user
+(defmacro with-single-admin-user!
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
   powers of all other users in the database.
 
   Example:
 
   (testing \"Check that the last superuser cannot deactivate themselves\"
-    (mt/with-single-admin-user [{id :id}]
+    (mt/with-single-admin-user! [{id :id}]
       (is (= \"You cannot remove the last member of the 'Admin' group!\"
              (mt/user-http-request :crowberto :delete 400 (format \"user/%d\" id))))))"
   [[binding-form & [options-map]] & body]
-  `(do-with-single-admin-user ~options-map (fn [~binding-form]
-                                             ~@body)))
+  `(do-with-single-admin-user! ~options-map (fn [~binding-form]
+                                              ~@body)))
 
 (def ^{:arglists '([toucan-model])} object-defaults
   "Return the default values for columns in an instance of a `toucan-model`, excluding ones that differ between
