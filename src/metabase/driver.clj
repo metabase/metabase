@@ -10,7 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -675,6 +675,7 @@
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection
 
+    ;; Index sync is turned off across the application as it is not used ATM.
     ;; Does the driver support column(s) support storing index info
     :index-info
 

@@ -6,7 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -85,7 +85,7 @@
   (when site-locale
     (public-settings/site-locale! site-locale))
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
-  (public-settings/anon-tracking-enabled! true))
+  (analytics/anon-tracking-enabled! true))
 
 (api.macros/defendpoint :post "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and

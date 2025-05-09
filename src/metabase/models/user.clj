@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -418,7 +418,7 @@
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
 
-;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
+;; NB: Settings are also defined where they're used
 
 (defsetting last-acknowledged-version
   (deferred-tru "The last version for which a user dismissed the ''What''s new?'' modal.")

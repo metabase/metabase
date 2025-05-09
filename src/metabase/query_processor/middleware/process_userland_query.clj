@@ -4,16 +4,17 @@
   adding query ViewLogs, storing exceptions and formatting the results.
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
-  event -- see [[metabase.events.view-log]]."
+  event -- see [[metabase.view-log.events.view-log]]."
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -168,9 +169,8 @@
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
-                  (let [preprocessed-query (:preprocessed_query metadata)
-                        ;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result             (rff (dissoc metadata :preprocessed_query))]
+                  (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
+                        result (rff (dissoc metadata :preprocessed_query))]
                         ;; temporarily disabled because it impacts query performance
                     (add-and-save-execution-metadata-xform! execution-info result)))]
           (try

@@ -741,7 +741,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 
@@ -838,6 +838,15 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-sql-fixer
+    :available (premium-features/enable-ai-sql-fixer?)
+    :enabled   (premium-features/enable-ai-sql-fixer?)}
+   {:name      :ai-sql-generation
+    :available (premium-features/enable-ai-sql-generation?)
+    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -935,7 +944,7 @@
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
-  (when (public-settings/anon-tracking-enabled)
+  (when (analytics.settings/anon-tracking-enabled)
     (let [start-time-ms                  (System/currentTimeMillis)
           {:keys [stats snowplow-stats]} (generate-instance-stats!)
           end-time-ms                    (System/currentTimeMillis)

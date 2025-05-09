@@ -592,6 +592,28 @@
                     ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")) .toLocalDate)]
                 (is (= ud cd))))))))))
 
+(deftest ^:parallel date-truncate-datetime
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:orders [{:field :created_at}]]
+                              [:people [{:field :created_at}]]]
+              {:keys [field]} fields]
+        (testing (str "truncating " table "." field " to date")
+          (let [field-md (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "DATETRUNC" (lib/date field-md))
+                          (lib/limit 100))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (doseq [[uncasted-value casted-value] rows]
+              (let [cd (-> casted-value   java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))
+                    ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
+                (is (= (.toLocalDate ud) (.toLocalDate cd)))
+                (is (zero? (.getHour   cd)))
+                (is (zero? (.getMinute cd)))
+                (is (zero? (.getSecond cd)))))))))))
+
 ;; text()
 
 (deftest ^:parallel text-cast-examples
