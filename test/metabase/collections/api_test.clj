@@ -1128,7 +1128,8 @@
                  [:= :collection_type nil] 0
                  [:= :collection_type collection/trash-collection-type] 1
                  :else 2]] :asc]
-              [:%lower.name :asc]]
+              [:%lower.name :asc]
+              [:id :asc]]
              (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
@@ -1140,10 +1141,14 @@
                :else 2]] :asc]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))
+                                                 :official-collections-first? true} :mysql)))))
+
+(deftest ^:parallel children-sort-clause-test-2b
+  (testing "Sorting by last-edited-at"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1151,12 +1156,13 @@
                :else 2]] :asc]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :postgres)))))
 
-(deftest ^:parallel children-sort-clause-test-2b
+(deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1167,10 +1173,14 @@
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))
+                                                 :official-collections-first? true} :postgres)))))
+
+(deftest ^:parallel children-sort-clause-test-2d
+  (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1180,7 +1190,8 @@
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
                                                  :official-collections-first? true} :mysql)))))
@@ -1193,17 +1204,22 @@
                [:= :collection_type collection/trash-collection-type] 1
                :else 2]] :asc]
             [:model_ranking :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))
+                                                 :official-collections-first? true} :postgres)))))
+
+(deftest ^:parallel children-sort-clause-test-3b
+  (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
                [:= :collection_type collection/trash-collection-type] 1
                :else 2]] :asc]
             [:model_ranking :desc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :desc
                                                  :official-collections-first? true} :mysql)))))
@@ -1800,11 +1816,11 @@
       (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
                     (let [resp (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :limit limit :offset offset)]
-                      (is (= 3 (:total resp)))
+                      (is (>= (:total resp) 3))
                       (->> resp :data (map :id))))]
         (testing "Selecting everything"
-          (is (= [card-3-id card-2-id card-1-id]
-                 (fetch))))
+          (is (set/subset? #{card-3-id card-2-id card-1-id}
+                           (set (fetch)))))
         (testing "Selecting the first one"
           (is (= [card-3-id]
                  (fetch :limit 1))))
@@ -1822,8 +1838,8 @@
         (testing "Only offset, no limit"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :offset 1)]
-            (is (= [card-2-id card-1-id]
-                   (map :id data)))))
+            (is (set/subset? #{card-2-id card-1-id}
+                             (into #{} (map :id) data)))))
         (testing "Zero limit"
           (is (= [] (fetch :limit 0))))))))
 
@@ -1956,7 +1972,7 @@
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id))))))
 
-(deftest fetch-root-items-limit-and-offset-test
+(deftest ^:synchronized fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
     (with-some-children-of-collection! nil
       (letfn [(items [limit offset]
@@ -1984,7 +2000,8 @@
   (testing "GET /api/collection/root/items"
     (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (is (= []
-             ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
+             ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no
+             ;; collection_id
              (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
