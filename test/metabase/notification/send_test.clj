@@ -624,6 +624,49 @@
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
 
+(deftest send-condition-queue-test
+  (doseq [[condition-passed? condition-creator-id] [[true (mt/user->id :crowberto)]
+                                                    [false (mt/user->id :rasta)]]]
+    (notification.tu/with-temp-notification
+      [notification {:notification {:payload_type :notification/testing
+                                    :creator_id   (mt/user->id :crowberto)
+                                    :condition    ["=" ["context" "creator_id"] condition-creator-id]}}]
+      (let [queued? (atom false)]
+        (with-redefs [notification.send/send-notification-sync! (fn [_notification] (reset! queued? true))]
+          (#'notification.send/send-notification!
+           notification
+           :notification/sync? true))
+        (if condition-passed?
+          (testing "queued when condition returns true"
+            (is (true? @queued?)))
+          (testing "not queued when condition returns false"
+            (is (false? @queued?))))))))
+
+(deftest cutoff-notification-env-test
+  (let [send-went-through? (fn [notification]
+                             (let [yes (atom false)]
+                               (with-redefs [notification.send/send-notification-sync! (fn [_notification]
+                                                                                         (reset! yes true))]
+                                 (#'notification.send/send-notification! notification :notification/sync? true))
+                               @yes))]
+    (testing "if not set, send any notifications"
+      (mt/with-temporary-setting-values [notification-suppression-cutoff nil]
+        (doseq [updated-at [(t/zoned-date-time)
+                            (t/plus (t/zoned-date-time) (t/days 1))
+                            (t/minus (t/zoned-date-time) (t/days 1))
+                            nil]]
+          (is (true? (send-went-through? {:updated_at updated-at}))))))
+    (testing "if set"
+      (let [cutoff (t/offset-date-time)]
+        (mt/with-temporary-setting-values [notification-suppression-cutoff (str cutoff)]
+          (doseq [[went-through? updated-at context]
+                  [[false (t/minus cutoff (t/seconds 1)) "skip if notifications were updated before cut off"]
+                   [true  (t/plus cutoff (t/seconds 1)) "send if notifications were updated after cut off"]
+                   ;; for unsaved notifications
+                   [true  nil "send if no updated_at"]]]
+            (testing context
+              (is (= went-through? (send-went-through? {:updated_at updated-at}))))))))))
+
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
     (let [queue                  (#'notification.send/create-dedup-priority-queue)
