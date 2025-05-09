@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useDeepCompareEffect } from "react-use";
 
 import {
   skipToken,
@@ -14,6 +15,7 @@ import { getUrl as getUrl_ } from "../../utils";
 
 import type {
   DatabaseItem,
+  ExpandedState,
   FlatItem,
   Item,
   ItemType,
@@ -23,6 +25,12 @@ import type {
   TreeNode,
   TreePath,
 } from "./types";
+
+const CHILD_TYPES = {
+  database: "schema",
+  schema: "table",
+  table: null,
+} as const;
 
 export function getIconForType(type: ItemType): IconName {
   if (type === "table") {
@@ -155,17 +163,9 @@ export function useTableLoader(path: TreePath) {
     [getDatabases, getSchemas, getTables],
   );
 
-  const { databaseId, schemaId, tableId } = path;
-
-  useEffect(() => {
-    load({
-      databaseId,
-      schemaId,
-      tableId,
-    });
-    // pass path items to the hook separately to avoid reloading
-    // when the object identity changes
-  }, [databaseId, schemaId, tableId, load]);
+  useDeepCompareEffect(() => {
+    load(path);
+  }, [load, path]);
 
   return { tree };
 }
@@ -259,6 +259,9 @@ export function useSearch(query: string) {
   };
 }
 
+/**
+ * Returns a state object that indicates which nodes are expanded in the tree.
+ */
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
@@ -291,48 +294,40 @@ export function useExpandedState(path: TreePath) {
   };
 }
 
-// Returns a list of all the nodes along the TreePath
-function partialPaths(path: TreePath) {
-  return [
-    path,
-    { ...path, tableId: undefined },
-    { ...path, tableId: undefined, schemaId: undefined },
-    { ...path, tableId: undefined, schemaId: undefined, databaseId: undefined },
-  ];
-}
-
-type ExpandedState = {
-  [key: string]: boolean;
-};
-
 // Returns a new state object with all the nodes along the path expanded.
 function expandPath(state: ExpandedState, path: TreePath) {
   const res = { ...state };
-  partialPaths(path).forEach((path) => {
-    res[toKey(path)] = true;
+
+  [
+    toKey({
+      ...path,
+      tableId: undefined,
+    }),
+    toKey({
+      ...path,
+      tableId: undefined,
+      schemaId: undefined,
+    }),
+    toKey({
+      ...path,
+      tableId: undefined,
+      schemaId: undefined,
+      databaseId: undefined,
+    }),
+  ].forEach((key) => {
+    res[key] = true;
   });
+
   return res;
 }
 
-// Create a unique key for a TreePath
-function toKey({ databaseId, schemaId, tableId }: TreePath) {
-  return JSON.stringify([databaseId, schemaId, tableId]);
-}
-
-export function item<T extends Item>(x: Omit<T, "key">): T {
-  return {
-    ...x,
-    key: toKey(x.value),
-  } as T;
-}
-
-function node<T extends Item>(x: Omit<T, "key">): TreeNode {
-  return {
-    ...item(x),
-    children: [],
-  } as TreeNode;
-}
-
+/**
+ * Convert a TreeNode into a flat list of items
+ * that can easily be rendered using virtualization.
+ *
+ * This does other things like removing nameless schemas
+ * from the tree and adding loading nodes.
+ */
 export function flatten(
   node: TreeNode,
   opts: {
@@ -347,9 +342,9 @@ export function flatten(
     // root node doesn't render a title and is always expanded
     if (addLoadingNodes && node.children.length === 0) {
       return [
-        loadingNode("database", level),
-        loadingNode("database", level),
-        loadingNode("database", level),
+        loadingItem("database", level),
+        loadingItem("database", level),
+        loadingItem("database", level),
       ];
     }
     return sort(node.children).flatMap((child) => flatten(child, opts));
@@ -360,13 +355,13 @@ export function flatten(
   }
 
   if (addLoadingNodes && node.children.length === 0) {
-    const childType = getChildType(node.type);
+    const childType = CHILD_TYPES[node.type];
     if (!childType) {
       return [{ ...node, level, parent }];
     }
     return [
       { ...node, isExpanded: true, level, parent },
-      loadingNode(childType, level + 1, node),
+      loadingItem(childType, level + 1, node),
     ];
   }
 
@@ -395,37 +390,15 @@ export function flatten(
   ];
 }
 
-function getChildType(type: ItemType): ItemType | null {
-  if (type === "database") {
-    return "schema";
-  }
-  if (type === "schema") {
-    return "table";
-  }
-  return null;
-}
-
 function sort(nodes: TreeNode[]): TreeNode[] {
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });
 }
 
-function loadingNode(
-  type: ItemType,
-  level: number,
-  parent?: TreeNode,
-): FlatItem {
-  return {
-    type,
-    level,
-    value: parent?.type === "root" ? undefined : parent?.value,
-    parent: parent?.type === "root" ? undefined : parent?.key,
-    isLoading: true,
-    key: Math.random().toString(),
-  };
-}
-
+/**
+ * Merge two TreeNodes together.
+ */
 function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
   if (!a) {
     if (!b) {
@@ -447,4 +420,40 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
   }
 
   return { ...a, ...b, children };
+}
+
+/**
+ * Create a unique key for a TreePath
+ */
+function toKey({ databaseId, schemaId, tableId }: TreePath) {
+  return JSON.stringify([databaseId, schemaId, tableId]);
+}
+
+function item<T extends Item>(x: Omit<T, "key">): T {
+  return {
+    ...x,
+    key: toKey(x.value),
+  } as T;
+}
+
+function node<T extends Item>(x: Omit<T, "key">): TreeNode {
+  return {
+    ...item(x),
+    children: [],
+  } as TreeNode;
+}
+
+function loadingItem(
+  type: ItemType,
+  level: number,
+  parent?: TreeNode,
+): FlatItem {
+  return {
+    type,
+    level,
+    value: parent?.type === "root" ? undefined : parent?.value,
+    parent: parent?.type === "root" ? undefined : parent?.key,
+    isLoading: true,
+    key: Math.random().toString(),
+  };
 }

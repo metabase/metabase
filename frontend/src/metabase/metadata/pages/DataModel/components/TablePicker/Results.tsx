@@ -13,6 +13,7 @@ import { getIconForType, getUrl, hasChildren } from "./utils";
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
 const INDENT_OFFSET = 18;
+const LOADING_TIMEOUT = 50;
 
 export function Results({
   items,
@@ -76,7 +77,7 @@ export function Results({
           return (
             <>
               {type !== "database" && (
-                <Delay delay={isLoading ? 200 : 0}>
+                <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
                   <Track
                     key={`${key}-track`}
                     start={
@@ -114,7 +115,7 @@ export function Results({
                   }}
                 >
                   <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
-                    <Delay delay={isLoading ? 200 : 0}>
+                    <Delay delay={isLoading ? LOADING_TIMEOUT : 0}>
                       {hasChildren(type) && (
                         <Icon
                           name="chevronright"

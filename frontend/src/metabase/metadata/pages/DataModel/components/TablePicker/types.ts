@@ -60,3 +60,7 @@ type LoadingItem = {
   label?: string;
   parent?: NodeKey;
 };
+
+export type ExpandedState = {
+  [key: NodeKey]: boolean;
+};
