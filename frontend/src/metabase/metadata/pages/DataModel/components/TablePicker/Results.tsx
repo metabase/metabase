@@ -53,6 +53,18 @@ export function Results({
     [path.tableId, items, virtual],
   );
 
+  useEffect(
+    function measureItemsWhenTheyChange() {
+      const { startIndex = 0, endIndex = 0 } = virtual.range ?? {};
+      for (let idx = startIndex; idx <= endIndex; idx++) {
+        virtual.measureElement(
+          ref.current?.querySelector(`[data-index='${idx}']`),
+        );
+      }
+    },
+    [items, virtual],
+  );
+
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
@@ -101,9 +113,6 @@ export function Results({
                 data-type={type}
                 onClick={() => {
                   toggle?.(key);
-                  virtual.measureElement(
-                    ref.current?.querySelector(`[data-index='${index}']`),
-                  );
 
                   if (value && !isExpanded) {
                     onItemClick?.(value);
