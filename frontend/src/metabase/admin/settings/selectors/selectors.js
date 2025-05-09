@@ -3,12 +3,14 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
@@ -198,6 +200,19 @@ export const ADMIN_SETTINGS_SECTIONS = {
             window.location.reload();
           }
         },
+      },
+      {
+        display_name: t`Content localization`,
+        description: "",
+        key: "content-localization",
+        getHidden: (_settings) => {
+          return !PLUGIN_CONTENT_TRANSLATION.isEnabled;
+        },
+        widget: () => (
+          <ErrorBoundary>
+            <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+          </ErrorBoundary>
+        ),
       },
       {
         key: "report-timezone",
