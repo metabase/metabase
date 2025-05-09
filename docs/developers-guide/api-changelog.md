@@ -12,6 +12,8 @@ title: API changelog
 
 - `GET /api/util/bug_report_details` has been renamed to `GET /api/bug-reporting/details`.
 
+- `POST /api/util/product-feedback` has been renamed to `POST /api/product-feedback`.
+
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:

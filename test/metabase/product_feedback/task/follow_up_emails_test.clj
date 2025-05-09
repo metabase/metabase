@@ -1,8 +1,8 @@
-(ns metabase.task.follow-up-emails-test
+(ns metabase.product-feedback.task.follow-up-emails-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email-test :refer [inbox with-fake-inbox]]
-   [metabase.task.follow-up-emails :as follow-up-emails]
+   [metabase.product-feedback.task.follow-up-emails :as follow-up-emails]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as mt]))
 
