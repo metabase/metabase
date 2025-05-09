@@ -40,6 +40,7 @@
    [metabase.tiles.init]
    [metabase.upload.init]
    [metabase.user-key-value.init]
+   [metabase.version.init]
    [metabase.view-log.init]
    [metabase.xrays.init]))
 
