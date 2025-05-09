@@ -464,26 +464,11 @@
                          :mbql-query  mbql-query}
                         e))))))
 
-(def ^:private HumanReadableRemappingMap
-  "Schema for the map of actual value -> human-readable value. Cannot be empty."
-  [:map-of {:min 1} :any [:maybe :string]])
-
-(mu/defn- human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
-  [field-id :- ms/PositiveInt]
-  (when-let [{orig :values, remapped :human_readable_values} (t2/select-one [:model/FieldValues :values :human_readable_values]
-                                                                            {:where [:and
-                                                                                     [:= :type "full"]
-                                                                                     [:= :field_id field-id]
-                                                                                     [:not= :human_readable_values nil]
-                                                                                     [:not= :human_readable_values "{}"]]})]
-    (when (seq remapped)
-      (zipmap orig remapped))))
-
 (mu/defn- add-human-readable-values
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
-   v->human-readable :- HumanReadableRemappingMap]
+   v->human-readable :- metadata-queries/HumanReadableRemappingMap]
   (map vector
        (map first values)
        (map (fn [[v]]
@@ -604,7 +589,7 @@
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
         options               (dissoc options :relax-fk-requirement?)
-        v->human-readable     (human-readable-remapping-map field-id)
+        v->human-readable     (metadata-queries/human-readable-remapping-map field-id)
         remapping             (delay (remapping field-id))]
     (cond
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
@@ -679,7 +664,7 @@
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
-   v->human-readable :- HumanReadableRemappingMap
+   v->human-readable :- metadata-queries/HumanReadableRemappingMap
    constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]
@@ -731,7 +716,7 @@
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
-        v->human-readable     (delay (human-readable-remapping-map field-id))
+        v->human-readable     (delay (metadata-queries/human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
       (str/blank? query)

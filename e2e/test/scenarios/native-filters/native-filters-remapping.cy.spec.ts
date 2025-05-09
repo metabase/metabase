@@ -134,13 +134,10 @@ function testWidgetsRemapping() {
   cy.log("internal remapping");
   findWidget("Internal").click();
   H.popover().within(() => {
-    // TODO fix! - /api/card/:id/params/:param-key/values endpoint doesn't return remapped values for internal dimension
-    // cy.findByText("N5").click();
-    cy.findByText("5").click();
+    cy.findByText("N5").click();
     cy.button("Add filter").click();
   });
-  // TODO it's not fetched because it cached /values
-  // findWidget("Internal").should("contain.text", "N5");
+  findWidget("Internal").should("contain.text", "N5");
 
   cy.log("FK remapping");
   findWidget("FK").click();
