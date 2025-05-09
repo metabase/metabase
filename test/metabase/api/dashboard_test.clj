@@ -5050,7 +5050,7 @@
                      (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
                                      :month))
                      lib/append-stage)
-          [category created-at cnt subtotal quantity] (lib/filterable-columns base)
+          [category created-at _count subtotal quantity] (lib/filterable-columns base)
           ;; Second stage: filtering to those categoies and months where a category sold 100 total units;
           ;; *then* aggregating on the avg subtotal per category.
           query  (-> base

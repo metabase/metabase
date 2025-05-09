@@ -3,8 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.params :as params]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]

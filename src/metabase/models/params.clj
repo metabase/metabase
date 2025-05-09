@@ -22,10 +22,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params.field-values :as params.field-values]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -61,24 +58,6 @@
   `false`, but the public and embed versions of the API endpoints can bind this to `true` to bypass normal perms
   checks (since there is no current User) and get *all* values."
   false)
-
-(defn- field-ids->param-field-values-ignoring-current-user
-  [param-field-ids]
-  (not-empty
-   (into {}
-         (comp (keep field-values/get-latest-full-field-values)
-               (map #(select-keys % [:field_id :human_readable_values :values]))
-               (map (juxt :field_id identity)))
-         param-field-ids)))
-
-(defn- field-ids->param-field-values
-  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
-  This map is returned by various endpoints as `:param_values`, if `param-field-ids` is empty, return `nil`"
-  [param-field-ids]
-  (when (seq param-field-ids)
-    ((if *ignore-current-user-perms-and-return-all-field-values*
-       field-ids->param-field-values-ignoring-current-user
-       params.field-values/field-id->field-values-for-current-user) param-field-ids)))
 
 (defn- template-tag->field-form
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
