@@ -87,17 +87,10 @@ export const settings = {
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
     ) => ({
-      value: {
-        split: migratePivotColumnSplitSetting(
-          settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-          data?.cols ?? [],
-        ),
-        clauses: {
-          rows: [],
-          columns: [],
-          values: []
-        }
-      },
+      value: migratePivotColumnSplitSetting(
+        settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+        data?.cols ?? [],
+      ),
       partitions: isPreaggregatedPivot(data.cols)
         ? preAggPartitions
         : partitions,
@@ -121,7 +114,7 @@ export const settings = {
 
       // TODO -- implement the right logic here
       if (!isPreaggregatedPivot(data.cols)) {
-        return storedValue;
+        return undefined;
       }
 
       const columnsToPartition = data.cols.filter(

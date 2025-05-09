@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { splice } from "icepick";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Draggable,
   Droppable,
@@ -28,10 +28,9 @@ import { ColumnItem } from "./ColumnItem";
 
 type AddBreakoutPopoverProps = {
   query: Lib.Query;
-  handleAddBreakout: (column: Lib.ColumnMetadata) => void;
 };
 
-const AddBreakoutPopover = ({ query, handleAddBreakout }: AddBreakoutPopoverProps) => {
+const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
   const [opened, { close, toggle }] = useDisclosure();
   return (
     <Popover
@@ -60,8 +59,8 @@ const AddBreakoutPopover = ({ query, handleAddBreakout }: AddBreakoutPopoverProp
           isMetric={false}
           breakout={undefined}
           breakoutIndex={undefined}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakoutColumn={() => { }}
+          onAddBreakout={() => {}}
+          onUpdateBreakoutColumn={() => {}}
           onClose={close}
         />
       </Popover.Dropdown>
@@ -78,9 +77,10 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
   const operators = useMemo(() => {
     const baseOperators = Lib.availableAggregationOperators(query, -1);
     return Lib.filterPivotAggregationOperators(baseOperators);
+    //return isUpdate
+    //  ? Lib.selectedAggregationOperators(baseOperators, clause)
+    //  : baseOperators;
   }, [query]);
-
-  const [pivotQuery, updatePivotQuery] = useState(Lib.appendStage(query));
 
   return (
     <Popover
@@ -104,13 +104,13 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
       </Popover.Target>
       <Popover.Dropdown>
         <AggregationPicker
-          query={pivotQuery}
+          query={query}
           operators={operators}
           stageIndex={-1}
           onClose={close}
           allowCustomExpressions={false}
           allowMetrics={false}
-          onQueryChange={(query) => updatePivotQuery(query)}
+          onQueryChange={() => {}}
         />
       </Popover.Dropdown>
     </Popover>
@@ -131,21 +131,9 @@ const columnAdd = (columns: string[], to: number, column: string) => {
   return splice(columns, to, 0, column);
 };
 
-// Aggregation & breakout clauses added to the base pivot query
-type FieldPartitionAddedClauses = {
-  rows: Lib.BreakoutClause[];
-  columns: Lib.BreakoutClause[];
-  values: Lib.AggregationClause[];
-}
-
-type FieldPartitionValue = {
-  split: ColumnNameColumnSplitSetting;
-  clauses: FieldPartitionAddedClauses;
-}
-
 type ChartSettingFieldPartitionProps = {
-  value: FieldPartitionValue;
-  onChange: (value: FieldPartitionValue) => void;
+  value: ColumnNameColumnSplitSetting;
+  onChange: (value: ColumnNameColumnSplitSetting) => void;
   onShowWidget: (
     widget: {
       id: string;
@@ -172,10 +160,6 @@ export const ChartSettingFieldsPartition = ({
   columns,
   canEditColumns,
 }: ChartSettingFieldPartitionProps) => {
-  //useEffect(() => {
-  //  console.log("value keys:", Object.keys(value));
-  //}, [value]);
-
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -219,74 +203,42 @@ export const ChartSettingFieldsPartition = ({
     ) {
       onChange({
         ...value,
-        split: {
-          ...value.split,
-          [sourcePartition]: columnMove(
-            value.split[sourcePartition as keyof ColumnNameColumnSplitSetting],
-            sourceIndex,
-            destinationIndex,
-          ),
-        }
+        [sourcePartition]: columnMove(
+          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
+          sourceIndex,
+          destinationIndex,
+        ),
       });
     } else if (sourcePartition !== destinationPartition) {
       const column =
-        value.split[sourcePartition as keyof ColumnNameColumnSplitSetting][
-        sourceIndex
+        value[sourcePartition as keyof ColumnNameColumnSplitSetting][
+          sourceIndex
         ];
 
       onChange({
         ...value,
-        split: {
-          ...value.split,
-          [sourcePartition]: columnRemove(
-            value.split[sourcePartition as keyof ColumnNameColumnSplitSetting],
-            sourceIndex,
-          ),
-          [destinationPartition]: columnAdd(
-            value.split[destinationPartition as keyof ColumnNameColumnSplitSetting],
-            destinationIndex,
-            column,
-          ),
-        }
+        [sourcePartition]: columnRemove(
+          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
+          sourceIndex,
+        ),
+        [destinationPartition]: columnAdd(
+          value[destinationPartition as keyof ColumnNameColumnSplitSetting],
+          destinationIndex,
+          column,
+        ),
       });
     }
   };
 
   const updatedValue = useMemo(
-    () => {
-      const updatedSplit = _.mapObject(value.split || {}, (columnNames) => {
-        return columnNames
+    () =>
+      _.mapObject(value || {}, (columnNames) =>
+        columnNames
           .map((columnName) => columns.find((col) => col.name === columnName))
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null);
-      },
-      );
-
-      return {
-        ...value,
-        split: updatedSplit,
-      }
-    },
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
+      ),
     [columns, value],
   );
-
-  // TODO: maybe store unaggregated pivot details *only* in clauses?
-  const handleAddBreakout = (partitionName: keyof ColumnNameColumnSplitSetting, column: Lib.ColumnMetadata) => {
-    const newValue = {
-      split: {
-        ...value.split,
-        [partitionName]: columnAdd(
-          value.split[partitionName],
-          -1,
-          Lib.displayInfo(question.query(), -1, column).displayName
-        )
-      },
-      clauses: {
-        ...value.clauses,
-        [partitionName]: [column]
-      }
-    };
-    onChange(newValue);
-  }
 
   const emptyColumnMessage = canEditColumns
     ? t`Add fields here`
@@ -295,23 +247,19 @@ export const ChartSettingFieldsPartition = ({
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       {partitions.map(({ name: partitionName, title }) => {
-        const updatedColumns = updatedValue.split[partitionName] ?? [];
+        const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
         const AggregationOrBreakoutPopover =
-          partitionType === "metric" ?
-            <AddAggregationPopover
-              query={question.query()}
-            />
-            :
-            <AddBreakoutPopover
-              query={question.query()}
-              handleAddBreakout={(column) => handleAddBreakout(partitionName, column)}
-            />;
+          partitionType === "metric"
+            ? AddAggregationPopover
+            : AddBreakoutPopover;
         return (
           <Box py="sm" key={partitionName}>
             <Flex align="center" justify="space-between">
               <Text c="text-medium">{title}</Text>
-              {canEditColumns && AggregationOrBreakoutPopover}
+              {canEditColumns && (
+                <AggregationOrBreakoutPopover query={question.query()} />
+              )}
             </Flex>
             <Droppable
               droppableId={partitionName}
