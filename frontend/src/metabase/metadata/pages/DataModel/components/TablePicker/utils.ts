@@ -114,16 +114,16 @@ export function useTableLoader(path: TreePath) {
       }
       const res = await fetchSchemas({ id: databaseId }, true);
       return Promise.all(
-        res.data?.map(async (schema) => {
+        res.data?.map(async (schema, _, schemas) => {
           const res = node<SchemaNode>({
             type: "schema",
             label: schema,
             value: { databaseId, schemaId: schema },
           });
 
-          // If the schema is unnamed, we fetch the tables immediately
-          // so we can render a flattened tree.
-          if (schema === UNNAMED_SCHEMA_NAME) {
+          // If the schema is unnamed, or if it's the only schema in the database,
+          // fetch the tables immediately so we can render a flattened tree.
+          if (schema === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
             res.children = await getTables(databaseId, schema);
           }
           return res;
