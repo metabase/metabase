@@ -430,7 +430,7 @@ jobs:
         version:
           - name: MongoDB 6.0
             junit-name: be-tests-mongo-6-0-ee
-            image: metabase/qa-databases:mongo-sample-6.0
+            image: metabase/qa-databases:mongo-sample-6
           - name: MongoDB Latest
             junit-name: be-tests-mongo-latest-ee
             image: mongo:latest
@@ -479,7 +479,7 @@ jobs:
         version:
           - name: MongoDB 6.0
             junit-name: be-tests-mongo-6-0-ssl-ee
-            image: metabase/qa-databases:mongo-sample-6.0
+            image: metabase/qa-databases:mongo-sample-6
     env:
       CI: 'true'
       DRIVERS: mongo
