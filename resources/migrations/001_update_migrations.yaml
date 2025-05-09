@@ -11196,6 +11196,8 @@ databaseChangeLog:
                   constraints:
                     unique: false
                     nullable: true
+
+  - changeSet:
       id: v55.2025-04-25T17:12:44
       author: bshepherdson
       comment: Add Card.metadata_analysis_state column for the idents backfill state machine
