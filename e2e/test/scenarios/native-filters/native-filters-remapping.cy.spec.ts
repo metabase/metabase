@@ -19,6 +19,15 @@ describe("scenarios > native > filters > remapping", () => {
     createQuestion().then((questionId) => {
       H.visitQuestion(questionId);
       testDefaultValuesRemapping();
+
+      H.visitPublicQuestion(questionId);
+      testDefaultValuesRemapping();
+
+      H.visitEmbeddedPage({
+        resource: { question: questionId },
+        params: {},
+      });
+      testDefaultValuesRemapping();
     });
   });
 });
@@ -84,17 +93,17 @@ function createQuestion() {
     },
     parameters: [
       createMockParameter({
-        id: "p1",
+        id: "quantity",
         name: "Internal",
-        slug: "p1",
+        slug: "quantity",
         type: "number/=",
         target: ["dimension", ["template-tag", "quantity"]],
         default: [1],
       }),
       createMockParameter({
-        id: "p2",
+        id: "user_id_pk",
         name: "PK->Name",
-        slug: "p2",
+        slug: "user_id_pk",
         type: "id",
         target: ["dimension", ["template-tag", "user_id_pk"]],
         default: [3],
@@ -102,8 +111,8 @@ function createQuestion() {
     ],
     enable_embedding: true,
     embedding_params: {
-      p1: "enabled",
-      p2: "enabled",
+      quantity: "enabled",
+      user_id_pk: "enabled",
     },
   };
 
