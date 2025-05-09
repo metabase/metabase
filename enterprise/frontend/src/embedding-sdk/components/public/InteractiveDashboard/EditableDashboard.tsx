@@ -20,6 +20,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
@@ -107,6 +108,11 @@ export const EditableDashboard = ({
     plugins: plugins,
   },
 }: EditableDashboardProps) => {
+  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+    onLoad,
+    onLoadWithoutCards,
+  });
+
   const {
     displayOptions,
     ref,
@@ -160,8 +166,8 @@ export const EditableDashboard = ({
         titled={displayOptions.titled}
         cardTitled={displayOptions.cardTitled}
         theme={displayOptions.theme}
-        onLoad={onLoad}
-        onLoadWithoutCards={onLoadWithoutCards}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
         getClickActionMode={({ question }) =>
           getEmbeddingMode({
             question,
