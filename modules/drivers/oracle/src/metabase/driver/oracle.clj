@@ -520,9 +520,9 @@
   (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
-  [driver _ honeysql-form {clause :filter}]
-  (sql.helpers/where honeysql-form (->> (boolean->comparison clause)
-                                        (sql.qp/->honeysql driver))))
+  [driver _ honeysql-form query]
+  (->> (update query :filter boolean->comparison)
+       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
