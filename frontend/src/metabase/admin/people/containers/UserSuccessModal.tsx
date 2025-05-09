@@ -4,10 +4,9 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
-import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -50,20 +49,26 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
   }
 
   return (
-    <ModalContent
+    <ConfirmModal
+      opened
       title={t`${user.common_name} has been added`}
-      footer={<Button primary onClick={handleClose}>{t`Done`}</Button>}
+      padding="xl"
       onClose={handleClose}
-    >
-      {temporaryPassword ? (
-        <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
-      ) : (
-        <EmailSuccess
-          isSsoEnabled={hasSsoEnabled && !hasPasswordLoginEnabled}
-          user={user}
-        />
-      )}
-    </ModalContent>
+      onConfirm={handleClose}
+      closeButtonText={null}
+      confirmButtonProps={{ color: "brand" }}
+      confirmButtonText={t`Done`}
+      message={
+        temporaryPassword ? (
+          <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
+        ) : (
+          <EmailSuccess
+            isSsoEnabled={hasSsoEnabled && !hasPasswordLoginEnabled}
+            user={user}
+          />
+        )
+      }
+    />
   );
 }
 
@@ -109,10 +114,7 @@ const PasswordSuccess = ({
     </Box>
 
     <PasswordReveal password={temporaryPassword} />
-    <div
-      style={{ paddingLeft: "5em", paddingRight: "5em" }}
-      className={cx(CS.pt4, CS.textCentered)}
-    >
+    <Box ta="center" p="2rem 4.5rem 0">
       {jt`If you want to be able to send email invites, just go to the ${(
         <Link
           key="link"
@@ -122,6 +124,6 @@ const PasswordSuccess = ({
           {t`Email settings`}
         </Link>
       )} page.`}
-    </div>
+    </Box>
   </div>
 );
