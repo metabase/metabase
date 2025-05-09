@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.version.settings :as version.settings]))

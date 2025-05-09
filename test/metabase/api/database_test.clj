@@ -29,7 +29,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]

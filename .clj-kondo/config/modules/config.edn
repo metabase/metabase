@@ -663,8 +663,8 @@
    :uses #{analyze api audit config db driver events lib models query-processor settings task task-history util}}
 
   task
-  {:api #{metabase.task
-          metabase.task.bootstrap
+  {:api #{metabase.task.bootstrap
+          metabase.task.core
           metabase.task.init}
    :uses #{analytics
            channel

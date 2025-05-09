@@ -10,8 +10,8 @@
    [metabase.db :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.task :as task]
    [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
