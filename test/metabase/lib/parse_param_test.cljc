@@ -40,12 +40,12 @@
 (deftest mixed-quote-arg-function-test
   (testing "Should parse a function with both single-quote and double-quote string args"
     (is (= (->function-param "mb.foo" ["hello" "goodbye"])
-           (params.parse-param/parse-param "mb.foo('hello', \"goodbye\")")))))
+           (lib.parse-param/parse-param "mb.foo('hello', \"goodbye\")")))))
 
 (deftest nested-quote-arg-function-test
   (testing "Should parse a function with both single-quote and double-quote string args"
-    (is (= (params/->FunctionParam "mb.foo" ["\"hello\"" "'goodbye'"])
-           (params.parse-param/parse-param "mb.foo('\"hello\"', \"'goodbye'\")")))))
+    (is (= (->function-param "mb.foo" ["\"hello\"" "'goodbye'"])
+           (lib.parse-param/parse-param "mb.foo('\"hello\"', \"'goodbye'\")")))))
 
 (deftest parse-errors-are-simple-params-test
   (testing "Invalid function inputs should be treated as regular params"
@@ -55,5 +55,5 @@
                       "mb.foo(\"hello\",)"
                       "aa.foo('hello')"]]
       (doseq [input bad-inputs]
-        (is (= (params/->Param input)
-               (params.parse-param/parse-param input)))))))
+        (is (= (->param input)
+               (lib.parse-param/parse-param input)))))))
