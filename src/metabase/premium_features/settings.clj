@@ -238,40 +238,58 @@
   "Is this a development instance that should have watermarks?"
   :development-mode)
 
+(define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
+  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
+  :metabot-v3)
+
+(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
+  "Should Metabase suggest SQL fixes?"
+  :ai-sql-fixer)
+
+(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
+  "Should Metabase generate SQL queries?"
+  :ai-sql-generation)
+
+(defn- -token-features []
+  {:advanced_permissions           (enable-advanced-permissions?)
+   :ai_sql_fixer                   (enable-ai-sql-fixer?)
+   :ai_sql_generation              (enable-ai-sql-generation?)
+   :attached_dwh                   (has-attached-dwh?)
+   :audit_app                      (enable-audit-app?)
+   :cache_granular_controls        (enable-cache-granular-controls?)
+   :cache_preemptive               (enable-preemptive-caching?)
+   :collection_cleanup             (enable-collection-cleanup?)
+   :config_text_file               (enable-config-text-file?)
+   :content_verification           (enable-content-verification?)
+   :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
+   :database_auth_providers        (enable-database-auth-providers?)
+   :database_routing               (enable-database-routing?)
+   :development-mode               (development-mode?)
+   :disable_password_login         (can-disable-password-login?)
+   :email_allow_list               (enable-email-allow-list?)
+   :email_restrict_recipients      (enable-email-restrict-recipients?)
+   :embedding                      (hide-embed-branding?)
+   :embedding_sdk                  (enable-embedding-sdk-origins?)
+   :hosting                        (is-hosted?)
+   :llm_autodescription            (enable-llm-autodescription?)
+   :metabot_v3                     (enable-metabot-v3?)
+   :official_collections           (enable-official-collections?)
+   :query_reference_validation     (enable-query-reference-validation?)
+   :sandboxes                      (enable-sandboxes?)
+   :scim                           (enable-scim?)
+   :serialization                  (enable-serialization?)
+   :session_timeout_config         (enable-session-timeout-config?)
+   :snippet_collections            (enable-snippet-collections?)
+   :sso_google                     (enable-sso-google?)
+   :sso_jwt                        (enable-sso-jwt?)
+   :sso_ldap                       (enable-sso-ldap?)
+   :sso_saml                       (enable-sso-saml?)
+   :upload_management              (enable-upload-management?)
+   :whitelabel                     (enable-whitelabeling?)})
+
 (defsetting token-features
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:advanced_permissions           (enable-advanced-permissions?)
-                      :attached_dwh                   (has-attached-dwh?)
-                      :audit_app                      (enable-audit-app?)
-                      :cache_granular_controls        (enable-cache-granular-controls?)
-                      :cache_preemptive               (enable-preemptive-caching?)
-                      :collection_cleanup             (enable-collection-cleanup?)
-                      :database_auth_providers        (enable-database-auth-providers?)
-                      :database_routing               (enable-database-routing?)
-                      :development-mode               (development-mode?)
-                      :config_text_file               (enable-config-text-file?)
-                      :content_verification           (enable-content-verification?)
-                      :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
-                      :disable_password_login         (can-disable-password-login?)
-                      :email_allow_list               (enable-email-allow-list?)
-                      :email_restrict_recipients      (enable-email-restrict-recipients?)
-                      :embedding                      (hide-embed-branding?)
-                      :embedding_sdk                  (enable-embedding-sdk-origins?)
-                      :hosting                        (is-hosted?)
-                      :official_collections           (enable-official-collections?)
-                      :query_reference_validation     (enable-query-reference-validation?)
-                      :sandboxes                      (enable-sandboxes?)
-                      :scim                           (enable-scim?)
-                      :serialization                  (enable-serialization?)
-                      :session_timeout_config         (enable-session-timeout-config?)
-                      :snippet_collections            (enable-snippet-collections?)
-                      :sso_google                     (enable-sso-google?)
-                      :sso_jwt                        (enable-sso-jwt?)
-                      :sso_ldap                       (enable-sso-ldap?)
-                      :sso_saml                       (enable-sso-saml?)
-                      :upload_management              (enable-upload-management?)
-                      :whitelabel                     (enable-whitelabeling?)
-                      :llm_autodescription            (enable-llm-autodescription?)})
+  :getter     -token-features
   :doc        false)

@@ -37,6 +37,8 @@
   define-premium-feature
   development-mode?
   enable-advanced-permissions?
+  enable-ai-sql-fixer?
+  enable-ai-sql-generation?
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?
@@ -50,6 +52,7 @@
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-llm-autodescription?
+  enable-metabot-v3?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
