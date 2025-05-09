@@ -162,8 +162,7 @@ export function PermissionsPageLayout({
         onClose={() => true}
       >
         <Text mb="1rem">
-          {t`To edit permissions, you need to start from the latest version. Please
-          refresh the page.`}
+          {t`To edit permissions, you need to start from the latest version. Please refresh the page.`}
         </Text>
         <Group justify="flex-end">
           <NewButton onClick={() => location.reload()} variant="filled">
