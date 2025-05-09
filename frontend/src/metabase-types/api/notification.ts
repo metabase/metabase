@@ -260,10 +260,21 @@ export type FunctionName =
 export type Path = Array<string>;
 export type Literal = string | number | boolean | null;
 
-type ConditionalExpression = [
+export type SingleConditionalAlertExpression = [
   FunctionName,
-  Path | ConditionalExpression,
-  Literal | ConditionalExpression | ConditionalExpression[],
+  Path | SingleConditionalAlertExpression,
+  Literal,
 ];
 
-export type ConditionalAlertExpression = ConditionalExpression;
+// Break the recursive definition into separate types
+export type ConditionalAlertItem =
+  | SingleConditionalAlertExpression
+  | MultipleConditionalAlertExpressions;
+export type MultipleConditionalAlertExpressions = [
+  LogicalOperator,
+  ...ConditionalAlertItem[],
+];
+
+export type ConditionalAlertExpression =
+  | SingleConditionalAlertExpression
+  | MultipleConditionalAlertExpressions;

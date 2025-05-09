@@ -3,6 +3,7 @@ import type {
   ChannelApiResponse,
   CreateAlertNotificationRequest,
   CreateTableNotificationRequest,
+  MultipleConditionalAlertExpressions,
   NotificationChannel,
   NotificationHandler,
   NotificationTriggerEvent,
@@ -149,7 +150,17 @@ export const getDefaultTableNotificationRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    // TODO: Extract to generateExpression after code reorganization
-    condition: ["=", ["context", "args", "table_id"], tableId],
+    condition: getBaseCondition(tableId, eventName),
   };
 };
+
+export function getBaseCondition(
+  tableId: TableId,
+  eventType: NotificationTriggerEvent,
+): MultipleConditionalAlertExpressions {
+  return [
+    "and",
+    ["=", ["context", "table_id"], tableId],
+    ["=", ["context", "event_name"], eventType],
+  ];
+}

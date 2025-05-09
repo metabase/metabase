@@ -620,7 +620,6 @@ export const CreateOrEditTableNotificationModal = ({
           confirmButtonText={t`Discard`}
           closeButtonText={t`Cancel`}
           closeOnEscape={false}
-          confirmButtonPrimary={false}
         />
       )}
     </Modal>
