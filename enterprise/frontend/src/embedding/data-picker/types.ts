@@ -1,10 +1,6 @@
 import type { IconName } from "metabase/ui";
 
-export type DataPickerDataType =
-  | "models"
-  | "raw-data"
-  | "questions"
-  | "metrics";
+export type DataPickerDataType = "models" | "raw-data";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;

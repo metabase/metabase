@@ -8,7 +8,10 @@ import {
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { isDraggedColumnItem } from "metabase/visualizer/utils";
+import {
+  isArtificialColumn,
+  isDraggedColumnItem,
+} from "metabase/visualizer/utils";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 
@@ -42,6 +45,10 @@ export function FunnelVerticalWell() {
       dispatch(removeColumn({ name: metric.name }));
     }
   };
+
+  if (metric && isArtificialColumn(metric)) {
+    return null;
+  }
 
   return (
     <SimpleVerticalWell

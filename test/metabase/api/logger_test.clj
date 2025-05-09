@@ -12,7 +12,13 @@
   (testing "admins have access"
     (is (=? [{:id "sync"
               :display_name "Sync issue troubleshooting"
-              :loggers #(every? (every-pred :name :level) %)}]
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}
+             {:id "linkedfilters"
+              :display_name "Linked filters troubleshooting"
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}
+             {:id "serialization"
+              :display_name "Serialization troubleshooting"
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}]
             (mt/user-http-request :crowberto :get 200 "logger/presets")))))
 
 (deftest ^:parallel adjust-invocation-error-test

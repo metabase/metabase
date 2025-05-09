@@ -83,6 +83,7 @@ export type CreateUserRequest = {
   last_name?: string;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   login_attributes?: Record<UserAttribute, UserAttribute>;
+  password?: string;
 };
 
 export type UpdatePasswordRequest = {
