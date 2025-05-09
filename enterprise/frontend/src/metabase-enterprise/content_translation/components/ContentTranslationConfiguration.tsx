@@ -131,7 +131,7 @@ const UploadForm = () => {
               <Text>{t`Uploading dictionary…`}</Text>
             </Group>
           }
-          maw="20rem"
+          maw="22rem"
           variant="filled"
           onClick={(e) => {
             triggerUpload();
