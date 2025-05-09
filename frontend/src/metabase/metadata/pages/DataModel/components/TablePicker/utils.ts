@@ -337,43 +337,45 @@ export function flatten(
   opts: {
     addLoadingNodes?: boolean;
     isExpanded?: (key: string) => boolean;
+    level?: number;
   } = {},
 ): FlatItem[] {
+  const { addLoadingNodes, isExpanded, level = 0 } = opts;
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
-    if (opts.addLoadingNodes && node.children.length === 0) {
+    if (addLoadingNodes && node.children.length === 0) {
       return [
-        { isLoading: true, type: "database", key: Math.random().toString() },
-        { isLoading: true, type: "database", key: Math.random().toString() },
-        { isLoading: true, type: "database", key: Math.random().toString() },
+        loadingNode("database", level),
+        loadingNode("database", level),
+        loadingNode("database", level),
       ];
     }
     return sort(node.children).flatMap((child) => flatten(child, opts));
   }
 
-  if (typeof opts.isExpanded === "function" && !opts.isExpanded(node.key)) {
-    return [node];
+  if (typeof isExpanded === "function" && !isExpanded(node.key)) {
+    return [{ ...node, level }];
   }
 
-  if (opts.addLoadingNodes && node.children.length === 0) {
+  if (addLoadingNodes && node.children.length === 0) {
     const childType = getChildType(node.type);
     if (!childType) {
-      return [node];
+      return [{ ...node, level }];
     }
     return [
-      { ...node, isExpanded: true },
-      {
-        isLoading: true,
-        type: childType,
-        key: Math.random().toString(),
-        value: node.value,
-      },
+      { ...node, isExpanded: true, level },
+      loadingNode(childType, level + 1, node.value),
     ];
   }
 
   return [
-    { ...node, isExpanded: true },
-    ...sort(node.children).flatMap((child) => flatten(child, opts)),
+    { ...node, level, isExpanded: true },
+    ...sort(node.children).flatMap((child) =>
+      flatten(child, {
+        ...opts,
+        level: level + 1,
+      }),
+    ),
   ];
 }
 
@@ -391,6 +393,20 @@ function sort(nodes: TreeNode[]): TreeNode[] {
   return Array.from(nodes).sort((a, b) => {
     return a.label.localeCompare(b.label);
   });
+}
+
+function loadingNode(
+  type: ItemType,
+  level: number,
+  value?: TreePath,
+): FlatItem {
+  return {
+    type,
+    level,
+    value,
+    isLoading: true,
+    key: Math.random().toString(),
+  };
 }
 
 function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {

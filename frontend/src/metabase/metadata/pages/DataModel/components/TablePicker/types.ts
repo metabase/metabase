@@ -44,12 +44,14 @@ export type FlatItem = LoadingItem | ExpandedItem;
 type ExpandedItem = Item & {
   isExpanded?: boolean;
   isLoading?: false;
+  level: number;
 };
 
 type LoadingItem = {
   isLoading: true;
   type: ItemType;
   key: string;
+  level: number;
   isExpanded?: boolean;
   value?: TreePath;
   label?: string;

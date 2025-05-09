@@ -12,13 +12,7 @@ import { getIconForType, getUrl, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
-const INDENT_LEVEL = 18;
-
-const itemMargin = {
-  database: 0,
-  schema: INDENT_LEVEL,
-  table: INDENT_LEVEL * 2,
-};
+const INDENT_OFFSET = 18;
 
 export function Results({
   items,
@@ -62,7 +56,8 @@ export function Results({
       <Box style={{ height: virtual.getTotalSize() }}>
         {virtualItems.map(({ start, size, index }) => {
           const item = items[index];
-          const { value, label, type, isExpanded, isLoading, key } = item;
+          const { value, label, type, isExpanded, isLoading, key, level } =
+            item;
           const isActive = type === "table" && _.isEqual(path, value);
 
           const parentIndex = items.findIndex(findParentFor(item));
@@ -78,7 +73,7 @@ export function Results({
                     key={`${key}-track`}
                     start={parent ? parent.start + 0.5 * parent.size : 0}
                     end={start + 0.5 * size}
-                    type={type}
+                    level={level}
                   />
                 </Delay>
               )}
@@ -89,7 +84,7 @@ export function Results({
                 data-index={index}
                 style={{
                   top: start,
-                  marginLeft: itemMargin[type],
+                  marginLeft: level * INDENT_OFFSET,
                 }}
               >
                 <MaybeLink
@@ -172,13 +167,13 @@ function Loading() {
 }
 
 function Track({
-  type,
   start,
   end,
+  level,
 }: {
-  type: FlatItem["type"];
   start: number;
   end: number;
+  level: number;
 }) {
   const LEFT = 18;
   const TOP = 20;
@@ -191,7 +186,7 @@ function Track({
       style={{
         top,
         height: end - top,
-        left: LEFT + itemMargin[type],
+        left: LEFT + level * INDENT_OFFSET,
       }}
     />
   );
