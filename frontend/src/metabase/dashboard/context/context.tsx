@@ -170,7 +170,7 @@ const DashboardContextProviderInner = ({
       handleLoadDashboard(dashboardId)
         .then((result) => {
           if (isFailedFetchDashboardResult(result)) {
-            handleError(result.error as Error);
+            handleError(result.payload as Error);
           }
         })
         .catch((err) => {
