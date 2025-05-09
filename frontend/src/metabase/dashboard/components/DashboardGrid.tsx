@@ -6,11 +6,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
-import {
-  QuestionPickerModal,
-  getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
@@ -34,16 +29,13 @@ import { addUndo } from "metabase/redux/undo";
 import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import {
-  type BaseDashboardCard,
-  type Card,
-  type CardId,
-  type DashCardId,
-  type Dashboard,
-  type DashboardCard,
-  type DashboardTabId,
-  type RecentItem,
-  isRecentCollectionItem,
+import type {
+  BaseDashboardCard,
+  CardId,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardTabId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -74,6 +66,7 @@ import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
 import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
 import S from "./DashboardGrid.module.css";
+import { ReplaceCardModal } from "./ReplaceCardModal";
 import { GridLayout } from "./grid/GridLayout";
 
 type GridBreakpoint = "desktop" | "mobile";
@@ -403,73 +396,6 @@ class DashboardGridInner extends Component<
     );
   }
 
-  renderReplaceCardModal() {
-    const { addUndo, replaceCard, setDashCardAttributes, dashboard } =
-      this.props;
-    const { replaceCardModalDashCard } = this.state;
-
-    const hasValidDashCard =
-      !!replaceCardModalDashCard &&
-      isQuestionDashCard(replaceCardModalDashCard);
-
-    const handleSelect = (nextCard: QuestionPickerValueItem) => {
-      if (!hasValidDashCard) {
-        return;
-      }
-
-      replaceCard({
-        dashcardId: replaceCardModalDashCard.id,
-        nextCardId: nextCard.id,
-      });
-
-      addUndo({
-        message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
-        undo: true,
-        action: () =>
-          setDashCardAttributes({
-            id: replaceCardModalDashCard.id,
-            attributes: replaceCardModalDashCard,
-          }),
-      });
-      handleClose();
-    };
-
-    const replaceCardModalRecentFilter = (items: RecentItem[]) => {
-      return items.filter((item) => {
-        if (isRecentCollectionItem(item) && item.dashboard) {
-          if (item.dashboard.id !== dashboard.id) {
-            return false;
-          }
-        }
-        return true;
-      });
-    };
-
-    const handleClose = () => {
-      this.setState({ replaceCardModalDashCard: null });
-    };
-
-    if (!hasValidDashCard) {
-      return null;
-    }
-
-    return (
-      <QuestionPickerModal
-        title={t`Pick what you want to replace this with`}
-        value={
-          replaceCardModalDashCard.card.id
-            ? getQuestionPickerValue(replaceCardModalDashCard.card)
-            : undefined
-        }
-        models={["card", "dataset", "metric"]}
-        onChange={handleSelect}
-        onClose={handleClose}
-        recentFilter={replaceCardModalRecentFilter}
-      />
-    );
-  }
-
-  // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
   onDrag = () => {
     if (!this.state.isDragging) {
       this.setState({ isDragging: true });
@@ -651,6 +577,7 @@ class DashboardGridInner extends Component<
 
   render() {
     const { dashboard, width, forwardedRef } = this.props;
+    const { replaceCardModalDashCard } = this.state;
     return (
       <Flex
         align="center"
@@ -666,7 +593,18 @@ class DashboardGridInner extends Component<
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
-        {this.renderReplaceCardModal()}
+        <ReplaceCardModal
+          isOpen={
+            !!replaceCardModalDashCard &&
+            isQuestionDashCard(replaceCardModalDashCard)
+          }
+          dashcard={replaceCardModalDashCard}
+          dashboard={dashboard}
+          onClose={() => this.setState({ replaceCardModalDashCard: null })}
+          onReplace={this.props.replaceCard}
+          onUndo={this.props.addUndo}
+          setDashCardAttributes={this.props.setDashCardAttributes}
+        />
       </Flex>
     );
   }
@@ -677,22 +615,6 @@ function isEditingTextOrHeadingCard(display: string, isEditing: boolean) {
 
   return isEditing && isTextOrHeadingCard;
 }
-
-const getUndoReplaceCardMessage = ({ type }: Card) => {
-  if (type === "model") {
-    return t`Model replaced`;
-  }
-
-  if (type === "metric") {
-    return t`Metric replaced`;
-  }
-
-  if (type === "question") {
-    return t`Question replaced`;
-  }
-
-  throw new Error(`Unknown card.type: ${type}`);
-};
 
 const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
   function _DashboardGrid(
