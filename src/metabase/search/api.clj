@@ -14,7 +14,7 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
