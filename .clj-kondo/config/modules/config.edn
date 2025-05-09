@@ -651,8 +651,7 @@
   {:api #{metabase.task
           metabase.task.bootstrap
           metabase.task.init}
-   :uses #{analytics
-           channel
+   :uses #{channel
            config
            db
            driver
