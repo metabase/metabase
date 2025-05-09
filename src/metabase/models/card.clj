@@ -1419,6 +1419,7 @@
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
+                  :entity-id           true
                   :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]

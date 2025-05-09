@@ -417,7 +417,7 @@
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
 
-;; NB: Settings are also defined where they're used, such as in [[metabase.events.view-log]]
+;; NB: Settings are also defined where they're used
 
 (defsetting last-acknowledged-version
   (deferred-tru "The last version for which a user dismissed the ''What''s new?'' modal.")

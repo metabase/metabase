@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
@@ -145,7 +146,10 @@ type InputResetButtonProps = {
   hasRightIcon: boolean;
 };
 
-export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
+// shouldForwardProp: isPropValid is used to prevent passing the `hasRightIcon` prop to the DOM element
+export const InputResetButton = styled(InputButton, {
+  shouldForwardProp: isPropValid,
+})<InputResetButtonProps>`
   right: ${(props) => (props.hasRightIcon ? "1.25rem" : 0)};
 `;
 
