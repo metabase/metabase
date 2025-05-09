@@ -22,11 +22,6 @@
   }
 }
 
-.link {
-  display: block;
-  width: 100%;
-}
-
 .icon {
   opacity: 0.5;
   flex-shrink: 0;
@@ -47,6 +42,7 @@
 }
 
 .label {
+  user-select: none;
   overflow-wrap: anywhere;
 }
 
