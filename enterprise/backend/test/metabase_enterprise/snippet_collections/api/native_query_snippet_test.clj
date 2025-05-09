@@ -166,7 +166,7 @@
                                      (= (:id snippet) (:id a-snippet)))
                                    response))))]
           (testing "\nIf we have a valid EE token, we should only see Snippets in the Root Collection with valid perms"
-            (mt/with-premium-features #{:enhancements}
+            (mt/with-premium-features #{:snippet-collections}
               (is (false? (can-see-snippet?)))
               (perms/grant-collection-read-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?)))))

@@ -53,12 +53,12 @@
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.4.8-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
-  {:mvn/version "2.1.214"}            ; embedded SQL database
-  com.ibm.icu/icu4j                         {:mvn/version "76.1"}               ; Used to transliterate Unicode characters into Latin characters
+                                            {:mvn/version "2.1.214"}            ; embedded SQL database
+  com.ibm.icu/icu4j                         {:mvn/version "77.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
-  com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.taoensso/nippy                        {:mvn/version "3.5.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
@@ -124,8 +124,8 @@
   {:mvn/version "2.24.3"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
   {:mvn/version "2.24.3"}             ; allows the slf4j2 API to work with log4j 2
-  org.apache.poi/poi                        {:mvn/version "5.4.0"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
-  org.apache.poi/poi-ooxml                  {:mvn/version "5.4.0"
+  org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
+  org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.4.1"}
@@ -161,9 +161,9 @@
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
   org.eclipse.jetty/jetty-server            {:mvn/version "12.0.20"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.19"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.20"}
   org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.20"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.19"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.20"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.0" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.2.0"}             ; GraalVM platform, required by JS engine
@@ -175,7 +175,7 @@
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   ; NOTE: Postgres fix in 42.7.5 breaks liquibase on case-sensitive databases until https://github.com/liquibase/liquibase/pull/6755 is released
-  org.postgresql/postgresql                 {:mvn/version "42.7.4"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.5"}             ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
@@ -240,7 +240,7 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2025.02.20"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2025.04.07"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.1"}                     ; Enables local profiling and heat map generation
@@ -397,7 +397,7 @@
   {:extra-paths ["test"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.55.4"}
+    cider/cider-nrepl                  {:mvn/version "0.55.7"}
     cider/piggieback                   {:mvn/version "0.6.0"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
@@ -405,7 +405,7 @@
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "2.28.21"}}}
+    thheller/shadow-cljs               {:mvn/version "3.0.4"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -453,7 +453,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2025.02.20"}}
+   {clj-kondo/clj-kondo {:mvn/version "2025.04.07"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}

@@ -1,0 +1,51 @@
+.DatasetsListItem {
+  cursor: pointer;
+  border-radius: 4px;
+  gap: var(--mantine-spacing-xs);
+  height: 46px;
+}
+
+.InfoIcon {
+  display: none;
+}
+
+.RemoveButton {
+  display: none;
+}
+
+.DatasetsListItem:hover {
+  color: var(--mb-color-brand);
+
+  .InfoIcon {
+    display: unset;
+  }
+
+  .RemoveButton {
+    display: unset;
+  }
+
+  .TableIcon {
+    display: none;
+  }
+
+  .AddButton[data-variant="inverse"] {
+    --button-color: var(--mb-color-brand);
+  }
+}
+
+.DatasetsListItemSelected,
+.DatasetsListItemSelected:hover {
+  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-brand);
+}
+
+.DatasetsListItemActions {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding-left: var(--mantine-spacing-xs);
+}
+
+.AddButton[data-variant="inverse"] {
+  --button-color: var(--mb-color-text-light);
+}
