@@ -169,7 +169,8 @@
 
 (defn parse
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
-   of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
+  of non-parameter string fragments (possibly) interposed with maps representing params, function params, or
+  optionals.
 
    If `handle-sql-comments` is true (default) then we make a best effort to ignore params in SQL comments."
   ([opts s]
