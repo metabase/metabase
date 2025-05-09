@@ -44,22 +44,22 @@ describe("scenarios > embedding-sdk > interactive-question > theming", () => {
   });
 
   it("derives dynamic css variables for dark theme", () => {
-    const theme: MetabaseTheme = {
+    const BACKGROUND_COLOR = "rgb(22, 26, 29)";
+
+    setupInteractiveQuestionWithTheme({
       colors: {
-        background: "rgb(22, 26, 29)",
+        background: BACKGROUND_COLOR,
         "background-hover": "rgb(14, 17, 20)",
         "background-disabled": "rgb(45, 45, 48)",
         "text-primary": "rgb(255, 255, 255)",
         brand: "rgb(253, 121, 168)",
       },
-    };
-
-    setupInteractiveQuestion(theme);
+    });
 
     getSdkRoot().within(() => {
       cy.findByText("Product ID").should("be.visible");
 
-      const buttonHoverBg = lighten(theme.colors?.background, 0.5);
+      const buttonHoverBg = lighten(BACKGROUND_COLOR, 0.5);
 
       const customColumn = "[aria-label='Custom column']";
 
@@ -67,19 +67,19 @@ describe("scenarios > embedding-sdk > interactive-question > theming", () => {
       cy.findByTestId("notebook-button")
         .should("be.visible")
         .realHover()
-        .should(($el) => haveBackgroundColor($el, buttonHoverBg));
+        .should(($el) => assertBackgroundColorEqual($el, buttonHoverBg));
 
       // Should be the lightened version of the background color
       cy.findByTestId("chart-type-selector-button")
         .should("be.visible")
         .realHover()
-        .should(($el) => haveBackgroundColor($el, buttonHoverBg));
+        .should(($el) => assertBackgroundColorEqual($el, buttonHoverBg));
 
       cy.findByTestId("notebook-button").click();
 
       // Should be the lightened version of the background color, same as the notebook button hover.
       cy.get(customColumn).should(($el) =>
-        haveBackgroundColor($el, buttonHoverBg),
+        assertBackgroundColorEqual($el, buttonHoverBg),
       );
 
       // Hover should be a less lightened version of the background color.
@@ -87,23 +87,23 @@ describe("scenarios > embedding-sdk > interactive-question > theming", () => {
         .should("be.visible")
         .realHover()
         .should(($el) =>
-          haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
+          assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.4)),
         );
     });
   });
 
   it("derives dynamic css variables for light theme", () => {
-    const theme: MetabaseTheme = {
+    const BACKGROUND_COLOR = "rgb(255, 255, 255)";
+
+    setupInteractiveQuestionWithTheme({
       colors: {
-        background: "rgb(255, 255, 255)",
+        background: BACKGROUND_COLOR,
         "background-hover": "rgb(245, 245, 245)",
         "background-disabled": "rgb(230, 230, 230)",
         "text-primary": "rgb(51, 51, 51)",
         brand: "rgb(253, 121, 168)",
       },
-    };
-
-    setupInteractiveQuestion(theme);
+    });
 
     getSdkRoot().within(() => {
       cy.findByText("Product ID").should("be.visible");
@@ -114,7 +114,7 @@ describe("scenarios > embedding-sdk > interactive-question > theming", () => {
 
       // Should be the slightly darker version of the background color, same as the notebook button hover
       cy.get(customColumn).should(($el) =>
-        haveBackgroundColor($el, darken(theme.colors?.background, 0.05)),
+        assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.05)),
       );
 
       // Hover should be an even darker version of the background color
@@ -122,71 +122,96 @@ describe("scenarios > embedding-sdk > interactive-question > theming", () => {
         .should("be.visible")
         .realHover()
         .should(($el) =>
-          haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
+          assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.1)),
         );
     });
   });
 
-  it.only("table cell color should follow the background color", () => {
-    const theme: MetabaseTheme = {
-      colors: {
-        background: "rgb(200, 210, 220)",
-      },
-    };
+  it("table cell color should follow the background color", () => {
+    const BACKGROUND_COLOR = "rgb(200, 210, 220)";
 
-    setupInteractiveQuestion(theme);
+    setupInteractiveQuestionWithTheme({
+      colors: { background: BACKGROUND_COLOR },
+    });
 
     getSdkRoot().within(() => {
-      // Wait for table to render
-      cy.findByTestId("cell-data")
+      cy.findByTestId("table-header").should(($el) => {
+        assertBackgroundColorEqual($el, BACKGROUND_COLOR);
+      });
+
+      cy.findByTestId("table-body")
+        .findAllByRole("gridcell")
         .first()
         .should(($el) => {
-          expect(haveBackgroundColor($el, theme.colors!.background!)).to.be
-            .true;
+          assertBackgroundColorEqual($el, BACKGROUND_COLOR);
         });
     });
   });
 
-  it.only("table.cell.backgroundColor should override table cell color", () => {
-    const theme: MetabaseTheme = {
+  it("table.cell.backgroundColor should override table cell color", () => {
+    const CELL_COLOR = "rgb(123, 111, 222)";
+
+    setupInteractiveQuestionWithTheme({
       colors: { background: "rgb(200, 210, 220)" },
       components: {
-        table: { cell: { backgroundColor: "rgb(123, 111, 222)" } },
+        table: { cell: { backgroundColor: CELL_COLOR } },
       },
-    };
-
-    setupInteractiveQuestion(theme);
+    });
 
     getSdkRoot().within(() => {
-      cy.findByTestId("cell-data")
+      cy.findByTestId("table-header").should(($el) => {
+        assertBackgroundColorEqual($el, CELL_COLOR);
+      });
+
+      cy.findByTestId("table-body")
+        .findAllByRole("gridcell")
         .first()
         .should(($el) => {
-          expect(
-            haveBackgroundColor(
-              $el,
-              theme.components!.table!.cell!.backgroundColor!,
-            ),
-          ).to.be.true;
+          assertBackgroundColorEqual($el, CELL_COLOR);
         });
     });
+  });
+
+  it("getColorDifferencePercentage compares colors correctly", () => {
+    // same color should have 0% difference
+    expect(
+      getColorDifferencePercentage("rgb(255, 255, 255)", "rgb(255, 255, 255)"),
+    ).to.eq(0);
+
+    // one-off different color should have less than 0.25% difference
+    expect(
+      getColorDifferencePercentage("rgb(255, 255, 255)", "rgb(255, 255, 254)"),
+    ).to.lte(0.25);
   });
 });
 
-/**
- * Using should("have.css", "background-color") causes off-by-one error that causes the test to fail.
- * For some reason, using getComputedStyle() directly produces the correct result.
- **/
-export function haveBackgroundColor(
-  $element: JQuery,
-  expected: string,
-): boolean {
+export function assertBackgroundColorEqual($element: JQuery, expected: string) {
   const element = $element[0];
   const style = window.getComputedStyle(element);
+  const colorDifferencePercentage = getColorDifferencePercentage(
+    style.backgroundColor,
+    expected,
+  );
 
-  return style.backgroundColor === expected;
+  // the dynamically lightened/darkened colors are off by one,
+  // so we must compare with 0.25% tolerance.
+  expect(colorDifferencePercentage).to.be.lte(0.25);
 }
 
-function setupInteractiveQuestion(theme: MetabaseTheme) {
+function getColorDifferencePercentage(color1: string, color2: string) {
+  const c1 = Color(color1);
+  const c2 = Color(color2);
+
+  const rgbDiff = Math.sqrt(
+    Math.pow(c1.red() - c2.red(), 2) +
+      Math.pow(c1.green() - c2.green(), 2) +
+      Math.pow(c1.blue() - c2.blue(), 2),
+  );
+
+  return (rgbDiff / 441.7) * 100;
+}
+
+function setupInteractiveQuestionWithTheme(theme: MetabaseTheme) {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
       <Box bg={theme.colors?.background} h="100vh">
