@@ -1,4 +1,4 @@
-(ns metabase.moderation
+(ns metabase.content-verification.impl
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]

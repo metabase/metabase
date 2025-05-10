@@ -14,6 +14,7 @@
    [metabase.channel.init]
    [metabase.cloud-migration.init]
    [metabase.config :as config]
+   [metabase.content-verification.init]
    [metabase.driver.init]
    [metabase.embedding.init]
    [metabase.events.init]
