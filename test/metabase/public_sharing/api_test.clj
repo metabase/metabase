@@ -952,13 +952,18 @@
     :query    {:source-table (mt/id table-kw)
                :filter       [:= [:field (mt/id table-kw field-kw) nil] "Krua Siri"]}}})
 
+(def parameter-id "12345678")
+
 (defn do-with-sharing-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
+    (mt/with-temp [:model/Dashboard     dashboard (assoc (shared-obj)
+                                                         :parameters [{:id   parameter-id
+                                                                       :type :number}])
                    :model/Card          card      (mbql-card-referencing table-kw field-kw)
                    :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
                                                    :card_id            (u/the-id card)
                                                    :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :parameter_id parameter-id
                                                                          :target  [:dimension
                                                                                    [:field
                                                                                     (mt/id table-kw field-kw) nil]]}]}]
