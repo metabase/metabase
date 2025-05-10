@@ -33,6 +33,7 @@
    :string/does-not-contain ["sample text"]
    :string/ends-with        ["sample text"]
    :string/starts-with      ["sample text"]
+   :boolean/=               ["true"]
    ;; Potentially deprecated
    :location/city           ["Moon Twp"]
    :location/state          ["PA"]

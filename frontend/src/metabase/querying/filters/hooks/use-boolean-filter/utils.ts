@@ -1,31 +1,11 @@
-import { getAvailableOperatorOptions } from "metabase/querying/filters/utils/operators";
+import type { BooleanFilterValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
-import { OPERATOR_OPTIONS } from "./constants";
-import type { OptionType } from "./types";
-
-export function getAvailableOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-) {
-  return getAvailableOperatorOptions(
-    query,
-    stageIndex,
-    column,
-    OPERATOR_OPTIONS,
-  );
-}
-
-export function getOptionByType(optionType: OptionType) {
-  return OPERATOR_OPTIONS[optionType];
-}
-
-export function getOptionType(
+export function getFilterValue(
   query: Lib.Query,
   stageIndex: number,
   filterClause?: Lib.FilterClause,
-): OptionType {
+): BooleanFilterValue {
   if (!filterClause) {
     return "true";
   }
@@ -44,9 +24,9 @@ export function getOptionType(
 
 export function getFilterClause(
   column: Lib.ColumnMetadata,
-  optionType: OptionType,
+  value: BooleanFilterValue,
 ): Lib.ExpressionClause {
-  switch (optionType) {
+  switch (value) {
     case "true":
       return Lib.booleanFilterClause({
         operator: "=",

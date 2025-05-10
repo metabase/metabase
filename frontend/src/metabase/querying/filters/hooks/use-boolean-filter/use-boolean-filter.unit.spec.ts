@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 
 import { createMockMetadata } from "__support__/metadata";
+import type { BooleanFilterValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
@@ -11,17 +12,16 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import type { OptionType } from "./types";
-import { useBooleanOptionFilter } from "./use-boolean-option-filter";
+import { useBooleanFilter } from "./use-boolean-filter";
 
 interface CreateFilterCase {
-  optionType: OptionType;
+  value: BooleanFilterValue;
   expectedDisplayName: string;
 }
 
 interface UpdateFilterCase {
   expression: Lib.ExpressionClause;
-  optionType: OptionType;
+  value: BooleanFilterValue;
   expectedDisplayName: string;
 }
 
@@ -57,15 +57,15 @@ describe("useBooleanOptionFilter", () => {
   );
 
   it.each<CreateFilterCase>([
-    { optionType: "true", expectedDisplayName: "Is trial is true" },
-    { optionType: "false", expectedDisplayName: "Is trial is false" },
-    { optionType: "is-null", expectedDisplayName: "Is trial is empty" },
-    { optionType: "not-null", expectedDisplayName: "Is trial is not empty" },
+    { value: "true", expectedDisplayName: "Is trial is true" },
+    { value: "false", expectedDisplayName: "Is trial is false" },
+    { value: "is-null", expectedDisplayName: "Is trial is empty" },
+    { value: "not-null", expectedDisplayName: "Is trial is not empty" },
   ])(
     'should allow to create a filter for "$optionType"',
-    ({ optionType, expectedDisplayName }) => {
+    ({ value, expectedDisplayName }) => {
       const { result } = renderHook(() =>
-        useBooleanOptionFilter({
+        useBooleanFilter({
           query: defaultQuery,
           stageIndex,
           column,
@@ -73,8 +73,8 @@ describe("useBooleanOptionFilter", () => {
       );
 
       act(() => {
-        const { setOptionType } = result.current;
-        setOptionType(optionType);
+        const { setValue } = result.current;
+        setValue(value);
       });
 
       const { getFilterClause } = result.current;
@@ -94,7 +94,7 @@ describe("useBooleanOptionFilter", () => {
         column,
         values: [true],
       }),
-      optionType: "false",
+      value: "false",
       expectedDisplayName: "Is trial is false",
     },
     {
@@ -103,17 +103,17 @@ describe("useBooleanOptionFilter", () => {
         column,
         values: [true],
       }),
-      optionType: "is-null",
+      value: "is-null",
       expectedDisplayName: "Is trial is empty",
     },
   ])(
     'should allow to update a filter for "$optionType"',
-    ({ expression, optionType, expectedDisplayName }) => {
+    ({ expression, value, expectedDisplayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
       const { result } = renderHook(() =>
-        useBooleanOptionFilter({
+        useBooleanFilter({
           query: defaultQuery,
           stageIndex,
           column,
@@ -122,8 +122,8 @@ describe("useBooleanOptionFilter", () => {
       );
 
       act(() => {
-        const { setOptionType } = result.current;
-        setOptionType(optionType);
+        const { setValue } = result.current;
+        setValue(value);
       });
 
       const { getFilterClause } = result.current;
