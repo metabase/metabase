@@ -931,7 +931,7 @@ H.describeWithSnowplow("add database card", () => {
 
     cy.get("@addDatabaseCard").findByText("Add a database").click();
     cy.location("pathname").should("eq", "/admin/databases/create");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "database_add_clicked",
       triggered_from: "db-list",
     });

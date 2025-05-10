@@ -136,7 +136,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
           dashboard_id: 0,
           dashboard_accessed_via: "public-link",
@@ -161,7 +161,7 @@ H.describeWithSnowplowEE(
           H.assertNotEmptyObject,
         );
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "public-link",
@@ -225,7 +225,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".png", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "public-link",
@@ -255,7 +255,7 @@ H.describeWithSnowplowEE(
           H.assertNotEmptyObject,
         );
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "public-link",

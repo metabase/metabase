@@ -583,7 +583,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.undoToast().findByText("Changes saved").should("be.visible");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
@@ -598,7 +598,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
     H.modal().findByText("Save").click();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
@@ -610,7 +610,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.log("From the app bar");
     H.newButton().should("be.visible").click();
     cy.findByRole("dialog").should("be.visible");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "app-bar",
     });
@@ -618,7 +618,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.log("Track closing the button as well");
     H.newButton().should("be.visible").click();
     cy.findByRole("dialog").should("not.exist");
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_clicked",
         triggered_from: "app-bar",
@@ -634,7 +634,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
 
     cy.findByRole("dialog").should("be.visible");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "empty-collection",
     });
@@ -650,7 +650,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.newButton().should("be.visible").click();
     cy.findByRole("dialog").findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_button_item_clicked",
       triggered_from: "dashboard",
     });
@@ -665,7 +665,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
     cy.findByRole("dialog").findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_item_clicked",
         triggered_from: "dashboard",
