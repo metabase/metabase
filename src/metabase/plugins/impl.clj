@@ -1,12 +1,12 @@
-(ns metabase.plugins
+(ns metabase.plugins.impl
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
-   [metabase.plugins.classloader :as classloader]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]

@@ -6,11 +6,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
    [metabase.models.init]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.jvm :as u.jvm]

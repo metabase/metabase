@@ -2,11 +2,11 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
+   [metabase.classloader.core :as classloader]
    [metabase.db.query :as mdb.query]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

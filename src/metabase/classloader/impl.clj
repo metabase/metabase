@@ -1,4 +1,4 @@
-(ns metabase.plugins.classloader
+(ns metabase.classloader.impl
   "Logic for getting and setting the context classloader we'll use for loading Metabase plugins. Use `the-classloader`
   to get the Classloader you should use with calls to `Class/forName`; call it for side effects to ensure the current
   thread context classloader will have access to JARs we add at runtime before calling `require`.
@@ -22,7 +22,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defonce ^:private ^{:doc "The context classloader we'll use for *all threads*, once we figure out what that is.
+(defonce ^{:doc "The context classloader we'll use for *all threads*, once we figure out what that is.
   Guaranteed to be an instance of `DynamicClassLoader`."} shared-context-classloader
   (delay
     ;; If the Clojure runtime base loader is already an instance of DynamicClassLoader (e.g. it is something like

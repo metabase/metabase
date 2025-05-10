@@ -1,7 +1,7 @@
-(ns metabase.plugins.classloader-test
+(ns metabase.classloader.impl-test
   (:require
    [clojure.test :refer :all]
-   [metabase.plugins.classloader :as classloader])
+   [metabase.classloader.impl :as classloader])
   (:import
    (clojure.lang DynamicClassLoader)))
 
