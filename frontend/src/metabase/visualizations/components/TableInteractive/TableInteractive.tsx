@@ -484,7 +484,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
               })}
-              infoPopoversDisabled={!hasMetadataPopovers || isDashboard}
+              infoPopoversDisabled={
+                !!clicked || !hasMetadataPopovers || isDashboard
+              }
               timezone={data.results_timezone}
               question={question}
               column={col}
@@ -549,6 +551,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     tableTheme,
     isDashboard,
+    clicked,
   ]);
 
   const handleColumnResize = useCallback(
