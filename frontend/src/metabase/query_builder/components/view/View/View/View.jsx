@@ -93,9 +93,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   } = props;
 
   const tc = useTranslateContent();
-  console.log("in View", "rawSeries", rawSeries);
   const translatedRawSeries = translateDisplayNames(rawSeries, tc);
-  console.log("@maixukc0", "translatedRawSeries", translatedRawSeries);
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
@@ -235,7 +233,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
             {...props}
-            rawSeries={rawSeries}
+            rawSeries={translatedRawSeries}
           />
           <ViewSidebar
             side="right"
