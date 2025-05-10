@@ -11198,6 +11198,27 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v55.2025-04-25T17:12:44
+      author: bshepherdson
+      comment: Add Card.metadata_analysis_state column for the idents backfill state machine
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: metadata_analysis_state
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_state
+                  type: int
+                  remarks: Enum for the state of each card in the idents backfill process
+                  defaultValue: 1
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v55.2025-05-02T08:21:44
       author: lbrdnk
       comment: Migrate hacked semantic types
@@ -11254,6 +11275,79 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  - changeSet:
+      id: v55.2025-05-09T15:16:31
+      author: bshepherdson
+      comment: Creating index on the metadata_analysis_state
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_metadata_analysis_state
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_state
+            indexName: idx_report_card_metadata_analysis_state
+
+  - changeSet:
+      id: v55.2025-05-09T15:17:08
+      author: bshepherdson
+      comment: Add Card.metadata_analysis_blocker column for the idents backfill state machine
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: metadata_analysis_blocker
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_blocker
+                  type: int
+                  remarks: FK to the card that stopped this one from being analyzed
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-05-09T15:22:19
+      author: bshepherdson
+      comment: Creating index on the metadata_analysis_blocker
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_metadata_analysis_blocker
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metadata_analysis_blocker
+            indexName: idx_report_card_metadata_analysis_blocker
+
+  - changeSet:
+      id: v55.2025-05-09T15:26:09
+      author: bshepherdson
+      comment: FK constraint and index for Card.metadata_analysis_blocker
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_report_card_metadata_analysis_blocker_ref_report_card_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: metadata_analysis_blocker
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_metadata_analysis_blocker_ref_report_card_id
+            onDelete: SET NULL
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
