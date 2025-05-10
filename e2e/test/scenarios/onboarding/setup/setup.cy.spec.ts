@@ -290,7 +290,7 @@ describe("scenarios > setup", () => {
     });
 
     cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("Hallo, John. Aangenaam kennis te maken!").should(
+      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
         "be.visible",
       );
       cy.findByText("Breng me naar Metabase").click();
