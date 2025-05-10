@@ -95,7 +95,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         H.modal()
           .button(/Duplicate/i)
           .should("not.exist");
-        H.modal().button("Not now").click();
 
         cy.log("saving copied dashboard");
 
