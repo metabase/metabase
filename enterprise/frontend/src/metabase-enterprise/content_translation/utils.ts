@@ -1,7 +1,7 @@
-import _ from "underscore";
-
 import type { ContentTranslationFunction } from "metabase-lib";
+import { ContentTranslationFunction } from "metabase-lib";
 import type { DictionaryArray } from "metabase-types/api";
+import _ from "underscore";
 
 /** Translate a user-generated string
  *

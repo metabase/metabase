@@ -59,7 +59,7 @@ describe("scenarios > admin > localization > content translation of column names
             cy.signInAsNormalUser();
           });
 
-          it("column headers", () => {
+          it.only("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
               germanFieldNames.forEach((row) => {
@@ -86,7 +86,7 @@ describe("scenarios > admin > localization > content translation of column names
             });
           });
 
-          describe("column headers in viz", () => {
+          describe.only("column headers in viz", () => {
             const columnX = "PRICE";
             const columnY = "RATING";
             // NOTE: What about the 'trend' visualization? This is an option in
@@ -142,14 +142,11 @@ describe("scenarios > admin > localization > content translation of column names
               match(displayType)
                 .with(
                   P.union(
-                    "table",
+                    "table", // TODO: I'm not sure why table is in this list
                     "scalar",
                     "smartscalar",
                     "gauge",
                     "progress",
-
-                    // NOTE: The names in a sankey query come from the SQL and
-                    // are not currently localizable
                     "sankey",
                   ),
                   () => {

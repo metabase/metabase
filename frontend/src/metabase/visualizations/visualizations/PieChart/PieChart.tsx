@@ -74,8 +74,8 @@ export function PieChart(props: VisualizationProps) {
     [chartModel, settings],
   );
 
-  // const chartModelDimensionCol = chartModel.colDescs.dimensionDesc.column;
-  // chartModelDimensionCol.display_name = tc(chartModelDimensionCol.display_name);
+  const chartModelDimensionCol = chartModel.colDescs.dimensionDesc.column;
+  chartModelDimensionCol.display_name = tc(chartModelDimensionCol.display_name);
 
   const option = useMemo(
     () => ({
