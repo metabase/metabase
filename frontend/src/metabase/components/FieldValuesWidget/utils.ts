@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { stripId } from "metabase/lib/formatting";
+import { MetabaseApi } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
@@ -24,6 +25,48 @@ import type {
 } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
+
+export async function searchFieldValues(
+  {
+    fields,
+    value,
+    disablePKRemappingForSearch,
+    maxResults,
+  }: {
+    fields: Field[];
+    value: string;
+    disablePKRemappingForSearch?: boolean;
+    maxResults: number;
+  },
+  cancelled: Promise<unknown>,
+) {
+  const options: null | FieldValue[] = dedupeValues(
+    await Promise.all(
+      fields.map((field: Field) =>
+        MetabaseApi.field_search(
+          {
+            value,
+            fieldId: field.id,
+            searchFieldId: field.searchField(disablePKRemappingForSearch)?.id,
+            limit: maxResults,
+          },
+          { cancelled },
+        ),
+      ),
+    ),
+  );
+
+  return options;
+}
+
+export function getNonVirtualFields(fields: Field[]) {
+  return fields.filter((field) => !field.isVirtual());
+}
+
+export function dedupeValues(valuesList: FieldValue[][]): FieldValue[] {
+  const uniqueValueMap = new Map(valuesList.flat().map((o) => [o[0], o]));
+  return Array.from(uniqueValueMap.values());
+}
 
 export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
@@ -272,9 +315,9 @@ export function getValuesMode({
   return "none";
 }
 
-export function isNumeric(parameter: Parameter, fields: Field[]) {
+export function isNumeric(parameter: Parameter | undefined, fields: Field[]) {
   return (
-    isNumberParameter(parameter) ||
+    (parameter != null && isNumberParameter(parameter)) ||
     (fields.length > 0 && fields.every((field) => field.isNumeric()))
   );
 }
@@ -284,23 +327,4 @@ export function getValue(option: FieldValue): RowValue {
     return option[0];
   }
   return option;
-}
-
-export function getLabel(option: FieldValue): string | undefined {
-  if (Array.isArray(option)) {
-    return option[1];
-  }
-  return undefined;
-}
-
-export function getOption(
-  option: string | number | FieldValue,
-): ComboboxItem | null {
-  const value = Array.isArray(option) ? getValue(option) : option;
-  const label = Array.isArray(option) ? getLabel(option) : undefined;
-  if (value == null) {
-    return null;
-  }
-
-  return { value: String(value), label: String(label ?? value) };
 }
