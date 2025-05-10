@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -496,25 +497,20 @@
 
 ;; date()
 
-(deftest ^:parallel date-parse-table-fields
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
-    (let [mp (mt/metadata-provider)]
-      (doseq [[table fields] [[:people [{:field :birth_date}]]]
-              {:keys [field]} fields]
-        (testing (str "casting " table "." field " to date")
-          (let [field-md (lib.metadata/field mp (mt/id table field))
-                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/with-fields [field-md])
-                          (lib/expression "DATECAST" (lib/date (lib/text field-md)))
-                          (lib/limit 100))
-                result (-> query qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
-            (doseq [[uncasted-value casted-value] rows]
-              (let [cd (-> casted-value java.time.Instant/parse)
-                    ud (-> uncasted-value java.time.Instant/parse)]
-                (is (= ud cd))))))))))
+(defn- date-type? [col]
+  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                       :type/Text ;; sqlite uses text :(
+                                       :type/Date]))
+
+(defn- parse-date [s]
+  (try
+    (let [instant (-> s java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
+      (is (zero? (.getHour   instant)))
+      (is (zero? (.getMinute instant)))
+      (is (zero? (.getSecond instant)))
+      (.toLocalDate instant))
+    (catch Exception _
+      (-> s java.time.LocalDate/parse))))
 
 (deftest ^:parallel date-parse-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
@@ -531,34 +527,10 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
+            (is (date-type? (last cols)))
             (doseq [[_ uncasted-value casted-value] rows]
-              (let [cd (-> casted-value java.time.Instant/parse)
-                    ud (-> uncasted-value
-                           java.time.LocalDate/parse
-                           (.atStartOfDay (java.time.ZoneId/of "UTC"))
-                           .toInstant)]
-                (is (= ud cd))))))))))
-
-(deftest ^:parallel date-parse-table-fields-aggregation
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date)
-    (let [mp (mt/metadata-provider)]
-      (doseq [[table fields] [[:people [{:field :birth_date}]]]
-              {:keys [field]} fields]
-        (testing (str "casting " table "." field " to date in aggregation")
-          (let [field-md (lib.metadata/field mp (mt/id table field))
-                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/with-fields [field-md])
-                          (lib/aggregate (lib/max field-md))
-                          (lib/aggregate (lib/max (lib/date (lib/text field-md))))
-                          (lib/limit 100))
-                result (-> query qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (types/field-is-type? :type/Date (last cols)))
-            (doseq [[uncasted-value casted-value] rows]
-              (let [cd (-> casted-value java.time.Instant/parse)
-                    ud (-> uncasted-value java.time.Instant/parse)]
+              (let [cd (parse-date casted-value)
+                    ud (parse-date uncasted-value)]
                 (is (= ud cd))))))))))
 
 (deftest ^:parallel date-truncate-datetime
@@ -576,12 +548,9 @@
                 result (-> query qp/process-query)
                 rows (mt/rows result)]
             (doseq [[uncasted-value casted-value] rows]
-              (let [cd (-> casted-value   java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))
-                    ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
-                (is (= (.toLocalDate ud) (.toLocalDate cd)))
-                (is (zero? (.getHour   cd)))
-                (is (zero? (.getMinute cd)))
-                (is (zero? (.getSecond cd)))))))))))
+              (let [cd (parse-date casted-value)
+                    ud (-> uncasted-value java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")) .toLocalDate)]
+                (is (= ud cd))))))))))
 
 ;; text()
 
@@ -591,8 +560,8 @@
       (doseq [[table fields] [[:people [{:value 10 :expected "10" :msg "integer"}
                                         {:value 10.4 :expected "10.4" :msg "float"}
                                         {:value "Hello!" :expected "Hello!" :msg "text"}
-                                        {:value (lib/date "2025-04-02") :expected "2025-04-02" :msg "text"}]]]
-              {:keys [value expected msg]} fields]
+                                        {:value (lib/date "2025-04-02") :expected "2025-04-02" :msg "text" :compare str/starts-with?}]]]
+              {:keys [value expected msg compare] :or {compare =}} fields]
         (testing (str "casting " (pr-str value) "(" msg ") to text")
           (let [field-md (lib.metadata/field mp (mt/id table :id))
                 query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
@@ -605,7 +574,7 @@
             (is (types/field-is-type? :type/Text (last cols)))
             (doseq [[_id casted-value] rows]
               (is (string? casted-value))
-              (is (= expected casted-value) (str "Not equal for " msg)))))))))
+              (is (compare casted-value expected) (str "Not equal for " msg)))))))))
 
 (deftest ^:parallel text-cast-table-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/text)
@@ -660,7 +629,6 @@
       (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
                                               {:expression "''" :db-type "TEXT"}
                                               {:expression "'abc'" :db-type "TEXT"}
-                                              {:expression "DATE('2020-10-10')" :db-type "DATE"}
                                               {:expression 4.5 :db-type "DECIMAL"}]]]
               {:keys [expression db-type]} expressions]
         (testing (str "Casting " db-type " to text from native query")

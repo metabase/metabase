@@ -296,6 +296,10 @@
   [_]
   "NUMBER(19)")
 
+(defmethod sql.qp/text-dbtype :oracle
+  [_]
+  :VARCHAR)
+
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)

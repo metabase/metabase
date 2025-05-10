@@ -254,3 +254,7 @@
 (defmethod sql.qp/->integer :sparksql
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/text-dbtype :sparksql
+  [_]
+  :STRING)

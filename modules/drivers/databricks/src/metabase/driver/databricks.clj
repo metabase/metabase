@@ -391,3 +391,7 @@
 (defmethod sql.qp/->integer :databricks
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/text-dbtype :databricks
+  [_]
+  :STRING)
