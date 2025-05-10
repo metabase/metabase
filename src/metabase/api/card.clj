@@ -1,6 +1,7 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require
+   [clojure.java.io :as io]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
@@ -23,11 +24,13 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.query :as query]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.json :as json]
@@ -960,3 +963,51 @@
    {:keys [value]}        :- [:map [:value :string]]]
   (-> (api/read-check :model/Card id)
       (param-remapped-value param-key (codec/url-decode value))))
+
+(defn-  from-csv!
+  "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
+  [{:keys [collection-id filename file]}]
+  (try
+    (let [uploads-db-settings (public-settings/uploads-settings)
+          model (upload/create-csv-upload! {:collection-id collection-id
+                                            :filename      filename
+                                            :file          file
+                                            :schema-name   (:schema_name uploads-db-settings)
+                                            :table-prefix  (:table_prefix uploads-db-settings)
+                                            :db-id         (or (:db_id uploads-db-settings)
+                                                               (throw (ex-info (tru "The uploads database is not configured.")
+                                                                               {:status-code 422})))})]
+      {:status  200
+       :body    (:id model)
+       :headers {"metabase-table-id" (str (:table-id model))}})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})
+    (finally (io/delete-file file :silently))))
+
+;;; TODO -- why the HECC does the endpoint for creating a TABLE live in `/api/card/`?
+(api.macros/defendpoint :post "/from-csv"
+  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
+  {:multipart true}
+                        ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
+  [_route-params
+   _query-params
+   _body
+   {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
+   :- [:map
+       [:multipart-params
+        [:map
+         ["collection_id" [:maybe
+                           {:decode/api (fn [collection-id]
+                                          (when-not (= collection-id "root")
+                                            collection-id))}
+                           pos-int?]]
+         ["file" [:map
+                  [:filename :string]
+                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                        ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
+  (from-csv! {:collection-id collection-id
+              :filename      (:filename file)
+              :file          (:tempfile file)}))
