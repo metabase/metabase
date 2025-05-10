@@ -59,6 +59,8 @@
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
                               :case-sensitivity-string-filter-options false
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :describe-fields                        true
                               :describe-fks                           true
                               :convert-timezone                       true
@@ -191,6 +193,7 @@
     driver.common/default-dbname-details
     driver.common/default-user-details
     driver.common/default-password-details
+    driver.common/default-role-details
     driver.common/cloud-ip-address-info
     driver.common/default-ssl-details
     default-ssl-cert-details
@@ -1039,3 +1042,17 @@
   ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
   ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
   (contains? #{1317 1969 3024} (.getErrorCode e)))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/default-database-role :mysql
+  [_driver database]
+  (-> database :details :role))
+
+(defmethod driver.sql/set-role-statement :mysql
+  [_driver role]
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote           (re-find special-chars-pattern role)]
+    (if needs-quote
+      (format "SET ROLE \"%s\";" role)
+      (format "SET ROLE %s;" role))))
