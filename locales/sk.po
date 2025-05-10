@@ -2193,9 +2193,11 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Najlepšie výsledky dosiahnete, ak použijete súbor SVG s priehľadným pozadím\n"
+msgstr ""
+"Najlepšie výsledky dosiahnete, ak použijete súbor SVG s priehľadným pozadím\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3450,9 +3452,11 @@ msgid "Refresh cache automatically"
 msgstr "Automatické obnovenie vyrovnávacej pamäte"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Hneď ako uplynie platnosť výsledkov uložených v medzipamäti, spustite a uložte dotaz do medzipamäte znova, aby ste aktualizovali výsledky a obnovili\n"
+msgstr ""
+"Hneď ako uplynie platnosť výsledkov uložených v medzipamäti, spustite a uložte dotaz do medzipamäte znova, aby ste aktualizovali výsledky a obnovili\n"
 "medzipamäť."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3695,9 +3699,11 @@ msgstr "Zakúpili ste si licenciu na odomknutie pokročilých funkcií? Prosím,
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "Vaša licencia už nie je platná. Ak máte novú licenciu, prosím,\n"
+msgstr ""
+"Vaša licencia už nie je platná. Ak máte novú licenciu, prosím,\n"
 "zadajte ju nižšie, inak kontaktujte {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4910,9 +4916,11 @@ msgid "Connect to Slack"
 msgstr "Pripojenie k službe Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Ak váš tím používa aplikáciu Slack, môžete tam posielať odbery na ovládací panel a upozornenia na stránke\n"
+msgstr ""
+"Ak váš tím používa aplikáciu Slack, môžete tam posielať odbery na ovládací panel a upozornenia na stránke\n"
 "."
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6641,9 +6649,11 @@ msgstr "Vložiť {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Pomocou stránky {0} môžete na svoju webovú stránku alebo blog\n"
+msgstr ""
+"Pomocou stránky {0} môžete na svoju webovú stránku alebo blog\n"
 "pridať verejne viditeľný vložený iframe."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6939,10 +6949,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Tento filter je vo vloženej otázke nastavený na vypnutý."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Ak chcete vždy vyžadovať hodnotu, najprv navštívte nastavenia vkladania,\n"
+msgstr ""
+"Ak chcete vždy vyžadovať hodnotu, najprv navštívte nastavenia vkladania,\n"
 ", aby bol tento filter upraviteľný alebo uzamknutý, znovu zverejnite otázku\n"
 "a potom sa vráťte na túto stránku."
 
@@ -6954,10 +6966,12 @@ msgstr "Poznámka"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "aby bol uzamknutý, bude vyžadovať aktualizáciu kódu vkladania\n"
+msgstr ""
+"aby bol uzamknutý, bude vyžadovať aktualizáciu kódu vkladania\n"
 "pred pokračovaním, inak sa vkladanie\n"
 "preruší."
 
@@ -11498,10 +11512,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Tento filter je vo vloženom prístrojovom paneli nastavený na zakázaný."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Ak chcete vždy vyžadovať hodnotu, najprv navštívte nastavenia vkladania,\n"
+msgstr ""
+"Ak chcete vždy vyžadovať hodnotu, najprv navštívte nastavenia vkladania,\n"
 ", aby bol tento filter upraviteľný alebo uzamknutý, znovu zverejnite ovládací panel\n"
 "a potom sa vráťte na túto stránku."
 
@@ -11779,17 +11795,20 @@ msgid "Turn this into a model"
 msgstr "Premeniť to na model"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "Umožňuje aktualizovať popisy stĺpcov a prispôsobiť metadáta na vytvorenie skvelých východiskových bodov pre prieskum."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Zobrazte sa vyššie vo výsledkoch vyhľadávania a zvýraznite sa, keď iní používatelia začnú nové otázky na podporu opätovného použitia."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Uložte ich do kolekcií, aby boli oddelené od neusporiadaných databázových schém."
 
@@ -13180,11 +13199,13 @@ msgid "mode"
 msgstr "mód"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Voliteľné. Predvolená hodnota je „ISO“.\n"
+msgstr ""
+"Voliteľné. Predvolená hodnota je „ISO“.\n"
 "- ISO: 1. týždeň sa začína v pondelok pred prvým štvrtkom januára.\n"
 "– USA: 1. týždeň sa začína 1. januára. Všetky ostatné týždne začínajú nedeľou.\n"
 "- Inštancia: 1. týždeň začína 1. januára. Všetky ostatné týždne začínajú dňom definovaným v nastaveniach lokalizácie metabázy."
@@ -13243,9 +13264,11 @@ msgid "The number of units to be subtracted."
 msgstr "Počet jednotiek, ktoré sa majú odpočítať."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Previesť časové pásmo stĺpca dátumu alebo časovej pečiatky.\n"
+msgstr ""
+"Previesť časové pásmo stĺpca dátumu alebo časovej pečiatky.\n"
 "Podporujeme názvy časových pásiem databázy tz."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15128,7 +15151,8 @@ msgid "SAML attributes"
 msgstr "SAML atribúty"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "Vo väčšine IdP bude potrebné vložiť každý z nich do vstupného poľa označeného \"Názov\" v sekcii s vyhláseniami o atribútoch."
 
@@ -15169,7 +15193,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Synchronizujte členstvo v skupine s vaším SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Na <b>povolenie</b> tohto budete musieť vytvoriť mapovania, aby ste povedali Metabase, do ktorej skupiny (skupín) by mali byť vaši používatelia pridaní na základe skupiny SSO, v ktorej sa nachádzajú."
 
@@ -15270,14 +15295,17 @@ msgstr "Pridať"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Všetci používatelia patria do skupiny {0} a nemôžu byť z nej odstránení. Uistite sa že používatelia pridaný do tejto skupiny uvidia iba čo chcete."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Toto je špeciálna skupina, ktorej členovia môžu vidieť všetko v inštancii Metabase a ktorí majú prístup a vykonávať zmeny v\n"
+msgstr ""
+"Toto je špeciálna skupina, ktorej členovia môžu vidieť všetko v inštancii Metabase a ktorí majú prístup a vykonávať zmeny v\n"
 "nastaveniach v administrácii vrátane zmeny povolení! Preto do tejto skupiny pridávajte ľudí opatrne."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
@@ -15399,9 +15427,11 @@ msgid "move the API keys to another group"
 msgstr "presunúť kľúče API do inej skupiny"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Si si istý? Všetci členovia tejto skupiny stratia všetky nastavenia povolení, ktoré majú na základe tejto skupiny.\n"
+msgstr ""
+"Si si istý? Všetci členovia tejto skupiny stratia všetky nastavenia povolení, ktoré majú na základe tejto skupiny.\n"
 "Toto nie je možné vrátiť späť."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15500,9 +15530,11 @@ msgstr "odobraný prístup k"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} bude možné použiť iba dotaz\n"
+msgstr ""
+"{0} bude možné použiť iba dotaz\n"
 "builder pre {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -17043,9 +17075,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Začnite používať službu Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Len upozornenie: vaša databáza Metabase bude až 30 minút len na čítanie\n"
+msgstr ""
+"Len upozornenie: vaša databáza Metabase bude až 30 minút len na čítanie\n"
 ", kým ju pripravíme na migráciu."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18799,9 +18833,11 @@ msgid "Conditional formatting"
 msgstr "Podmienené formátovanie"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Môžete pridať pravidlá, aby bunky v tejto tabuľke zmenili farbu, ak\n"
+msgstr ""
+"Môžete pridať pravidlá, aby bunky v tejto tabuľke zmenili farbu, ak\n"
 "spĺňajú určité podmienky."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20407,9 +20443,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Adresa servera SMTP, ktorý spracováva vaše emaily."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Maximálny počet príjemcov, ktorý možno odoslať za sekundu.\n"
+msgstr ""
+"Maximálny počet príjemcov, ktorý možno odoslať za sekundu.\n"
 "                Všimnite si, že posledný e-mail odoslaný pred dosiahnutím limitu ho môže prekročiť, ak má viacero príjemcov."
 
 #: metabase/channel/email.clj:69
@@ -22142,9 +22180,11 @@ msgid "Cumulative count of rows"
 msgstr "Kumulatívny počet riadkov"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Additívny súčet všetkých hodnôt stĺpca.\n"
+msgstr ""
+"Additívny súčet všetkých hodnôt stĺpca.\n"
 "Napr. celkový príjem v priebehu času."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -22192,9 +22232,11 @@ msgid "Sum of all the values of a column."
 msgstr "Súčet všetkých hodnôt v stĺpci."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Additívny počet počtu riadkov.\n"
+msgstr ""
+"Additívny počet počtu riadkov.\n"
 "Napr. celkový počet predajov v priebehu času."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23520,11 +23562,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "Vyhľadávanie v tejto databáze vyžaduje príznak funkcie audit-app"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Povoliť analýzu využitia poľa pre dopyty. Tým sa analyzujú polia použité v dotazoch a uložia sa do databázy aplikácie\n"
-"    .\n\n"
+msgstr ""
+"Povoliť analýzu využitia poľa pre dopyty. Tým sa analyzujú polia použité v dotazoch a uložia sa do databázy aplikácie\n"
+"    .\n"
+"\n"
 "    Predvolene vypnuté, pretože zatiaľ nemáme funkciu pre používateľov, ktorá by tieto údaje využívala."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24672,9 +24718,11 @@ msgid "{0} of {1}"
 msgstr "{0} z {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Výsledné transformácie nezodpovedajú očakávaniam.\n"
+msgstr ""
+"Výsledné transformácie nezodpovedajú očakávaniam.\n"
 "Očakávané: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24816,9 +24864,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster vrátil chybu."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Nedá sa nastaviť synchronizácia priečinka na disku.\n"
+msgstr ""
+"Nedá sa nastaviť synchronizácia priečinka na disku.\n"
 "Skontrolujte, či je priečinok zdieľaný so správnym e-mailom účtu služby a povoleniami na zdieľanie."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -25084,9 +25134,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "SAML atribút pre emailovú adresu používateľa"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Keď povolíme poskytovanie používateľov SAML, automaticky vytvoríme účet Metabase pri prihlásení SAML pre používateľov, ktorí ho nemajú\n"
+msgstr ""
+"Keď povolíme poskytovanie používateľov SAML, automaticky vytvoríme účet Metabase pri prihlásení SAML pre používateľov, ktorí ho nemajú\n"
 "."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -25130,15 +25182,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Tento názov aplikácie sa použije pre požiadavky smerované k poskytovateľovi identity"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Toto je adresa URL, na ktorú sa používatelia prihlasujú k poskytovateľovi identity. V závislosti od toho, ktorého poskytovateľa identity používate\n"
+msgstr ""
+"Toto je adresa URL, na ktorú sa používatelia prihlasujú k poskytovateľovi identity. V závislosti od toho, ktorého poskytovateľa identity používate\n"
 ", to zvyčajne vyzerá ako `https://your-org-name.example.com` alebo `https://example.com/app/my_saml_app/abc123/sso/saml`."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Keď povolíme poskytovanie používateľov JWT, automaticky vytvoríme účet Metabase pri prihlásení JWT pre používateľov, ktorí ho nemajú\n"
+msgstr ""
+"Keď povolíme poskytovanie používateľov JWT, automaticky vytvoríme účet Metabase pri prihlásení JWT pre používateľov, ktorí ho nemajú\n"
 "."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -25146,9 +25202,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON obsahujúci mapovanie skupín SAML na {0} ."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Zakódovaný certifikát pre poskytovateľa identity. V závislosti od vášho IdP si ho možno budete musieť stiahnuť,\n"
+msgstr ""
+"Zakódovaný certifikát pre poskytovateľa identity. V závislosti od vášho IdP si ho možno budete musieť stiahnuť,\n"
 "otvoriť ho v textovom editore, potom skopírovať a prilepiť obsah certifikátu sem."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -25156,9 +25214,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Alias pre kľúč, ktorý by mala stránka {0} používať na podpisovanie požiadaviek SAML"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Toto je jedinečný identifikátor pre IdP. Často označované ako Entity ID alebo jednoducho ''Emitent''. V závislosti od\n"
+msgstr ""
+"Toto je jedinečný identifikátor pre IdP. Často označované ako Entity ID alebo jednoducho ''Emitent''. V závislosti od\n"
 "od vášho IdP to zvyčajne vyzerá takto: `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -25174,9 +25234,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Neplatný certifikát poskytovateľa identít. Certifikát musí byť reťazcom kódovaným v base-64."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Keď povolíme poskytovanie používateľov LDAP, automaticky vytvoríme účet Metabase pri prihlásení LDAP pre používateľov, ktorí ho nemajú\n"
+msgstr ""
+"Keď povolíme poskytovanie používateľov LDAP, automaticky vytvoríme účet Metabase pri prihlásení LDAP pre používateľov, ktorí ho nemajú\n"
 "."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25188,9 +25250,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Kľúč na získanie skupín používateľa JWT"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Toto je adresa URL, na ktorú sa vaši používatelia odhlásia od vášho poskytovateľa identity. V závislosti od toho, ktorého IdP používate\n"
+msgstr ""
+"Toto je adresa URL, na ktorú sa vaši používatelia odhlásia od vášho poskytovateľa identity. V závislosti od toho, ktorého IdP používate\n"
 ", to zvyčajne vyzerá takto: „https://názov-vašej-organizácie.example.com“ alebo „https://example.com/app/my_saml_app/abc123/sso/slo“"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26246,4 +26310,3 @@ msgstr "Akvizícia používateľa podľa krajiny"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 krajín podľa predaja"
-

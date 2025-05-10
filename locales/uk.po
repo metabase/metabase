@@ -2193,9 +2193,11 @@ msgid "Logo"
 msgstr "Логотип"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Для найкращих результатів використовуйте SVG-файл з прозорим фоном\n"
+msgstr ""
+"Для найкращих результатів використовуйте SVG-файл з прозорим фоном\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3119,7 +3121,8 @@ msgstr "нуль"
 #: frontend/src/metabase/visualizations/lib/errors.js:6
 #, javascript-format
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "Ой! Дані із запиту не підходять до обраної візуалізації. Ця візуалізація вимагає мінімум {0}\n"
+msgstr ""
+"Ой! Дані із запиту не підходять до обраної візуалізації. Ця візуалізація вимагає мінімум {0}\n"
 " {1} даних"
 
 #: frontend/src/metabase/visualizations/lib/errors.js:18
@@ -3451,9 +3454,11 @@ msgid "Refresh cache automatically"
 msgstr "Автоматично оновлювати кеш"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Щойно закінчиться термін дії кешованих результатів, запустіть і закешуйте запит ще раз, щоб оновити результати і оновити\n"
+msgstr ""
+"Щойно закінчиться термін дії кешованих результатів, запустіть і закешуйте запит ще раз, щоб оновити результати і оновити\n"
 "кеш."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3696,9 +3701,11 @@ msgstr "Придбали ліцензію для розблокування ро
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "Ваша ліцензія більше не дійсна. Якщо у вас є нова ліцензія, будь ласка,\n"
+msgstr ""
+"Ваша ліцензія більше не дійсна. Якщо у вас є нова ліцензія, будь ласка,\n"
 "введіть її нижче, інакше зверніться до {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4911,7 +4918,8 @@ msgid "Connect to Slack"
 msgstr "Під'єднати Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
 msgstr "Якщо у вашій команді використовують Slack, там же можна ділитись посиланнями на панелі інструментів Metabase"
 
@@ -6641,9 +6649,11 @@ msgstr "Вбудувати {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Використовуйте {0} , щоб додати публічно видимий iframe на вашу веб-сторінку або допис у блозі\n"
+msgstr ""
+"Використовуйте {0} , щоб додати публічно видимий iframe на вашу веб-сторінку або допис у блозі\n"
 "."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6939,10 +6949,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Цей фільтр вимкнено у вбудованому запитанні."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Щоб завжди вимагати значення, спочатку відвідайте налаштування вбудовування,\n"
+msgstr ""
+"Щоб завжди вимагати значення, спочатку відвідайте налаштування вбудовування,\n"
 "зробіть цей фільтр редагованим або заблокованим, повторно опублікуйте питання\n"
 ", а потім поверніться на цю сторінку."
 
@@ -6954,10 +6966,12 @@ msgstr "Нотатка"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "щоб заблокувати його, потрібно буде оновити код вбудовування\n"
+msgstr ""
+"щоб заблокувати його, потрібно буде оновити код вбудовування\n"
 "перед тим, як продовжити, інакше вбудовування\n"
 "зламається."
 
@@ -11498,10 +11512,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Цей фільтр вимкнено у вбудованій інформаційній панелі."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Щоб завжди вимагати значення, спочатку відвідайте налаштування вбудовування,\n"
+msgstr ""
+"Щоб завжди вимагати значення, спочатку відвідайте налаштування вбудовування,\n"
 "зробіть цей фільтр редагованим або заблокованим, повторно опублікуйте інформаційну панель\n"
 ", а потім поверніться на цю сторінку."
 
@@ -11779,19 +11795,24 @@ msgid "Turn this into a model"
 msgstr "Перетворити на модель"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Дозволяє оновлювати описи колонок і налаштовувати метадані, щоб створювати\n"
+msgstr ""
+"Дозволяє оновлювати описи колонок і налаштовувати метадані, щоб створювати\n"
 "чудові початкові точки для дослідження."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Показуватися вище в результатах пошуку і бути виділеним, коли інші\n"
+msgstr ""
+"Показуватися вище в результатах пошуку і бути виділеним, коли інші\n"
 "користувачі починають нові запитання, щоб сприяти повторному використанню."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Живіть у колекціях, щоб відокремити їх від хаотичних схем бази даних."
 
@@ -13182,11 +13203,13 @@ msgid "mode"
 msgstr "режим"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Додатково. Типовим є `\"ISO\"`.\n"
+msgstr ""
+"Додатково. Типовим є `\"ISO\"`.\n"
 "- ISO: Тиждень 1 починається в понеділок перед першим четвергом січня.\n"
 "- США: Тиждень 1 починається 1 січня. Усі інші тижні починаються в неділю.\n"
 "– Екземпляр: тиждень 1 починається 1 січня. Усі інші тижні починаються з дня, визначеного в налаштуваннях локалізації вашої метабази."
@@ -13245,9 +13268,11 @@ msgid "The number of units to be subtracted."
 msgstr "Кількість одиниць, які потрібно відняти."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Перетворення часового поясу стовпця дати або позначки часу.\n"
+msgstr ""
+"Перетворення часового поясу стовпця дати або позначки часу.\n"
 "Ми підтримуємо імена часових поясів бази даних tz."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15130,7 +15155,8 @@ msgid "SAML attributes"
 msgstr "Атрибути SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "Для більшості служб посвідчень запишіть кожен у полі Ім'я у секції атрибутів виразів."
 
@@ -15171,7 +15197,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Синхронізувати групи з службою SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Metabase повинен розуміти до яких груп додавати ваших користувачів відповідно до їхнього членства у групах SSO, щоб можна було це увікмнути."
 
@@ -15272,13 +15299,16 @@ msgstr "Додати"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Всі користувачі входять в групу {0} і не можуть бути з неї виключені. \n"
+msgstr ""
+"Всі користувачі входять в групу {0} і не можуть бути з неї виключені. \n"
 "Встановіть дозволу для даної групи - так ви будете впевнені в тому, що зможуть побачити нові користувачі Metabase."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "Це спеціальна група, члени якої зможуть бачити всі, що пов'язано з даними екземпляром Metabase, мати доступ і редагувати настройки в Панелі адміністратора, включаючи повноваження! Тому включайте користувачів до цієї групи дотримуючись запобіжних заходів."
 
@@ -15401,7 +15431,8 @@ msgid "move the API keys to another group"
 msgstr "перенести ключі API в іншу групу"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "Ви впевнені? Всі учасники цієї групи втратять всі повноваження засновані на цій групі. Дана дія не може бути скасовано."
 
@@ -15501,9 +15532,11 @@ msgstr "доступ заборонений для"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} зможуть використовувати конструктор запитів\n"
+msgstr ""
+"{0} зможуть використовувати конструктор запитів\n"
 "тільки для {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -17044,9 +17077,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Початок роботи з Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Попереджаємо: ваша метабаза буде доступна лише для читання протягом 30\n"
+msgstr ""
+"Попереджаємо: ваша метабаза буде доступна лише для читання протягом 30\n"
 "хвилин, поки ми готуємо її до міграції."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18800,7 +18835,8 @@ msgid "Conditional formatting"
 msgstr "Умовне форматування"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Ви можете додати правила щоб поміняти кольори елементів таблиці в залежності від умов."
 
@@ -20407,9 +20443,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Адреса SMTP сервера, який обробляє вашу пошту."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Максимальна кількість одержувачів, підсумована для всіх імейлів, яку можна надсилати за секунду.\n"
+msgstr ""
+"Максимальна кількість одержувачів, підсумована для всіх імейлів, яку можна надсилати за секунду.\n"
 "                Зверніть увагу, що останній імейл, надісланий до досягнення ліміту, може перевищити його, якщо він має кілька одержувачів."
 
 #: metabase/channel/email.clj:69
@@ -22142,7 +22180,8 @@ msgid "Cumulative count of rows"
 msgstr "Наростаюча к-сть рядків"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Сума усіх значень стовпця, напр. загальний дохід з плином часу."
 
@@ -22191,7 +22230,8 @@ msgid "Sum of all the values of a column."
 msgstr "Кількість всіх значень колонки."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Кількість усіх значень стовпця, напр. кількість продаж з плином часу."
 
@@ -23518,11 +23558,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "Для запиту до цієї бази даних потрібен прапорець функції audit-app"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Увімкнути аналіз використання полів для запитів. Це проаналізує поля, які використовуються в запитах, і збереже їх у базі даних програми\n"
-"    .\n\n"
+msgstr ""
+"Увімкнути аналіз використання полів для запитів. Це проаналізує поля, які використовуються в запитах, і збереже їх у базі даних програми\n"
+"    .\n"
+"\n"
 "    Вимкнути за умовчанням, оскільки у нас ще не було функції для користувачів, яка використовує ці дані."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24670,9 +24714,11 @@ msgid "{0} of {1}"
 msgstr "{0} з {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Результат перетворень не відповідає очікуванням.\n"
+msgstr ""
+"Результат перетворень не відповідає очікуванням.\n"
 "Очкувається: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24814,9 +24860,11 @@ msgid "Harbormaster returned an error."
 msgstr "Капітан порту повернув помилку."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Не вдалося налаштувати синхронізацію папок диска.\n"
+msgstr ""
+"Не вдалося налаштувати синхронізацію папок диска.\n"
 "Будь ласка, переконайтеся, що до папки надано спільний доступ за допомогою відповідної електронної адреси облікового запису служби та дозволів на спільний доступ."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -25082,9 +25130,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Атрибут SAML для email"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Коли ми вмикаємо забезпечення користувачів SAML, ми автоматично створюємо обліковий запис Metabase на основі SAML для користувачів, які\n"
+msgstr ""
+"Коли ми вмикаємо забезпечення користувачів SAML, ми автоматично створюємо обліковий запис Metabase на основі SAML для користувачів, які\n"
 "не мають такого облікового запису."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -25128,15 +25178,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Це ім'я додатку буде використане для запитів до служби посвідчень"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Це URL-адреса, за якою користувачі переходять для входу до вашого постачальника ідентифікаційних даних. Залежно від того, який IdP ви\n"
+msgstr ""
+"Це URL-адреса, за якою користувачі переходять для входу до вашого постачальника ідентифікаційних даних. Залежно від того, який IdP ви\n"
 "використовуєте, вона зазвичай виглядає як `https://your-org-name.example.com` або `https://example.com/app/my_saml_app/abc123/sso/saml`."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Коли ми вмикаємо надання користувачам JWT, ми автоматично створюємо обліковий запис Metabase при вході в JWT для користувачів, які\n"
+msgstr ""
+"Коли ми вмикаємо надання користувачам JWT, ми автоматично створюємо обліковий запис Metabase при вході в JWT для користувачів, які\n"
 "не мають такого облікового запису."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -25144,9 +25198,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON, що містить зіставлення груп SAML з {0} ."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Закодований сертифікат для постачальника ідентифікаційних даних. Залежно від вашого IdP вам може знадобитися завантажити це,\n"
+msgstr ""
+"Закодований сертифікат для постачальника ідентифікаційних даних. Залежно від вашого IdP вам може знадобитися завантажити це,\n"
 "відкрити в текстовому редакторі, а потім скопіювати та вставити вміст сертифіката сюди."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -25154,9 +25210,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Псевдонім для ключа, який {0} має використовувати для підписання SAML-запитів"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Це унікальний ідентифікатор для IdP. Його часто називають ідентифікатором організації або просто «емітентом». Залежно від\n"
+msgstr ""
+"Це унікальний ідентифікатор для IdP. Його часто називають ідентифікатором організації або просто «емітентом». Залежно від\n"
 "вашого IdP, це зазвичай виглядає приблизно так: `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -25172,9 +25230,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Недійсний сертифікат служби посвідчень.  Повинен бути base64 стрічкою."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Коли ми вмикаємо забезпечення користувачів LDAP, ми автоматично створюємо обліковий запис Metabase при вході через LDAP для користувачів, які\n"
+msgstr ""
+"Коли ми вмикаємо забезпечення користувачів LDAP, ми автоматично створюємо обліковий запис Metabase при вході через LDAP для користувачів, які\n"
 "його не мають."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25186,9 +25246,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Ключ для отримання груп користувачів JWT"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Це URL-адреса, за якою ваші користувачі переходять, щоб вийти з вашого постачальника ідентифікаційної інформації. Залежно від того, який IdP ви\n"
+msgstr ""
+"Це URL-адреса, за якою ваші користувачі переходять, щоб вийти з вашого постачальника ідентифікаційної інформації. Залежно від того, який IdP ви\n"
 "використовуєте, це зазвичай виглядає як `https://your-org-name.example.com` або `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26244,4 +26306,3 @@ msgstr "Залучення користувачів по країнах"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Топ-10 країн за обсягом продажів"
-

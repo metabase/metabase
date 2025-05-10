@@ -2184,9 +2184,11 @@ msgid "Logo"
 msgstr "심벌 마크"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "최상의 결과를 얻으려면 배경이 투명한 SVG 파일(\n"
+msgstr ""
+"최상의 결과를 얻으려면 배경이 투명한 SVG 파일(\n"
 ")을 사용하세요."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3429,9 +3431,11 @@ msgid "Refresh cache automatically"
 msgstr "캐시 자동 새로 고침"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "캐시된 결과가 만료되는 즉시 쿼리를 다시 실행하고 캐시하여 결과를 업데이트하고\n"
+msgstr ""
+"캐시된 결과가 만료되는 즉시 쿼리를 다시 실행하고 캐시하여 결과를 업데이트하고\n"
 "캐시를 새로 고칩니다."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3674,7 +3678,8 @@ msgstr "고급 기능의 잠금을 해제하기 위해 라이센스를 구입하
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "귀하의 라이센스는 더 이상 유효하지 않습니다. 새 라이센스가 있는 경우 아래에 입력하십시오. 그렇지 않으면 {0}에 문의하십시오."
 
@@ -4888,9 +4893,11 @@ msgid "Connect to Slack"
 msgstr "Slack에 연결"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "팀에서 Slack을 사용하는 경우 대시보드 구독 및\n"
+msgstr ""
+"팀에서 Slack을 사용하는 경우 대시보드 구독 및\n"
 "알림을 보낼 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -5228,7 +5235,8 @@ msgstr "저장된 질문"
 #, javascript-format
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
-msgstr[0] "{0} 아이템이 선택되었습니다.\n"
+msgstr[0] ""
+"{0} 아이템이 선택되었습니다.\n"
 "복수형: {0} 아이템들이 선택되었습니다."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal.tsx:93
@@ -6608,9 +6616,11 @@ msgstr "퍼가기 {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "{0} 을 사용하여 웹 페이지 또는 블로그\n"
+msgstr ""
+"{0} 을 사용하여 웹 페이지 또는 블로그\n"
 "게시물에 공개적으로 표시되는 iframe 임베드를 추가합니다."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6891,10 +6901,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "이 필터는 임베드된 질문에서 비활성화로 설정되어 있습니다."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "항상 값을 요구하려면 먼저 임베딩 설정(\n"
+msgstr ""
+"항상 값을 요구하려면 먼저 임베딩 설정(\n"
 ")으로 이동하여 이 필터를 편집 가능 또는 잠그고\n"
 "질문을 다시 게시한 다음 이 페이지로 돌아와야 합니다."
 
@@ -6906,10 +6918,12 @@ msgstr "메모"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "잠긴 상태로 만들려면 계속 진행하기 전에\n"
+msgstr ""
+"잠긴 상태로 만들려면 계속 진행하기 전에\n"
 "임베딩 코드를 업데이트해야 하며, 그렇지 않으면 임베딩이\n"
 "중단됩니다."
 
@@ -11393,10 +11407,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "이 필터는 임베디드 대시보드에서 비활성화로 설정되어 있습니다."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "항상 값을 요구하려면 먼저 임베딩 설정(\n"
+msgstr ""
+"항상 값을 요구하려면 먼저 임베딩 설정(\n"
 ")으로 이동하여 이 필터를 편집 가능 또는 잠그고\n"
 "대시보드를 다시 게시한 다음 이 페이지로 돌아오세요."
 
@@ -11668,21 +11684,27 @@ msgid "Turn this into a model"
 msgstr "이것을 모델로 삼아라"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "열 설명을 업데이트하고 메타데이터를 사용자 지정하여 생성할 수 있습니다.\n"
+msgstr ""
+"열 설명을 업데이트하고 메타데이터를 사용자 지정하여 생성할 수 있습니다.\n"
 "탐험을 위한 훌륭한 출발점."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "검색 결과에서 상위에 표시되고 다른 경우 강조 표시됩니다.\n"
+msgstr ""
+"검색 결과에서 상위에 표시되고 다른 경우 강조 표시됩니다.\n"
 "사용자는 재사용을 촉진하기 위해 새로운 질문을 시작합니다."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "지저분한 데이터베이스와 분리하여 컬렉션에 보관\n"
+msgstr ""
+"지저분한 데이터베이스와 분리하여 컬렉션에 보관\n"
 "스키마."
 
 #: frontend/src/metabase/query_builder/components/dataref/ConnectedTableList.tsx:27
@@ -13069,11 +13091,13 @@ msgid "mode"
 msgstr "방법"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "선택 사항. 기본값은 `\"ISO\"`입니다.\n"
+msgstr ""
+"선택 사항. 기본값은 `\"ISO\"`입니다.\n"
 "- ISO: 1주차는 1월 첫 번째 목요일 전 월요일에 시작합니다.\n"
 "- 미국: 1주차는 1월 1일에 시작합니다. 다른 모든 주는 일요일에 시작합니다.\n"
 "- 인스턴스: 1주차는 1월 1일에 시작합니다. 다른 모든 주는 Metabase 현지화 설정에 정의된 요일에 시작합니다."
@@ -13132,9 +13156,11 @@ msgid "The number of units to be subtracted."
 msgstr "뺄 단위 수입니다."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "날짜 또는 타임스탬프 열의 시간대를 변환합니다.\n"
+msgstr ""
+"날짜 또는 타임스탬프 열의 시간대를 변환합니다.\n"
 "tz 데이터베이스 시간대 이름을 지원합니다."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -14984,9 +15010,11 @@ msgid "SAML attributes"
 msgstr "SAML 속성"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
-msgstr "대부분의 IdP에서는 이들 각각을 레이블이 지정된 입력 상자에 넣어야 합니다.\n"
+msgstr ""
+"대부분의 IdP에서는 이들 각각을 레이블이 지정된 입력 상자에 넣어야 합니다.\n"
 "속성 설명 섹션의 \"이름\"."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
@@ -15026,9 +15054,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "그룹 구성원을 SSO와 동기화"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "이를 활성화하려면 사용자가 어떤 그룹을 사용해야 하는지 Metabase에 알려주는 매핑을 생성해야 합니다.\n"
+msgstr ""
+"이를 활성화하려면 사용자가 어떤 그룹을 사용해야 하는지 Metabase에 알려주는 매핑을 생성해야 합니다.\n"
 "속해 있는 SSO 그룹에 따라 추가됩니다."
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:26
@@ -15128,12 +15158,14 @@ msgstr "추가"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "모든 사용자는 {0} 그룹에 속하며, 해당 그룹에서 삭제할 수 없습니다. 이 그룹의 권한을 설정해 새로운 Metabase 사용자의 열람 가능 범위를 확인할 수 있습니다."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "이 특수한 그룹에 속한 멤버는 Metabase 인스턴스 내 모든 것을 볼 수 있을 뿐만 아니라, 관리자 패널에 접근해 권한 변경을 포함한 설정 변경을 할 수 있습니다! 이 그룹에 구성원을 추가할 때는 유의해주세요."
 
@@ -15250,7 +15282,8 @@ msgid "move the API keys to another group"
 msgstr "API 키를 다른 그룹으로 이동"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "정말인가요? 이 그룹의 모든 구성원들은 그룹과 관련된 모든 권한 세팅을 잃게 됩니다. 이 작업은 돌이킬 수 없습니다."
 
@@ -15347,9 +15380,11 @@ msgstr "접속이 거부되었습니다."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0}은/는\n"
+msgstr ""
+"{0}은/는\n"
 "{1}에 대한 쿼리 빌더만 사용할 수 있습니다."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16875,9 +16910,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "메타베이스 클라우드 시작하기"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "참고: 마이그레이션을 준비하는 동안 메타베이스는 최대 30분 동안 읽기 전용으로 설정됩니다(\n"
+msgstr ""
+"참고: 마이그레이션을 준비하는 동안 메타베이스는 최대 30분 동안 읽기 전용으로 설정됩니다(\n"
 ")."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18303,7 +18340,8 @@ msgstr "대문자/소문자 구분"
 #: metabase/api/table.clj:187 metabase/lib/temporal_bucket.cljc:38
 msgid "Week"
 msgid_plural "Weeks"
-msgstr[0] "주\n"
+msgstr[0] ""
+"주\n"
 "복수형 : 주"
 
 #: frontend/src/metabase/querying/filters/components/RelativeDateShortcutPicker/utils.ts:41
@@ -18311,7 +18349,8 @@ msgstr[0] "주\n"
 #: metabase/api/table.clj:190 metabase/lib/temporal_bucket.cljc:41
 msgid "Year"
 msgid_plural "Years"
-msgstr[0] "년\n"
+msgstr[0] ""
+"년\n"
 "복수 : 년"
 
 #: frontend/src/metabase/querying/filters/components/RelativeDateShortcutPicker/utils.ts:47
@@ -18606,9 +18645,11 @@ msgid "Conditional formatting"
 msgstr "조건부 서식"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "다음과 같은 경우 이 테이블의 셀 색상을 변경하는 규칙을 추가할 수 있습니다.\n"
+msgstr ""
+"다음과 같은 경우 이 테이블의 셀 색상을 변경하는 규칙을 추가할 수 있습니다.\n"
 "그들은 특정 조건을 충족합니다."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20102,7 +20143,8 @@ msgstr "100빈"
 #: metabase/api/table.clj:196 metabase/lib/temporal_bucket.cljc:47
 msgid "Week of year"
 msgid_plural "Weeks of year"
-msgstr[0] "연중 주\n"
+msgstr[0] ""
+"연중 주\n"
 "복수형 : 주"
 
 #: metabase/api/table.clj:186 metabase/lib/temporal_bucket.cljc:37
@@ -20179,9 +20221,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "이메일을 처리하는 SMTP 서버의 주소입니다."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "초당 전송할 수 있는 최대 수신자 수(이메일 전체 합산)입니다.\n"
+msgstr ""
+"초당 전송할 수 있는 최대 수신자 수(이메일 전체 합산)입니다.\n"
 "                수신자가 여러 명인 경우 한도에 도달하기 전에 마지막으로 보낸 이메일이 한도를 초과할 수 있습니다."
 
 #: metabase/channel/email.clj:69
@@ -21905,9 +21949,11 @@ msgid "Cumulative count of rows"
 msgstr "열의 누적 개수"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "열의 모든 값에 대한 추가 합계입니다.\n"
+msgstr ""
+"열의 모든 값에 대한 추가 합계입니다.\n"
 "e.x. 시간 경과에 따른 총 수익."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -21955,9 +22001,11 @@ msgid "Sum of all the values of a column."
 msgstr "컬럼 내 모든 값의 합계"
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "행 수의 추가 개수입니다.\n"
+msgstr ""
+"행 수의 추가 개수입니다.\n"
 "e.x. 시간 경과에 따른 총 판매 수입니다."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23274,11 +23322,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "이 데이터베이스를 쿼리하려면 감사 앱 기능 플래그가 필요합니다."
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "쿼리에 대한 필드 사용 분석을 활성화합니다. 이렇게 하면 쿼리에서 사용된 필드가 분석되어\n"
-"    애플리케이션 데이터베이스에 저장됩니다.\n\n"
+msgstr ""
+"쿼리에 대한 필드 사용 분석을 활성화합니다. 이렇게 하면 쿼리에서 사용된 필드가 분석되어\n"
+"    애플리케이션 데이터베이스에 저장됩니다.\n"
+"\n"
 "    아직 이 데이터를 사용하는 사용자 지향 기능이 없으므로 기본적으로 해제합니다."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24414,9 +24466,11 @@ msgid "{0} of {1}"
 msgstr "{1}의 {0}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "결과 변환이 예상과 일치하지 않습니다.\n"
+msgstr ""
+"결과 변환이 예상과 일치하지 않습니다.\n"
 "예상: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24558,9 +24612,11 @@ msgid "Harbormaster returned an error."
 msgstr "항구 관리자가 오류를 반환했습니다."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "드라이브 폴더 동기화를 설정할 수 없습니다.\n"
+msgstr ""
+"드라이브 폴더 동기화를 설정할 수 없습니다.\n"
 "폴더가 적절한 서비스 계정 이메일과 공유 권한으로 공유되었는지 확인하세요."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24826,9 +24882,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "사용자 이메일 주소의 SAML 속성"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "SAML 사용자 프로비저닝을 활성화하면\n"
+msgstr ""
+"SAML 사용자 프로비저닝을 활성화하면\n"
 "계정이 없는 사용자를 위해 SAML 로그인 시 메타베이스 계정이 자동으로 생성됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24872,15 +24930,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "이 애플리케이션 이름은 아이덴티티 공급자에 대한 요청에 사용됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "사용자가 ID 공급업체에 로그인하기 위해 이동하는 URL입니다.\n"
+msgstr ""
+"사용자가 ID 공급업체에 로그인하기 위해 이동하는 URL입니다.\n"
 "사용 중인 IdP에 따라 일반적으로 `https://your-org-name.example.com` 또는 `https://example.com/app/my_saml_app/abc123/sso/saml`와 같이 표시됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "JWT 사용자 프로비저닝을 활성화하면 메타베이스 계정이 없는 사용자(\n"
+msgstr ""
+"JWT 사용자 프로비저닝을 활성화하면 메타베이스 계정이 없는 사용자(\n"
 ")를 위해 JWT 로그인 시 자동으로 메타베이스 계정이 생성됩니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24888,9 +24950,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "SAML과 {0} 그룹 매핑을 포함하는 JSON입니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "ID 공급자에 대한 인코딩된 인증서입니다. IdP에 따라 이것을 다운로드하고,\n"
+msgstr ""
+"ID 공급자에 대한 인코딩된 인증서입니다. IdP에 따라 이것을 다운로드하고,\n"
 "텍스트 편집기에서 연 다음, 인증서의 내용을 여기에 복사하여 붙여넣어야 할 수도 있습니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24898,9 +24962,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "{0} 이 SAML 요청에 서명할 때 사용해야 하는 키의 별칭"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "이것은 IdP의 고유 식별자입니다. 종종 엔티티 ID 또는 간단히 ''발급자''라고도 합니다. IdP에 따라\n"
+msgstr ""
+"이것은 IdP의 고유 식별자입니다. 종종 엔티티 ID 또는 간단히 ''발급자''라고도 합니다. IdP에 따라\n"
 "는 일반적으로 `http://www.example.com/141xkex604w0Q5PN724v`와 비슷합니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24916,9 +24982,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "잘못된 ID 공급자 인증서입니다. 인증서는 base-64로 인코딩된 문자열이어야 합니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "LDAP 사용자 프로비저닝을 활성화하면\n"
+msgstr ""
+"LDAP 사용자 프로비저닝을 활성화하면\n"
 "계정이 없는 사용자를 위해 LDAP 로그인 시 자동으로 메타베이스 계정을 생성합니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -24930,9 +24998,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "JWT 사용자 그룹을 검색하는 키"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "이것은 사용자가 귀하의 ID 공급자에서 로그아웃하는 URL입니다.\n"
+msgstr ""
+"이것은 사용자가 귀하의 ID 공급자에서 로그아웃하는 URL입니다.\n"
 "사용하는 IdP에 따라 일반적으로 `https://your-org-name.example.com` 또는 `https://example.com/app/my_saml_app/abc123/sso/slo`처럼 보입니다."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -25988,4 +26058,3 @@ msgstr "국가별 사용자 획득"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "매출 상위 10개국"
-

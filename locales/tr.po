@@ -2187,9 +2187,11 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "En iyi sonuçları elde etmek için şeffaf\n"
+msgstr ""
+"En iyi sonuçları elde etmek için şeffaf\n"
 "arka planlı bir SVG dosyası kullanın."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3436,9 +3438,11 @@ msgid "Refresh cache automatically"
 msgstr "Önbelleği otomatik olarak yenileme"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Önbelleğe alınan sonuçların süresi dolar dolmaz, sonuçları güncellemek ve\n"
+msgstr ""
+"Önbelleğe alınan sonuçların süresi dolar dolmaz, sonuçları güncellemek ve\n"
 "önbelleği yenilemek için sorguyu tekrar çalıştırın ve önbelleğe alın."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3681,9 +3685,11 @@ msgstr "Gelişmiş işlevlerin kilidini açmak için bir lisans mı satın aldı
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "Ehliyetiniz artık geçerli değil. Yeni ehliyetiniz varsa lütfen\n"
+msgstr ""
+"Ehliyetiniz artık geçerli değil. Yeni ehliyetiniz varsa lütfen\n"
 "aşağıya girin, aksi takdirde lütfen {0} ile iletişime geçin"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4896,9 +4902,11 @@ msgid "Connect to Slack"
 msgstr "Slack'e bağlanın"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Ekibiniz Slack kullanıyorsa, gösterge tablosu aboneliklerini ve\n"
+msgstr ""
+"Ekibiniz Slack kullanıyorsa, gösterge tablosu aboneliklerini ve\n"
 "uyarılarını buradan gönderebilirsiniz"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6619,9 +6627,11 @@ msgstr "Embed {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Web sayfanıza veya blog\n"
+msgstr ""
+"Web sayfanıza veya blog\n"
 "gönderinize herkes tarafından görülebilen bir iframe eklemek için {0} adresini kullanın."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6907,10 +6917,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Bu filtre gömülü bir soruda devre dışı olarak ayarlanmıştır."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Her zaman bir değer gerektirmek için önce gömme ayarlarını ziyaret edin,\n"
+msgstr ""
+"Her zaman bir değer gerektirmek için önce gömme ayarlarını ziyaret edin,\n"
 "bu filtreyi düzenlenebilir veya kilitli hale getirin,\n"
 "sorusunu yeniden yayınlayın ve ardından bu sayfaya geri dönün."
 
@@ -6922,10 +6934,12 @@ msgstr "Not"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "kilitli hale getirmek, devam etmeden önce\n"
+msgstr ""
+"kilitli hale getirmek, devam etmeden önce\n"
 "gömme kodunun güncellenmesini gerektirecektir, aksi takdirde gömme\n"
 "kırılacaktır."
 
@@ -11428,10 +11442,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Bu filtre, gömülü bir gösterge tablosunda devre dışı olarak ayarlanmıştır."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Her zaman bir değer gerektirmek için önce yerleştirme ayarlarını ziyaret edin,\n"
+msgstr ""
+"Her zaman bir değer gerektirmek için önce yerleştirme ayarlarını ziyaret edin,\n"
 "bu filtreyi düzenlenebilir veya kilitli hale getirin,\n"
 "panosunu yeniden yayınlayın ve ardından bu sayfaya geri dönün."
 
@@ -11705,21 +11721,27 @@ msgid "Turn this into a model"
 msgstr "Bunu bir modele dönüştürün"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Sütun açıklamalarını güncellemenize ve meta verileri oluşturmak için özelleştirmenize izin verin\n"
+msgstr ""
+"Sütun açıklamalarını güncellemenize ve meta verileri oluşturmak için özelleştirmenize izin verin\n"
 "keşif için harika başlangıç noktaları."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Arama sonuçlarında daha üst sıralarda görünün ve diğer\n"
+msgstr ""
+"Arama sonuçlarında daha üst sıralarda görünün ve diğer\n"
 "kullanıcılar yeniden kullanımı teşvik etmek için yeni sorular başlatır."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "Dağınık veritabanından ayrı tutmak için koleksiyonlarda yaşayın\n"
+msgstr ""
+"Dağınık veritabanından ayrı tutmak için koleksiyonlarda yaşayın\n"
 "şemalar."
 
 #: frontend/src/metabase/query_builder/components/dataref/ConnectedTableList.tsx:27
@@ -13107,11 +13129,13 @@ msgid "mode"
 msgstr "mod"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "İsteğe bağlı. Varsayılan `\"ISO\"`dur.\n"
+msgstr ""
+"İsteğe bağlı. Varsayılan `\"ISO\"`dur.\n"
 "- ISO: 1. Hafta Ocak ayının ilk Perşembesinden önceki Pazartesi günü başlar.\n"
 "- ABD: 1. Hafta 1 Ocak'ta başlar. Diğer tüm haftalar Pazar günü başlar.\n"
 "- Örnek: 1. Hafta 1 Ocak'ta başlar. Diğer tüm haftalar Metabase yerelleştirme ayarlarınızda tanımlanan günde başlar."
@@ -13170,9 +13194,11 @@ msgid "The number of units to be subtracted."
 msgstr "Çıkarılacak birim sayısı."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Bir tarih veya zaman damgası sütununun saat dilimini dönüştürün.\n"
+msgstr ""
+"Bir tarih veya zaman damgası sütununun saat dilimini dönüştürün.\n"
 "tz veritabanı saat dilimi adlarını destekliyoruz."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15033,9 +15059,11 @@ msgid "SAML attributes"
 msgstr "SAML özellikleri"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
-msgstr "Çoğu IdP'de, bunların her birini etiketli bir giriş kutusuna koymanız gerekir.\n"
+msgstr ""
+"Çoğu IdP'de, bunların her birini etiketli bir giriş kutusuna koymanız gerekir.\n"
 "Öznitelik ifadeleri bölümünde \"Ad\"."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
@@ -15075,9 +15103,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Grup üyeliğini SSO'nuzla senkronize edin"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "Bunu etkinleştirmek için, Metabase'e kullanıcılarınızın hangi grup (lar) ı kullanması gerektiğini söyleyen eşlemeler oluşturmanız gerekir\n"
+msgstr ""
+"Bunu etkinleştirmek için, Metabase'e kullanıcılarınızın hangi grup (lar) ı kullanması gerektiğini söyleyen eşlemeler oluşturmanız gerekir\n"
 "içinde bulundukları SSO grubuna göre eklenecek."
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:26
@@ -15177,12 +15207,14 @@ msgstr "Ekle"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Tüm kullanıcılar {0} grubuna ait ve bundan kaldırılamaz.Bu grup için izinler ayarlamak yeni Metabase kullanıcılarının görebileceği şeylerden emin olmanın harika bir yoldur."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "Bu, üyeleri Metabase'de her şeyi görebilen ve izinleri de dahil olmak üzere Yönetici Paneli'ndeki ayarlara erişebilen ve bunlarda değişiklik yapabilen özel bir gruptur! Bu yüzden insanları bu gruba özenle ekleyin."
 
@@ -15301,7 +15333,8 @@ msgid "move the API keys to another group"
 msgstr "API anahtarlarını başka bir gruba taşıma"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "Emin misiniz? Bu grubun tüm üyeleri bu gruba dayalı tüm izin ayarlarını kaybedeceklerdir. Bu geri alınamaz."
 
@@ -15399,9 +15432,11 @@ msgstr "erişim reddedildi"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} sadece {1} için sorgu oluşturucuyu \n"
+msgstr ""
+"{0} sadece {1} için sorgu oluşturucuyu \n"
 "kullanabilecek."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16932,9 +16967,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Metabase Cloud ile çalışmaya başlayın"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Sadece bir uyarı: Metatabanınız, biz onu geçiş için hazırlarken 30\n"
+msgstr ""
+"Sadece bir uyarı: Metatabanınız, biz onu geçiş için hazırlarken 30\n"
 "dakikaya kadar salt okunur olacaktır."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18670,7 +18707,8 @@ msgid "Conditional formatting"
 msgstr "Koşullu biçimlendirme"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Bu tablodaki hücreleri rengini değiştirmek için kurallar ekleyebilirsiniz, belirli koşulları yerine getirirlerse."
 
@@ -20253,9 +20291,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "E-postalarınızı işleyen SMTP sunucusunun adresi."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Saniyede gönderilebilecek, tüm e-postaların toplamı olan maksimum alıcı sayısı.\n"
+msgstr ""
+"Saniyede gönderilebilecek, tüm e-postaların toplamı olan maksimum alıcı sayısı.\n"
 "                Sınıra ulaşmadan önce gönderilen son e-postanın birden fazla alıcıya sahip olması durumunda sınırı aşabileceğini unutmayın."
 
 #: metabase/channel/email.clj:69
@@ -21982,9 +22022,11 @@ msgid "Cumulative count of rows"
 msgstr "Kümülatif satır sayısı"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Bir sütunun tüm değerlerinin toplamsal toplamı.\n"
+msgstr ""
+"Bir sütunun tüm değerlerinin toplamsal toplamı.\n"
 "örn; zaman içindeki toplam gelir."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -22032,9 +22074,11 @@ msgid "Sum of all the values of a column."
 msgstr "Bir sütunun tüm değerlerinin toplamı."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Satır sayısının toplam sayımı.\n"
+msgstr ""
+"Satır sayısının toplam sayımı.\n"
 "örn; zaman içindeki toplam satış sayısı."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23354,11 +23398,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "Bu veritabanını sorgulamak için audit-app özellik bayrağı gerekir"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Sorgular için alan kullanım analizini etkinleştir. Bu, sorgularda kullanılan alanları analiz edecek ve bunları\n"
-"    uygulama veritabanında depolayacaktır.\n\n"
+msgstr ""
+"Sorgular için alan kullanım analizini etkinleştir. Bu, sorgularda kullanılan alanları analiz edecek ve bunları\n"
+"    uygulama veritabanında depolayacaktır.\n"
+"\n"
 "    Henüz bu verileri kullanan kullanıcıya yönelik bir özelliğimiz olmadığından varsayılan olarak kapatın."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24498,9 +24546,11 @@ msgid "{0} of {1}"
 msgstr "{1}'n {0} "
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Ortaya çıkan dönüşümler beklentilere uygun değil.\n"
+msgstr ""
+"Ortaya çıkan dönüşümler beklentilere uygun değil.\n"
 "Beklenen: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24642,9 +24692,11 @@ msgid "Harbormaster returned an error."
 msgstr "Liman Müdürü bir hata döndürdü."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Sürücü klasörü senkronizasyonu ayarlanamadı.\n"
+msgstr ""
+"Sürücü klasörü senkronizasyonu ayarlanamadı.\n"
 "Lütfen klasörün doğru hizmet hesabı e-postası ve paylaşım izinleriyle paylaşıldığını kontrol edin."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24910,9 +24962,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Kullanıcının e-posta adresi için SAML özelliği"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "SAML kullanıcı sağlamayı etkinleştirdiğimizde,\n"
+msgstr ""
+"SAML kullanıcı sağlamayı etkinleştirdiğimizde,\n"
 "adresinde hesabı olmayan kullanıcılar için SAML oturum açma sırasında otomatik olarak bir Metabase hesabı oluştururuz."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24956,15 +25010,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Bu uygulama adı, Kimlik Sağlayıcıya yapılan istekler için kullanılacaktır"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Bu, kullanıcılarınızın kimlik sağlayıcınızda oturum açmak için gittikleri URL'dir. Hangi IdP'yi\n"
+msgstr ""
+"Bu, kullanıcılarınızın kimlik sağlayıcınızda oturum açmak için gittikleri URL'dir. Hangi IdP'yi\n"
 "kullandığınıza bağlı olarak, bu genellikle `https://your-org-name.example.com` veya `https://example.com/app/my_saml_app/abc123/sso/saml` gibi görünür"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "JWT kullanıcı sağlamayı etkinleştirdiğimizde,\n"
+msgstr ""
+"JWT kullanıcı sağlamayı etkinleştirdiğimizde,\n"
 "adresinde hesabı olmayan kullanıcılar için JWT oturum açma sırasında otomatik olarak bir Metabase hesabı oluştururuz."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24972,9 +25030,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "SAML ile {0} grup eşlemelerini içeren JSON."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Kimlik sağlayıcısı için kodlanmış sertifika. Kimlik sağlayıcınıza bağlı olarak, bunu indirmeniz gerekebilir,\n"
+msgstr ""
+"Kimlik sağlayıcısı için kodlanmış sertifika. Kimlik sağlayıcınıza bağlı olarak, bunu indirmeniz gerekebilir,\n"
 "bir metin düzenleyicide açın, sonra sertifikanın içeriğini buraya kopyalayıp yapıştırın."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24982,9 +25042,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "SAML isteklerini imzalamak için {0} adresinin kullanması gereken anahtarın takma adı"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Bu, IdP için benzersiz bir tanımlayıcıdır. Genellikle Entity ID veya basitçe ''Issuer'' olarak adlandırılır. IdP'nize\n"
+msgstr ""
+"Bu, IdP için benzersiz bir tanımlayıcıdır. Genellikle Entity ID veya basitçe ''Issuer'' olarak adlandırılır. IdP'nize\n"
 "bağlı olarak, bu genellikle `http://www.example.com/141xkex604w0Q5PN724v` gibi bir şeye benzer"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -25000,9 +25062,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Geçersiz kimlik sağlayıcı sertifikası. Sertifika, temel 64 kodlu bir dize olmalıdır."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "LDAP kullanıcı sağlamayı etkinleştirdiğimizde,\n"
+msgstr ""
+"LDAP kullanıcı sağlamayı etkinleştirdiğimizde,\n"
 "adresinde hesabı olmayan kullanıcılar için LDAP oturum açma sırasında otomatik olarak bir Metabase hesabı oluştururuz."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25014,9 +25078,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "JWT kullanıcı gruplarını alma anahtarı"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Bu, kullanıcılarınızın kimlik sağlayıcınızdan çıkış yapmak için gittikleri URL'dir. Hangi IdP'yi\n"
+msgstr ""
+"Bu, kullanıcılarınızın kimlik sağlayıcınızdan çıkış yapmak için gittikleri URL'dir. Hangi IdP'yi\n"
 "kullandığınıza bağlı olarak, bu genellikle `https://your-org-name.example.com` veya `https://example.com/app/my_saml_app/abc123/sso/slo` gibi görünür"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26072,4 +26138,3 @@ msgstr "Ülkeye göre kullanıcı edinme"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "satışa göre en iyi 10 ülke"
-

@@ -2184,9 +2184,11 @@ msgid "Logo"
 msgstr "Biểu trưng"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Để có kết quả tốt nhất, hãy sử dụng tệp SVG có nền trong suốt\n"
+msgstr ""
+"Để có kết quả tốt nhất, hãy sử dụng tệp SVG có nền trong suốt\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3429,9 +3431,11 @@ msgid "Refresh cache automatically"
 msgstr "Tự động làm mới bộ nhớ đệm"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Ngay khi kết quả lưu trong bộ nhớ đệm hết hạn, hãy chạy và lưu vào bộ nhớ đệm truy vấn một lần nữa để cập nhật kết quả và làm mới\n"
+msgstr ""
+"Ngay khi kết quả lưu trong bộ nhớ đệm hết hạn, hãy chạy và lưu vào bộ nhớ đệm truy vấn một lần nữa để cập nhật kết quả và làm mới\n"
 "bộ nhớ đệm."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3674,9 +3678,11 @@ msgstr "Đã mua giấy phép để mở khóa chức năng nâng cao? Vui lòng
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "Giấy phép của bạn không còn hợp lệ nữa. Nếu bạn có giấy phép mới, vui lòng\n"
+msgstr ""
+"Giấy phép của bạn không còn hợp lệ nữa. Nếu bạn có giấy phép mới, vui lòng\n"
 "nhập nó bên dưới, nếu không vui lòng liên hệ {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4889,9 +4895,11 @@ msgid "Connect to Slack"
 msgstr "Kết nối với Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Nếu nhóm của bạn sử dụng Slack, bạn có thể gửi đăng ký bảng điều khiển và\n"
+msgstr ""
+"Nếu nhóm của bạn sử dụng Slack, bạn có thể gửi đăng ký bảng điều khiển và\n"
 "cảnh báo ở đó"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6608,9 +6616,11 @@ msgstr "Nhúng {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Sử dụng {0} để thêm nhúng iframe có thể nhìn thấy công khai vào bài đăng trên trang web hoặc blog\n"
+msgstr ""
+"Sử dụng {0} để thêm nhúng iframe có thể nhìn thấy công khai vào bài đăng trên trang web hoặc blog\n"
 "của bạn."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6891,10 +6901,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Bộ lọc này được đặt thành vô hiệu hóa trong câu hỏi nhúng."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Để luôn yêu cầu một giá trị, trước tiên hãy truy cập cài đặt nhúng,\n"
+msgstr ""
+"Để luôn yêu cầu một giá trị, trước tiên hãy truy cập cài đặt nhúng,\n"
 "để bộ lọc này có thể chỉnh sửa hoặc khóa, đăng lại câu hỏi\n"
 ", sau đó quay lại trang này."
 
@@ -6906,10 +6918,12 @@ msgstr "Ghi chú"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "để khóa, sẽ cần cập nhật mã nhúng\n"
+msgstr ""
+"để khóa, sẽ cần cập nhật mã nhúng\n"
 "trước khi tiếp tục, nếu không mã nhúng sẽ\n"
 "bị hỏng."
 
@@ -7140,7 +7154,8 @@ msgstr "Giá trị riêng biệt"
 #: frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts:22
 msgid "record"
 msgid_plural "records"
-msgstr[0] "bản ghi\n"
+msgstr[0] ""
+"bản ghi\n"
 "Số nhiều: các bản ghi"
 
 #: frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts:24
@@ -11394,10 +11409,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Bộ lọc này được đặt thành vô hiệu hóa trong bảng điều khiển nhúng."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Để luôn yêu cầu giá trị, trước tiên hãy truy cập cài đặt nhúng,\n"
+msgstr ""
+"Để luôn yêu cầu giá trị, trước tiên hãy truy cập cài đặt nhúng,\n"
 "để bộ lọc này có thể chỉnh sửa hoặc khóa, phát hành lại bảng điều khiển\n"
 ", sau đó quay lại trang này."
 
@@ -11669,19 +11686,24 @@ msgid "Turn this into a model"
 msgstr "Chuyển đổi thành một mô hình"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Cho phép bạn cập nhật mô tả cột và tùy chỉnh metadata để tạo ra\n"
+msgstr ""
+"Cho phép bạn cập nhật mô tả cột và tùy chỉnh metadata để tạo ra\n"
 "những điểm khởi đầu tuyệt vời cho việc khám phá."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Xuất hiện cao hơn trong kết quả tìm kiếm và được nổi bật khi các\n"
+msgstr ""
+"Xuất hiện cao hơn trong kết quả tìm kiếm và được nổi bật khi các\n"
 "người dùng khác bắt đầu câu hỏi mới để thúc đẩy tái sử dụng."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Tồn tại trong các bộ sưu tập để giữ chúng tách biệt khỏi các schema cơ sở dữ liệu lộn xộn."
 
@@ -13069,11 +13091,13 @@ msgid "mode"
 msgstr "chế độ"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Tùy chọn. Mặc định là `\"ISO\"`.\n"
+msgstr ""
+"Tùy chọn. Mặc định là `\"ISO\"`.\n"
 "- ISO: Tuần 1 bắt đầu vào Thứ Hai trước Thứ Năm đầu tiên của tháng 1.\n"
 "- US: Tuần 1 bắt đầu vào ngày 1 tháng 1. Tất cả các tuần khác bắt đầu vào Chủ Nhật.\n"
 "- Phiên bản: Tuần 1 bắt đầu vào ngày 1 tháng 1. Tất cả các tuần khác bắt đầu vào ngày được xác định trong cài đặt bản địa hóa Metabase của bạn."
@@ -13132,9 +13156,11 @@ msgid "The number of units to be subtracted."
 msgstr "Số lượng đơn vị cần trừ đi."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Chuyển đổi múi giờ của cột ngày hoặc dấu thời gian.\n"
+msgstr ""
+"Chuyển đổi múi giờ của cột ngày hoặc dấu thời gian.\n"
 "Chúng tôi hỗ trợ tên múi giờ của cơ sở dữ liệu tz."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -14984,7 +15010,8 @@ msgid "SAML attributes"
 msgstr "Thuộc tính SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "Trong hầu hết các IdP, bạn sẽ cần đặt từng IdP này vào hộp nhập có nhãn \"Tên\" trong phần câu lệnh thuộc tính."
 
@@ -15025,7 +15052,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Đồng bộ hóa tư cách thành viên nhóm với SSO của bạn"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Để kích hoạt điều này, bạn sẽ cần tạo ánh xạ để cho Metabase biết (các) nhóm người dùng của bạn nên được thêm vào dựa trên nhóm SSO mà họ đang ở trong đó."
 
@@ -15126,12 +15154,14 @@ msgstr "Thêm"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Tất cả người dùng thuộc nhóm {0} và không thể xóa khỏi nhóm. Đặt quyền cho nhóm này là một cách tuyệt vời để đảm bảo bạn biết những gì người dùng Metabase mới sẽ có thể nhìn thấy."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "Đây là một nhóm đặc biệt mà các thành viên có thể nhìn thấy mọi thứ trong ví dụ Metabase và những người có thể truy cập và thay đổi các cài đặt trong Bảng quản trị, bao gồm thay đổi quyền! Vì vậy, thêm người vào nhóm này một cách cẩn thận."
 
@@ -15248,9 +15278,11 @@ msgid "move the API keys to another group"
 msgstr "di chuyển các khóa API sang một nhóm khác"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Bạn chắc chứ? Tất cả thành viên trong nhóm sẽ mất các quyền có được nhờ nhóm này.\n"
+msgstr ""
+"Bạn chắc chứ? Tất cả thành viên trong nhóm sẽ mất các quyền có được nhờ nhóm này.\n"
 "Hành động này không thể khôi phục."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15346,9 +15378,11 @@ msgstr "chặn truy cập tới"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} sẽ chỉ có thể sử dụng trình xây dựng truy vấn\n"
+msgstr ""
+"{0} sẽ chỉ có thể sử dụng trình xây dựng truy vấn\n"
 "cho {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16874,9 +16908,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Bắt đầu với Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Lưu ý: Metabase của bạn sẽ ở chế độ chỉ đọc trong tối đa 30\n"
+msgstr ""
+"Lưu ý: Metabase của bạn sẽ ở chế độ chỉ đọc trong tối đa 30\n"
 "phút trong khi chúng tôi chuẩn bị để di chuyển."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18603,7 +18639,8 @@ msgid "Conditional formatting"
 msgstr "Cài đặt điều kiện"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Bạn có thể thêm quy tắc để làm cho các ô trong bảng này thay đổi màu nếu \\ n Họ đáp ứng một số điều kiện nhất định."
 
@@ -20174,9 +20211,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Địa chỉ của máy chủ SMTP xử lý email của bạn."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Số lượng người nhận tối đa, cộng lại từ tất cả các email, có thể được gửi mỗi giây.\n"
+msgstr ""
+"Số lượng người nhận tối đa, cộng lại từ tất cả các email, có thể được gửi mỗi giây.\n"
 "                Lưu ý rằng email cuối cùng được gửi trước khi đạt đến giới hạn có thể vượt quá giới hạn này nếu có nhiều người nhận."
 
 #: metabase/channel/email.clj:69
@@ -21900,9 +21939,11 @@ msgid "Cumulative count of rows"
 msgstr "Số hàng tích lũy"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Tổng cộng của tất cả các giá trị của một cột.\n"
+msgstr ""
+"Tổng cộng của tất cả các giá trị của một cột.\n"
 "Ví dụ. tổng doanh thu theo thời gian."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -21950,9 +21991,11 @@ msgid "Sum of all the values of a column."
 msgstr "Tổng tất cả giá trị của một cột"
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Tính cộng số lượng hàng.\n"
+msgstr ""
+"Tính cộng số lượng hàng.\n"
 "Ví dụ. tổng số lần bán hàng theo thời gian."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23269,11 +23312,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "Truy vấn cơ sở dữ liệu này yêu cầu cờ tính năng audit-app"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Bật phân tích sử dụng trường cho truy vấn. Điều này sẽ phân tích các trường được sử dụng trong truy vấn và lưu trữ chúng trong cơ sở dữ liệu ứng dụng\n"
-"    .\n\n"
+msgstr ""
+"Bật phân tích sử dụng trường cho truy vấn. Điều này sẽ phân tích các trường được sử dụng trong truy vấn và lưu trữ chúng trong cơ sở dữ liệu ứng dụng\n"
+"    .\n"
+"\n"
 "    Tắt theo mặc định vì chúng tôi chưa có tính năng dành cho người dùng sử dụng dữ liệu này."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24409,9 +24456,11 @@ msgid "{0} of {1}"
 msgstr "{0} của {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Chuyển đổi kết quả không phù hợp với mong đợi.\n"
+msgstr ""
+"Chuyển đổi kết quả không phù hợp với mong đợi.\n"
 "Mong đợi: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24553,9 +24602,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster trả về lỗi."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Không thể thiết lập đồng bộ hóa thư mục ổ đĩa.\n"
+msgstr ""
+"Không thể thiết lập đồng bộ hóa thư mục ổ đĩa.\n"
 "Vui lòng kiểm tra xem thư mục có được chia sẻ với email tài khoản dịch vụ và quyền chia sẻ phù hợp hay không."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24821,9 +24872,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Thuộc tính SAML cho địa chỉ email của người dùng"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Khi chúng tôi kích hoạt chức năng cung cấp người dùng SAML, chúng tôi sẽ tự động tạo một tài khoản Metabase khi đăng nhập SAML cho những người dùng\n"
+msgstr ""
+"Khi chúng tôi kích hoạt chức năng cung cấp người dùng SAML, chúng tôi sẽ tự động tạo một tài khoản Metabase khi đăng nhập SAML cho những người dùng\n"
 "chưa có tài khoản."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24867,14 +24920,17 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Tên ứng dụng này sẽ được sử dụng cho các yêu cầu đến Nhà Cung Cấp Danh Tính"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
 msgstr ""
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Khi chúng tôi kích hoạt tính năng cung cấp người dùng JWT, chúng tôi sẽ tự động tạo một tài khoản Metabase khi đăng nhập JWT cho những người dùng\n"
+msgstr ""
+"Khi chúng tôi kích hoạt tính năng cung cấp người dùng JWT, chúng tôi sẽ tự động tạo một tài khoản Metabase khi đăng nhập JWT cho những người dùng\n"
 "chưa có tài khoản."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24882,9 +24938,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON chứa SAML tới {0} ánh xạ nhóm."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Chứng chỉ được mã hóa cho nhà cung cấp danh tính. Tùy thuộc vào IdP của bạn, bạn có thể cần tải xuống,\n"
+msgstr ""
+"Chứng chỉ được mã hóa cho nhà cung cấp danh tính. Tùy thuộc vào IdP của bạn, bạn có thể cần tải xuống,\n"
 "mở trong trình soạn thảo văn bản, sau đó sao chép và dán nội dung chứng chỉ vào đây."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24892,9 +24950,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Bí danh cho khóa mà {0} sẽ sử dụng để ký các yêu cầu SAML"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Đây là một định danh duy nhất cho IdP. Thường được gọi là Entity ID hoặc đơn giản là ''Issuer''. Tùy thuộc vào\n"
+msgstr ""
+"Đây là một định danh duy nhất cho IdP. Thường được gọi là Entity ID hoặc đơn giản là ''Issuer''. Tùy thuộc vào\n"
 "IdP của bạn, thông thường trông giống như `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24910,9 +24970,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Chứng chỉ của nhà cung cấp danh tính không hợp lệ. Chứng chỉ phải là một chuỗi được mã hóa base-64."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Khi chúng tôi kích hoạt tính năng cung cấp người dùng LDAP, chúng tôi sẽ tự động tạo một tài khoản Metabase khi đăng nhập LDAP cho những người dùng\n"
+msgstr ""
+"Khi chúng tôi kích hoạt tính năng cung cấp người dùng LDAP, chúng tôi sẽ tự động tạo một tài khoản Metabase khi đăng nhập LDAP cho những người dùng\n"
 "chưa có tài khoản."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -24924,9 +24986,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Chìa khóa để lấy nhóm người dùng JWT"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Đây là URL mà người dùng của bạn sẽ truy cập để đăng xuất khỏi nhà cung cấp danh tính của bạn. Tùy thuộc vào IdP mà bạn đang sử dụng\n"
+msgstr ""
+"Đây là URL mà người dùng của bạn sẽ truy cập để đăng xuất khỏi nhà cung cấp danh tính của bạn. Tùy thuộc vào IdP mà bạn đang sử dụng\n"
 ", URL này thường trông giống như `https://your-org-name.example.com` hoặc `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -25982,4 +26046,3 @@ msgstr "Người dùng mua lại theo vùn"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 vùng theo doanh s"
-

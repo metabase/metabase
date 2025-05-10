@@ -832,7 +832,8 @@ msgstr[0] "{0} Tabel Tersembunyi"
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
 msgid "{0} Queryable Table"
 msgid_plural "{0} Queryable Tables"
-msgstr[0] "{0} Tabel Kueri\n"
+msgstr[0] ""
+"{0} Tabel Kueri\n"
 "Jamak: {0} Tabel Kueri"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
@@ -2185,9 +2186,11 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Untuk hasil terbaik, gunakan berkas SVG dengan latar belakang transparan\n"
+msgstr ""
+"Untuk hasil terbaik, gunakan berkas SVG dengan latar belakang transparan\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3430,9 +3433,11 @@ msgid "Refresh cache automatically"
 msgstr "Segarkan cache secara otomatis"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Segera setelah hasil cache kedaluwarsa, jalankan dan cache kueri lagi untuk memperbarui hasil dan menyegarkan\n"
+msgstr ""
+"Segera setelah hasil cache kedaluwarsa, jalankan dan cache kueri lagi untuk memperbarui hasil dan menyegarkan\n"
 "cache."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3675,7 +3680,8 @@ msgstr "Membeli lisensi untuk membuka fungsi lanjutan? Silakan masukkan di bawah
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "Lisensi Anda tidak berlaku lagi. Jika Anda memiliki lisensi baru, silakan masukkan di bawah ini, jika tidak, hubungi {0}"
 
@@ -4889,9 +4895,11 @@ msgid "Connect to Slack"
 msgstr "Hubungkan ke Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Jika tim Anda menggunakan Slack, Anda dapat mengirim langganan dasbor dan\n"
+msgstr ""
+"Jika tim Anda menggunakan Slack, Anda dapat mengirim langganan dasbor dan\n"
 "peringatan di sana"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6608,9 +6616,11 @@ msgstr "Sematkan {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Gunakan {0} untuk menambahkan sematan iframe yang dapat dilihat publik ke laman web atau postingan blog\n"
+msgstr ""
+"Gunakan {0} untuk menambahkan sematan iframe yang dapat dilihat publik ke laman web atau postingan blog\n"
 "Anda."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6727,7 +6737,8 @@ msgstr[0] "{0} model"
 #, javascript-format
 msgid "{0} schema"
 msgid_plural "{0} schemas"
-msgstr[0] "{0} skema\n"
+msgstr[0] ""
+"{0} skema\n"
 "Plural: {0} skema"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:33
@@ -6892,10 +6903,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Filter ini disetel ke nonaktif pada pertanyaan yang disematkan."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Untuk selalu memerlukan nilai, pertama-tama kunjungi pengaturan penyematan,\n"
+msgstr ""
+"Untuk selalu memerlukan nilai, pertama-tama kunjungi pengaturan penyematan,\n"
 "buat filter ini dapat diedit atau dikunci, publikasikan ulang pertanyaan\n"
 ", lalu kembali ke halaman ini."
 
@@ -6907,10 +6920,12 @@ msgstr "Catatan"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "membuatnya terkunci, akan memerlukan pembaruan kode penyematan\n"
+msgstr ""
+"membuatnya terkunci, akan memerlukan pembaruan kode penyematan\n"
 "sebelum melanjutkan, jika tidak, penyematan akan\n"
 "rusak."
 
@@ -11394,10 +11409,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Filter ini disetel ke nonaktif di dasbor tertanam."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Untuk selalu memerlukan nilai, pertama-tama kunjungi pengaturan penyematan,\n"
+msgstr ""
+"Untuk selalu memerlukan nilai, pertama-tama kunjungi pengaturan penyematan,\n"
 "buat filter ini dapat diedit atau dikunci, terbitkan ulang dasbor\n"
 ", lalu kembali ke halaman ini."
 
@@ -11669,21 +11686,27 @@ msgid "Turn this into a model"
 msgstr "Ubah ini menjadi model"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Biarkan Anda memperbarui deskripsi kolom dan menyesuaikan metadata untuk membuat\n"
+msgstr ""
+"Biarkan Anda memperbarui deskripsi kolom dan menyesuaikan metadata untuk membuat\n"
 "Poin awal yang bagus untuk eksplorasi."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Muncul lebih tinggi dalam hasil pencarian dan disorot ketika lainnya\n"
+msgstr ""
+"Muncul lebih tinggi dalam hasil pencarian dan disorot ketika lainnya\n"
 "Pengguna memulai pertanyaan baru untuk mempromosikan penggunaan kembali."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "Hidup dalam koleksi untuk membuat mereka terpisah dari basis data yang berantakan\n"
+msgstr ""
+"Hidup dalam koleksi untuk membuat mereka terpisah dari basis data yang berantakan\n"
 "Schemas."
 
 #: frontend/src/metabase/query_builder/components/dataref/ConnectedTableList.tsx:27
@@ -13070,11 +13093,13 @@ msgid "mode"
 msgstr "modus"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Opsional. Defaultnya adalah `\"ISO\"`.\n"
+msgstr ""
+"Opsional. Defaultnya adalah `\"ISO\"`.\n"
 "- ISO: Minggu ke-1 dimulai pada hari Senin sebelum Kamis pertama bulan Januari.\n"
 "- AS: Minggu ke-1 dimulai pada tanggal 1 Januari. Semua minggu lainnya dimulai pada hari Minggu.\n"
 "- Contoh: Minggu ke-1 dimulai pada tanggal 1 Januari. Semua minggu lainnya dimulai pada hari yang ditentukan dalam pengaturan lokalisasi Metabase Anda."
@@ -13133,9 +13158,11 @@ msgid "The number of units to be subtracted."
 msgstr "Jumlah unit yang akan dikurangi."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Mengonversi zona waktu kolom tanggal atau stempel waktu.\n"
+msgstr ""
+"Mengonversi zona waktu kolom tanggal atau stempel waktu.\n"
 "Kami mendukung nama zona waktu basis data tz."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -14985,9 +15012,11 @@ msgid "SAML attributes"
 msgstr "Atribut SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
-msgstr "Di sebagian besar IDP, Anda harus menempatkan masing-masing dalam kotak input berlabel\n"
+msgstr ""
+"Di sebagian besar IDP, Anda harus menempatkan masing-masing dalam kotak input berlabel\n"
 "\"Nama\" di bagian Atribut Statements."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
@@ -15027,9 +15056,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Sinkronisasi Keanggotaan Grup dengan SSO Anda"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "Untuk mengaktifkan ini, Anda harus membuat pemetaan untuk memberi tahu metabase grup mana yang harus Anda lakukan\n"
+msgstr ""
+"Untuk mengaktifkan ini, Anda harus membuat pemetaan untuk memberi tahu metabase grup mana yang harus Anda lakukan\n"
 "ditambahkan ke berdasarkan kelompok SSO mereka masuk"
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:26
@@ -15129,12 +15160,14 @@ msgstr "Tambahkan"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Semua pengguna merupakan anggota grup {0} dan tidak bisa dihapus keanggotaannya dari grup tersebut. Dengan mengatur permission untuk grup ini, Anda dapat memastikan Anda tahu apa yang bisa dilihat pengguna baru."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "Grup khusus ini bisa melihat semua hal di Metabase dan bisa mengakses dan membuat perubahan pada pengaturan dalam Panel Admin, termasuk mengubah permission! Berhati-hatilah saat menambahkan orang ke dalam grup ini."
 
@@ -15251,9 +15284,11 @@ msgid "move the API keys to another group"
 msgstr "pindahkan kunci API ke grup lain"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Apakah Anda yakin? Semua anggota grup ini akan kehilangan permission setting apapun yang mereka dapatkan dari grup ini.\n"
+msgstr ""
+"Apakah Anda yakin? Semua anggota grup ini akan kehilangan permission setting apapun yang mereka dapatkan dari grup ini.\n"
 "Tindakan ini tidak dapat dibatalkan."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15290,7 +15325,8 @@ msgstr "Anda bisa menggunakan grup untuk mengendalikan akses data pengguna Anda.
 #, javascript-format
 msgid "{0} other group"
 msgid_plural "{0} other groups"
-msgstr[0] "{0} grup lain\n"
+msgstr[0] ""
+"{0} grup lain\n"
 "Jamak: {0} grup lain"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:40
@@ -15350,9 +15386,11 @@ msgstr "tidak diberikan akses menuju"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} hanya akan dapat menggunakan pembangun kueri\n"
+msgstr ""
+"{0} hanya akan dapat menggunakan pembangun kueri\n"
 "untuk {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16878,9 +16916,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Memulai dengan Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Sekadar informasi: Metabase Anda akan menjadi hanya-baca hingga 30\n"
+msgstr ""
+"Sekadar informasi: Metabase Anda akan menjadi hanya-baca hingga 30\n"
 "menit saat kami mempersiapkannya untuk migrasi."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18607,9 +18647,11 @@ msgid "Conditional formatting"
 msgstr "Pemformatan bersyarat"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Anda dapat menambahkan aturan untuk membuat sel dalam tabel ini berubah warna jika\n"
+msgstr ""
+"Anda dapat menambahkan aturan untuk membuat sel dalam tabel ini berubah warna jika\n"
 "Mereka memenuhi kondisi tertentu."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20179,9 +20221,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Alamat server SMTP yang menangani email Anda."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Jumlah maksimum penerima, dijumlahkan semua email, yang dapat dikirim per detik.\n"
+msgstr ""
+"Jumlah maksimum penerima, dijumlahkan semua email, yang dapat dikirim per detik.\n"
 "                Perlu diketahui bahwa email terakhir yang dikirim sebelum mencapai batas dapat melampauinya, jika memiliki beberapa penerima."
 
 #: metabase/channel/email.clj:69
@@ -21905,9 +21949,11 @@ msgid "Cumulative count of rows"
 msgstr "Jumlah baris kumulatif"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Jumlah aditif dari semua nilai kolom.\n"
+msgstr ""
+"Jumlah aditif dari semua nilai kolom.\n"
 "mantan. total pendapatan dari waktu ke waktu."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -21955,9 +22001,11 @@ msgid "Sum of all the values of a column."
 msgstr "Jumlah dari semua nilai kolom."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Jumlah aditif dari jumlah baris.\n"
+msgstr ""
+"Jumlah aditif dari jumlah baris.\n"
 "mantan. Jumlah total penjualan dari waktu ke waktu."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23274,11 +23322,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "Menanyakan database ini memerlukan fitur tanda audit-app"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Aktifkan analisis penggunaan bidang untuk kueri. Ini akan menganalisis bidang yang digunakan dalam kueri dan menyimpannya dalam basis data aplikasi\n"
-"    .\n\n"
+msgstr ""
+"Aktifkan analisis penggunaan bidang untuk kueri. Ini akan menganalisis bidang yang digunakan dalam kueri dan menyimpannya dalam basis data aplikasi\n"
+"    .\n"
+"\n"
 "    Nonaktifkan secara default karena kami belum memiliki fitur yang dapat diakses pengguna yang menggunakan data ini."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24414,9 +24466,11 @@ msgid "{0} of {1}"
 msgstr "{0} {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Transformasi yang dihasilkan tidak sesuai dengan harapan.\n"
+msgstr ""
+"Transformasi yang dihasilkan tidak sesuai dengan harapan.\n"
 "Diharapkan: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24558,9 +24612,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster mengembalikan kesalahan."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Tidak dapat mengatur sinkronisasi folder drive.\n"
+msgstr ""
+"Tidak dapat mengatur sinkronisasi folder drive.\n"
 "Harap periksa apakah folder dibagikan dengan akun layanan email dan izin berbagi yang tepat."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24826,9 +24882,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Atribut SAML untuk alamat email pengguna"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Saat kami mengaktifkan penyediaan pengguna SAML, kami secara otomatis membuat akun Metabase pada proses masuk SAML untuk pengguna yang\n"
+msgstr ""
+"Saat kami mengaktifkan penyediaan pengguna SAML, kami secara otomatis membuat akun Metabase pada proses masuk SAML untuk pengguna yang\n"
 "tidak memilikinya."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24872,15 +24930,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Nama aplikasi ini akan digunakan untuk permintaan ke penyedia identitas"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Ini adalah URL tempat pengguna Anda masuk ke penyedia identitas Anda. Bergantung pada IdP yang Anda\n"
+msgstr ""
+"Ini adalah URL tempat pengguna Anda masuk ke penyedia identitas Anda. Bergantung pada IdP yang Anda\n"
 "gunakan, biasanya terlihat seperti `https://nama-organisasi-Anda.example.com` atau `https://example.com/app/my_saml_app/abc123/sso/saml`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Saat kami mengaktifkan penyediaan pengguna JWT, kami secara otomatis membuat akun Metabase pada proses masuk JWT untuk pengguna yang\n"
+msgstr ""
+"Saat kami mengaktifkan penyediaan pengguna JWT, kami secara otomatis membuat akun Metabase pada proses masuk JWT untuk pengguna yang\n"
 "belum memilikinya."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24888,9 +24950,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON yang berisi SAML ke pemetaan grup {0} ."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Sertifikat yang dikodekan untuk penyedia identitas. Bergantung pada IdP Anda, Anda mungkin perlu mengunduhnya,\n"
+msgstr ""
+"Sertifikat yang dikodekan untuk penyedia identitas. Bergantung pada IdP Anda, Anda mungkin perlu mengunduhnya,\n"
 "membukanya di editor teks, lalu menyalin dan menempelkan konten sertifikat di sini."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24898,9 +24962,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Alias untuk kunci yang harus digunakan {0} untuk menandatangani permintaan SAML"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Ini adalah pengenal unik untuk IdP. Sering disebut sebagai ID Entitas atau hanya ''Penerbit''. Tergantung\n"
+msgstr ""
+"Ini adalah pengenal unik untuk IdP. Sering disebut sebagai ID Entitas atau hanya ''Penerbit''. Tergantung\n"
 "pada IdP Anda, ini biasanya terlihat seperti `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24916,9 +24982,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Sertifikat Penyedia Identitas Tidak Valid. Sertifikat harus berupa string yang dikodekan basis-64."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Saat kami mengaktifkan penyediaan pengguna LDAP, kami secara otomatis membuat akun Metabase pada proses masuk LDAP untuk pengguna yang\n"
+msgstr ""
+"Saat kami mengaktifkan penyediaan pengguna LDAP, kami secara otomatis membuat akun Metabase pada proses masuk LDAP untuk pengguna yang\n"
 "tidak memilikinya."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -24930,9 +24998,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Kunci untuk mengambil grup pengguna JWT"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Ini adalah URL tempat pengguna Anda keluar dari penyedia identitas Anda. Bergantung pada IdP yang Anda\n"
+msgstr ""
+"Ini adalah URL tempat pengguna Anda keluar dari penyedia identitas Anda. Bergantung pada IdP yang Anda\n"
 "gunakan, biasanya terlihat seperti `https://nama-organisasi-Anda.example.com` atau `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -25988,4 +26058,3 @@ msgstr "Akuisisi pengguna berdasarkan negara"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 negara teratas dengan penjualan"
-

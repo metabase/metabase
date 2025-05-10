@@ -2187,9 +2187,11 @@ msgid "Logo"
 msgstr "لوگو"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "برای بهترین نتیجه، از یک فایل SVG با پس زمینه شفاف\n"
+msgstr ""
+"برای بهترین نتیجه، از یک فایل SVG با پس زمینه شفاف\n"
 "استفاده کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3436,9 +3438,11 @@ msgid "Refresh cache automatically"
 msgstr "حافظه پنهان را به طور خودکار بازخوانی کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "به محض اینکه نتایج ذخیره شده در حافظه پنهان منقضی شد، برای به روز رسانی نتایج و بازخوانی\n"
+msgstr ""
+"به محض اینکه نتایج ذخیره شده در حافظه پنهان منقضی شد، برای به روز رسانی نتایج و بازخوانی\n"
 "کش، دوباره کوئری را اجرا و کش کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3681,9 +3685,11 @@ msgstr "مجوزی برای باز کردن قابلیت‌های پیشرفته
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "مجوز شما دیگر معتبر نیست. اگر مجوز جدیدی دارید، لطفاً\n"
+msgstr ""
+"مجوز شما دیگر معتبر نیست. اگر مجوز جدیدی دارید، لطفاً\n"
 "آن را در زیر وارد کنید، در غیر این صورت لطفاً با {0} تماس بگیرید"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4896,9 +4902,11 @@ msgid "Connect to Slack"
 msgstr "به Slack متصل شوید"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "اگر تیم شما از Slack استفاده می‌کند، می‌توانید اشتراک داشبورد و هشدارهای\n"
+msgstr ""
+"اگر تیم شما از Slack استفاده می‌کند، می‌توانید اشتراک داشبورد و هشدارهای\n"
 "را در آنجا ارسال کنید."
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6619,9 +6627,11 @@ msgstr "جاسازی {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "از {0} برای افزودن یک iframe قابل مشاهده برای عموم به صفحه وب یا پست وبلاگ\n"
+msgstr ""
+"از {0} برای افزودن یک iframe قابل مشاهده برای عموم به صفحه وب یا پست وبلاگ\n"
 "خود استفاده کنید."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6907,10 +6917,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "این فیلتر در یک سؤال تعبیه شده روی غیرفعال تنظیم شده است."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
+msgstr ""
+"برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
 "این فیلتر را قابل ویرایش یا قفل کنید، سوال\n"
 "را دوباره منتشر کنید، سپس به این صفحه بازگردید."
 
@@ -6922,10 +6934,12 @@ msgstr "یادداشت"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "قفل کردن آن، نیاز به به‌روزرسانی کد جاسازی\n"
+msgstr ""
+"قفل کردن آن، نیاز به به‌روزرسانی کد جاسازی\n"
 "قبل از ادامه دارد، در غیر این صورت جاسازی\n"
 "شکسته خواهد شد."
 
@@ -11428,10 +11442,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "این فیلتر در داشبورد تعبیه شده روی غیرفعال تنظیم شده است."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
+msgstr ""
+"برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
 "این فیلتر را قابل ویرایش یا قفل کنید، داشبورد\n"
 "را دوباره منتشر کنید، سپس به این صفحه بازگردید."
 
@@ -11705,17 +11721,20 @@ msgid "Turn this into a model"
 msgstr "تبدیل به مدل"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "به شما امکان می‌دهد توضیحات ستون‌ها را به‌روزرسانی کرده و متادیتا را برای ایجاد نقاط شروع عالی برای کاوش سفارشی کنید."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "در نتایج جستجو بالاتر نشان داده شود و زمانی که کاربران دیگر سؤالات جدیدی را شروع می‌کنند، برای ترویج استفاده مجدد برجسته شود."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "در مجموعه‌ها قرار می‌گیرند تا آن‌ها را از طرح‌های پایگاه داده نامرتب جدا نگه دارند."
 
@@ -13104,11 +13123,13 @@ msgid "mode"
 msgstr "حالت"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "اختیاری. پیش‌فرض «ISO» است.\n"
+msgstr ""
+"اختیاری. پیش‌فرض «ISO» است.\n"
 "- ISO: هفته 1 از دوشنبه قبل از اولین پنجشنبه ژانویه شروع می شود.\n"
 "- ایالات متحده: هفته 1 از 1 ژانویه شروع می شود. همه هفته های دیگر از یکشنبه شروع می شود.\n"
 "- مثال: هفته 1 از 1 ژانویه شروع می شود. همه هفته های دیگر از روزی که در تنظیمات محلی سازی Metabase شما تعریف شده است شروع می شود."
@@ -13167,9 +13188,11 @@ msgid "The number of units to be subtracted."
 msgstr "تعداد واحدهایی که باید کم شوند."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "تبدیل منطقه زمانی یک ستون تاریخ یا مهر زمانی.\n"
+msgstr ""
+"تبدیل منطقه زمانی یک ستون تاریخ یا مهر زمانی.\n"
 "ما از نام منطقه زمانی پایگاه داده tz پشتیبانی می کنیم."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15030,7 +15053,8 @@ msgid "SAML attributes"
 msgstr "خصوصیات SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "در اکثر IdPها، لازم است هر یک از این مقادیر را در یک باکس ورودی با نام \"Name\" در بخش بیانیه‌های خصوصیت قرار دهید."
 
@@ -15071,7 +15095,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "همگام‌سازی عضویت گروه با SSO شما"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "برای فعال کردن این مورد، نیاز به ایجاد نگاشت‌ها خواهید داشت تا به Metabase بگویید کدام گروه (ها) باید کاربران شما بر اساس گروه SSO که در آن هستند اضافه شوند."
 
@@ -15172,15 +15197,19 @@ msgstr "اضافه کردن"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "تمام کاربران متعلق به گروه {0} هستند و نمی توانند از آن حذف شوند. تنظیم مجوز برای این گروه راهی عالی برای\n"
+msgstr ""
+"تمام کاربران متعلق به گروه {0} هستند و نمی توانند از آن حذف شوند. تنظیم مجوز برای این گروه راهی عالی برای\n"
 "مطمئن شوید که می دانید چه کاربران جدید Metabase قادر خواهند بود ببینند."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "این یک گروه خاص است که اعضا میتوانند همه چیز را در نمونه متاباز ببینند و چه کسی میتواند به آن دسترسی پیدا کند و تغییر دهد\n"
+msgstr ""
+"این یک گروه خاص است که اعضا میتوانند همه چیز را در نمونه متاباز ببینند و چه کسی میتواند به آن دسترسی پیدا کند و تغییر دهد\n"
 "تنظیمات در پنل مدیریت، از جمله تغییر مجوز! بنابراین، افراد را به این گروه اضافه کنید."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
@@ -15298,9 +15327,11 @@ msgid "move the API keys to another group"
 msgstr "کلیدهای API را به گروه دیگری منتقل کنید"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "شما مطمئن هستید؟ همه اعضای این گروه هر تنظیمات مجوزی که براساس این گروه قرار دارند را از دست خواهند داد.\n"
+msgstr ""
+"شما مطمئن هستید؟ همه اعضای این گروه هر تنظیمات مجوزی که براساس این گروه قرار دارند را از دست خواهند داد.\n"
 "این نمیتواند لغو شود"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15397,9 +15428,11 @@ msgstr "عدم دسترسی به / امکان سترسی به .... وجود ند
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} فقط می تواند از پرس و جوی\n"
+msgstr ""
+"{0} فقط می تواند از پرس و جوی\n"
 "برای {1}استفاده کند."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16930,9 +16963,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "با Metabase Cloud شروع کنید"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "فقط یک سر بالا: Metabase شما تا 30\n"
+msgstr ""
+"فقط یک سر بالا: Metabase شما تا 30\n"
 "دقیقه فقط خواندنی خواهد بود در حالی که ما آن را برای مهاجرت آماده می کنیم."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18668,9 +18703,11 @@ msgid "Conditional formatting"
 msgstr "قالب بندی مشروط"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "شما می توانید قوانین را برای ایجاد سلول ها در این جدول تغییر رنگ اگر\n"
+msgstr ""
+"شما می توانید قوانین را برای ایجاد سلول ها در این جدول تغییر رنگ اگر\n"
 "آنها شرایط خاصی را برآورده می کنند."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20252,9 +20289,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "آدرس سرور SMTP که ایمیل های شما را مدیریت می کند."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "حداکثر تعداد گیرنده‌هایی که در ایمیل‌ها خلاصه می‌شود، که می‌توان در هر ثانیه ارسال کرد.\n"
+msgstr ""
+"حداکثر تعداد گیرنده‌هایی که در ایمیل‌ها خلاصه می‌شود، که می‌توان در هر ثانیه ارسال کرد.\n"
 "                توجه داشته باشید که ایمیل نهایی ارسال شده قبل از رسیدن به حد مجاز، اگر چندین گیرنده داشته باشد، می تواند از آن فراتر رود."
 
 #: metabase/channel/email.clj:69
@@ -21981,9 +22020,11 @@ msgid "Cumulative count of rows"
 msgstr "تعداد تجمعی ردیف"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "مجموع جمعی از تمام مقادیر یک ستون.\n"
+msgstr ""
+"مجموع جمعی از تمام مقادیر یک ستون.\n"
 "به عنوان مثال، درآمد کل در طول زمان."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -22031,9 +22072,11 @@ msgid "Sum of all the values of a column."
 msgstr "مجموع تمام مقادیر یک ستون."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "مجموع جمعی تعداد سطرها.\n"
+msgstr ""
+"مجموع جمعی تعداد سطرها.\n"
 "به عنوان مثال، تعداد کل فروش در طول زمان."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23353,11 +23396,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "پرس و جو از این پایگاه داده به پرچم ویژگی برنامه حسابرسی نیاز دارد"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "تجزیه و تحلیل استفاده از فیلد را برای پرس و جوها فعال کنید. با این کار فیلدهای مورد استفاده در پرس و جوها تجزیه و تحلیل شده و آنها در پایگاه داده برنامه\n"
-"    ذخیره می شود.\n\n"
+msgstr ""
+"تجزیه و تحلیل استفاده از فیلد را برای پرس و جوها فعال کنید. با این کار فیلدهای مورد استفاده در پرس و جوها تجزیه و تحلیل شده و آنها در پایگاه داده برنامه\n"
+"    ذخیره می شود.\n"
+"\n"
 "    به‌طور پیش‌فرض غیرفعال شود، زیرا هنوز یک ویژگی روبه‌روی کاربر که از این داده‌ها استفاده کند، نداشته‌ایم."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24497,9 +24544,11 @@ msgid "{0} of {1}"
 msgstr "{0} از {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "تحولات حاصل با انتظارات مطابقت ندارد.\n"
+msgstr ""
+"تحولات حاصل با انتظارات مطابقت ندارد.\n"
 "مورد انتظار: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24641,9 +24690,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster خطایی را برگرداند."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "تنظیم همگام سازی پوشه درایو ممکن نیست.\n"
+msgstr ""
+"تنظیم همگام سازی پوشه درایو ممکن نیست.\n"
 "لطفاً بررسی کنید که پوشه با ایمیل حساب سرویس مناسب و مجوزهای اشتراک گذاری به اشتراک گذاشته شده باشد."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24909,9 +24960,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "صفت SAML برای نشانی ایمیل کاربر"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "وقتی تامین کاربر SAML را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود SAML برای کاربرانی که\n"
+msgstr ""
+"وقتی تامین کاربر SAML را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود SAML برای کاربرانی که\n"
 "ندارند ایجاد می کنیم."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24955,15 +25008,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "این نام برنامه برای درخواست‌ها به ارائه دهنده هویت استفاده خواهد شد"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "این آدرسی است که کاربران شما برای ورود به ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
+msgstr ""
+"این آدرسی است که کاربران شما برای ورود به ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
 "استفاده می کنید، این معمولاً شبیه «https://your-org-name.example.com» یا «https://example.com/app/my_saml_app/abc123/sso/saml» است."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "هنگامی که تأمین کاربر JWT را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به JWT برای کاربرانی که\n"
+msgstr ""
+"هنگامی که تأمین کاربر JWT را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به JWT برای کاربرانی که\n"
 "ندارند ایجاد می کنیم."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24971,9 +25028,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON حاوی نگاشت های گروه SAML به {0} ."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "گواهی رمزگذاری شده برای ارائه دهنده هویت. بسته به IdP خود، ممکن است لازم باشد این را دانلود کنید،\n"
+msgstr ""
+"گواهی رمزگذاری شده برای ارائه دهنده هویت. بسته به IdP خود، ممکن است لازم باشد این را دانلود کنید،\n"
 "آن را در یک ویرایشگر متن باز کنید، سپس محتوای گواهی را در اینجا کپی و جایگذاری کنید."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24981,9 +25040,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "نام مستعار برای کلیدی که {0} باید برای امضای درخواست های SAML استفاده کند"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "این یک شناسه منحصر به فرد برای IdP است. اغلب به عنوان شناسه نهاد یا به سادگی \"صادر کننده\" نامیده می شود. بسته به\n"
+msgstr ""
+"این یک شناسه منحصر به فرد برای IdP است. اغلب به عنوان شناسه نهاد یا به سادگی \"صادر کننده\" نامیده می شود. بسته به\n"
 "به IdP شما، معمولا چیزی شبیه به «http://www.example.com/141xkex604w0Q5PN724v» به نظر می رسد"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24999,9 +25060,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "گواهی ارائه دهنده هویت نامعتبر است. گواهی باید یک رشته رمزگذاری شده با base-64 باشد."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "هنگامی که تامین کاربر LDAP را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به سیستم LDAP برای کاربرانی که\n"
+msgstr ""
+"هنگامی که تامین کاربر LDAP را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به سیستم LDAP برای کاربرانی که\n"
 "ندارند ایجاد می کنیم."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25013,9 +25076,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "کلید بازیابی گروه های کاربر JWT"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "این نشانی اینترنتی است که کاربران شما برای خروج از ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
+msgstr ""
+"این نشانی اینترنتی است که کاربران شما برای خروج از ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
 "استفاده می کنید، این معمولاً شبیه «https://your-org-name.example.com» یا «https://example.com/app/my_saml_app/abc123/sso/slo» است."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26071,4 +26136,3 @@ msgstr "کسب کاربر توسط کشور"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 کشور برتر با فروش"
-

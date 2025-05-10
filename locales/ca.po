@@ -2187,9 +2187,11 @@ msgid "Logo"
 msgstr "Logotip"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Per obtenir els millors resultats, utilitzeu un fitxer SVG amb un fons transparent\n"
+msgstr ""
+"Per obtenir els millors resultats, utilitzeu un fitxer SVG amb un fons transparent\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3436,9 +3438,11 @@ msgid "Refresh cache automatically"
 msgstr "Actualitza la memòria cau automàticament"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Tan bon punt caduquin els resultats de la memòria cau, executeu i emmagatzemeu la consulta de nou per actualitzar els resultats i actualitzar\n"
+msgstr ""
+"Tan bon punt caduquin els resultats de la memòria cau, executeu i emmagatzemeu la consulta de nou per actualitzar els resultats i actualitzar\n"
 "la memòria cau."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3681,7 +3685,8 @@ msgstr "Has comprat una llicència per a desbloquejar una funcionalitat avançad
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "La teva llicència ja no és vàlida. Si en tens una de nova, entra-la a sota. Si no, contacta, si us plau, {0}"
 
@@ -4895,7 +4900,8 @@ msgid "Connect to Slack"
 msgstr "Connecteu-vos a Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
 msgstr "Si el vostre equip utilitza Slack, podeu enviar-hi subscripcions i alertes al tauler de control"
 
@@ -6617,7 +6623,8 @@ msgstr "Incrusta {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
 msgstr "Utilitzeu {0} per afegir una inserció d'iframe visible públicament a la vostra pàgina web o entrada de bloc."
 
@@ -6904,10 +6911,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Aquest filtre està configurat com a desactivat en una pregunta incrustada."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Per demanar sempre un valor, primer visiteu la configuració d'inserció,\n"
+msgstr ""
+"Per demanar sempre un valor, primer visiteu la configuració d'inserció,\n"
 "feu que aquest filtre es pugui editar o bloquejar, torneu a publicar la \n"
 "pregunta i, a continuació, torneu a aquesta pàgina."
 
@@ -6919,10 +6928,12 @@ msgstr "Nota"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "si es bloqueja, caldrà actualitzar\n"
+msgstr ""
+"si es bloqueja, caldrà actualitzar\n"
 "el codi d'inserció abans de continuar, en cas contrari, la inserció es \n"
 "trencarà."
 
@@ -11425,10 +11436,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Aquest filtre està configurat com a desactivat en un tauler de control incrustat."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Per demanar sempre un valor, primer visiteu la configuració d'inserció, \n"
+msgstr ""
+"Per demanar sempre un valor, primer visiteu la configuració d'inserció, \n"
 "feu que aquest filtre es pugui editar o bloquejar, torneu a publicar el quadre de comandament i torneu a aquesta pàgina."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:296
@@ -11701,18 +11714,22 @@ msgid "Turn this into a model"
 msgstr "Transformar a un model"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Permet actualitzar les descripcions de les columnes i configurar les metadades per crear\n"
+msgstr ""
+"Permet actualitzar les descripcions de les columnes i configurar les metadades per crear\n"
 "un bon punt de partida per a l'exploració."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Mostrar més amunt en els resultats de les cerques i destacar-lo quan altres usuaris facin noves preguntes per promoure'n l'ús."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Viuen en les col·leccions per mantenir-los separats dels esquemes desordenats de bases de dades."
 
@@ -13101,11 +13118,13 @@ msgid "mode"
 msgstr "mode"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Opcional. El valor predeterminat és `\"ISO\"`.\n"
+msgstr ""
+"Opcional. El valor predeterminat és `\"ISO\"`.\n"
 "- ISO: la setmana 1 comença el dilluns abans del primer dijous de gener.\n"
 "- EUA: la setmana 1 comença l'1 de gener. La resta de setmanes comencen el diumenge.\n"
 "- Instància: la setmana 1 comença l'1 de gener. La resta de setmanes comencen el dia definit a la configuració de localització de la Metabase."
@@ -13164,9 +13183,11 @@ msgid "The number of units to be subtracted."
 msgstr "Les unitats a restart."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Converteix la zona horària d'una columna de data o marca de temps.\n"
+msgstr ""
+"Converteix la zona horària d'una columna de data o marca de temps.\n"
 "Admetem els noms de zones horàries de bases de dades tz."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15027,7 +15048,8 @@ msgid "SAML attributes"
 msgstr "Atributs SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "A la majoria de IdPS, heu de posar aquests valors en una caixa d'entrada etiquetada \"Name\" a la secció d'atributs."
 
@@ -15068,7 +15090,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Sincronitza la pertinença a grups amb el vostre SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Si ho activeu, haureu de crear relacions per dir-li a Metabase a quins grup(s) s'han d'afegir els vostres usuaris en funció del grup SSO al que pertanyen."
 
@@ -15169,15 +15192,19 @@ msgstr "Afegir"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Tots els usuaris pertanyen al grup {0} i d'on no es poden eliminar. Establir permisos per a aquest grup és una manera excel·lent\n"
+msgstr ""
+"Tots els usuaris pertanyen al grup {0} i d'on no es poden eliminar. Establir permisos per a aquest grup és una manera excel·lent\n"
 "d'assegurar-vos què podran veure els nous usuaris de Metabase."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Aquest és un grup especial els membres del qual poden veure tota la informació de la instància de Metabase, poden accedir i fer modificacions a la configuració del Panell d'administració, incloent els permisos d'accés!\n"
+msgstr ""
+"Aquest és un grup especial els membres del qual poden veure tota la informació de la instància de Metabase, poden accedir i fer modificacions a la configuració del Panell d'administració, incloent els permisos d'accés!\n"
 "Afegiu persones a aquest grup amb cautela."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
@@ -15295,9 +15322,11 @@ msgid "move the API keys to another group"
 msgstr "Mou les claus API a un altre group"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Esteu segurs? Tots els membres d'aquest grup perdran les configuracions de permisos que tenen gràcies a aquest grup.\n"
+msgstr ""
+"Esteu segurs? Tots els membres d'aquest grup perdran les configuracions de permisos que tenen gràcies a aquest grup.\n"
 "Això no es pot desfer."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15394,7 +15423,8 @@ msgstr "denegat l'accés a"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
 msgstr "{0} només podrà utilitzar el creador de consultes per a {1}."
 
@@ -15800,7 +15830,8 @@ msgstr "Aquesta pregunta està escrita en {0}."
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:20
 msgid "Browse the contents of your databases, tables, and columns. Pick a database to get started."
-msgstr "Navegueu pel contingut de les vostres bases de dades, taules i columnes.\n"
+msgstr ""
+"Navegueu pel contingut de les vostres bases de dades, taules i columnes.\n"
 "Esculliu una base de dades per començar."
 
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorInner.jsx:467
@@ -16927,9 +16958,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Comenceu amb Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Només un avís: la vostra Metabase serà només de lectura durant un màxim de 30 minuts\n"
+msgstr ""
+"Només un avís: la vostra Metabase serà només de lectura durant un màxim de 30 minuts\n"
 "mentre la preparem per a la migració."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18665,9 +18698,11 @@ msgid "Conditional formatting"
 msgstr "Format condicional"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Pots afegir regles per fer que les cel·les d'aquesta taula canviïn de valor si \n"
+msgstr ""
+"Pots afegir regles per fer que les cel·les d'aquesta taula canviïn de valor si \n"
 "compleixen algunes condicions."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20249,7 +20284,8 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "L'adreça del servidor SMTP que gestiona els teus correus electrònics."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "El nombre màxim de destinataris, sumat entre correus electrònics, que es poden enviar per segon. Tingueu en compte que el correu electrònic final enviat abans d'arribar al límit pot superar-lo, si té diversos destinataris."
 
@@ -21977,9 +22013,11 @@ msgid "Cumulative count of rows"
 msgstr "Recompte acumulat de files"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Suma aditiva dels valors de la columna:\n"
+msgstr ""
+"Suma aditiva dels valors de la columna:\n"
 "p.e.: ingressos totals al cap del temps"
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -22027,9 +22065,11 @@ msgid "Sum of all the values of a column."
 msgstr "Suma tots els valors d'una columna."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Recompte aditiiu dels valors de la columna:\n"
+msgstr ""
+"Recompte aditiiu dels valors de la columna:\n"
 "p.e.: nombre total de ventes al cap del temps"
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23349,11 +23389,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "La consulta d'aquesta base de dades requereix la marca de funció d'auditoria de l'aplicació"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Activa l'anàlisi de l'ús del camp per a les consultes. Això analitzarà els camps utilitzats en les consultes i els emmagatzemarà a la base de dades de l'aplicació\n"
-"    .\n\n"
+msgstr ""
+"Activa l'anàlisi de l'ús del camp per a les consultes. Això analitzarà els camps utilitzats en les consultes i els emmagatzemarà a la base de dades de l'aplicació\n"
+"    .\n"
+"\n"
 "    Desactiveu-lo de manera predeterminada, ja que encara no tenim cap funció orientada a l'usuari que utilitzi aquestes dades."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24493,9 +24537,11 @@ msgid "{0} of {1}"
 msgstr "{0} de {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "El resultat de les transformacions no és el que s'esperava.\n"
+msgstr ""
+"El resultat de les transformacions no és el que s'esperava.\n"
 "S'esperava: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24637,9 +24683,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbourmaster ha retornat un error."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "No es pot configurar la sincronització de la carpeta de la unitat.\n"
+msgstr ""
+"No es pot configurar la sincronització de la carpeta de la unitat.\n"
 "Si us plau, comproveu que la carpeta estigui compartida amb el correu electrònic del compte de servei i els permisos de compartició adequats."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24905,9 +24953,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Atribut del correu electrònic del usuari SAML"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Quan activem l'aprovisionament d'usuaris SAML,\n"
+msgstr ""
+"Quan activem l'aprovisionament d'usuaris SAML,\n"
 "creem automàticament un compte de Metabase a l'inici de sessió SAML per als usuaris que no en tenen cap."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24951,15 +25001,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Aquest nom s'utilitzarà per identificar l'aplicació amb el Proveïdor d'identitat"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Aquesta és la URL on van els vostres usuaris per iniciar sessió al vostre proveïdor d'identitat. Depenent de quin IdP \n"
+msgstr ""
+"Aquesta és la URL on van els vostres usuaris per iniciar sessió al vostre proveïdor d'identitat. Depenent de quin IdP \n"
 "facis servir, normalment s'assembla a `https://your-org-name.example.com` o `https://example.com/app/my_saml_app/abc123/sso/saml`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Quan activem l'aprovisionament d'usuaris de JWT, \n"
+msgstr ""
+"Quan activem l'aprovisionament d'usuaris de JWT, \n"
 "creem automàticament un compte de Metabase a l'inici de sessió de JWT per als usuaris que no en tenen cap."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24967,9 +25021,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON que conté SAML a {0} grups de mapeig."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Certificat codificat per al proveïdor d'identitat. Depenent del vostre IdP, potser haureu de baixar-lo,\n"
+msgstr ""
+"Certificat codificat per al proveïdor d'identitat. Depenent del vostre IdP, potser haureu de baixar-lo,\n"
 "obrir-lo en un editor de text i després copiar i enganxar el contingut del certificat aquí."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24977,9 +25033,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Àlies per a la clau que {0} hauria d'utilitzar per signar sol·licituds SAML"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Aquest és un identificador únic per a l'IdP. Sovint es coneix com a identificador d'entitat o simplement ''Emissor''. Depenent de\n"
+msgstr ""
+"Aquest és un identificador únic per a l'IdP. Sovint es coneix com a identificador d'entitat o simplement ''Emissor''. Depenent de\n"
 "del vostre IdP, normalment sembla `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24995,9 +25053,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Certificat del proveïdor d'identitats no vàlid. El certificat ha de ser una cadena en base-64."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Quan activem l'aprovisionament d'usuaris LDAP, \n"
+msgstr ""
+"Quan activem l'aprovisionament d'usuaris LDAP, \n"
 "creem automàticament un compte de Metabase a l'inici de sessió LDAP per als usuaris que no en tenen cap."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25009,9 +25069,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Clau per recuperar els grups de l'usuari JWT"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Aquest és l'URL on van els vostres usuaris per tancar la sessió del vostre proveïdor d'identitat. Depenent de l'IDP que estigueu utilitzant\n"
+msgstr ""
+"Aquest és l'URL on van els vostres usuaris per tancar la sessió del vostre proveïdor d'identitat. Depenent de l'IDP que estigueu utilitzant\n"
 ", normalment sembla `https://your-org-name.example.com` o `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26067,4 +26129,3 @@ msgstr "Adqusició d'usuaris per país"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Primers 10 països per vendes"
-

@@ -2184,9 +2184,11 @@ msgid "Logo"
 msgstr "商标"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "为获得最佳效果，请使用具有透明\n"
+msgstr ""
+"为获得最佳效果，请使用具有透明\n"
 "背景的 SVG 文件。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3028,7 +3030,8 @@ msgstr "关于这张表的Questions"
 
 #: frontend/src/metabase/reference/segments/SegmentQuestions.jsx:25
 msgid "Questions about this segment will appear here as they're added"
-msgstr "\n"
+msgstr ""
+"\n"
 "添加后，有关此分段的问题将显示在此处"
 
 #: frontend/src/metabase/reference/segments/SegmentRevisions.jsx:27
@@ -3430,9 +3433,11 @@ msgid "Refresh cache automatically"
 msgstr "自动刷新缓存"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "一旦缓存过期，\n"
+msgstr ""
+"一旦缓存过期，\n"
 "就重新运行并缓存查询，以更新结果并刷新缓存。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3675,9 +3680,11 @@ msgstr "购买了解锁高级功能的许可证？ 请在下面输入。"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "您的许可证已经失效。 如果您有新的许可证，请\n"
+msgstr ""
+"您的许可证已经失效。 如果您有新的许可证，请\n"
 "请在下面输入，否则请联系{0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4890,9 +4897,11 @@ msgid "Connect to Slack"
 msgstr "连接至 Slack"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "如果您的团队使用 Slack，您可以在那里发送仪表板订阅和\n"
+msgstr ""
+"如果您的团队使用 Slack，您可以在那里发送仪表板订阅和\n"
 "警报"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6609,9 +6618,11 @@ msgstr "嵌入 {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "使用 {0} 在您的网页或博客\n"
+msgstr ""
+"使用 {0} 在您的网页或博客\n"
 "中添加可公开查看的 iframe 嵌入。"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6892,10 +6903,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "在嵌入式问题中，该过滤器被设置为禁用。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "要始终需要一个值，请先访问嵌入设置，\n"
+msgstr ""
+"要始终需要一个值，请先访问嵌入设置，\n"
 "，使该过滤器可编辑或锁定，重新发布\n"
 "问题，然后返回本页。"
 
@@ -6907,10 +6920,12 @@ msgstr "注"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "如果要将其锁定，则需要先更新\n"
+msgstr ""
+"如果要将其锁定，则需要先更新\n"
 "嵌入代码，否则嵌入将\n"
 "会中断。"
 
@@ -7774,7 +7789,8 @@ msgstr "没有明细"
 #: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:46
 #, javascript-format
 msgid "{0} is connected to:"
-msgstr "\n"
+msgstr ""
+"\n"
 "{0} 连接到："
 
 #: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:103
@@ -8895,7 +8911,8 @@ msgstr "设置新的时间表"
 #, javascript-format
 msgid "and {0} other"
 msgid_plural "and {0} others"
-msgstr[0] "和 {0} 个其他\n"
+msgstr[0] ""
+"和 {0} 个其他\n"
 "复数：和 {0} 其他"
 
 #: frontend/src/metabase/notifications/PulsesListSidebar.jsx:175
@@ -11396,10 +11413,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "在嵌入式仪表板中，该过滤器被设置为禁用。"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "要始终需要一个值，请先访问嵌入设置，\n"
+msgstr ""
+"要始终需要一个值，请先访问嵌入设置，\n"
 "，使该过滤器可编辑或锁定，重新发布\n"
 "dashboard，然后返回本页。"
 
@@ -11671,17 +11690,20 @@ msgid "Turn this into a model"
 msgstr "把它变成一个模型"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "使您可以更新列说明并自定义要创建元数据探索的伟大起点。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "在搜索结果中显示得更高，并在其他用户提出新问题以促进重复使用时突出显示。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "存在于集合中，以将它们与杂乱的数据库分开模式。"
 
@@ -13069,11 +13091,13 @@ msgid "mode"
 msgstr "模式"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "可选。默认值为“ISO”。\n"
+msgstr ""
+"可选。默认值为“ISO”。\n"
 "- ISO：第 1 周从 1 月第一个星期四之前的星期一开始。\n"
 "- US：第 1 周从 1 月 1 日开始。所有其他星期从星期日开始。\n"
 "- 实例：第 1 周从 1 月 1 日开始。所有其他星期从 Metabase 本地化设置中定义的日期开始。"
@@ -13132,9 +13156,11 @@ msgid "The number of units to be subtracted."
 msgstr "要减去的单位数量。"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "转换日期或时间戳列的时区。\n"
+msgstr ""
+"转换日期或时间戳列的时区。\n"
 "我们支持 tz 数据库时区名称。"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -14984,7 +15010,8 @@ msgid "SAML attributes"
 msgstr "SAML属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "在大多数IDP中，您需要将其中的每一个都放在一个标记为属性语句部分中的“名称”。"
 
@@ -15025,7 +15052,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "将组成员身份与您的SSO同步"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "要启用此功能，你需要创建映射来告诉Metabase你的用户应该使用哪些组根据它们所在的SSO组添加到。"
 
@@ -15126,12 +15154,14 @@ msgstr "添加"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "所有用户都属于{0}组，不能从该组中删除。为这个组设置权限是一个很好的方法，可以确保你知道新的Metabase用户将能够看到哪些。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "这是一个特殊的组，其成员可以看到Metabase实例中的所有内容，并且可以访问和修改管理面板中的设置，包括改变权限！因此，请慎重将人们添加到这个组。"
 
@@ -15248,9 +15278,11 @@ msgid "move the API keys to another group"
 msgstr "将 API 密钥转移到另一个组"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "确定吗？该组所有成员都将丢失该组下的权限设置。\n"
+msgstr ""
+"确定吗？该组所有成员都将丢失该组下的权限设置。\n"
 "此操作不可逆。"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15346,9 +15378,11 @@ msgstr "拒绝访问"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} 将只能使用查询\n"
+msgstr ""
+"{0} 将只能使用查询\n"
 "生成器 {1}。"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16874,9 +16908,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "开始使用 Metabase 云"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "请注意：当我们为迁移做准备时，您的 Metabase 将处于 30\n"
+msgstr ""
+"请注意：当我们为迁移做准备时，您的 Metabase 将处于 30\n"
 "分钟的只读状态。"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18421,7 +18457,8 @@ msgstr "添加过滤器"
 #: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx:51
 #, javascript-format
 msgid "{0} rows"
-msgstr "{0} 行\n"
+msgstr ""
+"{0} 行\n"
 "复数：{0} 行"
 
 #: frontend/src/metabase/search/components/filters/NativeQueryFilter/NativeQueryLabel.tsx:11
@@ -18604,9 +18641,11 @@ msgid "Conditional formatting"
 msgstr "条件格式"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "您可以添加规则以使此表中的单元格更改颜色，如果\n"
+msgstr ""
+"您可以添加规则以使此表中的单元格更改颜色，如果\n"
 "他们满足一定的条件。"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20176,9 +20215,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "SMTP服务器地址处理你的邮箱。"
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "每秒可发送邮件的最大收件人数量（所有邮件的总和）。\n"
+msgstr ""
+"每秒可发送邮件的最大收件人数量（所有邮件的总和）。\n"
 "                请注意，如果有多个收件人，在达到限制前发送的最后一封邮件也会超过限制。"
 
 #: metabase/channel/email.clj:69
@@ -20616,7 +20657,8 @@ msgstr "认证提供商"
 
 #: metabase/driver/common.clj:219
 msgid "If your database is behind a firewall, you may need to allow connections from our Metabase [Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"
-msgstr "如果您的数据库位于防火墙之后，您可能需要允许来自我们的Metabase[Cloud IP addresses]的连接。\n"
+msgstr ""
+"如果您的数据库位于防火墙之后，您可能需要允许来自我们的Metabase[Cloud IP addresses]的连接。\n"
 "(https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"
 
 #: metabase/driver/common.clj:94
@@ -21903,9 +21945,11 @@ msgid "Cumulative count of rows"
 msgstr "累积行数"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "一个列的所有值的加和。\n"
+msgstr ""
+"一个列的所有值的加和。\n"
 "如x.一段时间内的总收入。"
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -21953,9 +21997,11 @@ msgid "Sum of all the values of a column."
 msgstr "一个字段所有数值的总和。"
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "行数的累积计数。\n"
+msgstr ""
+"行数的累积计数。\n"
 "e.x.一段时间内的销售总数。"
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23272,11 +23318,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "查询该数据库需要使用 audit-app 功能标志"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "启用查询的字段使用情况分析。这将分析查询中使用的字段并将其存储在\n"
-"    应用程序数据库中。\n\n"
+msgstr ""
+"启用查询的字段使用情况分析。这将分析查询中使用的字段并将其存储在\n"
+"    应用程序数据库中。\n"
+"\n"
 "    默认关闭，因为我们还没有使用此数据的面向用户的功能。"
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24412,9 +24462,11 @@ msgid "{0} of {1}"
 msgstr "{0} 的 {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "结果转换不符合预期。\n"
+msgstr ""
+"结果转换不符合预期。\n"
 "预期：{0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24556,9 +24608,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster 返回错误。"
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "无法设置驱动器文件夹同步。\n"
+msgstr ""
+"无法设置驱动器文件夹同步。\n"
 "请检查该文件夹是否与正确的服务帐户电子邮件和共享权限共享。"
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24824,9 +24878,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "用户电子邮件地址的SAML属性"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "启用 SAML 用户供应后，我们会在 SAML 登录时自动为\n"
+msgstr ""
+"启用 SAML 用户供应后，我们会在 SAML 登录时自动为\n"
 "没有 Metabase 帐户的用户创建一个 Metabase 帐户。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24870,15 +24926,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "此应用程序名称将用于对身份提供者的请求"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "这是用户登录身份提供商的 URL。视\n"
+msgstr ""
+"这是用户登录身份提供商的 URL。视\n"
 "使用的身份提供程序而定，通常看起来像 `https://your-org-name.example.com ` 或 `https://example.com/app/my_saml_app/abc123/sso/saml `。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "启用 JWT 用户供应后，我们会在 JWT 登录时自动为\n"
+msgstr ""
+"启用 JWT 用户供应后，我们会在 JWT 登录时自动为\n"
 "没有 Metabase 帐户的用户创建一个 Metabase 帐户。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24886,9 +24946,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "包含SAML到{0}组映射的JSON。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "身份提供者的编码证书。根据您的 IdP，您可能需要下载此证书，\n"
+msgstr ""
+"身份提供者的编码证书。根据您的 IdP，您可能需要下载此证书，\n"
 "在文本编辑器中打开它，然后复制并粘贴证书的内容。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24896,9 +24958,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "\"{0}\"应该用于签署SAML请求的键的别名"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "这是 IDP 的唯一标识符。通常称为实体 ID 或简称 \"发行者\"。根据\n"
+msgstr ""
+"这是 IDP 的唯一标识符。通常称为实体 ID 或简称 \"发行者\"。根据\n"
 "您的 IdP，这通常看起来像 `http://www.example.com/141xkex604w0Q5PN724v`。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24914,9 +24978,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "无效的身份提供程序证书。证书应为Base-64编码字符串。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "启用 LDAP 用户配置后，我们会在 LDAP 登录时自动为\n"
+msgstr ""
+"启用 LDAP 用户配置后，我们会在 LDAP 登录时自动为\n"
 "没有 Metabase 帐户的用户创建一个 Metabase 帐户。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -24928,9 +24994,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "检索 JWT 用户组的密钥"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "这是您的用户退出身份提供商的 URL。根据您\n"
+msgstr ""
+"这是您的用户退出身份提供商的 URL。根据您\n"
 "使用的 IdP，这通常看起来像 `https://your-org-name.example.com` 或 `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -25986,4 +26054,3 @@ msgstr "按国家/地区获取的用户"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "销售额排名前 10 的国家/地区"
-

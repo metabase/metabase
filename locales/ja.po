@@ -2184,9 +2184,11 @@ msgid "Logo"
 msgstr "ロゴ"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "最良の結果を得るには、背景が透明なSVGファイルを使用してください。\n"
+msgstr ""
+"最良の結果を得るには、背景が透明なSVGファイルを使用してください。\n"
 "背景を使用する。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3429,9 +3431,11 @@ msgid "Refresh cache automatically"
 msgstr "キャッシュの自動更新"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "キャッシュされた結果が期限切れになり次第、結果を更新するために再度クエリを実行してキャッシュし、\n"
+msgstr ""
+"キャッシュされた結果が期限切れになり次第、結果を更新するために再度クエリを実行してキャッシュし、\n"
 "キャッシュをリフレッシュする。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3674,9 +3678,11 @@ msgstr "高度な機能を解除するためにライセンスを購入しまし
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "あなたのライセンスはもう有効ではありません。新しいライセンスをお持ちの場合は、以下に入力してください。\n"
+msgstr ""
+"あなたのライセンスはもう有効ではありません。新しいライセンスをお持ちの場合は、以下に入力してください。\n"
 "それ以外の場合は、{0}までご連絡ください。"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4889,9 +4895,11 @@ msgid "Connect to Slack"
 msgstr "Slackに接続する"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "チームがSlackを使用している場合、ダッシュボードのサブスクリプションと\n"
+msgstr ""
+"チームがSlackを使用している場合、ダッシュボードのサブスクリプションと\n"
 "アラートを送信できます。"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6608,9 +6616,11 @@ msgstr "{0}を埋め込む"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "{0}を使用して、ウェブページやブログ記事に一般公開可能なiframe埋め込みを追加します\n"
+msgstr ""
+"{0}を使用して、ウェブページやブログ記事に一般公開可能なiframe埋め込みを追加します\n"
 "投稿してください。"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6891,10 +6901,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "このフィルターは埋め込み質問では無効化されています。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
+msgstr ""
+"常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
 "このフィルタを編集可能にするかロックします。\n"
 "を再公開し、このページに戻ってください。"
 
@@ -6906,10 +6918,12 @@ msgstr "ノート"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "ロックされている場合は\n"
+msgstr ""
+"ロックされている場合は\n"
 "そうでないと、埋め込みが壊れてしまいます。\n"
 "が壊れてしまいます。"
 
@@ -11393,10 +11407,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "このフィルタは埋め込みダッシュボードでは無効に設定されています。"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
+msgstr ""
+"常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
 "このフィルタを編集可能にするかロックして\n"
 "ダッシュボードを再公開してから、このページに戻ってください。"
 
@@ -11668,21 +11684,27 @@ msgid "Turn this into a model"
 msgstr "これをモデル化する"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "カラムの説明を更新したり、メタデータをカスタマイズしたりすることで\n"
+msgstr ""
+"カラムの説明を更新したり、メタデータをカスタマイズしたりすることで\n"
 "探索のための素晴らしい出発点となります。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "検索結果で上位に表示されたり、他のユーザーが新しい質問を始めたときに\n"
+msgstr ""
+"検索結果で上位に表示されたり、他のユーザーが新しい質問を始めたときに\n"
 "他のユーザーが新しい質問を始めたときにハイライトされ、再利用を促進します。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "厄介なデータベースのスキーマとは別に、コレクションとして保管することができます。\n"
+msgstr ""
+"厄介なデータベースのスキーマとは別に、コレクションとして保管することができます。\n"
 "スキーマから切り離すことができます。"
 
 #: frontend/src/metabase/query_builder/components/dataref/ConnectedTableList.tsx:27
@@ -13069,11 +13091,13 @@ msgid "mode"
 msgstr "モード"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "オプション。デフォルトは `\"ISO\"` です。\n"
+msgstr ""
+"オプション。デフォルトは `\"ISO\"` です。\n"
 "- ISO: 第 1 週は 1 月の最初の木曜日の前の月曜日に始まります。\n"
 "- US: 第 1 週は 1 月 1 日に始まります。他のすべての週は日曜日に始まります。\n"
 "- インスタンス: 第 1 週は 1 月 1 日に始まります。他のすべての週は、Metabase ローカリゼーション設定で定義された日に始まります。"
@@ -13132,9 +13156,11 @@ msgid "The number of units to be subtracted."
 msgstr "減算する個数です。"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "日付またはタイムスタンプ列のタイムゾーンを変換します。\n"
+msgstr ""
+"日付またはタイムスタンプ列のタイムゾーンを変換します。\n"
 "tz データベースのタイムゾーン名をサポートしています。"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -14312,7 +14338,8 @@ msgstr "曜日の値は1から7の間でなければなりません"
 
 #: frontend/src/metabase/lib/cron.ts:12
 msgid "Day-of-week values must be SUN, MON, TUE, WED, THU, FRI, SAT OR between 1 and 7, - * ? / L #"
-msgstr "曜日の値は、SUN、MON、TUE、WED、THU、FRI、SAT、1から7、- * ? \n"
+msgstr ""
+"曜日の値は、SUN、MON、TUE、WED、THU、FRI、SAT、1から7、- * ? \n"
 " / L # のいずれかでなければなりません"
 
 #: frontend/src/metabase/lib/cron.ts:13
@@ -14508,13 +14535,15 @@ msgstr[0] "最低{0}文字"
 #, javascript-format
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
-msgstr[0] "{0}個の小文字\n"
+msgstr[0] ""
+"{0}個の小文字\n"
 "{0}個の小文字"
 
 #: frontend/src/metabase/lib/settings.ts:37
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
-msgstr[0] "{0}個の大文字\n"
+msgstr[0] ""
+"{0}個の大文字\n"
 "{0}個の大文字"
 
 #: frontend/src/metabase/lib/settings.ts:46
@@ -14526,7 +14555,8 @@ msgstr[0] "{0}個の数"
 #: frontend/src/metabase/lib/settings.ts:51
 msgid "{0} special character"
 msgid_plural "{0} special characters"
-msgstr[0] "{0}個の特殊文字\n"
+msgstr[0] ""
+"{0}個の特殊文字\n"
 "{0}個の特殊文字"
 
 #: frontend/src/metabase/lib/settings.ts:298
@@ -14988,7 +15018,8 @@ msgid "SAML attributes"
 msgstr "SAML属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "ほとんどのIdPでは、属性ステートメントセクションの「名前」というラベルの付いた入力ボックスにこれらをそれぞれ入力する必要があります。"
 
@@ -15029,7 +15060,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "SSOとグループメンバー情報を同期する"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "これを有効にするためには、ユーザが所属するSSOグループに基づきどのグループに追加されるべきなのかをMetabaseに伝えるためのマッピングを作る必要があります。"
 
@@ -15130,12 +15162,14 @@ msgstr "追加"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "全てのユーザーは{0}グループに属しており、そのグループから削除することはできません。 このグループの権限を設定することで、新しいMetabaseユーザーの閲覧可能範囲を確認することができます。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "これはメンバーがMetabaseインスタンス内の全データを参照できるだけでなく、権限の変更などを含む管理者パネルの設定ができる特別なグループです。このグループにメンバーを追加する場合は、十分にご注意ください。"
 
@@ -15252,9 +15286,11 @@ msgid "move the API keys to another group"
 msgstr "APIキーを別のグループに移動する"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "このグループに属するすべてのメンバーは、グループに基づいて設定されている全ての権限設定を失います。\n"
+msgstr ""
+"このグループに属するすべてのメンバーは、グループに基づいて設定されている全ての権限設定を失います。\n"
 "この変更は取り消せません。実行してよろしいですか?"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15350,9 +15386,11 @@ msgstr "拒否されたアクセス"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0}は{1}のクエリビルダのみを使用することができます。\n"
+msgstr ""
+"{0}は{1}のクエリビルダのみを使用することができます。\n"
 "ビルダーしか使えません"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16878,9 +16916,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Metabase Cloudを始める"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "注意: メタベースは移行準備の間、最大30分間読み取り専用になります。\n"
+msgstr ""
+"注意: メタベースは移行準備の間、最大30分間読み取り専用になります。\n"
 "メタベースが読み取り専用になります。"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18201,7 +18241,8 @@ msgstr "無効な日付"
 #, javascript-format
 msgid "{0} breakout"
 msgid_plural "{0} breakouts"
-msgstr[0] "ブレークアウト\n"
+msgstr[0] ""
+"ブレークアウト\n"
 "ブレークアウト"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription.tsx:71
@@ -18608,7 +18649,8 @@ msgid "Conditional formatting"
 msgstr "条件付書式"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "条件にあったテーブルのセルの色を変更するためのルールを追加することができます"
 
@@ -20179,9 +20221,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "メール管理をするSMTPサーバーのアドレス"
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "1秒間に送信できる受信者の最大数。\n"
+msgstr ""
+"1秒間に送信できる受信者の最大数。\n"
 "                複数の受信者がいる場合、上限に達する前に送信された最後のメールが上限を超える可能性があることに注意してください。"
 
 #: metabase/channel/email.clj:69
@@ -21905,7 +21949,8 @@ msgid "Cumulative count of rows"
 msgstr "行の累積カウント"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "カラム値の累積和。(例)時間経過に対する累積売上額。"
 
@@ -21954,7 +21999,8 @@ msgid "Sum of all the values of a column."
 msgstr "列の全値の合計"
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "行数の累積カウント。(例)時間経過に対する累積売上回数。"
 
@@ -22011,7 +22057,8 @@ msgstr[0] "ミリ秒"
 #: metabase/lib/temporal_bucket.cljc:32
 msgid "Default period"
 msgid_plural "Default periods"
-msgstr[0] "デフォルトの期間\n"
+msgstr[0] ""
+"デフォルトの期間\n"
 "デフォルトの期間"
 
 #: metabase/lib/util.cljc:159
@@ -23273,11 +23320,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "このデータベースをクエリするには、audit-app 機能フラグが必要です"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "クエリのフィールド使用状況分析を有効にします。これにより、クエリで使用されるフィールドが分析され、\n"
-"    アプリケーション データベースに保存されます。\n\n"
+msgstr ""
+"クエリのフィールド使用状況分析を有効にします。これにより、クエリで使用されるフィールドが分析され、\n"
+"    アプリケーション データベースに保存されます。\n"
+"\n"
 "    このデータを使用するユーザー向け機能はまだないため、デフォルトではオフになっています。"
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24413,9 +24464,11 @@ msgid "{0} of {1}"
 msgstr "{1}の{0}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "結果として生じる変換は、期待に準拠していません。\n"
+msgstr ""
+"結果として生じる変換は、期待に準拠していません。\n"
 "予想：{0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24557,9 +24610,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster がエラーを返しました。"
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "ドライブ フォルダーの同期を設定できません。\n"
+msgstr ""
+"ドライブ フォルダーの同期を設定できません。\n"
 "フォルダーが適切なサービス アカウントのメールと共有権限で共有されていることを確認してください。"
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24825,7 +24880,8 @@ msgid "SAML attribute for the user''s email address"
 msgstr "ユーザのメールアドレスのSAML属性"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
 msgstr "SAMLユーザープロビジョニングを有効にした場合、Metabaseアカウントを持たないユーザーがSAMLサインインするとアカウントは自動的に作成されます。"
 
@@ -24870,13 +24926,16 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "このアプリケーション名は、Identity Provider へのリクエストに使用される。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "これは、ユーザーがIDプロバイダにログインするためのURLです。どのIdPを使用しているかにもよりますが\n"
+msgstr ""
+"これは、ユーザーがIDプロバイダにログインするためのURLです。どのIdPを使用しているかにもよりますが\n"
 "を使用しているかによって異なりますが、通常は `https://your-org-name.example.com` または `https://example.com/app/my_saml_app/abc123/sso/saml` のようになります。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
 msgstr "JWTユーザープロビジョニングを有効にした場合、Metabaseアカウントを持たないユーザーがJWTサインインするとアカウントは自動的に作成されます。"
 
@@ -24885,9 +24944,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "SAML から {0} グループへのマッピングを含む JSON。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "ID プロバイダーのエンコードされた証明書。IdP によっては、これをダウンロードして\n"
+msgstr ""
+"ID プロバイダーのエンコードされた証明書。IdP によっては、これをダウンロードして\n"
 "テキスト エディターで開き、証明書の内容をコピーしてここに貼り付ける必要がある場合があります。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24895,9 +24956,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "{0} が SAML 要求の署名に使用する鍵のエイリアス。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "IdPの一意な識別子である。しばしばEntity IDまたは単に''Issuer''と呼ばれる。\n"
+msgstr ""
+"IdPの一意な識別子である。しばしばEntity IDまたは単に''Issuer''と呼ばれる。\n"
 "あなたのIdPによるが、これは通常`http://www.example.com/141xkex604w0Q5PN724v`のように見える。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -24913,7 +24976,8 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "無効な ID プロバイダ証明書です。証明書はbase-64にエンコードされた文字列でなければなりません。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
 msgstr "LDAPユーザープロビジョニングを有効にした場合、Metabaseアカウントを持たないユーザーがLDAPサインインするとアカウントは自動的に作成されます。"
 
@@ -24926,9 +24990,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "JWT ユーザーのグループを取得するためのキー"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "これは、ユーザーが ID プロバイダからログアウトするための URL です。\n"
+msgstr ""
+"これは、ユーザーが ID プロバイダからログアウトするための URL です。\n"
 "どのIdPを使用しているかにもよりますが、通常は `https://your-org-name.example.com` または `https://example.com/app/my_saml_app/abc123/sso/slo` のようになります。"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -25984,4 +26050,3 @@ msgstr "国ごとのユーザー獲得"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "売上トップ10の国"
-

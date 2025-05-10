@@ -2190,9 +2190,11 @@ msgid "Logo"
 msgstr "Лого"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "За најбоље резултате користите СВГ датотеку са провидном\n"
+msgstr ""
+"За најбоље резултате користите СВГ датотеку са провидном\n"
 "позадином."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3443,9 +3445,11 @@ msgid "Refresh cache automatically"
 msgstr "Освежите кеш меморију аутоматски"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Чим кеширани резултати истекну, покрените и поново кеширајте упит да бисте ажурирали резултате и освежили\n"
+msgstr ""
+"Чим кеширани резултати истекну, покрените и поново кеширајте упит да бисте ажурирали резултате и освежили\n"
 "кеш."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3688,9 +3692,11 @@ msgstr "Kupili ste licencu za otključavanje napredne funkcionalnosti? Unesite j
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "Vaša licenca više nije validna. Ako imate novu licencu, molim vas unesite je ispod,\n"
+msgstr ""
+"Vaša licenca više nije validna. Ako imate novu licencu, molim vas unesite je ispod,\n"
 "U suprotnom kontaktirajte {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:50
@@ -4903,9 +4909,11 @@ msgid "Connect to Slack"
 msgstr "Повежите се са Слацк-ом"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Ако ваш тим користи Слацк, тамо можете слати претплате на контролну таблу и\n"
+msgstr ""
+"Ако ваш тим користи Слацк, тамо можете слати претплате на контролну таблу и\n"
 "упозорења"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6630,9 +6638,11 @@ msgstr "Ugradi {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Користите {0} да додате јавно видљиви ифраме уграђен у вашу веб страницу или блог\n"
+msgstr ""
+"Користите {0} да додате јавно видљиви ифраме уграђен у вашу веб страницу или блог\n"
 "пост."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -6923,10 +6933,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Ovaj filter je onemogućen u ugrađenom pitanju."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Da biste uvek zahtevali vrednost, prvo posetite podešavanja ugrađivanja,\n"
+msgstr ""
+"Da biste uvek zahtevali vrednost, prvo posetite podešavanja ugrađivanja,\n"
 "učinite ovaj filter promenljivim ili zaključanim, ponovo objavite\n"
 "pitanje, a zatim se vratite na ovu stranicu."
 
@@ -6938,10 +6950,12 @@ msgstr "Beleška"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "zaključavanje, zahtevaće ažuriranje\n"
+msgstr ""
+"zaključavanje, zahtevaće ažuriranje\n"
 "kod za ugrađivanje pre nego što nastavite, u suprotnom će ugradnja\n"
 "pauza."
 
@@ -11463,7 +11477,8 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Ovaj filter je onemogućen na ugrađenoj kontrolnoj tabli."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
 msgstr "Da biste uvek zahtevali vrednost, prvo posetite podešavanja ugrađivanja, učinite ovaj filter promenljivim ili zaključanim, ponovo objavite kontrolnu tablu, a zatim se vratite na ovu stranicu."
@@ -11740,18 +11755,22 @@ msgid "Turn this into a model"
 msgstr "Pretvorite ovo u model"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Dozvolite da ažurirate opis kolona i prilagodite metapodatke\n"
+msgstr ""
+"Dozvolite da ažurirate opis kolona i prilagodite metapodatke\n"
 "za kreiranje početne tačke za istraživanje."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Pojavite se više u rezultatima pretrage i budite istaknuti kada drugi korisnici započnu nova pitanja kako bi se promovisala ponovna upotreba."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Čuvajte u kolekcijama kako bi ih držali odvojenim od komplikovanih šema baza podataka."
 
@@ -13141,11 +13160,13 @@ msgid "mode"
 msgstr "režim"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Опционо. Подразумевано је `\"ИСО\"`.\n"
+msgstr ""
+"Опционо. Подразумевано је `\"ИСО\"`.\n"
 "- ИСО: 1. недеља почиње у понедељак пре првог четвртка у јануару.\n"
 "- САД: 1. недеља почиње 1. јануара. Све остале недеље почињу у недељу.\n"
 "– Пример: 1. недеља почиње 1. јануара. Све остале недеље почињу на дан дефинисан у подешавањима локализације Метабазе."
@@ -13204,9 +13225,11 @@ msgid "The number of units to be subtracted."
 msgstr "Broj jedinica koje treba oduzeti."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Конвертујте временску зону колоне датума или временске ознаке.\n"
+msgstr ""
+"Конвертујте временску зону колоне датума или временске ознаке.\n"
 "Подржавамо називе временских зона тз базе података."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15078,9 +15101,11 @@ msgid "SAML attributes"
 msgstr "SAML atributi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
-msgstr "U većini IDP-a, svaki od njih moraćete da stavite u polje za unos označeno\n"
+msgstr ""
+"U većini IDP-a, svaki od njih moraćete da stavite u polje za unos označeno\n"
 "\"Ime\" u odeljku izjava o atributima."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
@@ -15120,7 +15145,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Sinhronizujte članstvo u grupi sa svojim SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Да бисте омогућили <b>ово</b>, потребно је да креирате мапирања да кажете Metabase-у којој групи ваши корисници треба да буду додати на основу SSO групе у којој се налазе."
 
@@ -15221,15 +15247,19 @@ msgstr "Dodaj"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Svi korisnici pripadaju grupi {0} i ne mogu se ukloniti iz nje. \n"
+msgstr ""
+"Svi korisnici pripadaju grupi {0} i ne mogu se ukloniti iz nje. \n"
 "Postavljanje dozvola za ovu grupu je sjajan način da znate šta će novi korisnici Metabejsa moći da vide."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Ovo je posebna grupa čiji članovi mogu videti sve u Metabejs instanci, a mogu pristupiti i izvršiti promene u postavkama na Admin panelu, uključujući promenu dozvola!\n"
+msgstr ""
+"Ovo je posebna grupa čiji članovi mogu videti sve u Metabejs instanci, a mogu pristupiti i izvršiti promene u postavkama na Admin panelu, uključujući promenu dozvola!\n"
 "Dakle, pažljivo dodajte ljude u ovu grupu."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
@@ -15349,9 +15379,11 @@ msgid "move the API keys to another group"
 msgstr "premestite API ključeve u drugu grupu"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Jeste li sigurni? Svi članovi ove grupe izgubiće sve dozvole koje imaju u ovoj grupi.\n"
+msgstr ""
+"Jeste li sigurni? Svi članovi ove grupe izgubiće sve dozvole koje imaju u ovoj grupi.\n"
 "Ovo se ne može poništiti."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15449,9 +15481,11 @@ msgstr "zabranjen pristup"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} će moći da koristi samo upit\n"
+msgstr ""
+"{0} će moći da koristi samo upit\n"
 "builder za {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -16987,9 +17021,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Започните са Метабасе Цлоуд-ом"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Само напомена: ваша метабаза ће бити само за читање до 30\n"
+msgstr ""
+"Само напомена: ваша метабаза ће бити само за читање до 30\n"
 "минута док је припремимо за миграцију."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -18734,9 +18770,11 @@ msgid "Conditional formatting"
 msgstr "Uslovno formatiranje"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Možete dodati pravila kako bi ćelije u ovoj tabeli promenile boju ako\n"
+msgstr ""
+"Možete dodati pravila kako bi ćelije u ovoj tabeli promenile boju ako\n"
 "ispunjavaju određene uslove."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -20330,9 +20368,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Adresa SMTP servera koji obrađuje Vaše e-adrese."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Максималан број прималаца, збир е-порука, који се може послати у секунди.\n"
+msgstr ""
+"Максималан број прималаца, збир е-порука, који се може послати у секунди.\n"
 "                Имајте на уму да коначна е-порука послата пре достизања ограничења може да је премаши ако има више прималаца."
 
 #: metabase/channel/email.clj:69
@@ -22062,9 +22102,11 @@ msgid "Cumulative count of rows"
 msgstr "Zbirni broj redova"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Aditivni zbir svih vrednosti kolone.\n"
+msgstr ""
+"Aditivni zbir svih vrednosti kolone.\n"
 "npr. ukupan prihod tokom vremena.."
 
 #: metabase/lib/schema/aggregation.cljc:169
@@ -22112,9 +22154,11 @@ msgid "Sum of all the values of a column."
 msgstr "Zbir svih vrednosti kolone."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Broj dodataka broju redova.\n"
+msgstr ""
+"Broj dodataka broju redova.\n"
 "npr. ukupan broj prodaja tokom vremena.."
 
 #: metabase/lib/schema/aggregation.cljc:208
@@ -23437,11 +23481,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "За испитивање ове базе података потребна је ознака функције апликације за ревизију"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Омогућите анализу коришћења поља за упите. Ово ће анализирати поља која се користе у упитима и ускладиштити их у\n"
-"    бази података апликације.\n\n"
+msgstr ""
+"Омогућите анализу коришћења поља за упите. Ово ће анализирати поља која се користе у упитима и ускладиштити их у\n"
+"    бази података апликације.\n"
+"\n"
 "    Подразумевано искључите јер још увек нисмо имали функцију окренуту кориснику која користи ове податке."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24585,9 +24633,11 @@ msgid "{0} of {1}"
 msgstr "{0} od {1}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Dobijene transformacije nisu u skladu sa očekivanjima.\n"
+msgstr ""
+"Dobijene transformacije nisu u skladu sa očekivanjima.\n"
 "Očekivano: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -24729,9 +24779,11 @@ msgid "Harbormaster returned an error."
 msgstr "Лучки капетан је вратио грешку."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Није могуће подесити синхронизацију директоријума диск јединице.\n"
+msgstr ""
+"Није могуће подесити синхронизацију директоријума диск јединице.\n"
 "Проверите да ли се фасцикла дели са одговарајућом е-поштом налога услуге и дозволама за дељење."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24997,9 +25049,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "SAML atribut za e-adresu korisnika"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Kada omogućimo dodelu SAML korisnika, automatski kreiramo nalog Metabaze za SAML prijavljivanje za korisnike koji\n"
+msgstr ""
+"Kada omogućimo dodelu SAML korisnika, automatski kreiramo nalog Metabaze za SAML prijavljivanje za korisnike koji\n"
 "nemam ga."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -25043,15 +25097,19 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Ovo ime aplikacije koristiće se za zahteve dobavljaču identiteta"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Ово је УРЛ на који ваши корисници иду да би се пријавили на вашег добављача идентитета. У зависности од тога који ИдП\n"
+msgstr ""
+"Ово је УРЛ на који ваши корисници иду да би се пријавили на вашег добављача идентитета. У зависности од тога који ИдП\n"
 "користите, ово обично изгледа као `хттпс://иоур-орг-наме.екампле.цом` или `хттпс://екампле.цом/апп/ми_самл_апп/абц123/ссо/самл`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Kada omogućimo dodelu JVT korisnika, automatski kreiramo nalog Metabaze na JVT prijavi za korisnike koji\n"
+msgstr ""
+"Kada omogućimo dodelu JVT korisnika, automatski kreiramo nalog Metabaze na JVT prijavi za korisnike koji\n"
 "nemam ga."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -25059,9 +25117,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON koji sadrži mapiranja grupa SAML u {0}."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Кодирани сертификат за провајдера идентитета. У зависности од вашег ИдП-а, можда ћете морати да преузмете ово,\n"
+msgstr ""
+"Кодирани сертификат за провајдера идентитета. У зависности од вашег ИдП-а, можда ћете морати да преузмете ово,\n"
 "отворите га у уређивачу текста, а затим копирајте и налепите садржај сертификата овде."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -25069,9 +25129,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Alias za ključ koji {0} treba da koristi za potpisivanje SAML zahteva"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Ово је јединствени идентификатор за ИдП. Често се назива ИД ентитета или једноставно „Издавач“. У зависности од\n"
+msgstr ""
+"Ово је јединствени идентификатор за ИдП. Често се назива ИД ентитета или једноставно „Издавач“. У зависности од\n"
 "вашег ИдП-а, ово обично изгледа отприлике као `хттп://ввв.екампле.цом/141ккек604в0К5ПН724в`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -25087,9 +25149,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Nevažeća potvrda dobavljača identiteta. Sertifikat treba da bude 64-base kodiran niz."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Kada omogućimo dodelu LDAP korisnika, automatski kreiramo nalog Metabaze na LDAP prijavljivanju za korisnike koji\n"
+msgstr ""
+"Kada omogućimo dodelu LDAP korisnika, automatski kreiramo nalog Metabaze na LDAP prijavljivanju za korisnike koji\n"
 "nemam ga."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25101,9 +25165,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Кључ за преузимање ЈВТ корисничких група"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Ово је УРЛ на који ваши корисници иду да би се одјавили са вашег добављача идентитета. У зависности од тога који ИдП\n"
+msgstr ""
+"Ово је УРЛ на који ваши корисници иду да би се одјавили са вашег добављача идентитета. У зависности од тога који ИдП\n"
 "користите, ово обично изгледа као `хттпс://иоур-орг-наме.екампле.цом` или `хттпс://екампле.цом/апп/ми_самл_апп/абц123/ссо/сло`"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26159,4 +26225,3 @@ msgstr "Pribavljanje korisnika po zemlji"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 zemalja po prodaji"
-

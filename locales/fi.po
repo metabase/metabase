@@ -2187,9 +2187,11 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:97
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Saat parhaan tuloksen käyttämällä SVG-tiedostoa, jonka tausta on läpinäkyvä\n"
+msgstr ""
+"Saat parhaan tuloksen käyttämällä SVG-tiedostoa, jonka tausta on läpinäkyvä\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:106
@@ -3436,9 +3438,11 @@ msgid "Refresh cache automatically"
 msgstr "Päivitä välimuisti automaattisesti"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Kun välimuistiin tallennetut tulokset vanhenevat, suorita kysely uudelleen ja aseta se välimuistiin päivittääksesi tulokset ja päivittääksesi\n"
+msgstr ""
+"Kun välimuistiin tallennetut tulokset vanhenevat, suorita kysely uudelleen ja aseta se välimuistiin päivittääksesi tulokset ja päivittääksesi\n"
 "välimuistin."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ResetButtonContainer.tsx:30
@@ -3681,7 +3685,8 @@ msgstr "Ostitko lisenssin edistyneiden toimintojen avaamiseksi? Syötä se alla 
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:37
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "Sinun ajokorttisi ei ole enää voimassa. Jos sinulla on uusi ajokortti, syötä se alla olevaan kenttään. Muussa tapauksessa ota yhteyttä numeroon {0}."
 
@@ -4895,9 +4900,11 @@ msgid "Connect to Slack"
 msgstr "Yhdistä Slackiin"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:43
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Jos tiimisi käyttää Slackia, voit lähettää kojelautatilauksia ja\n"
+msgstr ""
+"Jos tiimisi käyttää Slackia, voit lähettää kojelautatilauksia ja\n"
 "hälytyksiä sinne"
 
 #: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
@@ -6618,7 +6625,8 @@ msgstr "Upotettu {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
 msgstr "Käytä {0} lisätäksesi julkisesti näkyvä iframe-upotus verkkosivullesi tai blogiisi."
 
@@ -6905,10 +6913,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Tämä suodatin on poistettu käytöstä upotetussa kysymyksessä."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:60
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Jos vaadit pakollisen arvon, siirry ensin upotusasetuksiin,\n"
+msgstr ""
+"Jos vaadit pakollisen arvon, siirry ensin upotusasetuksiin,\n"
 "muuta tämä suodatin muokattavaksi tai lukituksi, julkaise\n"
 "kysymys uudelleen ja palaa tälle sivulle."
 
@@ -6920,7 +6930,8 @@ msgstr "Muistio"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:279
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:66
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
 msgstr "Lukitseminen vaatii upotuskoodin päivittämisen ennen jatkamista, muuten upotus ei enää toimi."
@@ -11424,7 +11435,8 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Tämä suodin on disabloitu upotetussa kojelaudassa."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:273
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
 msgstr "Pakollista arvoa vaatiaksesi, aseta tämä suodin muokattavaksi tai lukituksi upotusasetuksissa, uudelleenjulkaise kojelauta ja palaa tälle sivulle."
@@ -11699,17 +11711,20 @@ msgid "Turn this into a model"
 msgstr "Muuta tämä malliksi"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "Päivitä sarakkeiden kuvaukset ja mukauta metatietoja luodaksesi loistavia lähtöpisteitä tutkimukselle."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Näy korkeammalla hakutuloksissa ja korostu, kun muut käyttäjät aloittavat uusia kysymyksiä edistääkseen uudelleenkäyttöä."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Asu kokoelmissa pitääksesi ne erillään sotkuisista tietokantakaavioista."
 
@@ -13098,11 +13113,13 @@ msgid "mode"
 msgstr "tila"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1230
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Valinnainen. Oletusasetus on \"ISO\".\n"
+msgstr ""
+"Valinnainen. Oletusasetus on \"ISO\".\n"
 "- ISO: Viikko 1 alkaa maanantaina ennen tammikuun ensimmäistä torstaita.\n"
 "- USA: Viikko 1 alkaa 1. tammikuuta. Kaikki muut viikot alkavat sunnuntaina.\n"
 "- Esiintymä: Viikko 1 alkaa tammikuun 1. päivänä. Kaikki muut viikot alkavat metatietokannan lokalisointiasetuksissa määritellystä päivästä."
@@ -13161,9 +13178,11 @@ msgid "The number of units to be subtracted."
 msgstr "Vähennettävien yksiköiden määrä."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1368
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Muunna päivämäärän tai aikaleimasarakkeen aikavyöhyke.\n"
+msgstr ""
+"Muunna päivämäärän tai aikaleimasarakkeen aikavyöhyke.\n"
 "Tuemme tz-tietokannan aikavyöhykkeiden nimiä."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
@@ -15024,7 +15043,8 @@ msgid "SAML attributes"
 msgstr "SAML-attribuutit"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
-msgid "In most IdPs, you'll need to put each of these in an input box labeled\n"
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
 "\"Name\" in the attribute statements section."
 msgstr "Useimmissa IdP-palveluissa sinun täytyy laittaa jokainen näistä omalle syöttökentälle, joka on nimetty \"Nimi\" attribuuttilauseiden osiossa."
 
@@ -15065,9 +15085,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Synkronoi ryhmäjäsenyys SSO:si kanssa"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:218
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "Tämän onnistumiseksi luo mäppäyksiä kertoaksesi Metabaselle, mihin ryhmiin käyttäjät tulisi\n"
+msgstr ""
+"Tämän onnistumiseksi luo mäppäyksiä kertoaksesi Metabaselle, mihin ryhmiin käyttäjät tulisi\n"
 "lisätä sen SSO-ryhmän perusteella, johon he kuuluvat."
 
 #: frontend/src/metabase/account/notifications/components/HelpModal/HelpModal.jsx:26
@@ -15167,14 +15189,17 @@ msgstr "Lisää"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:34
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Kaikki käyttäjät kuuluvat ryhmään {0}, eikä heitä voi poistaa siitä. Tämän ryhmän käyttöoikeuksien asettaminen on hyvä tapa varmistaa, mitä uudet Metabase -käyttäjät voivat nähdä."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:43
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Tämä on erityinen ryhmä, jonka jäsenet voivat nähdä kaiken Metabasessa ja jotka voivat käyttää ja muuttaa asetuksia hallintapaneelissa, mukaan lukien käyttöoikeuksien muuttaminen! \n"
+msgstr ""
+"Tämä on erityinen ryhmä, jonka jäsenet voivat nähdä kaiken Metabasessa ja jotka voivat käyttää ja muuttaa asetuksia hallintapaneelissa, mukaan lukien käyttöoikeuksien muuttaminen! \n"
 "Lisää siis ihmisiä tähän ryhmään huolella."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.jsx:47
@@ -15292,9 +15317,11 @@ msgid "move the API keys to another group"
 msgstr "Vaihda API-avain toiseen ryhmään"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:95
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Oletko varma? Kaikki tämän ryhmän jäsenet menettävät kaikki tähän ryhmään perustuvat käyttöoikeusasetukset.\n"
+msgstr ""
+"Oletko varma? Kaikki tämän ryhmän jäsenet menettävät kaikki tähän ryhmään perustuvat käyttöoikeusasetukset.\n"
 "Tätä ei voi kumota."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:129
@@ -15391,7 +15418,8 @@ msgstr "pääsy estetty"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
 msgstr "{0} voi käyttää vain kyselytyökalua kohteelle {1}."
 
@@ -16923,9 +16951,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Aloita Metabase Cloudin käyttö"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Vain varoituksena: Metabase on lukukiellossa enintään 30 minuuttia\n"
+msgstr ""
+"Vain varoituksena: Metabase on lukukiellossa enintään 30 minuuttia\n"
 ", kun valmistelemme sitä siirtoa varten."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -17378,13 +17408,18 @@ msgstr "Valmis"
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:74
 msgid "in"
-msgstr "The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n\n"
+msgstr ""
+"The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n"
+"\n"
 "1. \"In\" as a preposition indicating location: \"sisällä\"\n"
-"Example: The cat is in the house. - Kissa on talossa.\n\n"
+"Example: The cat is in the house. - Kissa on talossa.\n"
+"\n"
 "2. \"In\" as a preposition indicating time: \"aikana\"\n"
-"Example: I will see you in the evening. - Näen sinut illalla.\n\n"
+"Example: I will see you in the evening. - Näen sinut illalla.\n"
+"\n"
 "3. \"In\" as an adverb indicating inclusion: \"mukana\"\n"
-"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n\n"
+"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n"
+"\n"
 "Please provide more context if you need a more specific translation."
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:152
@@ -18668,7 +18703,8 @@ msgid "Conditional formatting"
 msgstr "Ehdollinen muotoilu"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Voit lisätä sääntöjä, jotta tämän taulun solut vaihtavat väriä, jos ne täyttävät tietyt ehdot."
 
@@ -19641,13 +19677,18 @@ msgstr "{0} muokannut {1}"
 #: frontend/src/metabase/timelines/common/components/ModalHeader/ModalHeader.tsx:48
 msgctxt "Refers to: 'Events' in a collection"
 msgid "in"
-msgstr "The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n\n"
+msgstr ""
+"The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n"
+"\n"
 "1. \"In\" as a preposition indicating location: \"sisällä\"\n"
-"Example: The cat is in the house. - Kissa on talossa.\n\n"
+"Example: The cat is in the house. - Kissa on talossa.\n"
+"\n"
 "2. \"In\" as a preposition indicating time: \"aikana\"\n"
-"Example: I will see you in the evening. - Näen sinut illalla.\n\n"
+"Example: I will see you in the evening. - Näen sinut illalla.\n"
+"\n"
 "3. \"In\" as an adverb indicating inclusion: \"mukana\"\n"
-"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n\n"
+"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n"
+"\n"
 "Please provide more context if you need a more specific translation."
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/BreakoutDropdown/BreakoutDropdown.tsx:39
@@ -20258,9 +20299,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Sähköpostiasi käsittelevän SMTP-palvelimen osoite."
 
 #: metabase/channel/email.clj:101
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Lähetettävien vastaanottajien enimmäismäärä yhteissähköposteilla per sekunti.\n"
+msgstr ""
+"Lähetettävien vastaanottajien enimmäismäärä yhteissähköposteilla per sekunti.\n"
 " Huomaa, että ennen rajan saavuttamista lähetetty viimeinen sähköposti voi ylittää sen, jos sillä on useita vastaanottajia."
 
 #: metabase/channel/email.clj:69
@@ -21987,7 +22030,8 @@ msgid "Cumulative count of rows"
 msgstr "Kumulatiivinen rivien määrä"
 
 #: metabase/lib/schema/aggregation.cljc:187
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Sarakkeen kaikkien arvojen summattu summa.\\ne.x. kokonaistulot ajan mittaan."
 
@@ -22036,7 +22080,8 @@ msgid "Sum of all the values of a column."
 msgstr "Sarakkeen kaikkien arvojen summa."
 
 #: metabase/lib/schema/aggregation.cljc:194
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Rivien lukumäärän summaus, esim. myynnin kokonaismäärä ajan kuluessa."
 
@@ -23357,11 +23402,15 @@ msgid "Querying this database requires the audit-app feature flag"
 msgstr "Tämän tietokannan kysely edellyttää audit-app ominaisuuden lippua."
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
-msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
 "    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
-msgstr "Ota käyttöön kyselyiden kenttäkäyttöanalyysi. Tämä analysoi kyselyissä käytetyt kentät ja tallentaa ne\n"
-"    -sovellustietokantaan.\n\n"
+msgstr ""
+"Ota käyttöön kyselyiden kenttäkäyttöanalyysi. Tämä analysoi kyselyissä käytetyt kentät ja tallentaa ne\n"
+"    -sovellustietokantaan.\n"
+"\n"
 "    Poista oletusarvoisesti käytöstä, koska meillä ei ole vielä ollut käyttäjälle suunnattua ominaisuutta, joka käyttää näitä tietoja."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
@@ -24501,7 +24550,8 @@ msgid "{0} of {1}"
 msgstr "{1}:n {0}"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
 msgstr "Tuloksena olevat muunnokset eivät vastaa odotuksia."
 
@@ -24644,9 +24694,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster palautti virheen."
 
 #: metabase_enterprise/gsheets/api.clj:222
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Aseman kansion synkronointia ei voi määrittää.\n"
+msgstr ""
+"Aseman kansion synkronointia ei voi määrittää.\n"
 "Tarkista, että kansio on jaettu oikealla palvelutilin sähköpostilla ja jakamisoikeuksilla."
 
 #: metabase_enterprise/gsheets/api.clj:255
@@ -24912,9 +24964,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "SAML-attribuutti käyttäjän sähköpostiosoitteelle"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Kun otamme käyttöön SAML-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin SAML-kirjautumiseen käyttäjille, joilla\n"
+msgstr ""
+"Kun otamme käyttöön SAML-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin SAML-kirjautumiseen käyttäjille, joilla\n"
 "ei ole sellaista."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:140
@@ -24958,14 +25012,17 @@ msgid "This application name will be used for requests to the Identity Provider"
 msgstr "Tämän sovelluksen nimi tullaan käyttämään pyyntöihin tunnistepalvelimelle."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:54
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
 msgstr "Tämä on URL-osoite, johon käyttäjäsi menevät kirjautuakseen sisään identiteetintarjoajaasi. Riippuen siitä, mikä IDP on käytössäsi tämä näyttää yleensä tältä 'https://your-org-name.example.com tai https://example.com/app/my_saml_app/abc123/sso/saml'"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:39
-msgid "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
 "don''t have one."
-msgstr "Kun otamme käyttöön JWT-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin JWT-kirjautumiseen käyttäjille, joilla\n"
+msgstr ""
+"Kun otamme käyttöön JWT-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin JWT-kirjautumiseen käyttäjille, joilla\n"
 "ei ole sellaista."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:155
@@ -24973,9 +25030,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON-tiedosto, joka sisältää SAML-ryhmävastaavuudet kohteeseen {0}."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:71
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Koodattu varmenne identiteetin tarjoajalle. IdP:stä riippuen saatat joutua lataamaan tämän,\n"
+msgstr ""
+"Koodattu varmenne identiteetin tarjoajalle. IdP:stä riippuen saatat joutua lataamaan tämän,\n"
 "avaamaan sen tekstieditorissa ja kopioimaan ja liittämään varmenteen sisältö tähän."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:111
@@ -24983,9 +25042,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Aliakseksi avaimelle, jota {0} tulisi käyttää SAML-pyyntöjen allekirjoittamiseen."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:83
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Tämä on IdP:n yksilöllinen tunniste. Kutsutaan usein nimellä Entity ID tai yksinkertaisesti \"myöntäjä\". Riippuen\n"
+msgstr ""
+"Tämä on IdP:n yksilöllinen tunniste. Kutsutaan usein nimellä Entity ID tai yksinkertaisesti \"myöntäjä\". Riippuen\n"
 "IDP:stäsi, tämä näyttää yleensä tältä \"http://www.example.com/141xkex604w0Q5PN724v\"."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:208
@@ -25001,9 +25062,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Virheellinen tunnistepalvelimen varmenne. Varmenne tulisi olla base-64 koodattu merkkijono."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:47
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Kun otamme käyttöön LDAP-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin LDAP-kirjautumiseen käyttäjille, joilla\n"
+msgstr ""
+"Kun otamme käyttöön LDAP-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin LDAP-kirjautumiseen käyttäjille, joilla\n"
 "ei ole sellaista."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:97
@@ -25015,9 +25078,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Avain JWT-käyttäjien ryhmien hakemiseen"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:200
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Tämä on URL-osoite, johon käyttäjät kirjautuvat ulos identiteetintarjoajaltasi. Riippuen siitä, mitä IDP:tä käytät\n"
+msgstr ""
+"Tämä on URL-osoite, johon käyttäjät kirjautuvat ulos identiteetintarjoajaltasi. Riippuen siitä, mitä IDP:tä käytät\n"
 ", tämä näyttää yleensä tältä \"https://your-org-name.example.com\" tai \"https://example.com/app/my_saml_app/abc123/sso/slo\"."
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:167
@@ -26073,4 +26138,3 @@ msgstr "Käyttäjien hankinta maittain"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 maata myynnin perusteella"
-
