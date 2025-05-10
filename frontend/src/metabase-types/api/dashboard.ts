@@ -11,9 +11,11 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValueOrArray,
   Table,
   UserId,
   VirtualCardDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 
 import type {
@@ -174,6 +176,12 @@ export type QuestionDashboardCard = BaseDashboardCard & {
   series?: Card[];
 };
 
+export type VisualizerDashboardCard = QuestionDashboardCard & {
+  visualization_settings: BaseDashboardCard["visualization_settings"] & {
+    visualization: VisualizerVizDefinition;
+  };
+};
+
 export type VirtualDashboardCard = BaseDashboardCard & {
   card_id: null;
   card: VirtualCard;
@@ -323,3 +331,9 @@ export type UpdateDashboardPropertyRequest<
 export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
+
+export type GetRemappedDashboardParameterValueRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+  value: ParameterValueOrArray;
+};

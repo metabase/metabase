@@ -9,7 +9,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.permissions.api.permission-graph :as api.permission-graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]

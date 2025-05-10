@@ -11,6 +11,7 @@ export const createMockSearchResult = (
 
   return {
     id: 1,
+    entity_id: `entity_${options.id ?? 1}`,
     name: "Mock search result",
     description: "Mock search result description",
     model: "card",

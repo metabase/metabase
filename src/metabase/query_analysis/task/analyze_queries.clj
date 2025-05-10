@@ -9,7 +9,7 @@
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.failure-map :as failure-map]
    [metabase.query-analysis.settings :as query-analysis.settings]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import

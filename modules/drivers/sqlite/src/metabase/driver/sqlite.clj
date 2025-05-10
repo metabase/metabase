@@ -275,6 +275,10 @@
   [_driver _semantic_type expr]
   (->time expr))
 
+(defmethod sql.qp/->date :sqlite
+  [_driver value]
+  (->date value))
+
 ;; SQLite doesn't like Temporal values getting passed in as prepared statement args, so we need to convert them to
 ;; date literal strings instead to get things to work
 ;;
