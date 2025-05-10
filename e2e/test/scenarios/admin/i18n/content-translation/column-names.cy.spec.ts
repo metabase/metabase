@@ -1,15 +1,16 @@
+import { P, match } from "ts-pattern";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 
 import { germanFieldNames } from "./constants";
 import {
   interceptContentTranslationRoutes,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
-import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
-import { P, match } from "ts-pattern";
 
-const { PRODUCTS, ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -87,34 +88,8 @@ describe("scenarios > admin > localization > content translation of column names
           describe("column headers in viz", () => {
             const columnX = "PRICE";
             const columnY = "RATING";
-            const skipTheseDisplayTypes = [
-              "table", // Skipped because we already test this
-              // Skipped because these visualiations don't show display names
-              "scalar",
-              "smartscalar",
-              "gauge",
-              "progress",
-            ];
             // NOTE: What about the 'trend' visualization? This is an option in
             // the app, but it's not in the cardDisplayTypes array
-            const simpleDisplayTypes = [
-              "bar",
-              "line",
-              "row",
-              "area",
-              "combo",
-              "scatter",
-            ];
-            // these aren't tested yet
-            const complexDisplayTypes = [
-              "waterfall",
-              "sankey",
-              "pie",
-              "pivot",
-              "funnel",
-              "object",
-              "map",
-            ];
 
             cardDisplayTypes.forEach((displayType: CardDisplayType) => {
               match(displayType)
