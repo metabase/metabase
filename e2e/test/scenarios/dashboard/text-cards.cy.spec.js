@@ -85,6 +85,13 @@ describe("scenarios > dashboard > text and headings", () => {
           cy.findByLabelText("Show visualization options").click();
         });
 
+      // should not render visualizer option
+      H.getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Visualize another way").should("not.exist");
+        });
+
       cy.findByRole("dialog").within(() => {
         cy.findByTestId("chartsettings-sidebar").within(() => {
           cy.findByText("Vertical Alignment").should("be.visible");
