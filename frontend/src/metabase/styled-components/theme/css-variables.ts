@@ -31,8 +31,8 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
     :root {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
-      ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
+      ${getThemeSpecificCssVariables(theme)}
     }
   `;
 }
