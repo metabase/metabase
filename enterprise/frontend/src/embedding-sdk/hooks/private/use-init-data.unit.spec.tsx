@@ -16,7 +16,7 @@ import {
   useSdkDispatch,
   useSdkSelector,
 } from "embedding-sdk/store";
-import { refreshTokenAsync } from "embedding-sdk/store/auth";
+import { refreshTokenAsync } from "embedding-sdk/store/auth/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import {
@@ -51,8 +51,7 @@ const TestComponent = ({ authConfig }: { authConfig: MetabaseAuthConfig }) => {
     } as MetabaseAuthConfig,
   });
 
-  const refreshToken = () =>
-    dispatch(refreshTokenAsync("http://TEST_URI/sso/metabase"));
+  const refreshToken = () => dispatch(refreshTokenAsync("http://localhost"));
 
   const handleClick = () => {
     GET("/api/some/url")();

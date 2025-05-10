@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
-import { initAuth } from "embedding-sdk/store/auth";
+import { initAuth } from "embedding-sdk/store/auth/auth";
 import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
 import {
   getFetchRefreshTokenFn,
