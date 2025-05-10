@@ -1055,6 +1055,34 @@ describe("scenarios > embedding > full app", () => {
           databaseName: "Sample Database",
         });
       });
+
+      it("should be able to join a model when the data source is a table", () => {
+        const cardDetails = {
+          ...ordersCardDetails,
+          type: "model",
+          collection_id: FIRST_COLLECTION_ID,
+        };
+        H.createQuestion(cardDetails);
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectTable({
+          tableName: "Products",
+        });
+        H.getNotebookStep("data").button("Join data").click();
+        H.popover().within(() => {
+          cy.icon("chevronleft").click();
+          cy.icon("chevronleft").click();
+        });
+        selectCard({
+          cardName: cardDetails.name,
+          cardType: "model",
+          collectionNames: ["First collection"],
+        });
+        clickOnJoinDataSource(cardDetails.name);
+        verifyCardSelected({
+          cardName: cardDetails.name,
+          collectionName: "First collection",
+        });
+      });
     });
 
     describe("question", () => {
@@ -1242,31 +1270,71 @@ describe("scenarios > embedding > full app", () => {
         });
       });
 
-      it("should be able to join a card when the data source is a table", () => {
-        const cardDetails = {
-          ...ordersCardDetails,
+      it("should join a table when the data source is a model", () => {
+        // Orders Model already exists
+        const ordersModelName = "Orders Model";
+        const ordersCountModelDetails = {
+          ...ordersCountCardDetails,
+          name: "Orders Count Model",
           type: "model",
-          collection_id: FIRST_COLLECTION_ID,
+          collection_id: null,
         };
-        H.createQuestion(cardDetails);
+        H.createQuestion(ordersCountModelDetails);
+
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-        selectTable({
-          tableName: "Products",
+        selectCard({
+          cardName: ordersModelName,
+          cardType: "model",
+          collectionNames: [],
         });
+
         H.getNotebookStep("data").button("Join data").click();
         H.popover().within(() => {
           cy.icon("chevronleft").click();
           cy.icon("chevronleft").click();
         });
         selectCard({
-          cardName: cardDetails.name,
+          cardName: ordersCountModelDetails.name,
           cardType: "model",
-          collectionNames: ["First collection"],
+          collectionNames: [],
         });
-        clickOnJoinDataSource(cardDetails.name);
+
+        cy.log("select join column");
+        H.popover().findByRole("option", { name: "ID" }).click();
+        H.popover().findByRole("option", { name: "Count" }).click();
+
+        clickOnJoinDataSource(ordersCountModelDetails.name);
         verifyCardSelected({
-          cardName: cardDetails.name,
-          collectionName: "First collection",
+          cardName: ordersCountModelDetails.name,
+          collectionName: "Our analytics",
+        });
+      });
+
+      it("should join a model when the data source is a model", () => {
+        // Orders Model already exists
+        const ordersModelName = "Orders Model";
+
+        startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
+        selectCard({
+          cardName: ordersModelName,
+          cardType: "model",
+          collectionNames: [],
+        });
+
+        H.getNotebookStep("data").button("Join data").click();
+        H.popover().within(() => {
+          cy.icon("chevronleft").click();
+          cy.icon("chevronleft").click();
+        });
+
+        selectTable({
+          tableName: "Products",
+          databaseName: "Sample Database",
+        });
+        clickOnJoinDataSource("Products");
+        verifyTableSelected({
+          tableName: "Products",
+          databaseName: "Sample Database",
         });
       });
     });
