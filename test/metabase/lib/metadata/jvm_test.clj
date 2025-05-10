@@ -1,5 +1,5 @@
 (ns metabase.lib.metadata.jvm-test
-  #_{:clj-kondo/ignore [:discouraged-namespace]}
+  ^{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
