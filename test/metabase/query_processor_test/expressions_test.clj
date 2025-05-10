@@ -605,6 +605,39 @@
                  :order-by    [[:asc $id]]
                  :limit       2})))))))
 
+(deftest ^:parallel sum-where-with-literal-expression-test
+  (testing "sum-where using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals)
+      (is (= [[1510617.7 0.0]]
+             (mt/formatted-rows
+              [2.0 2.0]
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :aggregation [[:sum-where $total [:expression "MyTrue"]]
+                               [:sum-where $total [:expression "MyFalse"]]]})))))))
+
+(deftest ^:parallel count-where-with-literal-expression-test
+  (testing "count-where using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals)
+      (is (= [[18760 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :aggregation [[:count-where [:expression "MyTrue"]]
+                               [:count-where [:expression "MyFalse"]]]})))))))
+
+(deftest ^:parallel distinct-where-with-literal-expression-test
+  (testing "distinct-where using literal expressions"
+    (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where :expressions :expression-literals)
+      (is (= [[1746 0]]
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query orders
+                {:expressions standard-literal-expression-defs
+                 :aggregation [[:distinct-where $user_id [:expression "MyTrue"]]
+                               [:distinct-where $user_id [:expression "MyFalse"]]]})))))))
+
 (deftest ^:parallel filter-literal-expression-with-and-or-test
   (doseq [[op expected] [[:and []]
                          [:or  [[true false]]]]]
@@ -677,8 +710,9 @@
                                 :expressions  {"One" [:value 1.0 {:base_type :type/Float}]
                                                "Two" [:value 2 {:base_type :type/Integer}]
                                                "Bob" [:value "Bob's Burgers" {:base_type :type/Text}]}
-                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
-                 :filters      [[:!= *Bob/Text [:expression "Name"]]
+                                :filter       [:= 2.0 [:* [:expression "Two"] [:expression "One"]]]}
+                 :filter       [:and
+                                [:!= *Bob/Text [:expression "Name"]]
                                 [:!= $name [:expression "Name"]]
                                 [:= true [:expression "MyTrue"]]
                                 [:= [:expression "MyTrue"] true]
@@ -706,13 +740,13 @@
                                &JoinedCategories.venues.name]
                  :expressions {"InversePrice"  [:/ &JoinedCategories.*LiteralInt/Integer $price]
                                "NameEquals"    [:= &JoinedCategories.*LiteralString/Text $name]}
-                 :filters     [[:expression "NameEquals"]]
+                 :filter      [:expression "NameEquals"]
                  :joins       [{:strategy     :left-join
                                 :condition    [:= $category_id &JoinedCategories.venues.category_id]
                                 :source-query {:source-table $$venues
                                                :expressions  {"LiteralInt"    [:value 1 {:base_type :type/Integer}]
                                                               "LiteralString" [:value "Stout Burgers & Beers" {:base_type :type/Text}]}
-                                               :filters     [[:!= $name [:expression "LiteralString"]]]
+                                               :filter       [:!= $name [:expression "LiteralString"]]
                                                :fields       [$category_id
                                                               $name
                                                               [:expression "LiteralInt"]
@@ -749,8 +783,9 @@
                                                [:aggregation-options [:sum [:expression "Two"]] {:name "SumTwo"}]
                                                [:aggregation-options [:min [:expression "Bob"]] {:name "MinBob"}]]
                                 :breakout     [$category_id]
-                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "One"]]]]}
-                 :filters      [[:!= *MinBob/Text [:expression "Name"]]
+                                :filter       [:= 2.0 [:* [:expression "Two"] [:expression "One"]]]}
+                 :filter       [:and
+                                [:!= *MinBob/Text [:expression "Name"]]
                                 [:= true [:expression "True"]]
                                 [:= [:expression "True"] true]
                                 [:=
@@ -787,6 +822,106 @@
                                 :alias        "JoinedCategories"}]
                  :order-by    [[:asc $id]]
                  :limit       3})))))))
+
+(deftest ^:parallel literal-boolean-expressions-and-fields-in-conditions-test
+  (testing "literal boolean expression and field references in filter and case clauses"
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
+    ;; should support these queries without rewriting top-level booleans in conditions.
+    (let [true-value  (get standard-literal-expression-defs "MyTrue")
+          false-value (get standard-literal-expression-defs "MyFalse")]
+      (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals :nested-queries)
+        (mt/dataset places-cam-likes
+          (is (= [[3 0 2 2]]
+                 (mt/formatted-rows
+                  [int int int int]
+                  (mt/run-mbql-query places
+                    {:expressions  {"T" true-value, "F" false-value}
+                     :source-query {:source-table $$places
+                                    :fields [$liked]}
+                     :aggregation  [[:count-where [:expression "T"]]
+                                    [:count-where [:expression "F"]]
+                                    [:count-where *liked]
+                                    [:count-where $liked]]
+                     :filter       [:or
+                                    $liked ; id-based field ref
+                                    *liked ; named-based field ref
+                                    [:expression "T"]]})))))))))
+
+(deftest ^:parallel nested-and-joined-literal-boolean-expressions-in-conditions-test
+  (testing "nested and joined literal boolean expression references in filter and case clauses"
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
+    ;; should support these queries without rewriting top-level booleans in conditions.
+    (let [true-value  (get standard-literal-expression-defs "MyTrue")
+          false-value (get standard-literal-expression-defs "MyFalse")]
+      (mt/test-drivers (mt/normal-drivers-with-feature
+                        :basic-aggregations
+                        :expressions
+                        :expression-literals
+                        :left-join
+                        :nested-queries)
+        (mt/dataset places-cam-likes
+          (is (= [[3 0 0]]
+                 (mt/formatted-rows
+                  [int int int]
+                  (mt/run-mbql-query nil
+                    {:expressions  {"T0" true-value, "F0" false-value}
+                     :source-query {:source-query {:source-table $$places
+                                                   :expressions  {"T2" true-value, "F2" false-value}
+                                                   :fields       [$places.id [:expression "T2"] [:expression "F2"]]
+                                                   :filter       [:or [:expression "F2"] [:expression "T2"]]}
+                                    :expressions  {"T1" true-value, "F1" false-value}
+                                    :fields       [$places.id
+                                                   [:expression "T1"]
+                                                   [:expression "F1"]
+                                                   *T2/Boolean
+                                                   *F2/Boolean]
+                                    :filter       [:and
+                                                   [:expression "T1"]
+                                                   [:or
+                                                    [:expression "F1"]
+                                                    *F2/Boolean
+                                                    *T2/Boolean]]}
+                     :joins        [{:strategy     :left-join
+                                     :condition    [:= $places.id &Joined.places.id]
+                                     :source-query {:source-table $$places
+                                                    :expressions  {"TJ" true-value, "FJ" false-value}
+                                                    :fields       [$places.id [:expression "TJ"] [:expression "FJ"]]}
+                                     :alias        "Joined"}]
+                     :aggregation  [[:count-where *T2/Boolean]
+                                    [:count-where *F1/Boolean]
+                                    [:count-where &Joined.*FJ/Boolean]]
+                     :filter       [:and
+                                    &Joined.*TJ/Boolean
+                                    [:expression "T0"]
+                                    [:or *T1/Boolean *F2/Boolean &Joined.*FJ/Boolean]]
+                     :limit        1})))))))))
+
+(deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-in-conditions-test
+  (testing "nested literal boolean expression references with name collisions in filter and case clauses"
+    ;; Test boolean->comparison conversion for drivers that need it. See boolean_to_comparison.clj. Other drivers
+    ;; should support these queries without rewriting top-level booleans in conditions.
+    (let [true-value  (get standard-literal-expression-defs "MyTrue")
+          false-value (get standard-literal-expression-defs "MyFalse")]
+      (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions :expression-literals :nested-queries)
+        (is (= [[18760 0]]
+               (mt/formatted-rows
+                [int int]
+                (mt/run-mbql-query nil
+                  {:expressions  {"T" true-value, "F" false-value}
+                   :source-query {:source-query {:source-table $$orders
+                                                 :expressions  {"T" true-value, "F" false-value}
+                                                 :fields       [[:expression "T"] [:expression "F"]]}
+                                  :expressions  {"T" true-value, "F" false-value}
+                                  :fields       [[:expression "T"]
+                                                 [:expression "F"]
+                                                 *T/Boolean
+                                                 *F/Boolean]}
+                   :aggregation  [[:count-where *T/Boolean]
+                                  [:count-where *F/Boolean]]
+                   :filter       [:and
+                                  [:or [:expression "T"] [:expression "F"]]
+                                  [:or *T/Boolean *F/Boolean]]
+                   :limit        1}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 MISC BUG FIXES                                                 |
