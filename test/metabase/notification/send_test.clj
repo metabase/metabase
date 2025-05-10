@@ -471,8 +471,8 @@
                           (sort @#'notification.send/deadline-comparator))]
       (is (= [1 2 3] (map #(.id %) items))))))
 
-(deftest notification-dispatcher-test
-  (testing "notification dispatcher"
+(deftest notification-dedup-dispatcher-test
+  (testing "notification dedup dispatcher"
     (let [sent-notifications  (atom [])
           wait-for-processing #(u/poll {:thunk       (fn [] (count @sent-notifications))
                                         :done?       (fn [cnt] (= cnt %))
@@ -482,7 +482,7 @@
                                                                 ;; fake latency
                                                                 (Thread/sleep 20)
                                                                 (swap! sent-notifications conj notification))]
-        (let [queue           (#'notification.send/create-notification-queue)
+        (let [queue           (#'notification.send/create-dedup-priority-queue)
               test-dispatcher (#'notification.send/create-notification-dispatcher 2 queue)]
           (testing "basic processing"
             (reset! sent-notifications [])
@@ -532,7 +532,7 @@
 
 (deftest notification-priority-test
   (testing "notifications are processed in priority order (by deadline)"
-    (let [queue (#'notification.send/create-notification-queue)
+    (let [queue (#'notification.send/create-dedup-priority-queue)
           low-priority    {:id "low-priority"
                            :triggering_subscription {:type :notification-subscription/cron
                                                      :cron_schedule "0 0 0 * * ? *"}} ; daily schedule
@@ -552,7 +552,7 @@
 
 (deftest notification-queue-preserves-deadline-on-replacement-test
   (testing "notifications with same ID are replaced in queue while preserving original deadline"
-    (let [queue (#'notification.send/create-notification-queue)
+    (let [queue (#'notification.send/create-dedup-priority-queue)
           ;; Create a notification with a daily schedule (lower priority)
           notification-v1 {:id "same-id"
                            :version 1
@@ -576,8 +576,8 @@
              (for [_ (range 2)]
                (#'notification.send/take-notification! queue)))))))
 
-(deftest notification-queue-test
-  (let [queue (#'notification.send/create-notification-queue)]
+(deftest notification-dedup-priority-test
+  (let [queue (#'notification.send/create-dedup-priority-queue)]
 
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
@@ -585,14 +585,14 @@
              (#'notification.send/take-notification! queue))))
 
     (testing "notifications with same ID are replaced in queue"
-      (let [queue (#'notification.send/create-notification-queue)]
+      (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
                (#'notification.send/take-notification! queue)))))
 
     (testing "multiple notifications are processed in order"
-      (let [queue (#'notification.send/create-notification-queue)]
+      (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
         (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "B"})
         (#'notification.send/put-notification! queue {:id 3 :payload_type :notification/testing :test-value "C"})
@@ -605,7 +605,7 @@
                (#'notification.send/take-notification! queue)))))
 
     (testing "take blocks until notification is available"
-      (let [queue (#'notification.send/create-notification-queue)
+      (let [queue (#'notification.send/create-dedup-priority-queue)
             result (atom nil)
             latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
@@ -623,9 +623,52 @@
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
 
+(deftest send-condition-queue-test
+  (doseq [[condition-passed? condition-creator-id] [[true (mt/user->id :crowberto)]
+                                                    [false (mt/user->id :rasta)]]]
+    (notification.tu/with-temp-notification
+      [notification {:notification {:payload_type :notification/testing
+                                    :creator_id   (mt/user->id :crowberto)
+                                    :condition    ["=" ["context" "creator_id"] condition-creator-id]}}]
+      (let [queued? (atom false)]
+        (with-redefs [notification.send/send-notification-sync! (fn [_notification] (reset! queued? true))]
+          (#'notification.send/send-notification!
+           notification
+           :notification/sync? true))
+        (if condition-passed?
+          (testing "queued when condition returns true"
+            (is (true? @queued?)))
+          (testing "not queued when condition returns false"
+            (is (false? @queued?))))))))
+
+(deftest cutoff-notification-env-test
+  (let [send-went-through? (fn [notification]
+                             (let [yes (atom false)]
+                               (with-redefs [notification.send/send-notification-sync! (fn [_notification]
+                                                                                         (reset! yes true))]
+                                 (#'notification.send/send-notification! notification :notification/sync? true))
+                               @yes))]
+    (testing "if not set, send any notifications"
+      (mt/with-temporary-setting-values [notification-suppression-cutoff nil]
+        (doseq [updated-at [(t/zoned-date-time)
+                            (t/plus (t/zoned-date-time) (t/days 1))
+                            (t/minus (t/zoned-date-time) (t/days 1))
+                            nil]]
+          (is (true? (send-went-through? {:updated_at updated-at}))))))
+    (testing "if set"
+      (let [cutoff (t/offset-date-time)]
+        (mt/with-temporary-setting-values [notification-suppression-cutoff (str cutoff)]
+          (doseq [[went-through? updated-at context]
+                  [[false (t/minus cutoff (t/seconds 1)) "skip if notifications were updated before cut off"]
+                   [true  (t/plus cutoff (t/seconds 1)) "send if notifications were updated after cut off"]
+                   ;; for unsaved notifications
+                   [true  nil "send if no updated_at"]]]
+            (testing context
+              (is (= went-through? (send-went-through? {:updated_at updated-at}))))))))))
+
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
-    (let [queue                  (#'notification.send/create-notification-queue)
+    (let [queue                  (#'notification.send/create-dedup-priority-queue)
           num-producers          5
           num-consumers          3
           num-items-per-producer 20
