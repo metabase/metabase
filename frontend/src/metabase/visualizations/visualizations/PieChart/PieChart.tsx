@@ -73,6 +73,10 @@ export function PieChart(props: VisualizationProps) {
     () => getPieChartFormatters(chartModel, settings),
     [chartModel, settings],
   );
+
+  const chartModelDimensionCol = chartModel.colDescs.dimensionDesc.column;
+  chartModelDimensionCol.display_name = tc(chartModelDimensionCol.display_name);
+
   const option = useMemo(
     () => ({
       ...getPieChartOption(
