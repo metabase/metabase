@@ -235,6 +235,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
             {...props}
+            rawSeries={translatedRawSeries}
           />
           <ViewSidebar
             side="right"
