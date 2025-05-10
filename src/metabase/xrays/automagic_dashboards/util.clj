@@ -88,3 +88,7 @@
            (analyze/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
+
+(defn filter-id-for-field
+  [field]
+  (-> field ((juxt :id :name :unit)) hash str))
