@@ -1,4 +1,6 @@
+import { ContentTranslationFunction } from "metabase-lib";
 import type { DictionaryArray } from "metabase-types/api";
+import _ from "underscore";
 
 /** Translate a user-generated string
  *
@@ -35,4 +37,28 @@ export const translateContentString = <
   }
 
   return msgstr;
+};
+
+// TODO: Tighten types here, perhaps with a generic
+/** Walk through obj and translate any display_name fields */
+export const translateDisplayNames = (
+  originalObj: any,
+  tc: ContentTranslationFunction,
+): any => {
+  // FIXME: should probably be T
+  const obj = structuredClone(originalObj);
+  if (_.isArray(obj)) {
+    return obj.map((item) => translateDisplayNames(item, tc));
+  }
+  if (_.isObject(obj)) {
+    _.each(obj, (value, key) => {
+      if (key === "display_name" && typeof value === "string") {
+        obj[key] = tc(value); // FIXME
+      } else if (_.isObject(value) || _.isArray(value)) {
+        obj[key] = translateDisplayNames(value, tc);
+      }
+    });
+    return obj;
+  }
+  return obj;
 };
