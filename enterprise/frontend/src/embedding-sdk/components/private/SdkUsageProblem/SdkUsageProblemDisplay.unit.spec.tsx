@@ -29,11 +29,13 @@ interface Options {
   authConfig: MetabaseAuthConfig;
   hasEmbeddingFeature?: boolean;
   isEmbeddingSdkEnabled?: boolean;
+  isDevelopmentMode?: boolean;
 }
 
 const setup = (options: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: options.hasEmbeddingFeature ?? true,
+    "development-mode": options.isDevelopmentMode ?? false,
   });
 
   const settingValues = createMockSettings({
@@ -80,7 +82,7 @@ describe("SdkUsageProblemDisplay", () => {
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
-    expect(within(card).getByText("error")).toBeInTheDocument();
+    expect(within(card).getByText("Error")).toBeInTheDocument();
 
     expect(
       within(card).getByText(
@@ -89,7 +91,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /View documentation/,
+      name: /Documentation/,
     });
 
     expect(docsLink).toHaveAttribute(
@@ -106,7 +108,10 @@ describe("SdkUsageProblemDisplay", () => {
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
-    expect(within(card).getByText("warning")).toBeInTheDocument();
+
+    expect(
+      within(card).getByText("This embed is powered by the Metabase SDK."),
+    ).toBeInTheDocument();
 
     expect(
       within(card).getByText(
@@ -115,7 +120,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /View documentation/,
+      name: /Documentation/,
     });
 
     expect(docsLink).toHaveAttribute(
@@ -137,7 +142,7 @@ describe("SdkUsageProblemDisplay", () => {
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
-    expect(within(card).getByText("error")).toBeInTheDocument();
+    expect(within(card).getByText("Error")).toBeInTheDocument();
 
     expect(
       within(card).getByText(
@@ -165,7 +170,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /View documentation/,
+      name: /Documentation/,
     });
 
     expect(docsLink).toHaveAttribute(
@@ -195,7 +200,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /View documentation/,
+      name: /Documentation/,
     });
 
     expect(docsLink).toHaveAttribute(
@@ -224,12 +229,43 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /View documentation/,
+      name: /Documentation/,
     });
 
     expect(docsLink).toHaveAttribute(
       "href",
       "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase",
+    );
+  });
+
+  it("shows a warning when development mode is enabled", async () => {
+    setup({
+      authConfig: createMockAuthProviderUriConfig(),
+      isEmbeddingSdkEnabled: true,
+      isDevelopmentMode: true,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    expect(
+      within(card).getByText("This embed is powered by the Metabase SDK."),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        "This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.",
+      ),
+    ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /Documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/upgrade",
     );
   });
 });
