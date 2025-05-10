@@ -32,6 +32,20 @@
   "The name of the listener that consumes the queue"
   "search-index-update")
 
+(def max-searchable-value-length
+  "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
+  And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
+  500000)
+
+(defn searchable-value-trim-sql
+  "Returns the honeysql expression to trim a searchable value to the max length.
+  The passed column should be a keyword that is qualified as needed.
+  Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
+  [column]
+  [:left
+   column
+   [:cast (+ max-searchable-value-length 100) :integer]])
+
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
   (->> (:search-terms (search.spec/spec (:model m)))
@@ -64,8 +78,14 @@
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
-                                               (:search-terms spec)
-                                               (mapcat (fn [k] (attrs->select-items (get spec k)))
+                                               (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
+                                                                term])
+                                                    (:search-terms spec))
+                                               (mapcat (fn [k] (attrs->select-items
+                                                                (let [search-terms (set (:search-terms spec))]
+                                                                  (->> k
+                                                                       (get spec)
+                                                                       (remove (comp search-terms key))))))
                                                        [:attrs :render-terms])))
       :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:inline [:= 1 1]])
