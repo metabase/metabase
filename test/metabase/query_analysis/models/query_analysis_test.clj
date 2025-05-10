@@ -122,6 +122,7 @@
                                           :template-tags {"adequate_total"
                                                           {:type         :dimension
                                                            :name         "adequate_total"
+                                                           :id           "_adequate_total_"
                                                            :display-name "Total is big enough"
                                                            :dimension    [:field (mt/id :orders :total)
                                                                           {:base-type :type/Number}]

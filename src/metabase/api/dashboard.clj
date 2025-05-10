@@ -1129,6 +1129,9 @@
     (keyword (name type))
     :=))
 
+;; TODO needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
+;; TODO duplicates code in params.clj
+;; TODO needs to wrap models and metrics properly!
 (mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (let [cards (into {}

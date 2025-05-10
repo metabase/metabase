@@ -70,68 +70,76 @@
                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
                                                  :template-tags {"name" {:name         "name"
                                                                          :display_name "Name"
+                                                                         :id           "aaaaaaaa"
                                                                          :type         :dimension
                                                                          :dimension    [:field (mt/id :venues :id) nil]}}}}}]
-      (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
-                                   :table_id           (mt/id :venues)
-                                   :display_name       "ID"
-                                   :name               "ID"
-                                   :base_type          :type/BigInteger
-                                   :semantic_type      :type/PK
-                                   :has_field_values   :none
-                                   :fk_target_field_id nil
-                                   :target nil
-                                   :name_field         {:id                (mt/id :venues :name)
-                                                        :table_id          (mt/id :venues)
-                                                        :display_name      "Name"
-                                                        :name              "NAME"
-                                                        :base_type         :type/Text
-                                                        :semantic_type     :type/Name
-                                                        :has_field_values  :list
-                                                        :fk_target_field_id nil}
-                                   :dimensions         []}}
+      (is (= {"aaaaaaaa" [{:id                 (mt/id :venues :id)
+                           :table_id           (mt/id :venues)
+                           :display_name       "ID"
+                           :name               "ID"
+                           :base_type          :type/BigInteger
+                           :semantic_type      :type/PK
+                           :has_field_values   :none
+                           :fk_target_field_id nil
+                           :target nil
+                           :name_field         {:id                (mt/id :venues :name)
+                                                :table_id          (mt/id :venues)
+                                                :display_name      "Name"
+                                                :name              "NAME"
+                                                :base_type         :type/Text
+                                                :semantic_type     :type/Name
+                                                :has_field_values  :list
+                                                :fk_target_field_id nil}
+                           :dimensions         []}]}
              (-> (t2/hydrate card :param_fields)
                  :param_fields
                  mt/derecordize))))))
 
-(deftest hydate-param-fields-for-dashboard-test
+(deftest hydrate-param-fields-for-dashboard-test
   (testing "check that we can hydrate param_fields for a Dashboard"
     (public-test/with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-      (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
-                                   :table_id           (mt/id :venues)
-                                   :display_name       "ID"
-                                   :name               "ID"
-                                   :base_type          :type/BigInteger
-                                   :semantic_type      :type/PK
-                                   :has_field_values   :none
-                                   :fk_target_field_id nil
-                                   :target             nil
-                                   :name_field         {:id                (mt/id :venues :name)
-                                                        :table_id          (mt/id :venues)
-                                                        :display_name      "Name"
-                                                        :name              "NAME"
-                                                        :base_type         :type/Text
-                                                        :semantic_type     :type/Name
-                                                        :has_field_values  :list
-                                                        :fk_target_field_id nil}
-                                   :dimensions         []}}
-             (-> (t2/hydrate dashboard :param_fields)
-                 :param_fields
-                 mt/derecordize))))))
+      (is (=? {public-test/parameter-id [{:id                 (mt/id :venues :id)
+                                          :table_id           (mt/id :venues)
+                                          :display_name       "ID"
+                                          :name               "ID"
+                                          :base_type          :type/BigInteger
+                                          :semantic_type      :type/PK
+                                          :has_field_values   :none
+                                          :fk_target_field_id nil
+                                          :target             nil
+                                          :name_field         {:id                (mt/id :venues :name)
+                                                               :table_id          (mt/id :venues)
+                                                               :display_name      "Name"
+                                                               :name              "NAME"
+                                                               :base_type         :type/Text
+                                                               :semantic_type     :type/Name
+                                                               :has_field_values  :list
+                                                               :fk_target_field_id nil}
+                                          :dimensions         []}]}
+              (-> (t2/hydrate dashboard :param_fields)
+                  :param_fields
+                  mt/derecordize))))))
 
 (deftest ^:parallel card->template-tag-test
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
                                                                        :display_name "ID"
+                                                                       :id           "11111111"
                                                                        :type         :dimension
                                                                        :dimension    [:field (mt/id :venues :id) nil]}
                                                                "name" {:name         "name"
                                                                        :display_name "Name"
+                                                                       :id           "aaaaaaaa"
                                                                        :type         :dimension
                                                                        :dimension    [:field "name" {:base-type :type/Text}]}}})}]
-    (testing "card->template-tag-field-clauses"
-      (is (= #{[:field (mt/id :venues :id) nil]
-               [:field "name" {:base-type :type/Text}]}
-             (#'params/card->template-tag-field-clauses card))))
+    (testing "card->template-tag-param-id->field-clauses"
+      (is (= {"11111111" #{[:field (mt/id :venues :id) nil]}
+              "aaaaaaaa" #{[:field "name" {:base-type :type/Text}]}}
+             (#'params/card->template-tag-param-id->field-clauses card))))
+
+    (testing "card->template-tag-param-id->field-ids"
+      (is (= {"11111111" #{(mt/id :venues :id)}
+              "aaaaaaaa" #{}}
+             (#'params/card->template-tag-param-id->field-ids card))))
 
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
@@ -168,3 +176,32 @@
     (is (= {}
            (params/get-linked-field-ids
             [{:parameter_mappings []}])))))
+
+(deftest ^:parallel duplicate-column-names-test
+  (testing "columns with duplicated names get mapped correctly to parameters"
+    (testing "native queries"
+      (let [card {:dataset_query (mt/native-query {:template-tags
+                                                   {"tag1" {:name         "tag1"
+                                                            :display_name "Tag 1"
+                                                            :id           "11111111"
+                                                            :type         :dimension
+                                                            :dimension    [:field (mt/id :orders :id) nil]}
+                                                    "tag2" {:name         "tag2"
+                                                            :display_name "Tag 2"
+                                                            :id           "aaaaaaaa"
+                                                            :type         :dimension
+                                                            :dimension    [:field (mt/id :products :id) nil]}}})}]
+        (testing "card->template-tag-param-id->field-clauses"
+          (is (= {"11111111" #{[:field (mt/id :orders :id) nil]}
+                  "aaaaaaaa" #{[:field (mt/id :products :id) nil]}}
+                 (#'params/card->template-tag-param-id->field-clauses card))))
+
+        (testing "card->template-tag-param-id->field-ids"
+          (is (= {"11111111" #{(mt/id :orders :id)}
+                  "aaaaaaaa" #{(mt/id :products :id)}}
+                 (#'params/card->template-tag-param-id->field-ids card))))
+
+        (testing "card->template-tag-field-ids"
+          (is (= #{(mt/id :orders :id)
+                   (mt/id :products :id)}
+                 (params/card->template-tag-field-ids card))))))))

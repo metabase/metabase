@@ -499,6 +499,7 @@
                                                                                  :template-tags {"NAME"
                                                                                                  {:name         "NAME"
                                                                                                   :display-name "Name"
+                                                                                                  :id           "_name_"
                                                                                                   :type         :dimension
                                                                                                   :dimension    [:field (mt/id :people :name) nil]
                                                                                                   :widget-type  :string/=
