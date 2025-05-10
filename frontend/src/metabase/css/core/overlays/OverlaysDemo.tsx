@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import {
   type Dispatch,
   type ReactNode,
