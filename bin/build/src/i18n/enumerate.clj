@@ -23,6 +23,7 @@
                             "/modules/drivers/druid-jdbc/src"
                             "/modules/drivers/mongo/src"
                             "/modules/drivers/oracle/src"
+                            "/modules/drivers/pinot/src"
                             "/modules/drivers/presto-jdbc/src"
                             "/modules/drivers/redshift/src"
                             "/modules/drivers/snowflake/src"

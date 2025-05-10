@@ -511,6 +511,7 @@
     "mongo"
     "mysql"
     "oracle"
+    "pinot"
     "postgres"
     "presto-jdbc"
     "redshift"
