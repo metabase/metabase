@@ -17,6 +17,7 @@ import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { sumArray } from "metabase/lib/arrays";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import {
   COLUMN_SHOW_TOTALS,
   isPivotGroupColumn,
@@ -134,11 +135,13 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const topHeaderRef = useRef<Collection>(null);
 
     const getColumnTitle = useCallback(
-      function (columnIndex: number) {
-        const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
-          columnIndex
-        ];
-        return getTitleForColumn(column, settings);
+      function(columnIndex: number) {
+        const column = data.pivot_cols?.filter(
+          (col) => !isPivotGroupColumn(col),
+        )[columnIndex];
+        return column
+          ? getTitleForColumn(column, settings)
+          : NULL_DISPLAY_VALUE;
       },
       [data, settings],
     );
@@ -175,7 +178,10 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     ]);
 
     const pivoted = useMemo(() => {
-      if (data == null || !data.cols.some(isPivotGroupColumn)) {
+      if (
+        data?.pivot_cols == null ||
+        !data?.pivot_cols.some(isPivotGroupColumn)
+      ) {
         return null;
       }
 

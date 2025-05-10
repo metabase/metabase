@@ -12,8 +12,8 @@ import {
   addMissingCardBreakouts,
   getColumnValues,
   getLeftHeaderWidths,
-  isColumnValid,
   isFormattablePivotColumn,
+  isPreaggregatedPivotColumn,
   updateValueWithCurrentColumns,
 } from "./utils";
 
@@ -26,19 +26,23 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     createMockColumn({ source: "aggregation", name: "aggregation-2" }),
   ];
 
-  describe("isColumnValid", () => {
+  describe("isPreaggregatedPivotColumn", () => {
     it("should return true if a column is an aggregation", () => {
-      const result = isColumnValid(createMockColumn({ source: "aggregation" }));
+      const result = isPreaggregatedPivotColumn(
+        createMockColumn({ source: "aggregation" }),
+      );
       expect(result).toBe(true);
     });
 
     it("should return true if a column is a breakout", () => {
-      const result = isColumnValid(createMockColumn({ source: "breakout" }));
+      const result = isPreaggregatedPivotColumn(
+        createMockColumn({ source: "breakout" }),
+      );
       expect(result).toBe(true);
     });
 
     it("should return true if a column is a pivot grouping", () => {
-      const result = isColumnValid(
+      const result = isPreaggregatedPivotColumn(
         createMockColumn({
           source: "fields",
           name: "pivot-grouping",
@@ -48,7 +52,9 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should return false if a column is a field", () => {
-      const result = isColumnValid(createMockColumn({ source: "fields" }));
+      const result = isPreaggregatedPivotColumn(
+        createMockColumn({ source: "fields" }),
+      );
       expect(result).toBe(false);
     });
   });

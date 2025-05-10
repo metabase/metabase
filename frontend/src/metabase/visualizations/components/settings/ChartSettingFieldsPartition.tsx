@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { splice } from "icepick";
 import { useMemo } from "react";
 import {
@@ -8,11 +9,15 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
-import { Box, Text } from "metabase/ui";
+import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
+import { Box, Button, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameColumnSplitSetting,
@@ -20,6 +25,97 @@ import type {
 } from "metabase-types/api";
 
 import { ColumnItem } from "./ColumnItem";
+
+type AddBreakoutPopoverProps = {
+  query: Lib.Query;
+};
+
+const AddBreakoutPopover = ({ query }: AddBreakoutPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+  return (
+    <Popover
+      opened={opened}
+      onClose={close}
+      position={"right-start"}
+      onDismiss={close}
+    >
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <BreakoutPopover
+          query={query}
+          stageIndex={-1}
+          isMetric={false}
+          breakout={undefined}
+          breakoutIndex={undefined}
+          onAddBreakout={() => {}}
+          onUpdateBreakoutColumn={() => {}}
+          onClose={close}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+type AddAggregationPopoverProps = {
+  query: Lib.Query;
+};
+
+const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+  const operators = useMemo(() => {
+    const baseOperators = Lib.availableAggregationOperators(query, -1);
+    return Lib.filterPivotAggregationOperators(baseOperators);
+    //return isUpdate
+    //  ? Lib.selectedAggregationOperators(baseOperators, clause)
+    //  : baseOperators;
+  }, [query]);
+
+  return (
+    <Popover
+      opened={opened}
+      onClose={close}
+      position={"right-start"}
+      onDismiss={close}
+    >
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <AggregationPicker
+          query={query}
+          operators={operators}
+          stageIndex={-1}
+          onClose={close}
+          allowCustomExpressions={false}
+          allowMetrics={false}
+          onQueryChange={() => {}}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
 
 const columnMove = (columns: string[], from: number, to: number) => {
   const columnCopy = [...columns];
@@ -35,24 +131,35 @@ const columnAdd = (columns: string[], to: number, column: string) => {
   return splice(columns, to, 0, column);
 };
 
+type ChartSettingFieldPartitionProps = {
+  value: ColumnNameColumnSplitSetting;
+  onChange: (value: ColumnNameColumnSplitSetting) => void;
+  onShowWidget: (
+    widget: {
+      id: string;
+      props: {
+        initialKey: string;
+      };
+    },
+    ref: HTMLElement | undefined,
+  ) => void;
+  getColumnTitle: (column: DatasetColumn) => string;
+  question: Question;
+  partitions: Partition[];
+  columns: RemappingHydratedDatasetColumn[];
+  canEditColumns: boolean;
+};
+
 export const ChartSettingFieldsPartition = ({
   value,
   onChange,
   onShowWidget,
   getColumnTitle,
+  question,
   partitions,
   columns,
-}: {
-  value: ColumnNameColumnSplitSetting;
-  onChange: (value: ColumnNameColumnSplitSetting) => void;
-  onShowWidget: (
-    widget: { id: string; props: { initialKey: string } },
-    ref: HTMLElement | undefined,
-  ) => void;
-  getColumnTitle: (column: DatasetColumn) => string;
-  columns: RemappingHydratedDatasetColumn[];
-  partitions: Partition[];
-}) => {
+  canEditColumns,
+}: ChartSettingFieldPartitionProps) => {
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -133,22 +240,31 @@ export const ChartSettingFieldsPartition = ({
     [columns, value],
   );
 
+  const emptyColumnMessage = canEditColumns
+    ? t`Add fields here`
+    : t`Drag fields here`;
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      {partitions.map(({ name: partitionName, title }, index) => {
+      {partitions.map(({ name: partitionName, title }) => {
         const updatedColumns = updatedValue[partitionName] ?? [];
         const partitionType = getPartitionType(partitionName);
+        const AggregationOrBreakoutPopover =
+          partitionType === "metric"
+            ? AddAggregationPopover
+            : AddBreakoutPopover;
         return (
-          <Box
-            py="md"
-            className={index > 0 ? CS.borderTop : undefined}
-            key={partitionName}
-          >
-            <Text c="text-medium">{title}</Text>
+          <Box py="sm" key={partitionName}>
+            <Flex align="center" justify="space-between">
+              <Text c="text-medium">{title}</Text>
+              {canEditColumns && (
+                <AggregationOrBreakoutPopover query={question.query()} />
+              )}
+            </Flex>
             <Droppable
               droppableId={partitionName}
               type={partitionType}
-              renderClone={(provided, snapshot, rubric) => (
+              renderClone={(provided, _snapshot, rubric) => (
                 <Box
                   ref={provided.innerRef}
                   {...provided.draggableProps}
@@ -179,9 +295,13 @@ export const ChartSettingFieldsPartition = ({
                       w="100%"
                       p="0.75rem"
                       bg="bg-light"
-                      c="text-medium"
+                      bd="1px dashed border"
+                      c="text-light"
+                      ta="center"
                       className={CS.rounded}
-                    >{t`Drag fields here`}</Box>
+                    >
+                      {emptyColumnMessage}
+                    </Box>
                   ) : (
                     updatedColumns.map((col, index) => (
                       <Draggable

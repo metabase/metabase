@@ -10,8 +10,8 @@ import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pi
 import type {
   ColumnNameColumnSplitSetting,
   DatasetColumn,
-  DatasetData,
   PivotTableColumnSplitSetting,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -93,7 +93,7 @@ export function addMissingCardBreakouts(
   return updateValueWithCurrentColumns(setting, availableColumns);
 }
 
-export function isColumnValid(col: DatasetColumn) {
+export function isPreaggregatedPivotColumn(col: DatasetColumn) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
@@ -219,18 +219,15 @@ function databaseSupportsPivotTables(query: NativeQuery | null | undefined) {
   return database.supportsPivots();
 }
 
-export function isSensible({ cols }: { cols: DatasetColumn[] }) {
-  return cols.length >= 2 && cols.every(isColumnValid);
+export function isSensible() {
+  return true;
 }
 
 export function checkRenderable(
-  [{ data }]: [{ data: DatasetData }],
-  settings: VisualizationSettings,
+  _series: Series,
+  _settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
-  if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
-    throw new Error(t`Pivot tables can only be used with aggregated queries.`);
-  }
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);
   }
