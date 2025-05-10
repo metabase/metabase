@@ -53,11 +53,6 @@ export type SdkDashboardDisplayProps = {
   withDownloads?: boolean;
 
   /**
-   * Whether to display the footer.
-   */
-  withFooter?: boolean;
-
-  /**
    * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links.html#appearance-parameters).
    * <br/>
    * <br/>
@@ -74,7 +69,6 @@ export const useSdkDashboardParams = ({
   dashboardId: initialDashboardId,
   withDownloads,
   withTitle,
-  withFooter,
   hiddenParameters,
   initialParameters = {},
 }: SdkDashboardDisplayProps) => {
@@ -93,7 +87,6 @@ export const useSdkDashboardParams = ({
         titled: withTitle,
         hideDownloadButton,
         hideParameters: hiddenParameters?.join(",") ?? null,
-        withFooter,
       },
       isNotNull,
     ),
