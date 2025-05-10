@@ -2,7 +2,7 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -20,7 +20,7 @@ import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
-import { Icon, Menu, Tooltip } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
@@ -225,9 +225,11 @@ export const QuestionMoreActionsMenu = ({
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip label={label} disabled={opened}>
-            <Button onlyIcon icon="ellipsis" aria-label={label} />
-          </Tooltip>
+          <ToolbarButton
+            icon="ellipsis"
+            aria-label={label}
+            tooltipLabel={label}
+          />
         </div>
       </Menu.Target>
 
