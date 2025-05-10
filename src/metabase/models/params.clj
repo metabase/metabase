@@ -177,7 +177,6 @@
 (defn- filterable-columns-for-query
   "Get filterable columns for query."
   [database-id card stage-number]
-  ;; TODO: for sure we need to re-use metadata providers per database-id
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)
         ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it into
         ;; a query against that model or metric.
@@ -185,7 +184,7 @@
                                              (:dataset_query card)
                                              (lib.metadata/card metadata-provider (:id card))))]
     (-> query
-        (lib/ensure-filter-stage stage-number)
+        lib/ensure-filter-stage
         (lib/filterable-columns stage-number))))
 
 (defn- ensure-filterable-columns-for-card
