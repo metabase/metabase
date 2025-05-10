@@ -35,6 +35,36 @@ on:
         type: boolean
         required: false
         default: true
+  workflow_call:
+    inputs:
+      spec:
+        description: "Relative path of the target spec"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test (e.g. 20)"
+        type: string
+        required: true
+        default: "20"
+      grep:
+        description: "Grep and filter tests to run in isolation"
+        type: string
+        required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
+      qa_db:
+        description: "Select the type of Database you want to run your tests with"
+        type: string
+        required: true
+        default: "none"
+      enable_network_throttling:
+        description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   workflow-summary:
