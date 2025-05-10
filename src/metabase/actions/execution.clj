@@ -21,6 +21,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (defn- execute-query-action!
@@ -203,22 +204,48 @@
       (execute-custom-action! action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
+(defn- execute-table-action!
+  [kind table-id request-parameters]
+  (let [common-args
+        {:type     :query
+         :query    {:source-table table-id}
+         :database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+         :table-id table-id
+         :arg [request-parameters]}
+
+        ;; more convenient to use the bulk actions for now
+        ;; as they handle filter generation internally
+        ;; later refactor this
+        impl-action
+        {:row/create :bulk/create
+         :row/update :bulk/update
+         :row/delete :bulk/delete}]
+
+    (actions/perform-action-with-single-input-and-output (impl-action kind) common-args)))
+
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
   [dashboard-id       :- ::lib.schema.id/dashboard
    dashcard-id        :- ::lib.schema.id/dashcard
    request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (analytics/track-event! :snowplow/action
-                            {:event     :action-executed
-                             :source    :dashboard
-                             :type      (:type action)
-                             :action_id (:id action)})
-    (execute-action! action request-parameters)))
+  (let [dashcard     (api/check-404 (t2/select-one :model/DashboardCard
+                                                   :id dashcard-id
+                                                   :dashboard_id dashboard-id))
+        action-id    (:action_id dashcard)
+        table-action (-> dashcard :visualization_settings :table-action)]
+    (api/check-404 (or action-id table-action))
+    (if table-action
+      (let [{:keys [kind table-id]} table-action]
+        ;; select action, params
+        (execute-table-action! (keyword kind) table-id request-parameters))
+      (let [action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+        (analytics/track-event! :snowplow/action
+                                {:event     :action-executed
+                                 :source    :dashboard
+                                 :type      (:type action)
+                                 :action_id (:id action)})
+        (execute-action! action request-parameters)))))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]
