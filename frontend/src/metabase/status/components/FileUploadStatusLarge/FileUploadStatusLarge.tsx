@@ -9,14 +9,13 @@ import {
   isUploadCompleted,
   isUploadInProgress,
 } from "metabase/lib/uploads";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
 import { type FileUpload, UploadMode } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
-
-import { FileUploadErrorModal } from "./FileUploadErrorModal";
 
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;
 
@@ -108,20 +107,15 @@ const getTitle = (
   }
 };
 
-const loadingMessages = [
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  t`Getting our ducks in a row`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  t`Still working`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  t`Arranging bits and bytes`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  t`Doing the heavy lifting`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  t`Pushing some pixels`,
-];
-
 const getLoadingMessage = (time: number) => {
+  const loadingMessages = [
+    t`Getting our ducks in a row`,
+    t`Still working`,
+    t`Arranging bits and bytes`,
+    t`Doing the heavy lifting`,
+    t`Pushing some pixels`,
+  ];
+
   const index = time % loadingMessages.length;
   return `${loadingMessages[index]} …`;
 };
@@ -153,12 +147,12 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
         {t`Show error details`}
       </Button>
       {showErrorModal && (
-        <FileUploadErrorModal
+        <PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal
           fileName={upload.name}
           onClose={() => setShowErrorModal(false)}
         >
           {String(upload.error)}
-        </FileUploadErrorModal>
+        </PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal>
       )}
     </>
   );
