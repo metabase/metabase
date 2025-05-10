@@ -9,7 +9,7 @@ import {
 import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 import { P, match } from "ts-pattern";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -57,7 +57,7 @@ describe("scenarios > admin > localization > content translation of column names
             cy.signInAsNormalUser();
           });
 
-          it("column headers", () => {
+          it.only("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
               germanFieldNames.forEach((row) => {
@@ -84,7 +84,7 @@ describe("scenarios > admin > localization > content translation of column names
             });
           });
 
-          describe("column headers in viz", () => {
+          describe.only("column headers in viz", () => {
             const columnX = "PRICE";
             const columnY = "RATING";
             // NOTE: What about the 'trend' visualization? This is an option in
@@ -135,9 +135,31 @@ describe("scenarios > admin > localization > content translation of column names
                     });
                   },
                 )
+                .with("pie", () => {
+                  it.only(`of type: ${displayType}`, () => {
+                    H.createQuestion(
+                      {
+                        display: "pie",
+                        query: {
+                          "source-table": PRODUCTS_ID,
+                          aggregation: [["count"]],
+                          breakout: [["field", PRODUCTS.CATEGORY, null]],
+                        },
+                      },
+                      { visitQuestion: true },
+                    );
+
+                    H.pieSliceWithColor("#88BF4D").first().trigger("mousemove");
+                    H.assertEChartsTooltip({
+                      header: "Kategorie",
+                      rows: undefined,
+                      footer: undefined,
+                      blurAfter: false,
+                    });
+                  });
+                })
                 .with(
                   P.union(
-                    "pie",
                     "pivot",
                     "funnel",
                     "object",
