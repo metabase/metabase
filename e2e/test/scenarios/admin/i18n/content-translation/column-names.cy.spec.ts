@@ -1,24 +1,18 @@
+import { P, match } from "ts-pattern";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 
 import { germanFieldNames } from "./constants";
 import {
   interceptContentTranslationRoutes,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
-import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
-import { P, match } from "ts-pattern";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PEOPLE_ID,
-  PEOPLE,
-  PRODUCTS_ID,
-  PRODUCTS,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 
 const { H } = cy;
 
