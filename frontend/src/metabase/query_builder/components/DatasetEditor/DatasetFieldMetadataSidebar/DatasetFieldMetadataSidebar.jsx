@@ -133,7 +133,7 @@ function DatasetFieldMetadataSidebar({
       column: field,
       value: field.settings,
       onChangeSetting: handleFormattingSettingsChange,
-      inheritedSettings: getGlobalSettingsForColumn(field),
+      inheritedSettings: getGlobalSettingsForColumn(),
       variant: "form-field",
     }),
     [field, handleFormattingSettingsChange],

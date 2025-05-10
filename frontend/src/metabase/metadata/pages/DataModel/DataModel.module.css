@@ -1,0 +1,11 @@
+.sidebar {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.tableSectionContainer {
+  overflow: auto;
+}
+
+.contentLoadingAndErrorWrapper {
+  height: 100%;
+}
