@@ -6,8 +6,10 @@ import {
   interceptContentTranslationRoutes,
   uploadTranslationDictionary,
 } from "./helpers/e2e-content-translation-helpers";
+import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
+import { P, match } from "ts-pattern";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -81,6 +83,112 @@ describe("scenarios > admin > localization > content translation of column names
               });
             });
           });
+
+          describe("column headers in viz", () => {
+            const columnX = "PRICE";
+            const columnY = "RATING";
+            const skipTheseDisplayTypes = [
+              "table", // Skipped because we already test this
+              // Skipped because these visualiations don't show display names
+              "scalar",
+              "smartscalar",
+              "gauge",
+              "progress",
+            ];
+            // NOTE: What about the 'trend' visualization? This is an option in
+            // the app, but it's not in the cardDisplayTypes array
+            const simpleDisplayTypes = [
+              "bar",
+              "line",
+              "row",
+              "area",
+              "combo",
+              "scatter",
+            ];
+            // these aren't tested yet
+            const complexDisplayTypes = [
+              "waterfall",
+              "sankey",
+              "pie",
+              "pivot",
+              "funnel",
+              "object",
+              "map",
+            ];
+
+            cardDisplayTypes.forEach((displayType: CardDisplayType) => {
+              match(displayType)
+                .with(
+                  P.union(
+                    "table",
+                    "scalar",
+                    "smartscalar",
+                    "gauge",
+                    "progress",
+                  ),
+                  () => {
+                    // do nothing
+                  },
+                )
+                .with(
+                  P.union("bar", "line", "row", "area", "combo", "scatter"),
+                  () => {
+                    it(`of type: ${displayType}`, () => {
+                      H.createQuestion(
+                        {
+                          name: `${displayType} visualization`,
+                          display: displayType,
+                          query: {
+                            "source-table": PRODUCTS_ID,
+                          },
+                          visualization_settings: {
+                            "graph.dimensions": [columnX],
+                            "graph.metrics": [columnY],
+                          },
+                        },
+                        { visitQuestion: true },
+                      );
+
+                      // Create a question with a visualization of column x v column y
+                      const columns = [columnX, columnY];
+                      const columnsInChart = germanFieldNames.filter((row) =>
+                        columns.includes(row.msgid),
+                      );
+                      columnsInChart.forEach((row) => {
+                        cy.findByText(row.msgid).should("not.exist");
+                        cy.findByText(row.msgstr).should("be.visible");
+                      });
+                    });
+                  },
+                )
+                .with(
+                  P.union(
+                    "pie",
+                    "pivot",
+                    "funnel",
+                    "object",
+                    "map",
+                    "sankey",
+                    "waterfall",
+                  ),
+                  () => {
+                    // not implemented yet
+                  },
+                )
+                .exhaustive();
+            });
+          });
+          // TODO: Need to update tooltip too
+          // doesn't work yet in this test:
+          // - pie
+          // - pivot
+          // - funnel
+          // - object
+          // - map
+          // - sankey
+          //
+          // shows column names in tooltips:
+          // - pie
         });
       });
     });
