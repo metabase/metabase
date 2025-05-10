@@ -7,8 +7,6 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
-import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveDashboard.styled";
-import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -25,8 +23,10 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../../InteractiveQuestion/InteractiveQuestion";
+import { useCommonDashboardParams } from "../use-common-dashboard-params";
 
+import { StyledPublicComponentWrapper } from "./InteractiveDashboard.styled";
 import { InteractiveDashboardProvider } from "./context";
 
 /**
