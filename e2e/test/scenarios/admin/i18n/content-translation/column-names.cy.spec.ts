@@ -101,11 +101,19 @@ describe("scenarios > admin > localization > content translation of column names
                     "progress",
                   ),
                   () => {
-                    // do nothing
+                    // Do nothing. These visualizations don't show column names
                   },
                 )
                 .with(
-                  P.union("bar", "line", "row", "area", "combo", "scatter"),
+                  P.union(
+                    "bar",
+                    "line",
+                    "row",
+                    "area",
+                    "combo",
+                    "scatter",
+                    "waterfall",
+                  ),
                   () => {
                     it(`of type: ${displayType}`, () => {
                       H.createQuestion(
@@ -163,9 +171,8 @@ describe("scenarios > admin > localization > content translation of column names
                     "pivot",
                     "funnel",
                     "object",
-                    "map",
+                    "map", // Here we just need to test the ECharts tooltip
                     "sankey",
-                    "waterfall",
                   ),
                   () => {
                     // not implemented yet
