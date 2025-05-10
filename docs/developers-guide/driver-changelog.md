@@ -31,6 +31,9 @@ title: Driver interface changelog
   `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
   `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
 
+- The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
+  update your usages.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.

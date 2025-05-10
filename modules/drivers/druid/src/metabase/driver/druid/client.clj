@@ -2,8 +2,8 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]

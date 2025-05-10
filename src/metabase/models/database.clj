@@ -12,12 +12,12 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]

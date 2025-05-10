@@ -1,9 +1,9 @@
-(ns metabase.models.secret-test
+(ns metabase.secrets.models.secret-test
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.models.secret :as secret]
+   [metabase.secrets.models.secret :as secret]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

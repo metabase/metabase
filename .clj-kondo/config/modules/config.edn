@@ -112,6 +112,7 @@
            revisions
            sample-data
            search
+           secrets
            server
            session
            settings
@@ -260,6 +261,7 @@
            notification
            plugins
            premium-features
+           secrets
            settings
            pulse
            query-processor
@@ -294,7 +296,7 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{audit-app channel driver models util view-log}}
+   :uses #{channel driver models util view-log}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -408,7 +410,6 @@
           metabase.models.query
           metabase.models.query.permissions
           metabase.models.resolution
-          metabase.models.secret
           metabase.models.serialization
           metabase.models.table
           metabase.models.user
@@ -433,6 +434,7 @@
            permissions
            plugins
            premium-features
+           secrets
            settings
            public-sharing
            pulse
@@ -602,6 +604,10 @@
           metabase.search.init
           metabase.search.spec}
    :uses #{analytics api audit-app config db driver models permissions premium-features settings request startup task util}}
+
+  secrets
+  {:api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}}
 
   segments
   {:api  #{metabase.segments.api}

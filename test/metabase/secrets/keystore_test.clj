@@ -1,4 +1,4 @@
-(ns metabase.models.secret.keystore-test
+(ns metabase.secrets.keystore-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]

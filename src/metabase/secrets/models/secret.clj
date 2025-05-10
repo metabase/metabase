@@ -1,4 +1,4 @@
-(ns metabase.models.secret
+(ns metabase.secrets.models.secret
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
