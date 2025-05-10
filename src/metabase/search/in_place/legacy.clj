@@ -4,9 +4,9 @@
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]

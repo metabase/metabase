@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

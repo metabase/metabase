@@ -1,4 +1,4 @@
-(ns metabase.models.collection.root
+(ns metabase.collections.models.collection.root
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]

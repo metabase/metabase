@@ -1,15 +1,15 @@
-(ns metabase.models.collection.graph
-  "Code for generating and updating the Collection permissions graph. See [[metabase.permissions.models.permissions]] for more
-  details and for the code for generating and updating the *data* permissions graph."
+(ns metabase.permissions.models.collection.graph
+  "Code for generating and updating the Collection permissions graph. See [[metabase.permissions.models.permissions]]
+  for more details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
    [com.climate.claypoole :as cp]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]

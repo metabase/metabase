@@ -88,15 +88,20 @@
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
-  ([_model pk]
+  ([_model database-id]
+   (println "database-id:" database-id)
+   (println "audit/audit-db-id:" audit/audit-db-id)
+   (println "(db-id->router-db-id database-id):" (db-id->router-db-id database-id))
+   (println "(perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/create-queries database-id):"
+            (perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/create-queries database-id))
    (cond
-     (should-read-audit-db? pk) false
-     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     (should-read-audit-db? database-id) false
+     (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (contains? #{:query-builder :query-builder-and-native}
                       (perms/most-permissive-database-permission-for-user
                        api/*current-user-id*
                        :perms/create-queries
-                       pk)))))
+                       database-id)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."

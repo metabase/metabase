@@ -1,12 +1,12 @@
-(ns metabase.models.collection.graph-test
+(ns metabase.permissions.models.collection.graph-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.audit-app.core :as audit]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.collection.graph :as graph]
+   [metabase.collections.models.collection :as collection]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.collection.graph :as graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
