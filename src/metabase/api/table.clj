@@ -570,9 +570,8 @@
                                          cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
+        ;; a model can have columns with keys as semantic types if a user configured them
+        (let [trust-semantic-keys? (= (:type card) :model)]
           (-> card
               (card->virtual-table :include-fields? true
                                    :databases dbs
