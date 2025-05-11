@@ -21,6 +21,8 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import { translateDisplayNames } from "metabase-enterprise/content_translation/utils";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
@@ -76,6 +78,10 @@ export function PublicOrEmbeddedQuestionView({
         floating={!titled}
       />
     ) : null;
+  const rawSeries = [{ card, data: result?.data }] as RawSeries;
+  const tc = useTranslateContent();
+  const translatedRawSeries = translateDisplayNames(rawSeries, tc);
+  console.log("@mak02gqo", "translatedRawSeries", translatedRawSeries);
 
   return (
     <EmbedFrame
@@ -107,7 +113,7 @@ export function PublicOrEmbeddedQuestionView({
           <Visualization
             isNightMode={theme === "night"}
             error={result?.error?.toString()}
-            rawSeries={[{ card, data: result?.data }] as RawSeries}
+            rawSeries={translatedRawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,

@@ -131,15 +131,42 @@ describe("scenarios > admin > localization > content translation of column names
                         { visitQuestion: true },
                       );
 
-                      // Create a question with a visualization of column x v column y
-                      const columns = [columnX, columnY];
                       const columnsInChart = germanFieldNames.filter((row) =>
-                        columns.includes(row.msgid),
+                        [columnX, columnY].includes(row.msgid),
                       );
                       columnsInChart.forEach((row) => {
                         cy.findByText(row.msgid).should("not.exist");
                         cy.findByText(row.msgstr).should("be.visible");
                       });
+                      if (displayType === "bar") {
+                        H.chartPathWithFillColor("#88BF4D").first().realHover();
+                        H.assertEChartsTooltip({
+                          header: "Bewertung", // 'Rating' in German
+                          rows: undefined,
+                          footer: undefined,
+                          blurAfter: false,
+                        });
+                      } else if (displayType === "line") {
+                        H.cartesianChartCircleWithColor("#509EE3")
+                          .eq(3)
+                          .realHover();
+                        H.assertEChartsTooltip({
+                          header: "Bewertung", // 'Rating' in German
+                          rows: undefined,
+                          footer: undefined,
+                          blurAfter: false,
+                        });
+                      } else if (displayType === "row") {
+                        // TODO
+                      } else if (displayType === "area") {
+                        // TODO
+                      } else if (displayType === "combo") {
+                        // TODO
+                      } else if (displayType === "scatter") {
+                        // TODO
+                      } else if (displayType === "waterfall") {
+                        // TODO
+                      }
                     });
                   },
                 )
@@ -168,8 +195,8 @@ describe("scenarios > admin > localization > content translation of column names
                 })
                 .with(
                   P.union(
-                    "pivot",
                     "funnel",
+                    "pivot",
                     "object",
                     "map", // Here we just need to test the ECharts tooltip
                     "sankey",
