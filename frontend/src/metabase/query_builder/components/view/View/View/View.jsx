@@ -35,8 +35,10 @@ import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
 import S from "./View.module.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { translateDisplayNames } from "metabase-enterprise/content_translation/utils";
+import {
+  maybeTranslateDisplayNames,
+  useTranslateContent,
+} from "metabase/i18n/hooks";
 
 const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const {
@@ -93,7 +95,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   } = props;
 
   const tc = useTranslateContent();
-  const translatedRawSeries = translateDisplayNames(rawSeries, tc);
+  const translatedRawSeries = maybeTranslateDisplayNames(rawSeries, tc);
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
@@ -233,7 +235,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
             showLeftSidebar={showLeftSidebar}
             showRightSidebar={showRightSidebar}
             {...props}
-            rawSeries={translatedRawSeries}
+            rawSeries={rawSeries}
           />
           <ViewSidebar
             side="right"

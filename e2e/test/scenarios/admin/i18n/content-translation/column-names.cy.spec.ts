@@ -153,7 +153,6 @@ describe("scenarios > admin > localization > content translation of column names
                     // Do nothing. These visualizations don't show column names
                   },
                 )
-<<<<<<< HEAD
                 .with("bar", () => {
                   it.only(displayType, () => {
                     visitViz(displayType);
@@ -169,73 +168,6 @@ describe("scenarios > admin > localization > content translation of column names
                     assertColumnNamesAreTranslated();
                     H.assertFirstEChartsTooltip(displayType, {
                       header: "Bewertung",
-||||||| parent of 1b20a259585 (Aggressively translate all display names in the rawSeries given to the main part of the View component)
-                .with(
-                  P.union("bar", "line", "row", "area", "combo", "scatter"),
-                  () => {
-                    it(`of type: ${displayType}`, () => {
-                      H.createQuestion(
-                        {
-                          name: `${displayType} visualization`,
-                          display: displayType,
-                          query: {
-                            "source-table": PRODUCTS_ID,
-                          },
-                          visualization_settings: {
-                            "graph.dimensions": [columnX],
-                            "graph.metrics": [columnY],
-                          },
-                        },
-                        { visitQuestion: true },
-                      );
-
-                      // Create a question with a visualization of column x v column y
-                      const columns = [columnX, columnY];
-                      const columnsInChart = germanFieldNames.filter((row) =>
-                        columns.includes(row.msgid),
-                      );
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
-=======
-                .with(
-                  P.union(
-                    "bar",
-                    "line",
-                    "row",
-                    "area",
-                    "combo",
-                    "scatter",
-                    "waterfall",
-                  ),
-                  () => {
-                    it(`of type: ${displayType}`, () => {
-                      H.createQuestion(
-                        {
-                          name: `${displayType} visualization`,
-                          display: displayType,
-                          query: {
-                            "source-table": PRODUCTS_ID,
-                          },
-                          visualization_settings: {
-                            "graph.dimensions": [columnX],
-                            "graph.metrics": [columnY],
-                          },
-                        },
-                        { visitQuestion: true },
-                      );
-
-                      // Create a question with a visualization of column x v column y
-                      const columns = [columnX, columnY];
-                      const columnsInChart = germanFieldNames.filter((row) =>
-                        columns.includes(row.msgid),
-                      );
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
->>>>>>> 1b20a259585 (Aggressively translate all display names in the rawSeries given to the main part of the View component)
                     });
                   });
                 })
@@ -344,8 +276,6 @@ describe("scenarios > admin > localization > content translation of column names
                     });
                   });
                 })
-<<<<<<< HEAD
-||||||| parent of 1b20a259585 (Aggressively translate all display names in the rawSeries given to the main part of the View component)
                 .with(
                   P.union(
                     "pivot",
@@ -359,20 +289,6 @@ describe("scenarios > admin > localization > content translation of column names
                     // not implemented yet
                   },
                 )
-=======
-                .with(
-                  P.union(
-                    "pivot",
-                    "funnel",
-                    "object",
-                    "map", // Here we just need to test the ECharts tooltip
-                    "sankey",
-                  ),
-                  () => {
-                    // not implemented yet
-                  },
-                )
->>>>>>> 1b20a259585 (Aggressively translate all display names in the rawSeries given to the main part of the View component)
                 .exhaustive();
             });
           });
