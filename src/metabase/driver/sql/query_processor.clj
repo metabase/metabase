@@ -1458,7 +1458,8 @@
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
   (apply (if (:select-top honeysql-form)
-           sql.helpers/select-top
+           ;; TEST: Does this ever happen?
+           (throw (ex-info "select-top" {:driver driver, :honeysql honeysql-form, :fields fields}))
            sql.helpers/select)
          honeysql-form
          (for [field-clause fields]

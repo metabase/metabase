@@ -510,6 +510,9 @@
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :fields])
         boolean-expression-clause? sql.qp.boolean-to-comparison/boolean-expression-clause?
         maybe-cast-honeysql-field (fn [honeysql-field]
+                                    (when (not (vector? honeysql-field))
+                                      ;; TEST: Does this ever happen?
+                                      (throw (ex-info "non-vector honeysql field" {:honeysql-field honeysql-field})))
                                     ;; honeysql-field is a vector [[field-or-value] [optional-alias]]
                                     (update honeysql-field 0 #(h2x/maybe-cast :bit %)))]
     (-> (parent-method driver :fields honeysql-form query)
