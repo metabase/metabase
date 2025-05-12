@@ -489,6 +489,7 @@
                          :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
                                     :template-tags {:date {:name         "date"
                                                            :display-name "Date"
+                                                           :id           "_DATE_"
                                                            :type         "dimension"
                                                            :dimension    [:field (mt/id :checkins :date) nil]
                                                            :widget-type  "date/quarter-year"}}}}))
@@ -950,13 +951,18 @@
     :query    {:source-table (mt/id table-kw)
                :filter       [:= [:field (mt/id table-kw field-kw) nil] "Krua Siri"]}}})
 
+(def parameter-id "12345678")
+
 (defn do-with-sharing-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
+    (mt/with-temp [:model/Dashboard     dashboard (assoc (shared-obj)
+                                                         :parameters [{:id   parameter-id
+                                                                       :type :number}])
                    :model/Card          card      (mbql-card-referencing table-kw field-kw)
                    :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
                                                    :card_id            (u/the-id card)
                                                    :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :parameter_id parameter-id
                                                                          :target  [:dimension
                                                                                    [:field
                                                                                     (mt/id table-kw field-kw) nil]]}]}]
@@ -1146,18 +1152,18 @@
                                        :card_id            (:id card)
                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                              :target       [:dimension (mt/$ids *categories.name)]}]}]
-      (is (=? {:param_fields {(mt/id :categories :name)
-                              {:semantic_type "type/Name",
-                               :table_id (mt/id :categories)
-                               :name "NAME",
-                               :has_field_values "list",
-                               :fk_target_field_id nil,
-                               :dimensions (),
-                               :id (mt/id :categories :name)
-                               :target nil,
-                               :display_name "Name",
-                               :name_field nil,
-                               :base_type "type/Text"}}}
+      (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
+                              [{:semantic_type "type/Name",
+                                :table_id (mt/id :categories)
+                                :name "NAME",
+                                :has_field_values "list",
+                                :fk_target_field_id nil,
+                                :dimensions (),
+                                :id (mt/id :categories :name)
+                                :target nil,
+                                :display_name "Name",
+                                :name_field nil,
+                                :base_type "type/Text"}]}}
               (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
       (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
               (client/client :get 200 (format "public/dashboard/%s/params/%s/values" (:public_uuid dash) "_CATEGORY_NAME_")))))))
