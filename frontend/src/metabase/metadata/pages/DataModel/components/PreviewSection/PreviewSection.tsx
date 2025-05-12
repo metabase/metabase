@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Card, SegmentedControl, Text } from "metabase/ui";
+import { Card, SegmentedControl, Text } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
+import { TablePreview } from "./TablePreview";
+
 interface Props {
-  fieldId?: FieldId;
+  fieldId: FieldId;
 }
 
 type PreviewType = ReturnType<typeof getTypeSelectorData>[number]["value"];
 
-export const PreviewSection = (_props: Props) => {
+export const PreviewSection = (props: Props) => {
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
   return (
@@ -18,7 +20,7 @@ export const PreviewSection = (_props: Props) => {
       <Text fw="bold">Field preview</Text>
       <PreviewTypeSelector value={previewType} onChange={setPreviewType} />
 
-      {previewType === "table" && <Box></Box>}
+      {previewType === "table" && <TablePreview {...props} />}
     </Card>
   );
 };
