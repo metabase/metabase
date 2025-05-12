@@ -33,7 +33,7 @@ export const fieldApi = Api.injectEndpoints({
       providesTags: (field) => (field ? provideFieldTags(field) : []),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
-      query: (id) => ({
+      query: (fieldId) => ({
         method: "GET",
         url: `/api/field/${fieldId}/values`,
       }),
