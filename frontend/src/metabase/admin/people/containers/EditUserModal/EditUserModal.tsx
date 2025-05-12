@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Params } from "react-router/lib/Router";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -47,7 +48,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
   };
 
   return (
-    <Modal opened title="Edit user" padding="xl" onClose={onClose}>
+    <Modal opened title={t`Edit user`} padding="xl" onClose={onClose}>
       <LoadingAndErrorWrapper loading={isLoading} error={error}>
         <UserForm
           onCancel={onClose}

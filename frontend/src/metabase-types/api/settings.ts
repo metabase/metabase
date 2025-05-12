@@ -247,6 +247,7 @@ export const tokenFeatures = [
   "ai_sql_generation",
   "database_routing",
   "development-mode",
+  "tenants",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -440,6 +441,7 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {
