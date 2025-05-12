@@ -13,8 +13,6 @@
    [metabase.api.public :as api.public]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]

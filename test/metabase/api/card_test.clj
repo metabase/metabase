@@ -41,6 +41,7 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -3354,6 +3355,34 @@
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
+
+(defn- upload-example-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  [& {:as args}]
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [;; Make the file-name unique so the table names don't collide
+          filename (str "example csv file " (random-uuid) ".csv")
+          file     (upload-test/csv-file-with
+                    ["id, name"
+                     "1, Luke Skywalker"
+                     "2, Darth Vader"]
+                    filename)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (@#'api.card/from-csv! (merge {:collection-id nil ;; root collection
+                                       :filename      filename
+                                       :file          file}
+                                      args))))))
+
+(deftest from-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (testing "Happy path"
+        (t2/update! :model/Database (mt/id) {:uploads_enabled true :uploads_schema_name "PUBLIC" :uploads_table_prefix nil})
+        (let [{:keys [status body]} (upload-example-csv-via-api!)]
+          (is (= 200
+                 status))
+          (is (= body
+                 (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"

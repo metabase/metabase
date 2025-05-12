@@ -19,7 +19,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.macros :as api.macros]
-   [metabase.api.public :as api.public]
    [metabase.events :as events]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
