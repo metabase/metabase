@@ -462,26 +462,11 @@
                          :mbql-query  mbql-query}
                         e))))))
 
-(def ^:private HumanReadableRemappingMap
-  "Schema for the map of actual value -> human-readable value. Cannot be empty."
-  [:map-of {:min 1} :any [:maybe :string]])
-
-(mu/defn- human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
-  [field-id :- ms/PositiveInt]
-  (when-let [{orig :values, remapped :human_readable_values} (t2/select-one [FieldValues :values :human_readable_values]
-                                                                            {:where [:and
-                                                                                     [:= :type "full"]
-                                                                                     [:= :field_id field-id]
-                                                                                     [:not= :human_readable_values nil]
-                                                                                     [:not= :human_readable_values "{}"]]})]
-    (when (seq remapped)
-      (zipmap orig remapped))))
-
 (mu/defn- add-human-readable-values
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
-   v->human-readable :- HumanReadableRemappingMap]
+   v->human-readable :- metadata-queries/HumanReadableRemappingMap]
   (map vector
        (map first values)
        (map (fn [[v]]
@@ -498,26 +483,39 @@
 
 (sql/register-clause! ::union format-union :union)
 
+(defn- implicit-pk->name-mapping-query
+  [field-id mapping-type]
+  {:select    [[:dest.id :id] [[:inline mapping-type] :mapping_type]]
+   :from      [[:metabase_field :source]]
+   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+               [:metabase_field :dest] [:= :dest.table_id :table.id]]
+   :where     [:and
+               [:= :source.id field-id]
+               (mdb.query/isa :source.semantic_type :type/PK)
+               (mdb.query/isa :dest.semantic_type :type/Name)]
+   :limit     1})
+
 (defn- remapped-field-id-query [field-id]
-  {:select [[:ids.id :id]]
+  {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
    :from   [[{::union [;; Explicit FK Field->Field remapping
-                       {:select [[:dimension.human_readable_field_id :id]]
+                       {:select [[:dimension.human_readable_field_id :id] [[:inline "fk->field"] :mapping_type]]
                         :from   [[:dimension :dimension]]
                         :where  [:and
                                  [:= :dimension.field_id field-id]
                                  [:not= :dimension.human_readable_field_id nil]]
                         :limit  1}
+                       ;; Implicit FK Field -> PK Field -> [Name] Field remapping
+                       (implicit-pk->name-mapping-query
+                        {:select    [:fk_target_field_id]
+                         :from      [:metabase_field]
+                         :where     [:and
+                                     [:= :id field-id]
+                                     (mdb.query/isa :semantic_type :type/FK)]
+                         :limit     1}
+                        "fk->pk->name")
                        ;; Implicit PK Field-> [Name] Field remapping
-                       {:select    [[:dest.id :id]]
-                        :from      [[:metabase_field :source]]
-                        :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-                                    [:metabase_field :dest] [:= :dest.table_id :table.id]]
-                        :where     [:and
-                                    [:= :source.id field-id]
-                                    (mdb.query/isa :source.semantic_type :type/PK)
-                                    (mdb.query/isa :dest.semantic_type :type/Name)]
-                        :limit     1}]}
-             :ids]]
+                       (implicit-pk->name-mapping-query field-id "pk->name")]}
+             :mapping]]
    :limit  1})
 
 ;; TODO -- add some caching here?
@@ -526,6 +524,17 @@
   remapping."
   [field-id :- [:maybe ms/PositiveInt]]
   (:id (t2/query-one (remapped-field-id-query field-id))))
+
+(mu/defn remapping :- [:maybe [:map
+                               [:id ms/PositiveInt]
+                               [:mapping-type [:enum :fk->field :fk->pk->name :pk->name]]]]
+  "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
+  remapping."
+  [field-id :- [:maybe ms/PositiveInt]]
+  (when-let [raw-mapping (t2/query-one (remapped-field-id-query field-id))]
+    (-> raw-mapping
+        (dissoc :mapping_type)
+        (assoc :mapping-type (-> raw-mapping :mapping_type keyword)))))
 
 (defn- use-cached-field-values?
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
@@ -576,8 +585,10 @@
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
-        v->human-readable     (human-readable-remapping-map field-id)
-        the-remapped-field-id (delay (remapped-field-id field-id))]
+        relax-fk-requirement? (:relax-fk-requirement? options)
+        options               (dissoc options :relax-fk-requirement?)
+        v->human-readable     (metadata-queries/human-readable-remapping-map field-id)
+        remapping             (delay (remapping field-id))]
     (cond
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
@@ -586,15 +597,24 @@
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
 
-      (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
+      (and (use-cached-field-values? field-id) (nil? @remapping))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
 
      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
      ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
-      (some? @the-remapped-field-id)
-      (unremapped-chain-filter @the-remapped-field-id constraints (assoc options :original-field-id field-id))
+      (some? @remapping)
+      (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
+        (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
+                                        relax-fk-requirement?)
+                               (t2/select-one-fn :fk_target_field_id :model/Field field-id))]
+          (unremapped-chain-filter the-remapped-field-id
+                                   (map #(cond-> %
+                                           (= (:field-id %) field-id) (assoc :field-id pk-field-id))
+                                        constraints)
+                                   (assoc options :original-field-id pk-field-id))
+          (unremapped-chain-filter the-remapped-field-id constraints (assoc options :original-field-id field-id))))
 
       :else
       (unremapped-chain-filter field-id constraints options))))
@@ -642,7 +662,7 @@
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
-   v->human-readable :- HumanReadableRemappingMap
+   v->human-readable :- metadata-queries/HumanReadableRemappingMap
    constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]
@@ -694,7 +714,7 @@
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
-        v->human-readable     (delay (human-readable-remapping-map field-id))
+        v->human-readable     (delay (metadata-queries/human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
       (str/blank? query)

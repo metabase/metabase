@@ -13,6 +13,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
@@ -233,3 +234,27 @@
   (parameter-values parameter field_ids query))
 
 (api/define-routes)
+
+(defn param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
+  [[field-id :as field-ids] param value]
+  (or (custom-values/parameter-remapped-value
+       param
+       value
+       #(-> (if (= (count field-ids) 1)
+              (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+              (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+            :values
+            first))
+      [value]))
+
+(api.macros/defendpoint :post "/parameter/remapping"
+  "Return the remapped parameter values for cards or dashboards that are being edited."
+  [_route-params
+   _query-params
+   {:keys [parameter value field_ids]} :- [:map
+                                           [:parameter ms/Parameter]
+                                           [:value :any]
+                                           [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (param-remapped-value field_ids parameter value))

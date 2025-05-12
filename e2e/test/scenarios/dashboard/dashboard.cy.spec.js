@@ -1135,17 +1135,6 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.findByTestId("dashcard").findByText("Orders");
-
-    // Verify the card is visible when it returned an error
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Enter an ID").type("text{enter}");
-      cy.button("Add filter").click();
-    });
-
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("There was a problem displaying this chart.");
-    });
   });
 });
 

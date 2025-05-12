@@ -69,7 +69,7 @@
   [ids]
   (when (seq ids)
     (-> (filter mi/can-read? (t2/select Field :id [:in ids]))
-        (t2/hydrate :has_field_values :dimensions :name_field))))
+        (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))))
 
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
