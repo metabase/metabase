@@ -139,6 +139,7 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -154,6 +155,7 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -168,6 +170,7 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -177,7 +180,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${databaseId}/rescan_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
@@ -185,7 +188,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${databaseId}/discard_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     addSampleDatabase: builder.mutation<void, Database>({
       query: () => ({
