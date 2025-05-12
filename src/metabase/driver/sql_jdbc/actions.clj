@@ -479,28 +479,24 @@
                                      :database-ids (map :id databases)})))
         database  (first databases)
         driver    (:engine database)
-        inputs    (if (<= (count inputs) 1)
-                    inputs
-                    ;; Ensure things are optimally batched.
-                    (for [[table-id rows] (u/group-by :table-id :rows concat inputs)]
-                      {:table-id table-id, :rows rows}))]
+        x-inputs  (for [[table-id rows] (u/group-by :table-id :row inputs)]
+                    {:table-id table-id, :rows rows})]
     (when validate-fn
-      (doseq [{:keys [table-id rows]} inputs]
+      (doseq [{:keys [table-id rows]} x-inputs]
         (validate-fn database table-id rows)))
     (perform-bulk-action-with-repeated-single-row-actions!
      {:driver   driver
       :database database
       :action   row-action
       :proc     row-fn
-      :rows     inputs
+      :rows     x-inputs
       ;; We're not yet batching per table, due to the "mapcat". Need to rework the row functions.
       :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
 (mr/def ::table-row-input
   [:map
    [:table-id ::lib.schema.id/table]
-   ;; TODO un-nest rows into the top-level sequence, to make things more composable.
-   [:rows [:sequential ::lib.schema.actions/row]]])
+   [:row ::lib.schema.actions/row]])
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create]
   [_action context inputs :- [:sequential ::table-row-input]]

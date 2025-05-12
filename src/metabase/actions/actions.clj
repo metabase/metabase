@@ -425,14 +425,14 @@
 (s/def :actions.args.crud.table.common/table-id
   :actions.args/id)
 
-(s/def :actions.args.crud.table/rows
-  (s/cat :rows (s/+ (s/map-of string? any?))))
+(s/def :actions.args.crud.table/row
+  (s/map-of string? any?))
 
 (s/def :actions.args.crud.table/common
   (s/merge
    :actions.args/common
    (s/keys :req-un [:actions.args.crud.table.common/table-id
-                    :actions.args.crud.table/rows])))
+                    :actions.args.crud.table/row])))
 
 ;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
@@ -455,12 +455,7 @@
   :actions.args.crud.table/common)
 
 (defmethod normalize-action-arg-map :table.row/common
-  [_action {:keys [database table-id row], row-or-rows :arg, :as _arg-map}]
+  [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
   {:database (or database (when table-id (cached-database-via-table-id table-id)))
    :table-id table-id
-   ;; TODO stop overloading this and always take singular
-   :rows     (map #(update-keys % u/qualified-name)
-                  (or (when row [row])
-                      (if (map? row-or-rows)
-                        [row-or-rows]
-                        row-or-rows)))})
+   :row      (update-keys (or row row-arg) u/qualified-name)})
