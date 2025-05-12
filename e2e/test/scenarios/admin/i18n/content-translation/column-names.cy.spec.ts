@@ -147,6 +147,9 @@ describe("scenarios > admin > localization > content translation of column names
                     "smartscalar",
                     "gauge",
                     "progress",
+
+                    // NOTE: The names in a sankey query come from the SQL and
+                    // are not currently localizable
                     "sankey",
                   ),
                   () => {
