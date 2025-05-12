@@ -131,23 +131,14 @@ jobs:
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  debug-variables:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug Variables
-        run: |
-          echo "github.ref: ${{ github.ref }}"
-          echo "github.event_name: ${{ github.event_name }}"
-          echo "github.base_ref: ${{ github.base_ref }}"
-          echo "github.head_ref: ${{ github.head_ref }}"
-          echo "Condition result: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}"
-
   e2e-component-tests-embedding-sdk-cross-version:
+    # run on: every push on release branches, and every pr that targets a release branch
     if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
     secrets: inherit
 
   cross-version-for-breaking-changes:
+    # run on: every pr that targets a release branch
     if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
     secrets: inherit
