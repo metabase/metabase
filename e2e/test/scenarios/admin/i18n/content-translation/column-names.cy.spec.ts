@@ -9,6 +9,7 @@ import {
 import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 import { P, match } from "ts-pattern";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SANKEY_QUERY } from "e2e/test/scenarios/visualizations-charts/sankey.cy.spec";
 
 const { PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -122,6 +123,10 @@ describe("scenarios > admin > localization > content translation of column names
                     "smartscalar",
                     "gauge",
                     "progress",
+
+                    // NOTE: The names in a sankey query come from the SQL and
+                    // are not currently localizable
+                    "sankey",
                   ),
                   () => {
                     // Do nothing. These visualizations don't show column names
@@ -217,101 +222,6 @@ describe("scenarios > admin > localization > content translation of column names
                 })
                 .with("object", () => {
                   // TODO
-                })
-                .with(P.union("sankey"), () => {
-                  it(`of type: ${displayType}`, () => {
-                    H.createQuestion(
-                      {
-                        name: `${displayType} visualization`,
-                        display: displayType,
-                        query: {
-                          "source-table": PRODUCTS_ID,
-                        },
-                        visualization_settings: {
-                          "graph.dimensions": [columnX],
-                          "graph.metrics": [columnY],
-                        },
-                      },
-                      { visitQuestion: true },
-                    );
-
-                    const columnsInChart = germanFieldNames.filter((row) =>
-                      [columnX, columnY].includes(row.msgid),
-                    );
-                    /** These types of visualizations should show the names of both columns */
-                    const displayTypesThatShowBothColumns = [
-                      "bar",
-                      "line",
-                      "row",
-                      "area",
-                      "combo",
-                      "pivot",
-                      "funnel",
-                      "detail",
-                      "scatter",
-                      "waterfall",
-                    ];
-                    if (displayTypesThatShowBothColumns.includes(displayType)) {
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("be.visible");
-                        cy.findByText(row.msgstr).should("not.exist");
-                      });
-                    }
-                    const displayTypesWithTooltips: CardDisplayType[] = [
-                      "bar",
-                      "line",
-                      "pie",
-                      "row",
-                      "area",
-                      "funnel",
-                      "combo",
-                      "scatter",
-                      "waterfall",
-                      "map", // Map tooltips show all columns
-                    ];
-
-                    if (displayType === "bar") {
-                      H.assertFirstEChartsTooltip(displayType, {
-                        header: "Bewertung",
-                      });
-                    } else if (displayType === "line") {
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
-                      H.assertFirstEChartsTooltip(displayType, {
-                        header: "Bewertung",
-                      });
-                    } else if (displayType === "row") {
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
-                      H.assertFirstEChartsTooltip(displayType, {
-                        header: "Bewertung",
-                      });
-                    } else if (displayType === "area") {
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
-                      H.assertFirstEChartsTooltip(displayType, {
-                        header: "Bewertung",
-                      });
-                    } else if (displayType === "combo") {
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
-                      H.assertFirstEChartsTooltip(displayType, {
-                        header: "Bewertung",
-                      });
-                    } else if (displayType === "scatter") {
-                      // TODO
-                    } else if (displayType === "waterfall") {
-                      // TODO
-                    }
-                  });
                 })
                 .with("map", () => {
                   H.visitQuestionAdhoc({

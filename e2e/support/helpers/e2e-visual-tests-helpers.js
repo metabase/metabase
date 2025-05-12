@@ -262,10 +262,10 @@ export function assertFirstEChartsTooltip(displayType, tooltipOptions) {
   assertEChartsTooltip(tooltipOptions);
 }
 
-/*
+/**
  * @param {import("metabase-types/api").CardDisplayType} displayType
  */
-export function openFirstEChartsTooltip(displayType) {
+export function openFirstEChartsTooltip(displayType, x) {
   match(displayType)
     .with("bar", () => {
       chartPathWithFillColor("#88BF4D").first().realHover();
