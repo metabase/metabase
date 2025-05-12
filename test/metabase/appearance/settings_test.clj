@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.appearance.settings :as appearance.settings]
-   [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -116,7 +115,7 @@
       (appearance.settings/landing-page! "#hash")
       (is (= "/#hash" (appearance.settings/landing-page)))
 
-      (with-redefs [system.settings/site-url (constantly "http://localhost")]
+      (mt/with-temporary-setting-values [site-url "http://localhost"]
         (appearance.settings/landing-page! "http://localhost/absolute/same-origin")
         (is (= "/absolute/same-origin" (appearance.settings/landing-page)))))
 
