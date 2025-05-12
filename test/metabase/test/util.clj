@@ -18,7 +18,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
-   [metabase.models.moderation-review :as moderation-review]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]

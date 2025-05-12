@@ -44,7 +44,7 @@
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
-    :model/ModerationReview                  metabase.models.moderation-review
+    :model/ModerationReview                  metabase.content-verification.models.moderation-review
     :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/NotificationCard                  metabase.notification.models

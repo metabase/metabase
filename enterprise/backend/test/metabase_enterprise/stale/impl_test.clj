@@ -4,7 +4,7 @@
    [metabase-enterprise.stale.impl :as stale]
    [metabase-enterprise.test :as met]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.moderation-review :as moderation-review]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.stale-test :refer [with-stale-items
                                 stale-dashboard
                                 stale-card

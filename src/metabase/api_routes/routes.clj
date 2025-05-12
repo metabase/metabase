@@ -27,6 +27,7 @@
    [metabase.cloud-migration.api]
    [metabase.collections.api]
    [metabase.config :as config]
+   [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
    [metabase.indexed-entities.api]
@@ -76,6 +77,7 @@
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.collections.api/keep-me
+         metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.login-history.api/keep-me
@@ -148,6 +150,7 @@
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              'metabase.api.dataset
    "/docs"                 (metabase.api.docs/make-routes #'routes)
+   "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
    "/field"                (+auth 'metabase.api.field)
