@@ -199,7 +199,7 @@
 
 #_:clj-kondo/ignore
 (comment
-  (open-api-spec (metabase.api.macros/ns-routes 'metabase.api.geojson) "/api/geojson")
+  (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"

@@ -297,6 +297,7 @@ export const DataGrid = function DataGrid<TData>({
                     data-dataset-index={row.index}
                     data-index={dataIndex}
                     data-allow-page-break-after="true"
+                    data-row-selected={row.getIsSelected()}
                     className={cx(S.row, classNames?.row)}
                     style={{
                       ...virtualRowStyles,

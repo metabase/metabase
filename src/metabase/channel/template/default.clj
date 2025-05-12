@@ -23,31 +23,31 @@
                                                                                    :path    "metabase/channel/email/data_editing_row_delete.hbs"}}}
    :channel/slack {[:notification/system-event :event/row.created] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# {{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
-                                                                                              "\n\n"
-                                                                                              "## Created row:"
-                                                                                              "\n\n"
-                                                                                              "{{#each record}}\n"
-                                                                                              "- {{@key}} : {{@value}}\n"
-                                                                                              "{{/each}}\n")}}
+                                                                                   :body (str "*{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}*"
+                                                                                              "\n"
+                                                                                              "*Created row:*"
+                                                                                              "\n"
+                                                                                              "{{#each record}}"
+                                                                                              "• {{@key}} : {{@value}}\n"
+                                                                                              "{{/each}}")}}
                    [:notification/system-event :event/row.updated] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# {{editor.first_name}} {{editor.last_name}} has updated a row from {{table.name}}\n\n"
-                                                                                              "\n\n"
-                                                                                              "## Update:"
-                                                                                              "\n\n"
-                                                                                              "{{#each changes}}\n"
-                                                                                              "- {{@key}} : {{@value.after}}\n"
-                                                                                              "{{/each}}\n")}}
+                                                                                   :body (str "*{{editor.first_name}} {{editor.last_name}} has updated a row from {{table.name}}*"
+                                                                                              "\n"
+                                                                                              "*Update:*"
+                                                                                              "\n"
+                                                                                              "{{#each changes}}"
+                                                                                              "• {{@key}} : {{@value.after}}\n"
+                                                                                              "{{/each}}")}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
-                                                                                   :body (str "# {{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}"
-                                                                                              "\n\n"
-                                                                                              "## Deleted row:"
-                                                                                              "\n\n"
-                                                                                              "{{#each record}}\n"
-                                                                                              "- {{@key}} : {{@value}}\n"
-                                                                                              "{{/each}}\n")}}
+                                                                                   :body (str "*{{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}*"
+                                                                                              "\n"
+                                                                                              "*Deleted row:*"
+                                                                                              "\n"
+                                                                                              "{{#each record}}"
+                                                                                              "• {{@key}} : {{@value}}\n"
+                                                                                              "{{/each}}")}}
                    [:notification/card nil] {:channel_type :channel/slack
                                              :details      {:type :slack/handlebars-text
                                                             :body "<{{card-url card.id}}|{{card.name}}>"}}}

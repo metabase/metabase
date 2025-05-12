@@ -5,6 +5,7 @@
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
+   [metabase.channel.render.util :as render.util]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -30,13 +31,22 @@
   [card]
   (h (urls/card-url (u/the-id card))))
 
+(defn- visualizer-dashcard-href
+  "Build deep linking href for visualizer dashcards"
+  [dashcard]
+  (h (str (urls/dashboard-url (:dashboard_id dashcard)) "#scrollTo=" (:id dashcard))))
+
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
-    (let [card-name    (or (-> dashcard :visualization_settings :card.title)
+    (let [card-name    (or (-> dashcard :visualization_settings :visualization :settings :card.title)
+                           (-> dashcard :visualization_settings :card.title)
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
-                         (image-bundle/external-link-image-bundle render-type))]
+                         (image-bundle/external-link-image-bundle render-type))
+          title-href   (if (render.util/is-visualizer-dashcard? dashcard)
+                         (visualizer-dashcard-href dashcard)
+                         (card-href card))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
        :content     [:table {:style (style/style {:margin-bottom   :2px
@@ -48,7 +58,7 @@
                                                   :margin  :0})}
                         [:a {:style  (style/style (style/header-style))
                              :href   (when (:channel.render/include-href? options)
-                                       (card-href card))
+                                       title-href)
                              :target "_blank"
                              :rel    "noopener noreferrer"}
                          (h card-name)]]
@@ -69,11 +79,19 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
+(defn- visualizer-display-type
+  "Return dashcard's display type if it is a visualizer dashcard else nil"
+  [dashcard]
+  (if (render.util/is-visualizer-dashcard? dashcard)
+    (keyword (get-in dashcard [:visualization_settings :visualization :display]))
+    nil))
+
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
   [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
-  (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))]
+  (let [col-sample-count  (delay (count (take 3 cols)))
+        row-sample-count  (delay (count (take 2 rows)))
+        display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -88,11 +106,13 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
+             (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
              (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
-        (and (not (contains? #{:progress :gauge} display-type))
+        (and (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
+             (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
@@ -168,14 +188,17 @@
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
-          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
+          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
+         attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
+                                            (visualizer-dashcard-href dashcard)
+                                            (card-href card))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                         [:div
                          [:a {:href        (when (:channel.render/include-href? options)
-                                             (card-href card))
+                                             attachment-href)
                               :target      "_blank"
                               :rel         "noopener noreferrer"
                               :style       (style/style

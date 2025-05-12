@@ -10,6 +10,7 @@ export * from "./e2e-command-palette-helpers";
 export * from "./e2e-browser-helpers";
 export * from "./e2e-custom-column-helpers";
 export * from "./e2e-dashboard-helpers";
+export * from "./e2e-dashboard-visualizer-helpers";
 export * from "./e2e-database-metadata-helpers";
 export * from "./e2e-dimension-list-helpers";
 export * from "./e2e-downloads-helpers";

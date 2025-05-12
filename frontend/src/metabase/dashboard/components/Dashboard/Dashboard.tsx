@@ -511,6 +511,7 @@ function Dashboard(props: DashboardProps) {
                       reportAutoScrolledToDashcard={
                         reportAutoScrolledToDashcard
                       }
+                      handleSetEditing={handleSetEditing}
                     />
                   </FullWidthContainer>
                 )}

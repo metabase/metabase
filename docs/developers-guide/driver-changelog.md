@@ -6,6 +6,10 @@ title: Driver interface changelog
 
 ## Metabase 0.55.0
 
+- Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
+
+- Add the multi-method `date-dbtype` that allows the driver to control which types dates are cast to.
+
 - Extend `date()` to accept a DateTime (or DB equivalent) in addition to an ISO string. When given a DateTime, it will truncate it to a date.
 
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.

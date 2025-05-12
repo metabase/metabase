@@ -1044,10 +1044,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: recents_component,
       source: recents_source,
     },
-    redo: {
-      component: redo_component,
-      source: redo_source,
-    },
     revert: {
       component: revert_component,
       source: revert_source,
@@ -1103,6 +1099,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     return: {
       component: return_component,
       source: return_source,
+    },
+    redo: {
+      component: redo_component,
+      source: redo_source,
     },
     reference: {
       component: reference_component,
@@ -1491,6 +1491,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "question"
+  | "redo"
   | "return"
   | "reference"
   | "refresh"

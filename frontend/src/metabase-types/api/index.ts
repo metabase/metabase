@@ -50,6 +50,7 @@ export * from "./user";
 export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
+export * from "./visualizer";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

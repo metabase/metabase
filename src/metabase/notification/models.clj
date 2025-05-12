@@ -7,7 +7,6 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
@@ -173,17 +172,6 @@
                   :model/NotificationSystemEvent)
                 payload-id))
   instance)
-
-(defmethod audit-log/model-details :model/Notification
-  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
-  (merge
-   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
-   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
-    :handlers      (map (fn [handler]
-                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
-                                              handler)
-                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details]) (:recipients handler))}))
-                        handlers)}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
