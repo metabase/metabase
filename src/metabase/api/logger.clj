@@ -197,9 +197,11 @@
                                                        "\n}"))}}))
     (when-let [task @log-adjustment]
       (cancel-undo-task! task))
-    (let [plan (do (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_set"
-                                                                  :event_detail (->seconds-str duration_unit
-                                                                                               duration)})
+    (let [plan (do (if (empty? log_levels)
+                     (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})
+                     (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_set"
+                                                                    :event_detail (->seconds-str duration_unit
+                                                                                                 duration)}))
                    (set-log-levels! (update-vals log-levels keyword)))]
       (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})))
   nil)

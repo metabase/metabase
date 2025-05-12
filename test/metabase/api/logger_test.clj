@@ -154,6 +154,16 @@
                              :duration_unit :milliseconds
                              :log_levels {"metabase.sync" :debug}})
       (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 1
+                             :duration_unit :hours
+                             :log_levels {"metabase.sync" :debug}})
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 1
+                             :duration_unit :hours
+                             :log_levels {}})
       (is (=? [{:data {"event" "log_adjustments_set", "event_detail" "10"}}
+               {:data {"event" "log_adjustments_reset"}}
+               {:data {"event" "log_adjustments_set", "event_detail" "3600"}}
                {:data {"event" "log_adjustments_reset"}}]
-              (take-last 2 (snowplow-test/pop-event-data-and-user-id!)))))))
+              (take-last 4 (snowplow-test/pop-event-data-and-user-id!)))))))
