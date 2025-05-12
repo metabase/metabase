@@ -25,7 +25,8 @@
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.api.common :as api])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
 
@@ -82,7 +83,8 @@
   [card {:keys [export-format format-rows pivot]}]
   (testing "Sanity check"
     (mt/with-test-user :crowberto
-      (assert (mi/can-read? (mt/db)))))
+      (assert (mi/can-read? (mt/db))))
+    (assert api/*is-superuser?*))
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
