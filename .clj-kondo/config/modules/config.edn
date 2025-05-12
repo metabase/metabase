@@ -95,7 +95,6 @@
            database-routing
            db
            driver
-           eid-translation
            embedding
            events
            legacy-mbql
@@ -268,8 +267,9 @@
            util}}
 
   eid-translation
-  {:api  #{metabase.eid-translation.core}
-   :uses #{settings util}}
+  {:api  #{metabase.eid-translation.api
+           metabase.eid-translation.core}
+   :uses #{api settings util}}
 
   embedding
   {:api  #{metabase.embedding.api
