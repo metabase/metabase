@@ -199,7 +199,8 @@ export function DashCardVisualization({
     [dashcard],
   );
   const uuid = useMemo(
-    () => (isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined),
+    () =>
+      isUuid(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
     [dashcard],
   );
 
@@ -221,14 +222,6 @@ export function DashCardVisualization({
     if (!shouldShowDashCardMenu) {
       return null;
     }
-
-    const token = isJWT(dashcard.dashboard_id)
-      ? String(dashcard.dashboard_id)
-      : undefined;
-
-    const uuid = isUuid(dashcard.dashboard_id)
-      ? dashcard.dashboard_id
-      : undefined;
 
     // Only show the download button if the dashboard is public or embedded.
     if (isPublicOrEmbedded && downloadsEnabled) {
@@ -261,10 +254,11 @@ export function DashCardVisualization({
     isXray,
     isPublicOrEmbedded,
     isEditing,
-    dashcard.id,
-    dashcard.dashboard_id,
-    dashboard.id,
     downloadsEnabled,
+    dashcard.id,
+    dashboard.id,
+    token,
+    uuid,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
