@@ -197,7 +197,7 @@
                                                        "\n}"))}}))
     (when-let [task @log-adjustment]
       (cancel-undo-task! task))
-    (let [plan (do (if (empty? log_levels)
+    (let [plan (do (if (empty? log-levels)
                      (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})
                      (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_set"
                                                                     :event_detail (->seconds-str duration_unit
