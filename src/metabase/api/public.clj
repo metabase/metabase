@@ -426,7 +426,7 @@
     (mw.session/as-admin
       (api.card/param-values card param-key query))))
 
-(api/defendpoint "/card/:uuid/params/:param-key/remapping"
+(api/defendpoint GET "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
   [uuid param-key value]
   {uuid      ms/UUIDString
