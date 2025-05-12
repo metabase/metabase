@@ -1,13 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupEmailEndpoints,
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
+import { setupEmailEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SettingDefinition, Settings } from "metabase-types/api";
+import type { Settings } from "metabase-types/api";
 import {
   createMockSettingsState,
   createMockState,
@@ -103,19 +99,23 @@ const defaultValues = {
   "email-smtp-username": null,
 } as Settings;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const setup = ({ elements, settingValues }: SMTPConnectionFormProps) => {
+  // const settingDefinitions: Record<EnterpriseSettingKey, SettingDefinition> = {
+  //   "email-smtp-host": createMockSettingDefinition({
+  //     key: "email-smtp-host",
+  //     value: null,
+  //   }),
+  // };
   setupEmailEndpoints();
-  setupSettingsEndpoints(elements as SettingDefinition[]);
-  setupPropertiesEndpoints(settingValues);
+  // setupSettingsEndpoints(Object.values(settingDefinitions));
+  // setupPropertiesEndpoints(Object.values(settingDefinitions));
 
-  renderWithProviders(
-    <SMTPConnectionForm elements={elements} settingValues={settingValues} />,
-    {
-      storeInitialState: createMockState({
-        settings: createMockSettingsState(defaultSettings),
-      }),
-    },
-  );
+  renderWithProviders(<SMTPConnectionForm />, {
+    storeInitialState: createMockState({
+      settings: createMockSettingsState(defaultSettings),
+    }),
+  });
 };
 
 describe("SMTP connection form", () => {
