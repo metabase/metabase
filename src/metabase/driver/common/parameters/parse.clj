@@ -22,12 +22,12 @@
 (defn- ->param [value]
   (match [value]
     [s :guard string?] s
-    [{:type ::lib.parse/param
+    [{:type :metabase.lib.parse/param
       :name name}] (params/->Param (str/trim name))
-    [{:type ::lib.parse/function-param
+    [{:type :metabase.lib.parse/function-param
       :name name
       :args args}] (params/->FunctionParam name (map ->param args))
-    [{:type ::lib.parse/optional
+    [{:type :metabase.lib.parse/optional
       :contents contents}] (params/->Optional (map ->param contents))))
 
 (mu/defn parse :- [:sequential ParsedToken]
