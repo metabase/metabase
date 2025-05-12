@@ -6,7 +6,6 @@
    [metabase.channel.email-test :as et :refer [inbox]]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-feedback.task.creator-sentiment-emails :as creator-sentiment-emails]
-   [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
