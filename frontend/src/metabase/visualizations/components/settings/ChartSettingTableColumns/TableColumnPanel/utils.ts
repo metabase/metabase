@@ -28,15 +28,12 @@ export function getColumnItems(
     const columnIndex = columnIndexes[columnSettingIndex];
     const column = columns[columnIndex];
 
-    column.display_name = tc(column.display_name);
-    column.name = tc(column.name);
-
     return {
       name: column.name,
       enabled: columnSetting.enabled,
       index: columnSettingIndex,
       icon: getIconForField(column) as IconName,
-      column,
+      column: { ...column, display_name: tc(column.display_name) },
       columnSetting,
     };
   });
