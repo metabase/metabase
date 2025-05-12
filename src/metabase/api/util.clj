@@ -8,7 +8,6 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.eid-translation.core :as eid-translation]
    [metabase.logger :as logger]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -43,14 +42,6 @@
   (let [pool-info (analytics/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
-
-(api.macros/defendpoint :post "/entity_id"
-  "Translate entity IDs to model IDs."
-  [_route-params
-   _query-params
-   {:keys [entity_ids]} :- [:map
-                            [:entity_ids :map]]]
-  {:entity_ids (eid-translation/model->entity-ids->ids entity_ids)})
 
 (api.macros/defendpoint :get "/openapi"
   "Return the OpenAPI specification for the Metabase API."
