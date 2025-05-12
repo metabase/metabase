@@ -90,15 +90,28 @@
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows scope]} :- [:map
-                            [:rows [:sequential {:min 1} :map]]
-                            ;; TODO make this non-optional in the future
-                            [:scope {:optional true} :map]]]
+   {:keys [rows pks updates scope]}
+   :- [:multi {:dispatch #(cond
+                            (:rows %) :mixed-updates
+                            (:pks %)  :uniform-updates)}
+       [:mixed-updates [:map
+                        [:rows [:sequential {:min 1} :map]]
+                        ;; TODO make :scope required
+                        [:scope {:optional true} :map]]]
+       [:uniform-updates [:map
+                          [:pks [:sequential {:min 1} :map]]
+                          [:updates :map]
+                          ;; TODO make :scope required
+                          [:scope {:optional true} :map]]]]]
   (check-permissions)
-  (if (empty? rows)
+  (if (empty? (or rows pks))
     {:updated []}
     (let [user-id api/*current-user-id*
           scope   (or scope {:table-id table-id})
+          rows    (or rows
+                      ;; For now, it's just a shim, because we haven't implemented an efficient bulk update action yet.
+                      ;; This is a dumb shim; we're not checking that the pk maps are really (just) the pks.
+                      (map #(merge % updates) pks))
           rows    (data-editing/apply-coercions table-id rows)
           rows    (map :after (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows))]
       {:updated (invalidate-and-present! table-id rows)})))
