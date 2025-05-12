@@ -6,7 +6,7 @@
    [metabase.login-history.record]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -88,7 +88,7 @@
                                                       [:content :string]]]]]]]
                               @mt/inbox))
                   (let [message  (-> @mt/inbox (get email) first :body first :content)
-                        site-url (public-settings/site-url)]
+                        site-url (system/site-url)]
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                       (is (string? message))
                       (when (string? message)

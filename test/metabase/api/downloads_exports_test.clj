@@ -22,7 +22,7 @@
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -322,7 +322,7 @@
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))
-        (testing "only when `public-settings/enable-pivoted-exports` is true (true by default)."
+        (testing "only when `qp.settings/enable-pivoted-exports` is true (true by default)."
           (is (= [[["Category" "Created At: Year" "Sum of Price"]
                    ["Doohickey" "2016" "$632.14"]
                    ["Doohickey" "2017" "$854.19"]
@@ -343,7 +343,7 @@
                   #{:unsaved-card-download :card-download :dashcard-download
                     :subscription-attachment
                     :public-question-download :public-dashcard-download}]
-                 (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+                 (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
@@ -808,8 +808,8 @@
                   ["June, 2016" "82.92" "75.53" "83.26" "" "241.71"]]
                  (take 3 pivot))))
 
-        (testing "but only when `public-settings/enable-pivoted-exports` is true"
-          (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+        (testing "but only when `qp.settings/enable-pivoted-exports` is true"
+          (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
             (let [result      (mt/user-http-request :crowberto :post 200
                                                     (format "card/%d/query/xlsx" pivot-card-id)
                                                     :format_rows   true

@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
@@ -18,7 +19,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -35,13 +36,13 @@
   "Return the user configured application name, or Metabase translated
   via trs if a name isn't configured."
   []
-  (or (public-settings/application-name)
+  (or (appearance/application-name)
       (trs "Metabase")))
 
 (defn logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
   []
-  (let [url (public-settings/application-logo-url)]
+  (let [url (appearance/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
 
@@ -71,14 +72,14 @@
 (defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
-  {:applicationName           (public-settings/application-name)
-   :applicationColor          (channel.render/primary-color)
-   :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (channel.render/primary-color))
-   :colorTextLight            channel.render/color-text-light
-   :colorTextMedium           channel.render/color-text-medium
-   :colorTextDark             channel.render/color-text-dark
-   :siteUrl                   (public-settings/site-url)})
+  {:applicationName    (appearance/application-name)
+   :applicationColor   (channel.render/primary-color)
+   :applicationLogoUrl (logo-url)
+   :buttonStyle        (button-style (channel.render/primary-color))
+   :colorTextLight     channel.render/color-text-light
+   :colorTextMedium    channel.render/color-text-medium
+   :colorTextDark      channel.render/color-text-dark
+   :siteUrl            (system/site-url)})
 
 ;;; ### Public Interface
 
@@ -88,7 +89,7 @@
   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
   `mailto` links (e.g., for the new user to email with any questions)."
   []
-  (concat (when-let [admin-email (public-settings/admin-email)]
+  (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
           (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, :type "personal" {:order-by [[:id :asc]]})))
 
@@ -111,7 +112,7 @@
                                                      :joinedUserEmail   (:email new-user)
                                                      :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                      :adminEmail        (first recipients)
-                                                     :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
+                                                     :joinedUserEditUrl (str (system/site-url) "/admin/people")}))})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -128,8 +129,8 @@
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
-                              :adminEmail       (public-settings/admin-email)
-                              :adminEmailSet    (boolean (public-settings/admin-email))}))]
+                              :adminEmail       (system/admin-email)
+                              :adminEmailSet    (boolean (system/admin-email))}))]
     (email/send-message!
      {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
@@ -256,7 +257,7 @@
                         :link       (cond-> "https://metabase.com/feedback/creator"
                                       encoded-info (str "?context=" encoded-info))}
                        (when-not (premium-features/is-hosted?)
-                         {:self-hosted (public-settings/site-url)}))
+                         {:self-hosted (system/site-url)}))
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html

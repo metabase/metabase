@@ -10,7 +10,7 @@
    [metabase.events.core :as events]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.session.settings :as session.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -104,7 +104,7 @@
    user :- CreateSessionUserInfo
    device-info :- request/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
-  (when-not (public-settings/enable-password-login)
+  (when-not (session.settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
 

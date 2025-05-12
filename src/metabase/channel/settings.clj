@@ -110,3 +110,13 @@
   :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base)
+
+(defsetting notification-link-base-url
+  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  :encryption :no
+  :visibility :internal
+  :type       :string
+  :feature    :whitelabel
+  :audit      :getter
+  :doc "The base URL where dashboard notitification links will point to instead of the Metabase base URL.
+        Only applicable for users who utilize interactive embedding and subscriptions.")

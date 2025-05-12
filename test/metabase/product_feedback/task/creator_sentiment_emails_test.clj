@@ -6,10 +6,11 @@
    [metabase.channel.email-test :as et :refer [inbox]]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-feedback.task.creator-sentiment-emails :as creator-sentiment-emails]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [mteabase.system.settings :as system.settings]))
 
 (deftest send-creator-sentiment-emails!-test
   (mt/with-fake-inbox
@@ -73,7 +74,7 @@
         (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
                      ;; can't use mt/with-temporary-setting-values because of a custom :getter
                       premium-features/is-hosted?             (constantly hosted?)
-                      public-settings/site-url                (constantly "http://metabase.com")]
+                      system.settings/site-url                (constantly "http://metabase.com")]
           (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
           (is (= (if hosted? 0 1)
                  (count (et/regex-email-bodies #"external services")))))))))

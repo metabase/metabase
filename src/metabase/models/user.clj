@@ -12,8 +12,8 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
@@ -398,7 +398,7 @@
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]
   {:pre [(string? reset-token)]}
-  (str (public-settings/site-url) "/auth/reset_password/" reset-token))
+  (str (system/site-url) "/auth/reset_password/" reset-token))
 
 ;; TODO -- does this belong HERE, or in the `permissions` module?
 (defn set-permissions-groups!

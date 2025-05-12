@@ -2,7 +2,7 @@
   "Utility functions for public links and embedding."
   (:require
    [hiccup.core :refer [html]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -12,10 +12,10 @@
 
      (oembed-url \"/x\") -> \"http://localhost:3000/api/public/oembed?url=x&format=json\""
   ^String [^String relative-url]
-  (str (public-settings/site-url)
+  (str (system/site-url)
        "/api/public/oembed"
        ;; NOTE: some oEmbed consumers require `url` be the first param???
-       "?url=" (codec/url-encode (str (public-settings/site-url) relative-url))
+       "?url=" (codec/url-encode (str (system/site-url) relative-url))
        "&format=json"))
 
 (defn- oembed-link

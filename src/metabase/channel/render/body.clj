@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
@@ -14,7 +15,6 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -300,7 +300,7 @@
   [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)
+    (cond-> {:colors (appearance/application-colors)
              :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
@@ -312,7 +312,7 @@
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
   that will handle this but this is here in the meantime."
   ([value]
-   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+   (format-percentage value (get-in (appearance/custom-formatting) [:type/Number :number_separators])))
   ([value [decimal grouping]]
    (let [base "#,###.##%"
          fmt (if (or decimal grouping)
