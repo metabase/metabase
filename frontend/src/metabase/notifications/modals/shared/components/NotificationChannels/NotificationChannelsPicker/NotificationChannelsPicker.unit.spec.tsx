@@ -326,13 +326,6 @@ describe("NotificationChannelsPicker", () => {
         notificationHandlers: [createMockNotificationHandlerEmail()],
         enableTemplates: true,
       });
-      // Expand the accordion to reveal the template editor
-      const accordionControl = await screen.findByText(
-        (content) => content.includes("Custom email template"),
-        { selector: "*", exact: false },
-      );
-      await userEvent.click(accordionControl);
-      // Now the editor should be visible and empty
       expect(
         await screen.findByPlaceholderText("Your custom email template"),
       ).toHaveValue("");

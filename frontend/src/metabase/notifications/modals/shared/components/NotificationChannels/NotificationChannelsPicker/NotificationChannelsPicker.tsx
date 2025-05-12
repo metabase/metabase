@@ -640,93 +640,89 @@ export const NotificationChannelsPicker = ({
             invalidRecipientText={getInvalidRecipientText}
             onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
           />
-          {enableTemplates &&
-            defaultTemplates &&
-            defaultTemplates["channel/email"] && (
-              <Stack
-                mt="sm"
-                className={cx({ [S.defaultTemplate]: !emailHandler.template })}
-                classNames={{
-                  root: S.customTemplateRoot,
-                }}
-              >
-                <Flex align="center" gap="sm">
-                  <Text
-                    size="lg"
-                    style={{ marginRight: "auto" }}
-                  >{t`Custom email template`}</Text>
-                  <Flex gap="sm" align="center" mr="0.25rem">
-                    {!!emailHandler.template && (
-                      <TemplateButton
-                        icon="history"
-                        label={t`Reset to default`}
-                        onClick={() => resetTemplateForChannel("email")}
-                      />
-                    )}
-                    <TemplateHelperTooltip
-                      payload={templateContext["channel/email"]}
+          {enableTemplates && (
+            <Stack
+              mt="sm"
+              className={cx({ [S.defaultTemplate]: !emailHandler.template })}
+              classNames={{
+                root: S.customTemplateRoot,
+              }}
+            >
+              <Flex align="center" gap="sm">
+                <Text
+                  size="lg"
+                  style={{ marginRight: "auto" }}
+                >{t`Custom email template`}</Text>
+                <Flex gap="sm" align="center" mr="0.25rem">
+                  {!!emailHandler.template && (
+                    <TemplateButton
+                      icon="history"
+                      label={t`Reset to default`}
+                      onClick={() => resetTemplateForChannel("email")}
                     />
-                    {onPreviewClick && (
-                      <TemplateButton
-                        icon="eye"
-                        label={
-                          isPreviewOpen ? t`Close preview` : t`Show preview`
-                        }
-                        onClick={() =>
-                          onPreviewClick(templateStateKeyMap["email"])
-                        }
-                      />
-                    )}
-                  </Flex>
+                  )}
+                  <TemplateHelperTooltip
+                    payload={templateContext["channel/email"]}
+                  />
+                  {onPreviewClick && (
+                    <TemplateButton
+                      icon="eye"
+                      label={isPreviewOpen ? t`Close preview` : t`Show preview`}
+                      onClick={() =>
+                        onPreviewClick(templateStateKeyMap["email"])
+                      }
+                    />
+                  )}
                 </Flex>
-                <Stack pos="relative">
-                  <Stack gap="xs">
-                    <Text size="sm" fw={700}>{t`Subject`}</Text>
-                    <TemplateEditor
-                      variant="textinput"
-                      placeholder={t`Alert from {{payload.result.table.name}} table`}
-                      templateContext={templateContext["channel/email"]}
-                      defaultValue={getTemplateValue("email", "subject")}
-                      onChange={(value) => {
-                        handleTemplateBlur("email", "subject", value);
-                      }}
-                      onFocus={(initialValue) => {
-                        handleTemplateBlur("email", "subject", initialValue);
-                      }}
-                      error={
-                        validationErrors.email.subject
-                          ? t`Subject cannot be empty`
-                          : false
-                      }
-                      language="mustache"
-                    />
-                  </Stack>
-                  <Stack gap="xs">
-                    <Text size="sm" fw={700}>{t`Message`}</Text>
-                    <TemplateEditor
-                      variant="textarea"
-                      placeholder={t`Your custom email template`}
-                      templateContext={templateContext["channel/email"]}
-                      minHeight="10rem"
-                      height="10rem"
-                      defaultValue={getTemplateValue("email", "body")}
-                      onFocus={(initialValue) => {
-                        handleTemplateBlur("email", "body", initialValue);
-                      }}
-                      onChange={(value) => {
-                        handleTemplateBlur("email", "body", value);
-                      }}
-                      error={
-                        validationErrors.email.body
-                          ? t`Message cannot be empty`
-                          : false
-                      }
-                      language="mustache"
-                    />
-                  </Stack>
+              </Flex>
+              <Stack pos="relative">
+                <Stack gap="xs">
+                  <Text size="sm" fw={700}>{t`Subject`}</Text>
+                  <TemplateEditor
+                    variant="textinput"
+                    placeholder={t`Alert from {{payload.result.table.name}} table`}
+                    templateContext={templateContext["channel/email"]}
+                    defaultValue={getTemplateValue("email", "subject")}
+                    onChange={(value) => {
+                      handleTemplateBlur("email", "subject", value);
+                    }}
+                    onFocus={(initialValue) => {
+                      handleTemplateBlur("email", "subject", initialValue);
+                    }}
+                    error={
+                      validationErrors.email.subject
+                        ? t`Subject cannot be empty`
+                        : false
+                    }
+                    language="mustache"
+                  />
+                </Stack>
+                <Stack gap="xs">
+                  <Text size="sm" fw={700}>{t`Message`}</Text>
+                  <TemplateEditor
+                    variant="textarea"
+                    placeholder={t`Your custom email template`}
+                    templateContext={templateContext["channel/email"]}
+                    minHeight="10rem"
+                    height="10rem"
+                    defaultValue={getTemplateValue("email", "body")}
+                    onFocus={(initialValue) => {
+                      handleTemplateBlur("email", "body", initialValue);
+                    }}
+                    onChange={(value) => {
+                      handleTemplateBlur("email", "body", value);
+                    }}
+                    error={
+                      validationErrors.email.body
+                        ? t`Message cannot be empty`
+                        : false
+                    }
+                    language="mustache"
+                  />
                 </Stack>
               </Stack>
-            )}
+            </Stack>
+          )}
         </ChannelSettingsBlock>
       )}
 
@@ -742,50 +738,48 @@ export const NotificationChannelsPicker = ({
             channelSpec={channels.slack as SlackChannelSpec}
             onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
           />
-          {enableTemplates &&
-            defaultTemplates &&
-            defaultTemplates["channel/slack"] && (
-              <Stack
-                mt="sm"
-                className={cx({ [S.defaultTemplate]: !slackHandler.template })}
-                classNames={{
-                  root: S.customTemplateRoot,
-                }}
-              >
-                <Flex align="center" gap="sm">
-                  <Text
-                    size="lg"
-                    style={{ marginRight: "auto" }}
-                  >{t`Custom Slack message`}</Text>
-                  <Flex gap="xs" align="center">
-                    {!!slackHandler.template && (
-                      <TemplateButton
-                        icon="history"
-                        label={t`Reset to default`}
-                        onClick={() => resetTemplateForChannel("slack")}
-                      />
-                    )}
-                    <TemplateHelperTooltip
-                      payload={templateContext["channel/slack"]}
+          {enableTemplates && (
+            <Stack
+              mt="sm"
+              className={cx({ [S.defaultTemplate]: !slackHandler.template })}
+              classNames={{
+                root: S.customTemplateRoot,
+              }}
+            >
+              <Flex align="center" gap="sm">
+                <Text
+                  size="lg"
+                  style={{ marginRight: "auto" }}
+                >{t`Custom Slack message`}</Text>
+                <Flex gap="xs" align="center">
+                  {!!slackHandler.template && (
+                    <TemplateButton
+                      icon="history"
+                      label={t`Reset to default`}
+                      onClick={() => resetTemplateForChannel("slack")}
                     />
-                  </Flex>
-                </Flex>
-                <Stack gap="xs">
-                  <Text size="sm" fw={700}>{t`Message`}</Text>
-                  <TemplateEditor
-                    minHeight="10rem"
-                    height="10rem"
-                    placeholder={t`Your custom Markdown template`}
-                    templateContext={templateContext["channel/slack"]}
-                    defaultValue={getTemplateValue("slack", "body")}
-                    onBlur={(newValue) => {
-                      handleTemplateBlur("slack", "body", newValue);
-                    }}
-                    language="markdown"
+                  )}
+                  <TemplateHelperTooltip
+                    payload={templateContext["channel/slack"]}
                   />
-                </Stack>
+                </Flex>
+              </Flex>
+              <Stack gap="xs">
+                <Text size="sm" fw={700}>{t`Message`}</Text>
+                <TemplateEditor
+                  minHeight="10rem"
+                  height="10rem"
+                  placeholder={t`Your custom Markdown template`}
+                  templateContext={templateContext["channel/slack"]}
+                  defaultValue={getTemplateValue("slack", "body")}
+                  onBlur={(newValue) => {
+                    handleTemplateBlur("slack", "body", newValue);
+                  }}
+                  language="markdown"
+                />
               </Stack>
-            )}
+            </Stack>
+          )}
         </ChannelSettingsBlock>
       )}
 
