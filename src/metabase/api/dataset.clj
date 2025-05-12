@@ -252,7 +252,7 @@
   [:as {{:keys [parameter field_ids value]} :body}]
   {parameter ms/Parameter
    field_ids [:maybe [:sequential ms/PositiveInt]]
-   value     ms/NonBlankString}
+   value     :any}
   (param-remapped-value field_ids parameter value))
 
 (api/define-routes)
