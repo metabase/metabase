@@ -186,12 +186,16 @@
 
 (api.macros/defendpoint :post "/payload"
   "Return the payload of a notification"
-  [_route _query {:keys [notification channel_type]} :- [:map {:closed true}
-                                                         [:notification ::models.notification/NotificationWithPayload]
-                                                         [:channel_type :keyword]]]
+  [_route _query {:keys [notification channel_types]} :- [:map {:closed true}
+                                                          [:notification ::models.notification/NotificationWithPayload]
+                                                          [:channel_types [:sequential :string]]]]
   (api/create-check :model/Notification notification)
-  {:payload (sample-payload notification channel_type)
-   :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
+  (let [channel_types (map keyword channel_types)]
+    (zipmap channel_types
+            (map (fn [channel-type]
+                   {:payload (sample-payload notification channel-type)
+                    :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
+                 channel_types))))
 
 (defn- sample-recipient
   [channel-type]

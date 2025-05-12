@@ -88,7 +88,7 @@
                      (is (= 1 (count msgs)))
                      (is (=? {:blocks [{:type "section"
                                         :text {:type "mrkdwn"
-                                               :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category\n"}}]
+                                               :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• NAME : Updated Category\n"}}]
                               :channel  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -154,7 +154,7 @@
           {:rows [{:ID 1 :NAME "Ngoc Khuat" :CITY "Ha Noi" :EMAIL "ngoc@metabase.com"}]})))
      {:channel/email (fn [[email :as _emails]]
                        (is (=? {:body    [{:content (str "Row: ID,ADDRESS,EMAIL,PASSWORD,NAME,CITY,LONGITUDE,STATE,SOURCE,BIRTH_DATE,ZIP,LATITUDE,CREATED_AT,\n"
-                                                         "Changes: ID,ADDRESS,EMAIL,PASSWORD,NAME,CITY,LONGITUDE,STATE,SOURCE,BIRTH_DATE,ZIP,LATITUDE,CREATED_AT,")
+                                                         "Changes: EMAIL,NAME,CITY,")
                                            :type "text/html; charset=utf-8"}]}
                                email)))})
 
@@ -178,7 +178,7 @@
             {:rows [{:ID 1 :NAME "Ngoc Khuat" :CITY "Ha Noi" :EMAIL "ngoc@metabase.com"}]})))
        {:channel/email (fn [[email :as _emails]]
                          (is (=? {:body    [{:content (str "Row: ADDRESS,BIRTH_DATE,CITY,CREATED_AT,EMAIL,ID,LATITUDE,LONGITUDE,NAME,PASSWORD,SOURCE,STATE,ZIP,\n"
-                                                           "Changes: ADDRESS,BIRTH_DATE,CITY,CREATED_AT,EMAIL,ID,LATITUDE,LONGITUDE,NAME,PASSWORD,SOURCE,STATE,ZIP,")
+                                                           "Changes: CITY,EMAIL,NAME,")
                                              :type "text/html; charset=utf-8"}]}
                                  email)))}))))
 
@@ -269,12 +269,15 @@
              :record (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
                                             :USER_ID :TAX :CREATED_AT}
                                           (set (keys %)))])}
-            (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                            {:notification {:payload_type :notification/system-event
-                                                            :payload      {:event_name :event/row.created
-                                                                           :table_id   (mt/id :orders)}
-                                                            :creator_id   (mt/user->id :crowberto)}
-                                             :channel_type channel-type}))))))
+            (get-in (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                          {:notification {:payload_type :notification/system-event
+                                                          :payload      {:event_name :event/row.created
+                                                                         :table_id   (mt/id :orders)}
+                                                          :creator_id   (mt/user->id :crowberto)}
+                                           :channel_types [channel-type]})
+
+                    [channel-type
+                     :payload])))))
 
 (deftest example-payload-row-update-test
   (doseq [channel-type [:channel/slack :channel/email]]
@@ -289,12 +292,15 @@
              :changes (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
                                              :USER_ID :TAX :CREATED_AT}
                                            (set (keys %)))])}
-            (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                            {:notification {:payload_type :notification/system-event
-                                                            :payload      {:event_name :event/row.updated
-                                                                           :table_id   (mt/id :orders)}
-                                                            :creator_id   (mt/user->id :crowberto)}
-                                             :channel_type channel-type}))))))
+            (get-in (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                          {:notification {:payload_type :notification/system-event
+                                                          :payload      {:event_name :event/row.updated
+                                                                         :table_id   (mt/id :orders)}
+                                                          :creator_id   (mt/user->id :crowberto)}
+                                           :channel_types [channel-type]})
+
+                    [channel-type
+                     :payload])))))
 
 (deftest example-payload-row-delete-test
   (doseq [channel-type [:channel/slack :channel/email]]
@@ -306,12 +312,15 @@
              :record (mt/malli=? [:fn #(= #{:ID :PRODUCT_ID :QUANTITY :SUBTOTAL :DISCOUNT :TOTAL
                                             :USER_ID :TAX :CREATED_AT}
                                           (set (keys %)))])}
-            (:payload (mt/user-http-request :crowberto :post 200 "notification/payload"
-                                            {:notification {:payload_type :notification/system-event
-                                                            :payload      {:event_name :event/row.deleted
-                                                                           :table_id   (mt/id :orders)}
-                                                            :creator_id   (mt/user->id :crowberto)}
-                                             :channel_type channel-type}))))))
+            (get-in (mt/user-http-request :crowberto :post 200 "notification/payload"
+                                          {:notification {:payload_type :notification/system-event
+                                                          :payload      {:event_name :event/row.deleted
+                                                                         :table_id   (mt/id :orders)}
+                                                          :creator_id   (mt/user->id :crowberto)}
+                                           :channel_types [channel-type]})
+
+                    [channel-type
+                     :payload])))))
 
 (deftest preview-notification-test
   (is (=? {:context  (mt/malli=? :map)

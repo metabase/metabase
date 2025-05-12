@@ -322,6 +322,21 @@
   [id _params _kparams _options]
   (urls/card-url id))
 
+(defhelper table-url
+  "Generates a URL for a Table with the given ID.
+
+   Example:
+   ```
+   {{table-url 1 10}}
+   ;; => \"https://metabase.com/databases/1/tables/10\"
+   ```
+
+   Arguments:
+   - database-id: The ID of the database
+   - table-id: The ID of the table"
+  [database-id [table-id] _kparams _options]
+  (urls/table-url database-id table-id))
+
 (defhelper trash-url
   "Generates the URL for the trash page.
 
@@ -464,6 +479,7 @@
    "format-date"   #'format-date
    "now"           #'now
    "card-url"      #'card-url
+   "table-url"     #'table-url
    "dashboard-url" #'dashboard-url})
 
 ;; Exposing this via settings so FE can find it
