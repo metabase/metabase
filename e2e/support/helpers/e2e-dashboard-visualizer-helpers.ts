@@ -201,6 +201,8 @@ export function saveDashcardVisualizerModal(
   modal().within(() => {
     cy.findByText(mode === "create" ? "Add to dashboard" : "Save").click();
   });
+
+  modal({ timeout: 6000 }).should("not.exist");
 }
 
 export function saveDashcardVisualizerModalSettings() {
