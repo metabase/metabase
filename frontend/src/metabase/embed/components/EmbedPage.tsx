@@ -521,8 +521,48 @@ export const EmbedPage = () => {
               Embed Code
             </Text>
             <Stack gap="xs">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example URL for embedding */}
-              <Code block>{exampleEmbedUrl}</Code>
+              <Code block>
+                {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example code snippet for admins */}
+                {`<script src="https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/app/embed.js"></script>
+
+<div id="metabase-embed-container"></div>
+
+<script>
+  const { MetabaseEmbed } = window["metabase.embed"];
+
+  const embed = new MetabaseEmbed({
+    target: "#metabase-embed-container",
+
+    // IMPORTANT: You must create a least privileged and sandboxed API key for
+    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
+    apiKey: "${exampleApiKey}",
+
+    url: "${exampleEmbedUrl}"
+  });
+</script>`}
+              </Code>
+              <Button
+                leftSection={<Icon name="copy" size={16} />}
+                onClick={() => copyToClipboard(`<script src="https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/app/embed.js"></script>
+
+<div id="metabase-embed-container"></div>
+
+<script>
+  const { MetabaseEmbed } = window["metabase.embed"];
+
+  const embed = new MetabaseEmbed({
+    target: "#metabase-embed-container",
+
+    // IMPORTANT: You must create a least privileged and sandboxed API key for
+    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
+    apiKey: "${exampleApiKey}",
+
+    url: "${exampleEmbedUrl}"
+  });
+</script>`)}
+              >
+                Copy Code
+              </Button>
             </Stack>
           </Card>
         </Stack>
@@ -597,14 +637,15 @@ export const EmbedPage = () => {
             >
               Back
             </Button>
-            <Button
-              variant="filled"
-              onClick={handleNext}
-              disabled={currentStep === "select-entity" && !selectedDashboard}
-              leftSection={currentStep === "get-code" ? <Icon name="bookmark" size={16} /> : undefined}
-            >
-              {currentStep === "configure" ? "Get Code" : currentStep === "get-code" ? "Bookmark for later" : "Next"}
-            </Button>
+            {currentStep !== "get-code" && (
+              <Button
+                variant="filled"
+                onClick={handleNext}
+                disabled={currentStep === "select-entity" && !selectedDashboard}
+              >
+                {currentStep === "configure" ? "Get Code" : "Next"}
+              </Button>
+            )}
           </Group>
         </Box>
       </ResizableBox>
