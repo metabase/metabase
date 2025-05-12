@@ -621,7 +621,26 @@
         ; Wait for thread to complete
         (.join ^Thread thread 1000)
 
-        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
+        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))
+
+    (testing "queue blocks when full"
+      (let [small-queue (#'notification.send/->BlockingQueue (java.util.concurrent.ArrayBlockingQueue. 2))
+            put-thread (Thread. (fn []
+                                  (#'notification.send/put-notification! small-queue {:id 1 :test-value "A"})
+                                  (#'notification.send/put-notification! small-queue {:id 2 :test-value "B"})
+                                  (#'notification.send/put-notification! small-queue {:id 3 :test-value "C"})))]
+        (.start put-thread)
+        (Thread/sleep 50) ; give thread time to block on third put
+
+        ; Take one item to unblock the put
+        (is (= {:id 1 :test-value "A"} (#'notification.send/take-notification! small-queue)))
+
+        ; Wait for thread to complete
+        (.join ^Thread put-thread 1000)
+
+        ; Verify remaining items
+        (is (= {:id 2 :test-value "B"} (#'notification.send/take-notification! small-queue)))
+        (is (= {:id 3 :test-value "C"} (#'notification.send/take-notification! small-queue)))))))
 
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
@@ -692,3 +711,41 @@
                  :done?       (fn [cnt] (= cnt (+ 2 queue-size)))
                  :interval-ms 10
                  :timeout-ms  1000})))))
+
+(deftest blocking-queue-test
+  (let [queue (#'notification.send/->BlockingQueue (java.util.concurrent.ArrayBlockingQueue. 10))]
+
+    (testing "put and take operations work correctly"
+      (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+      (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+             (#'notification.send/take-notification! queue))))
+
+    (testing "multiple notifications are processed in order, no dedup"
+      (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
+      (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
+      (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "C"})
+
+      (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
+             (#'notification.send/take-notification! queue)))
+      (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
+             (#'notification.send/take-notification! queue)))
+      (is (= {:id 2 :payload_type :notification/testing :test-value "C"}
+             (#'notification.send/take-notification! queue))))
+
+    (testing "take blocks until notification is available"
+      (let [result (atom nil)
+            latch (java.util.concurrent.CountDownLatch. 1)
+            thread (Thread. (fn []
+                              (.countDown latch) ; signal thread is ready
+                              (reset! result (#'notification.send/take-notification! queue))))]
+        (.start thread)
+        (.await latch) ; wait for thread to start
+        (Thread/sleep 50) ; give thread time to block on take
+
+        ; Put a notification that the thread should receive
+        (#'notification.send/put-notification! queue {:id 42 :payload_type :notification/testing :test-value "X"})
+
+        ; Wait for thread to complete
+        (.join ^Thread thread 1000)
+
+        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
