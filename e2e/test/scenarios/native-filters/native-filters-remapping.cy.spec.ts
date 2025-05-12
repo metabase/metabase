@@ -1,7 +1,13 @@
-const { H } = cy;
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
+import {
+  type NativeQuestionDetails,
+  createNativeQuestion,
+  popover,
+  restore,
+  visitEmbeddedPage,
+  visitPublicQuestion,
+  visitQuestion,
+} from "e2e/support/helpers";
 import type { GetFieldValuesResponse } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -9,21 +15,21 @@ const { ORDERS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > native > filters > remapping", () => {
   beforeEach(() => {
-    H.restore();
+    restore();
     cy.signInAsAdmin();
     addInternalRemapping();
     addExternalRemapping();
   });
 
   it("should remap dashboard parameter values", () => {
-    createQuestion().then((questionId) => {
-      H.visitQuestion(questionId);
+    createTestQuestion().then((questionId) => {
+      visitQuestion(questionId);
       testWidgetsRemapping();
 
-      H.visitPublicQuestion(questionId);
+      visitPublicQuestion(questionId);
       testWidgetsRemapping();
 
-      H.visitEmbeddedPage({
+      visitEmbeddedPage({
         resource: { question: questionId },
         params: {},
       });
@@ -60,7 +66,7 @@ function findWidget(name: string) {
   return cy.findByText(name).parents("fieldset");
 }
 
-function createQuestion() {
+function createTestQuestion() {
   const questionDetails: NativeQuestionDetails = {
     name: "Orders native question",
     native: {
@@ -127,13 +133,13 @@ function createQuestion() {
     },
   };
 
-  return H.createNativeQuestion(questionDetails).then(({ body }) => body.id);
+  return createNativeQuestion(questionDetails).then(({ body }) => body.id);
 }
 
 function testWidgetsRemapping() {
   cy.log("internal remapping");
   findWidget("Internal").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByText("N5").click();
     cy.button("Add filter").click();
   });
@@ -141,7 +147,7 @@ function testWidgetsRemapping() {
 
   cy.log("FK remapping");
   findWidget("FK").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Rustic Paper Wallet").should("exist");
     cy.button("Add filter").click();
@@ -150,7 +156,7 @@ function testWidgetsRemapping() {
 
   cy.log("PK->Name remapping");
   findWidget("PK->Name").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Hudson Borer").should("exist");
     cy.button("Add filter").click();

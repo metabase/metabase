@@ -1,10 +1,21 @@
-const { H } = cy;
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type {
-  DashboardDetails,
-  NativeQuestionDetails,
-  StructuredQuestionDetails,
+import {
+  type DashboardDetails,
+  type NativeQuestionDetails,
+  type StructuredQuestionDetails,
+  createDashboardWithQuestions,
+  createQuestion,
+  dashboardParametersContainer,
+  editDashboard,
+  editingDashboardParametersContainer,
+  getDashboardCard,
+  popover,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 import type { CardId, GetFieldValuesResponse } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -13,27 +24,27 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > remapping", () => {
   beforeEach(() => {
-    H.restore();
+    restore();
     cy.signInAsAdmin();
     addInternalRemapping();
     addExternalRemapping();
   });
 
   it("should remap dashboard parameter values", () => {
-    createDashboard().then((dashboardId) => {
-      H.visitDashboard(dashboardId);
-      H.editDashboard();
+    createTestDashboard().then((dashboardId) => {
+      visitDashboard(dashboardId);
+      editDashboard();
       mapParameters();
-      H.saveDashboard();
+      saveDashboard();
 
       testDefaultValuesRemapping();
       testWidgetsRemapping();
 
-      H.visitPublicDashboard(dashboardId);
+      visitPublicDashboard(dashboardId);
       testDefaultValuesRemapping();
       testWidgetsRemapping();
 
-      H.visitEmbeddedPage({
+      visitEmbeddedPage({
         resource: { dashboard: dashboardId },
         params: {},
       });
@@ -68,14 +79,14 @@ function addExternalRemapping() {
 }
 
 function findWidget(name: string) {
-  return H.dashboardParametersContainer().findByText(name).parents("fieldset");
+  return dashboardParametersContainer().findByText(name).parents("fieldset");
 }
 
 function clearWidget(name: string) {
   findWidget(name).icon("close").click();
 }
 
-function createDashboard() {
+function createTestDashboard() {
   const ordersModelDetails: StructuredQuestionDetails = {
     name: "Orders model",
     type: "model",
@@ -170,40 +181,38 @@ function createDashboard() {
       p5: "enabled",
     },
   };
-  return H.createQuestion(ordersModelDetails).then(({ body: ordersModel }) => {
-    return H.createQuestion(peopleModelDetails).then(
-      ({ body: peopleModel }) => {
-        return H.createDashboardWithQuestions({
-          dashboardDetails,
-          questions: [
-            getOrdersQuestionDetails(ordersModel.id),
-            getPeopleQuestionDetails(peopleModel.id),
-            nativeQuestionDetails,
-          ],
-        }).then(({ dashboard }) => {
-          return Number(dashboard.id);
-        });
-      },
-    );
+  return createQuestion(ordersModelDetails).then(({ body: ordersModel }) => {
+    return createQuestion(peopleModelDetails).then(({ body: peopleModel }) => {
+      return createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [
+          getOrdersQuestionDetails(ordersModel.id),
+          getPeopleQuestionDetails(peopleModel.id),
+          nativeQuestionDetails,
+        ],
+      }).then(({ dashboard }) => {
+        return Number(dashboard.id);
+      });
+    });
   });
 }
 
 function mapParameters() {
-  H.editingDashboardParametersContainer().findByText("Internal").click();
-  H.selectDashboardFilter(H.getDashboardCard(0), "Quantity");
+  editingDashboardParametersContainer().findByText("Internal").click();
+  selectDashboardFilter(getDashboardCard(0), "Quantity");
 
-  H.editingDashboardParametersContainer().findByText("FK").click();
-  H.selectDashboardFilter(H.getDashboardCard(2), "Product ID");
+  editingDashboardParametersContainer().findByText("FK").click();
+  selectDashboardFilter(getDashboardCard(2), "Product ID");
 
-  H.editingDashboardParametersContainer().findByText("PK->Name").click();
-  H.selectDashboardFilter(H.getDashboardCard(1), "ID");
+  editingDashboardParametersContainer().findByText("PK->Name").click();
+  selectDashboardFilter(getDashboardCard(1), "ID");
 
-  H.editingDashboardParametersContainer().findByText("FK->Name").click();
-  H.selectDashboardFilter(H.getDashboardCard(0), "User ID");
+  editingDashboardParametersContainer().findByText("FK->Name").click();
+  selectDashboardFilter(getDashboardCard(0), "User ID");
 
-  H.editingDashboardParametersContainer().findByText("PK+FK->Name").click();
-  H.selectDashboardFilter(H.getDashboardCard(0), "User ID");
-  H.selectDashboardFilter(H.getDashboardCard(1), "ID");
+  editingDashboardParametersContainer().findByText("PK+FK->Name").click();
+  selectDashboardFilter(getDashboardCard(0), "User ID");
+  selectDashboardFilter(getDashboardCard(1), "ID");
 }
 
 function testDefaultValuesRemapping() {
@@ -218,7 +227,7 @@ function testWidgetsRemapping() {
   cy.log("internal remapping");
   clearWidget("Internal");
   findWidget("Internal").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByText("N5").click();
     cy.button("Update filter").click();
   });
@@ -227,7 +236,7 @@ function testWidgetsRemapping() {
   cy.log("FK remapping");
   clearWidget("FK");
   findWidget("FK").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Rustic Paper Wallet").should("exist");
     cy.button("Update filter").click();
@@ -237,7 +246,7 @@ function testWidgetsRemapping() {
   cy.log("PK->Name remapping");
   clearWidget("PK->Name");
   findWidget("PK->Name").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("1,");
     cy.findByText("Hudson Borer").should("exist");
     cy.button("Update filter").click();
@@ -247,7 +256,7 @@ function testWidgetsRemapping() {
   cy.log("FK->Name remapping");
   clearWidget("FK->Name");
   findWidget("FK->Name").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("6,");
     cy.findByText("Rene Muller").should("exist");
     cy.button("Update filter").click();
@@ -257,7 +266,7 @@ function testWidgetsRemapping() {
   cy.log("PK+FK->Name remapping");
   clearWidget("PK+FK->Name");
   findWidget("PK+FK->Name").click();
-  H.popover().within(() => {
+  popover().within(() => {
     cy.findByPlaceholderText("Enter an ID").type("7,");
     cy.findByText("Roselyn Bosco").should("exist");
     cy.button("Update filter").click();
