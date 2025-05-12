@@ -11254,10 +11254,13 @@ databaseChangeLog:
                 'type/Number'
               )
 
-
   - changeSet:
       id: v55.2025-05-07T11:43:54
       author: johnswanson
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions_group WHERE type = 'all-external-users';
       comment: Add All External Users group
       changes:
         - sql:
@@ -11282,18 +11285,21 @@ databaseChangeLog:
                   name: id
                   type: int
                   autoIncrement: true
+                  remarks: the ID of the tenant
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: "name"
                   type: varchar(254)
+                  remarks: the unique name of the tenant
                   constraints:
                     nullable: false
                     unique: true
               - column:
                   name: "slug"
                   type: varchar(254)
+                  remarks: "the slugified version of this tenant's name"
                   constraints:
                     nullable: false
                     unique: true
