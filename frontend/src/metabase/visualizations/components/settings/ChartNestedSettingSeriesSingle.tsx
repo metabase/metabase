@@ -49,13 +49,13 @@ const ChartNestedSettingsSeriesSingle = ({
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
           value={computedSettings.title}
-          aria-label="series-name-input"
           subtitle={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
           onBlurChange={(e) =>
             onChangeObjectSettings(object, { title: e.target.value })
           }
+          data-testid="series-name-input"
         />
       </div>
       {objectSettingsWidgets && objectSettingsWidgets.length > 0 ? (

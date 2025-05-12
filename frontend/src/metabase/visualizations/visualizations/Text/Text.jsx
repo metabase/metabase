@@ -21,8 +21,8 @@ import {
 } from "./Text.styled";
 
 const getSettingsStyle = (settings) => ({
-  [CS.alignCenter]: settings["text.align_horizontal"] === "center",
-  [CS.alignEnd]: settings["text.align_horizontal"] === "right",
+  [CS.textCentered]: settings["text.align_horizontal"] === "center",
+  [CS.textRight]: settings["text.align_horizontal"] === "right",
   [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
   [CS.justifyEnd]: settings["text.align_vertical"] === "bottom",
 });
