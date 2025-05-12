@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+import { useSdkDashboardContext } from "embedding-sdk/components/public/SdkDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
@@ -98,7 +98,7 @@ export function DashboardHeaderView({
     await dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
-  const { dashboardActions } = useInteractiveDashboardContext();
+  const { dashboardActions } = useSdkDashboardContext();
 
   const _headerButtons = useMemo(
     () => (

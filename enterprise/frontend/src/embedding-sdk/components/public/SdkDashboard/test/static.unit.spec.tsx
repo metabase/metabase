@@ -25,18 +25,17 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { isNotNull } from "metabase/lib/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { Flex } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
-import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
-
-import { type SdkDashboardContextType, SdkDashboardProvider } from "./context";
-import { useCommonDashboardParams } from "./use-common-dashboard-params";
+import type { DrillThroughQuestionProps } from "../../InteractiveQuestion";
+import type { EmbedDisplayParams } from "../../StaticDashboard";
+import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
+import { type SdkDashboardContextType, SdkDashboardProvider } from "../context";
+import { useCommonDashboardParams } from "../use-common-dashboard-params";
 
 export type SdkDashboardProps = {
   /**

@@ -8,30 +8,24 @@ import {
 } from "embedding-sdk/test/storybook-id-args";
 import { Stack } from "metabase/ui";
 
-import { SdkDashboard, type SdkDashboardProps } from "./SdkDashboard";
+import { InteractiveDashboard } from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
-  title: "EmbeddingSDK/SdkDashboard",
-  component: SdkDashboard,
+  title: "EmbeddingSDK/InteractiveDashboard",
+  component: InteractiveDashboard,
   parameters: {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
     dashboardId: dashboardIdArgType,
-    mode: {
-      options: ["static", "interactive", "editable"],
-      control: {
-        type: "select",
-      },
-    },
   },
 };
 
-const Template: StoryFn<SdkDashboardProps> = (args) => {
-  return <SdkDashboard {...args} />;
+const Template: StoryFn = (args) => {
+  return <InteractiveDashboard {...args} />;
 };
 
 export const Default = {
@@ -39,7 +33,7 @@ export const Default = {
 
   args: {
     dashboardId: DASHBOARD_ID,
-    mode: "interactive",
+    withFooter: true,
   },
 };
 

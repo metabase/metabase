@@ -7,7 +7,7 @@ import {
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 
-import type { StaticDashboardProps } from "./StaticDashboard";
+import type { StaticDashboardProps } from "../../StaticDashboard/StaticDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
