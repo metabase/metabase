@@ -26,6 +26,7 @@ import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-m
 import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
+import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -119,6 +120,14 @@ export const EditTableDataContainer = ({
       stateUpdateStrategy,
     });
 
+  const {
+    isRowSelectionEnabled,
+    setRowSelectionEnabled,
+    setRowSelectionDisabled,
+    selectedRowIndices,
+    setSelectedRowIndices,
+  } = useEditingTableRowSelection();
+
   useMount(() => {
     dispatch(closeNavbar());
   });
@@ -145,11 +154,15 @@ export const EditTableDataContainer = ({
             isLoading={isFetching}
             isUndoLoading={isUndoLoading}
             isRedoLoading={isRedoLoading}
+            isRowSelectionEnabled={isRowSelectionEnabled}
+            selectedRowIndices={selectedRowIndices}
             onCreate={openCreateRowModal}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
             onUndo={undo}
             onRedo={redo}
+            onRowSelectClick={setRowSelectionEnabled}
+            onRowSelectCancel={setRowSelectionDisabled}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
@@ -165,6 +178,8 @@ export const EditTableDataContainer = ({
                 cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={openEditRowModal}
+                isRowSelectionEnabled={isRowSelectionEnabled}
+                onRowSelectionChange={setSelectedRowIndices}
               />
             </Box>
             <Flex
