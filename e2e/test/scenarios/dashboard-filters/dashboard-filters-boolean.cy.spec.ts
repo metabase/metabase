@@ -3,6 +3,7 @@ const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
+  DashboardDetails,
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
@@ -10,7 +11,9 @@ import type {
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const DIALECT = "postgres";
-const TEST_TABLE = "many_data_types";
+const TABLE_NAME = "many_data_types";
+const QUESTION_NAME = "Test question";
+const DASHBOARD_NAME = "Test dashboard";
 
 describe(
   "scenarios > dashboard > filters > number",
@@ -18,9 +21,9 @@ describe(
   () => {
     beforeEach(() => {
       H.restore(`${DIALECT}-writable`);
-      H.resetTestTable({ type: DIALECT, table: TEST_TABLE });
+      H.resetTestTable({ type: DIALECT, table: TABLE_NAME });
       cy.signInAsAdmin();
-      H.resyncDatabase({ tableName: TEST_TABLE });
+      H.resyncDatabase({ tableName: TABLE_NAME });
     });
 
     it("should allow to map a boolean parameter to a boolean column of an MBQL query", () => {
@@ -57,7 +60,7 @@ describe(
 
 function createQuestionAndDashboard() {
   const questionDetails: StructuredQuestionDetails = {
-    name: "Q1",
+    name: QUESTION_NAME,
     query: {
       "source-table": PRODUCTS_ID,
       expressions: {
@@ -65,7 +68,10 @@ function createQuestionAndDashboard() {
       },
     },
   };
-  H.createQuestionAndDashboard({ questionDetails }).then(
+  const dashboardDetails: DashboardDetails = {
+    name: DASHBOARD_NAME,
+  };
+  H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
     ({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
     },
@@ -75,13 +81,13 @@ function createQuestionAndDashboard() {
 function createNativeQuestionAndDashboard() {
   cy.log("create dashboard");
 
-  H.getTableId({ name: "many_data_types" }).then((tableId) => {
+  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     H.getFieldId({ tableId, name: "boolean" }).then((fieldId) => {
       const questionDetails: NativeQuestionDetails = {
-        name: "Q1",
+        name: QUESTION_NAME,
         database: WRITABLE_DB_ID,
         native: {
-          query: "select * from many_data_types where {{boolean}}",
+          query: `select * from ${TABLE_NAME} where {{boolean}}`,
           "template-tags": {
             boolean: {
               id: "0b004110-d64a-a413-5aa2-5a5314fc8fec",
@@ -95,11 +101,15 @@ function createNativeQuestionAndDashboard() {
           },
         },
       };
-      H.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ body: { dashboard_id } }) => {
-          H.visitDashboard(dashboard_id);
-        },
-      );
+      const dashboardDetails: DashboardDetails = {
+        name: DASHBOARD_NAME,
+      };
+      H.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      });
     });
   });
 }
@@ -155,7 +165,7 @@ function testDrillThru({
   cy.log("drill-thru");
   H.filterWidget().click();
   H.popover().button("Add filter").click();
-  H.getDashboardCard().findByText("Q1").click();
+  H.getDashboardCard().findByText(QUESTION_NAME).click();
   H.assertQueryBuilderRowCount(trueRowCount);
 
   if (isNative) {
