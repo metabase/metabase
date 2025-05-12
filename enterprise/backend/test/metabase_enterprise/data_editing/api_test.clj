@@ -75,6 +75,21 @@
                      [3 "Farfetch'd" "The land of lisp"]}
                    (set (table-rows table-id)))))
 
+          (testing "PUT can also do bulk updates"
+            (is (= #{{:id 1, :name "Pidgey",     :song "The Star-Spangled Banner"}
+                     {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}
+                   (set
+                    (:updated
+                     (mt/user-http-request :crowberto :put 200 url
+                                           {:pks     [{:id 1}
+                                                      {:id 2}]
+                                            :updates {:song "The Star-Spangled Banner"}}))))
+
+                (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
+                         [2 "Speacolumn" "The Star-Spangled Banner"]
+                         [3 "Farfetch'd" "The land of lisp"]}
+                       (set (table-rows table-id))))))
+
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
                    (mt/user-http-request :crowberto :post 200 (str url "/delete")
