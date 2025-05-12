@@ -3,7 +3,7 @@
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
-   [metabase.lib.parse :as lib.parse]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.malli :as mu])
@@ -40,7 +40,7 @@
 
   ([s                   :- :string
     handle-sql-comments :- :boolean]
-   (->> (lib.parse/parse {:parse-error-type qp.error-type/invalid-query}
-                         s
-                         handle-sql-comments)
+   (->> (lib/parse {:parse-error-type qp.error-type/invalid-query}
+                   s
+                   handle-sql-comments)
         (map ->param))))
