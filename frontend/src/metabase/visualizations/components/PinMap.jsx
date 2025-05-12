@@ -16,6 +16,7 @@ import LeafletGridHeatMap from "./LeafletGridHeatMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
 import LeafletTilePinMap from "./LeafletTilePinMap";
+import S from "./PinMap.module.css";
 
 const WORLD_BOUNDS = [
   [-90, -180],
@@ -30,7 +31,7 @@ const MAP_COMPONENTS_BY_TYPE = {
 };
 
 export default class PinMap extends Component {
-  static uiName = t`Pin Map`;
+  static getUiName = () => t`Pin Map`;
   static identifier = "pin_map";
   static iconName = "pinmap";
 
@@ -245,14 +246,15 @@ export default class PinMap extends Component {
                 "PinMapUpdateButton",
                 ButtonsS.Button,
                 ButtonsS.ButtonSmall,
-                CS.mb1,
+                ButtonsS.ButtonWhite,
+                S.pinMapButton,
                 {
                   [DashboardS.PinMapUpdateButtonDisabled]: disableUpdateButton,
                 },
               )}
               onClick={this.updateSettings}
             >
-              {t`Save as default view`}
+              {t`Set as default view`}
             </div>
           ) : null}
           {!isDashboard &&
@@ -264,7 +266,8 @@ export default class PinMap extends Component {
                   "PinMapUpdateButton",
                   ButtonsS.Button,
                   ButtonsS.ButtonSmall,
-                  CS.mb1,
+                  ButtonsS.ButtonWhite,
+                  S.pinMapButton,
                 )}
                 onClick={() => {
                   if (

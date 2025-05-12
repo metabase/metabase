@@ -6,10 +6,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -21,7 +19,6 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -93,7 +90,7 @@
                              "\n\n"
                              "You can remove it with"
                              "\n"
-                             (pr-str (list 'swap! `defined-hydration-methods 'dissoc hydration-key)))
+                             (pr-str (list 'swap! `(deref ~#'defined-hydration-methods) 'dissoc hydration-key)))
                         {:hydration-key       hydration-key
                          :existing-definition existing-fn-symb}))))
     (swap! defined-hydration-methods assoc hydration-key fn-symb))
@@ -448,31 +445,6 @@
   "Transform for encrypted json."
   {:in  validate-cron-string
    :out identity})
-
-(mr/def ::legacy-metric-segment-definition
-  [:map
-   [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
-
-(defn- validate-legacy-metric-segment-definition
-  [definition]
-  (if-let [error (mr/explain ::legacy-metric-segment-definition definition)]
-    (let [humanized (me/humanize error)]
-      (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
-                      {:error     error
-                       :humanized humanized})))
-    definition))
-
-;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
-(defn- normalize-legacy-metric-segment-definition [definition]
-  (when (seq definition)
-    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
-      (validate-legacy-metric-segment-definition <>))))
-
-(def transform-legacy-metric-segment-definition
-  "Transform for inner queries like those in Metric definitions."
-  {:in  (comp json-in normalize-legacy-metric-segment-definition)
-   :out (comp (catch-normalization-exceptions normalize-legacy-metric-segment-definition) json-out-with-keywordization)})
 
 (defn- blob->bytes [^Blob b]
   (.getBytes ^Blob b 0 (.length ^Blob b)))

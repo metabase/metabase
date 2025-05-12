@@ -16,6 +16,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -28,7 +29,6 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -38,7 +38,6 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -248,12 +247,12 @@
                  :model/Card     card-1 {:database_id (mt/id)}
                  :model/Card     card-2 {:database_id (u/the-id db)}]
     (with-cards-in-readable-collection! [card-1 card-2]
-      (is (= true
-             (card-returned? :database (mt/id) card-1)))
+      (is (true?
+           (card-returned? :database (mt/id) card-1)))
       (is (= false
              (card-returned? :database db      card-1)))
-      (is (= true
-             (card-returned? :database db      card-2))))))
+      (is (true?
+           (card-returned? :database db      card-2))))))
 
 (deftest ^:parallel authentication-test
   (is (= (get request/response-unauthentic :body) (client/client :get 401 "card")))
@@ -271,12 +270,12 @@
                    :model/Card     card-1   {:table_id (u/the-id table-1)}
                    :model/Card     card-2   {:table_id (u/the-id table-2)}]
       (with-cards-in-readable-collection! [card-1 card-2]
-        (is (= true
-               (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
+        (is (true?
+             (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
         (is (= false
                (card-returned? :table (u/the-id table-2) (u/the-id card-1))))
-        (is (= true
-               (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
+        (is (true?
+             (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
 
 ;; Make sure `model_id` is required when `f` is :table
 (deftest ^:parallel model_id-requied-when-f-is-table
@@ -342,7 +341,6 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
-                 :model/LegacyMetric {metric-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:query {:source-table (mt/id :venues)
@@ -354,12 +352,6 @@
                                                      :database (mt/id)
                                                      :type :query}}
                  :model/Card {other-card-id :id} {}
-                 ;; source-table doesn't match
-                 :model/Card card-2 {:name "Card 2"
-                                     :dataset_query (mt/mbql-query nil
-                                                      {:source-table (str "card__" other-card-id)
-                                                       :filter [:= [:field 5 nil] (str "card__" model-id)]
-                                                       :aggregation [[:metric metric-id]]})}
                  ;; matching join
                  :model/Card card-3 {:name "Card 3"
                                      :dataset_query (let [alias (str "Question " model-id)]
@@ -380,7 +372,7 @@
                                                                                  :filter [:or
                                                                                           [:> [:field 1 nil] 3]
                                                                                           [:segment segment-id]]
-                                                                                 :aggregation  [[:+ [:metric metric-id] 1]]
+                                                                                 :aggregation  [[:+ [:count] 1]]
                                                                                  :breakout     [[:field 4 nil]]}}]
                                                          :fields [[:field 9 nil]]
                                                          :source-table (str "card__" other-card-id)}))}
@@ -421,16 +413,13 @@
                                      :archived true
                                      :dataset_query {:query {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
-      (with-cards-in-readable-collection! [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
+      (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))
         (is (= #{"Card 1" "Card 3"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_segment :model_id segment-id))))
-        (is (= #{"Card 2" "Card 3"}
-               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_metric :model_id metric-id))))))))
+                                                           :f :using_segment :model_id segment-id))))))))
 
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
@@ -920,17 +909,14 @@
                       (mt/user-http-request :crowberto :post 200 "card"
                                             (merge (mt/with-temp-defaults :model/Card)
                                                    {:dataset_query query})))))
-            (let [metadata (-> (qp/process-query query)
-                               :data
-                               :results_metadata
-                               :columns)]
+            (let [card     (mt/card-with-metadata
+                            (merge (mt/with-temp-defaults :model/Card)
+                                   {:dataset_query query}))
+                  metadata (:result_metadata card)]
               (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
                 (is (some? metadata))
                 (is (=? {:id pos-int?}
-                        (mt/user-http-request :crowberto :post 200 "card"
-                                              (merge (mt/with-temp-defaults :model/Card)
-                                                     {:dataset_query   query
-                                                      :result_metadata metadata}))))))))))))
+                        (mt/user-http-request :crowberto :post 200 "card" card)))))))))))
 
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
@@ -1207,11 +1193,81 @@
 
 (deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
-    (mt/with-temp [:model/Card card {:dataset_query {}}]
-      (is (=? {:type "model"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
-      (is (=? {:type "question"}
-              (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
+                                                      {:fields [$id $subtotal $created_at]})}]
+      (let [base-metadata [{:id    (mt/id :orders :id)
+                            :ident (mt/ident :orders :id)
+                            :name  "ID"}
+                           {:id    (mt/id :orders :subtotal)
+                            :ident (mt/ident :orders :subtotal)
+                            :name  "SUBTOTAL"}
+                           {:id    (mt/id :orders :created_at)
+                            :ident (mt/ident :orders :created_at)
+                            :name  "CREATED_AT"}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
+
+(deftest update-card-with-type-and-dataset-test-2-native-query
+  (testing "can toggle model using only type for a native query"
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query
+                                      (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
+      (let [base-metadata [{:name      "ID"
+                            :ident     (lib/native-ident "ID" (:entity_id card))
+                            :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
+                           {:name      "SUBTOTAL"
+                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
+                            :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
+                           {:name      "CREATED_AT"
+                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
+                            :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
+
+(deftest update-native-card-with-changed-columns-test
+  (testing "metadata is recomputed correctly when the query changes"
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query
+                                      (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
+      (let [base-metadata [{:name      "ID"
+                            :ident     (lib/native-ident "ID" (:entity_id card))
+                            :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
+                           {:name      "SUBTOTAL"
+                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
+                            :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
+                           {:name      "CREATED_AT"
+                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
+                            :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
+            "initial result_metadata is inferred correctly")
+
+        (is (=? {:type            "model"
+                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
+                                      (assoc card :type "model"))))
+        (is (=? {:type            "question"
+                 :result_metadata base-metadata}
+                (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
 
 (deftest update-card-with-metric-type
   (testing "can update a metric"
@@ -1352,8 +1408,8 @@
                             (archived?))]
         (is (= false
                (archived?)))
-        (is (= true
-               (set-archived! true)))
+        (is (true?
+             (set-archived! true)))
         (is (= false
                (set-archived! false)))))))
 
@@ -2666,8 +2722,8 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card card]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card)))]
-          (is (= true
-                 (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
+          (is (true?
+               (boolean (t2/exists? :model/Card :id (u/the-id card), :public_uuid uuid)))))))))
 
 (deftest share-card-preconditions-test
   (testing "POST /api/card/:id/public_link"
@@ -2849,15 +2905,11 @@
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp u/upper-case-en :name)
-          to-native      (fn [q]
-                           {:database (:database q)
-                            :type     :native
-                            :native   (qp.compile/compile q)})
-          update-card!  (fn [card]
-                          (mt/user-http-request :crowberto :put 200
-                                                (str "card/" (u/the-id card)) card))]
+          update-card!   (fn [card]
+                           (mt/user-http-request :crowberto :put 200
+                                                 (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
-                                                 ["native" (to-native query) (to-native modified-query)]]]
+                                                 #_["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
@@ -2944,22 +2996,38 @@
      [:model/Card source-card {:database_id   (mt/id)
                                :table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues {:limit 5})}
-      :model/Card field-filter-card  {:dataset_query
-                                      {:database (mt/id)
-                                       :type     :native
-                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
-                                                  :template-tags {"NAME" {:id           "name_param_id"
-                                                                          :name         "NAME"
-                                                                          :display_name "Name"
-                                                                          :type         :dimension
-                                                                          :dimension    [:field (mt/id :venues :name) nil]
-                                                                          :required     true}}}}
-                                      :name       "native card with field filter"
-                                      :parameters [{:id     "name_param_id"
-                                                    :type   :string/=
-                                                    :target [:dimension [:template-tag "NAME"]]
-                                                    :name   "Name"
-                                                    :slug   "NAME"}]}
+      :model/Card field-filter-card {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                 :template-tags {"NAME" {:id           "name_param_id"
+                                                                         :name         "NAME"
+                                                                         :display_name "Name"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :required     true}}}}
+                                     :name       "native card with field filter"
+                                     :parameters [{:id     "name_param_id"
+                                                   :type   :string/=
+                                                   :target [:dimension [:template-tag "NAME"]]
+                                                   :name   "Name"
+                                                   :slug   "NAME"}]}
+      :model/Card name-mapped-card  {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                 :template-tags {"id" {:id           "id"
+                                                                       :name         "ID"
+                                                                       :display_name "Id"
+                                                                       :type         :dimension
+                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :required     true}}}}
+                                     :name       "native card with named field filter"
+                                     :parameters [{:id     "id"
+                                                   :type   :number/>=
+                                                   :target [:dimension [:template-tag "id"]]
+                                                   :name   "Id"
+                                                   :slug   "id"}]}
       :model/Card card        (merge
                                {:database_id   (mt/id)
                                 :dataset_query (mt/mbql-query venues)
@@ -2987,15 +3055,33 @@
      (f {:source-card       source-card
          :card              card
          :field-filter-card field-filter-card
-         :param-keys        {:static-list       "_STATIC_CATEGORY_"
-                             :static-list-label "_STATIC_CATEGORY_LABEL_"
-                             :card              "_CARD_"
-                             :field-values      "name_param_id"}}))))
+         :name-mapped-card  name-mapped-card
+         :param-keys        {:static-list          "_STATIC_CATEGORY_"
+                             :static-list-label    "_STATIC_CATEGORY_LABEL_"
+                             :card                 "_CARD_"
+                             :field-values         "name_param_id"
+                             :labeled-field-values "id"}}))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
+
+(deftest parameter-remapping-test
+  (with-card-param-values-fixtures [{:keys [card field-filter-card name-mapped-card param-keys]}]
+    (letfn [(request [{:keys [id] :as _card} value-source value]
+              (mt/user-http-request :crowberto :get 200
+                                    (format "card/%d/params/%s/remapping?value=%s" id (param-keys value-source) value)))]
+      (are [card value-source value] (= [value] (request card value-source value))
+        field-filter-card :field-values      "20th Century Cafe"
+        field-filter-card :field-values      "Not a value in the DB"
+        card              :card              "33 Taps"
+        card              :card              "Not provided by the card"
+        card              :static-list       "African"
+        card              :static-list       "Whatever"
+        card              :static-list-label "European")
+      (is (= ["African" "Af"] (request card :static-list-label "African")))
+      (is (= [42 "Reyes Strosin"] (request name-mapped-card :labeled-field-values "42"))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "getting values"
@@ -3188,34 +3274,6 @@
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
-
-(defn- upload-example-csv-via-api!
-  "Upload a small CSV file to the given collection ID. Default args can be overridden"
-  [& {:as args}]
-  (mt/with-current-user (mt/user->id :rasta)
-    (let [;; Make the file-name unique so the table names don't collide
-          filename (str "example csv file " (random-uuid) ".csv")
-          file     (upload-test/csv-file-with
-                    ["id, name"
-                     "1, Luke Skywalker"
-                     "2, Darth Vader"]
-                    filename)]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (@#'api.card/from-csv! (merge {:collection-id nil ;; root collection
-                                       :filename      filename
-                                       :file          file}
-                                      args))))))
-
-(deftest from-csv-test
-  (mt/test-driver :h2
-    (mt/with-empty-db
-      (testing "Happy path"
-        (t2/update! :model/Database (mt/id) {:uploads_enabled true :uploads_schema_name "PUBLIC" :uploads_table_prefix nil})
-        (let [{:keys [status body]} (upload-example-csv-via-api!)]
-          (is (= 200
-                 status))
-          (is (= body
-                 (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
@@ -3544,6 +3602,52 @@
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
+
+(deftest card-metadata-has-entity-ids-test
+  (mt/with-temp
+    [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
+                                  :database_id (mt/id)}
+     :model/Card {card-id-2 :id} {:dataset_query
+                                  {:type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                              :template-tags
+                                              {"id"      {:name         "id"
+                                                          :display-name "Id"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}
+                                               "name"    {:name         "name"
+                                                          :display-name "Name"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :name) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "source"  {:name         "source"
+                                                          :display-name "Source"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :source) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "user_id" {:name         "user_id"
+                                                          :display-name "User"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :orders :user_id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}}}
+                                   :database (mt/id)}
+                                  :query_type :native
+                                  :database_id (mt/id)}]
+    (testing "Simple card"
+      (is (=? {:fields api.test-util/all-have-entity-ids?
+               :tables api.test-util/all-have-entity-ids?
+               :databases api.test-util/all-have-entity-ids?}
+              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))
+    (testing "Parameterized native query"
+      (is (=? {:fields api.test-util/all-have-entity-ids?
+               :tables api.test-util/all-have-entity-ids?
+               :databases api.test-util/all-have-entity-ids?}
+              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata")))))))
 
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
@@ -4171,3 +4275,67 @@
                     (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
+
+(deftest e2e-card-update-invalidates-cache-test
+  (testing "Card update invalidates card's cache (#55955)"
+    (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
+      (try
+        ;; First delete the existing root config because if that exists (shouldn't, but you know..)
+        ;; with-temp will fail. This is imho simpler then checking whether that exists and based on the result of
+        ;; the query either doing update or insert.
+        (when existing-config
+          (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
+        (mt/with-temp
+          [:model/CacheConfig
+           _
+           {:model_id 0
+            :model "root"
+            :strategy "ttl"
+            :config {:multiplier 99999, :min_duration_ms 1}}
+
+           :model/Card
+           model
+           {:type :model
+            :dataset_query (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (lib/limit 10)
+                                 lib.convert/->legacy-MBQL))}]
+          (letfn [;; Query results should get cached on following request.
+                  (card-query-post-request
+                    []
+                    (mt/user-http-request :rasta :post 202 (str "card/" (:id model) "/query")
+                                          {:collection_preview false
+                                           :ignore_cache       false
+                                           :parameters         []}))
+                  ;; Query cache should get invalidated on following request.
+                  (card-put-request [result_metadata]
+                    (mt/user-http-request :rasta :put 200
+                                          (str "card/" (:id model))
+                                          {:result_metadata result_metadata}))]
+            (let [post-response (do (card-query-post-request)
+                                    (card-query-post-request))
+                  raw-results-metadata (get-in post-response [:data :results_metadata :columns])]
+              (testing "Base: Initial query is cached (2nd post request's response)"
+                (is (some? (:cached post-response))))
+              (let [put-resonse (card-put-request (cons (assoc (first raw-results-metadata) :display_name "This is ID")
+                                                        (rest raw-results-metadata)))]
+                (testing "Base: Put changes results_metadata successfully"
+                  (is (= "This is ID"
+                         (-> put-resonse :result_metadata first :display_name))))))
+            (testing "Card request not cached. Preceding post successfully invalidated the cache."
+              (let [post-response (card-query-post-request)
+                    id-display-name (-> post-response :data :results_metadata :columns first :display_name)]
+                (testing "Cache is NOT being used, cache was invalidated"
+                  (is (nil? (:cached post-response))))
+                (testing "Metadata edit persists"
+                  (is (= "This is ID" id-display-name)))))
+            (testing "Last post request cached the query successfully"
+              (let [post-response (card-query-post-request)
+                    id-display-name (-> post-response :data :results_metadata :columns first :display_name)]
+                (testing "Cache is being used."
+                  (is (some? (:cached post-response))))
+                (testing "Metadata edit persists"
+                  (is (= "This is ID" id-display-name)))))))
+        (finally
+          (when existing-config
+            (t2/insert! :model/CacheConfig existing-config)))))))

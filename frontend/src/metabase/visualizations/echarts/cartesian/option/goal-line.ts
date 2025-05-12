@@ -35,10 +35,12 @@ export function getGoalLineSeriesOption(
     return null;
   }
 
+  const value = chartModel.leftAxisModel?.isNormalized
+    ? settings["graph.goal_value"] / 100
+    : settings["graph.goal_value"];
+
   const scaleTransformedGoalValue =
-    chartModel.yAxisScaleTransforms.toEChartsAxisValue(
-      settings["graph.goal_value"],
-    );
+    chartModel.yAxisScaleTransforms.toEChartsAxisValue(value);
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {

@@ -687,14 +687,14 @@ describe("scenarios > dashboard > tabs", () => {
         // DashboardTabs.unit.spec.tsx will fail.
         clientX: 11,
         clientY: 0,
-        force: true,
       })
       .trigger("mousemove", {
         button: 0,
         clientX: 11,
         clientY: 0,
-        force: true,
       })
+      // UI requires time to update, causes flakiness without the delay
+      .wait(100)
       .trigger("mouseup");
 
     // After the long tab is dragged, it is now in the first position. We need

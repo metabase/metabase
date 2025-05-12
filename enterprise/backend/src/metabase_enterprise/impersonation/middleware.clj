@@ -13,3 +13,13 @@
                  (lib.metadata/database (qp.store/metadata-provider)))]
     (assoc query :impersonation/role role)
     query))
+
+(defenterprise apply-impersonation-postprocessing
+  "Post-processing middleware. Binds the dynamic var"
+  :feature :advanced-permissions
+  [qp]
+  (fn [query rff]
+    (if-let [role (:impersonation/role query)]
+      (binding [impersonation.driver/*impersonation-role* role]
+        (qp query rff))
+      (qp query rff))))

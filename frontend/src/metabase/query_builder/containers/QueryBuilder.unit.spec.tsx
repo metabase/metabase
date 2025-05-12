@@ -3,6 +3,7 @@ import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   screen,
   waitFor,
@@ -27,6 +28,10 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
     setupJestCanvasMock();
@@ -166,7 +171,9 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1");
 
-      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        screen.getByTestId("question-results-download-button"),
+      );
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
@@ -197,7 +204,9 @@ describe("QueryBuilder", () => {
 
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(
+        screen.getByTestId("question-results-download-button"),
+      );
       await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),

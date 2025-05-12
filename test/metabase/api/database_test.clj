@@ -8,26 +8,28 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
+   [metabase.api.test-util :as api.test-util]
+   [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.secret :as secret]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -81,10 +83,11 @@
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
-    {:engine               (u/qualified-name (:engine db))
-     :settings             {}
-     :features             (map u/qualified-name (driver.u/features driver db))
-     :initial_sync_status "complete"})))
+    {:engine                (u/qualified-name (:engine db))
+     :settings              {}
+     :features              (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status   "complete"
+     :router_user_attribute nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -463,7 +466,7 @@
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-            (is (= (audit-log/model-details db :model/Database)
+            (is (= (audit/model-details db :model/Database)
                    (->> (mt/latest-audit-log-entry "database-delete")
                         :details
                         normalize)))))))))
@@ -627,13 +630,13 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details)
+    (is (= (merge (dissoc (db-details) :details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :id :created_at :updated_at :entity_id] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -652,7 +655,8 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
-                                                             :database_indexed  true
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
@@ -667,7 +671,8 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
-                                                             :database_indexed  false
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
@@ -675,6 +680,14 @@
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest ^:parallel database-metadata-has-entity-ids-test
+  (testing "GET /api/database/:id/metadata"
+    (is (=? {:entity_id some?
+             :tables (partial every? (fn [{:keys [entity_id fields]}]
+                                       (and entity_id
+                                            (api.test-util/all-have-entity-ids? fields))))}
+            (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))))))
 
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
@@ -865,7 +878,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
@@ -890,6 +903,7 @@
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}
                      :model/Database _ {:engine ::test-driver}]
+        (mt/user-http-request :rasta :get 200 "database")
         (t2/with-call-count [call-count]
           (mt/user-http-request :rasta :get 200 "database")
           (is (< (call-count) 10)))))))
@@ -1120,8 +1134,12 @@
 
 (deftest ^:parallel db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
-    (mt/with-temp [:model/Card card (assoc (card-with-native-query "Birthday Card")
-                                           :result_metadata [{:name "age_in_bird_years"}])]
+    (mt/with-temp [:model/Card card (card-with-native-query
+                                     "Birthday Card"
+                                     :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
+                                     :result_metadata [{:name "age_in_bird_years"
+                                                        :ident (lib/native-ident "age_in_bird_years"
+                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1132,6 +1150,7 @@
                 :fields [{:name                     "age_in_bird_years"
                           :table_id                 (str "card__" (u/the-id card))
                           :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
+                          :ident                    (lib/native-ident "age_in_bird_years" "M6W4CLdyJxiW-DyzDbGl4")
                           :semantic_type            nil
                           :base_type                nil
                           :default_dimension_option nil
@@ -1148,6 +1167,14 @@
                 :tables             []}
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
+
+(deftest db-metadata-tables-have-non-nil-schemas
+  (mt/test-drivers (mt/normal-drivers)
+    (is (every? some?
+                (->> (mt/user-http-request :crowberto :get 200
+                                           (format "database/%d/metadata" (mt/id)))
+                     :tables
+                     (map :schema))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
@@ -1369,11 +1396,11 @@
             ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
             ;; however if something went wrong, don't hang forever, eventually timeout and fail
             (testing "sync called?"
-              (is (= true
-                     (deref sync-called? long-timeout :sync-never-called))))
+              (is (true?
+                   (deref sync-called? long-timeout :sync-never-called))))
             (testing "analyze called?"
-              (is (= true
-                     (deref analyze-called? long-timeout :analyze-never-called))))
+              (is (true?
+                   (deref analyze-called? long-timeout :analyze-never-called))))
             (testing "audit log entry generated"
               (is (= db-id
                      (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))))))))
@@ -1846,9 +1873,10 @@
 
 (deftest get-schema-tables-unreadable-metrics-are-not-returned-test
   (mt/with-temp [:model/Collection model-coll   {:name "Model Collection"}
-                 :model/Card       card         (assoc (card-with-native-query "Card 1")
-                                                       :collection_id (:id model-coll)
-                                                       :type :model)
+                 :model/Card       card         (card-with-native-query
+                                                 "Card 1"
+                                                 :collection_id (:id model-coll)
+                                                 :type :model)
                  :model/Collection metric-coll {:name "Metric Collection"}
                  :model/Card       metric      {:type          :metric
                                                 :name          "Metric"
@@ -1858,6 +1886,8 @@
                                                                 :database (mt/id)
                                                                 :query    {:source-table (str "card__" (:id card))
                                                                            :aggregation  [[:count]]}}}]
+    (is (=? nil (:result_metadata card)))
+    (is (=? nil (:result_metadata (t2/select-one :model/Card :id (:id card)))))
     (is (=? {:status "completed"}
             (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
     (let [virtual-table {:id           (format "card__%d" (:id card))

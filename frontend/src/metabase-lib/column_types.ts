@@ -1,9 +1,11 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as TYPES from "cljs/metabase.lib.types.isa";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
 
-import type { ColumnMetadata } from "./types";
+import type { ColumnMetadata, ColumnTypeInfo } from "./types";
 
-type TypeFn = (column: ColumnMetadata) => boolean;
+type TypeFn = (column: ColumnMetadata | ColumnTypeInfo) => boolean;
 
 // Effective type checks.
 export const isBoolean: TypeFn = TYPES.boolean_QMARK_;
@@ -51,9 +53,15 @@ export const isTitle: TypeFn = TYPES.title_QMARK_;
 export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 
+export function legacyColumnTypeInfo(
+  column: DatasetColumn | Field,
+): ColumnTypeInfo {
+  return ML.legacy_column__GT_type_info(column);
+}
+
 export function isAssignableType(
-  column1: ColumnMetadata,
-  column2: ColumnMetadata,
+  column1: ColumnMetadata | ColumnTypeInfo,
+  column2: ColumnMetadata | ColumnTypeInfo,
 ): boolean {
   return ML.valid_filter_for_QMARK_(column1, column2);
 }

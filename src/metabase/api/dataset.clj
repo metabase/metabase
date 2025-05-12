@@ -8,11 +8,12 @@
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
@@ -64,12 +65,15 @@
         (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
-    (let [source-card-id (query->source-card-id query)
+    (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :result_metadata :type :card_schema] :id source-card-id))
+                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
+                           (:entity_id source-card)
+                           (assoc :card-entity-id (:entity_id source-card))
+
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
@@ -254,3 +258,27 @@
                               [:parameter ms/Parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field-ids query))
+
+(defn param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
+  [[field-id :as field-ids] param value]
+  (or (custom-values/parameter-remapped-value
+       param
+       value
+       #(-> (if (= (count field-ids) 1)
+              (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+              (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+            :values
+            first))
+      [value]))
+
+(api.macros/defendpoint :post "/parameter/remapping"
+  "Return the remapped parameter values for cards or dashboards that are being edited."
+  [_route-params
+   _query-params
+   {:keys [parameter value field_ids]} :- [:map
+                                           [:parameter ms/Parameter]
+                                           [:value :any]
+                                           [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (param-remapped-value field_ids parameter value))

@@ -53,15 +53,14 @@
                         :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
                         :model/Database   {db-id# :id}  {:name "Indexed Database"}
                         :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
-           (search.index/reset-index!)
-           (search.ingestion/populate-index! :search.engine/appdb)
+           (search.engine/reindex! :search.engine/appdb {:in-place? true})
            ~@body)))))
 
 (deftest idempotent-test
   (with-index
     (let [count-rows  (fn [] (t2/count (search.index/active-table)))
           rows-before (count-rows)]
-      (search.ingestion/populate-index! :search.engine/appdb)
+      (search.engine/reindex! :search.engine/appdb {:in-place? true})
       (is (= rows-before (count-rows))))))
 
 (deftest incremental-update-test
@@ -144,7 +143,7 @@
 (deftest phrase-test
   (with-index
     (with-fulltext-filtering
-    ;; Less matches without an english dictionary
+      ;; Less matches without an english dictionary
       (is (= #_2 3 (index-hits "projected")))
       (is (= 2 (index-hits "revenue")))
       (is (= #_1 2 (index-hits "projected revenue")))
@@ -153,7 +152,7 @@
 
 (defn ingest!
   [model where-clause]
-  (#'search.engine/consume!
+  (#'search.engine/update!
    :search.engine/appdb
    (#'search.ingestion/query->documents
     (#'search.ingestion/spec-index-reducible model where-clause))))
@@ -513,7 +512,7 @@
    "report_card"       #{"action" "model_index_value" "report_card"}
    "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 
-(deftest search-model-cascade-text
+(deftest search-model-cascade-test
   (is (= model->deleted-descendants
          (mt/with-empty-h2-app-db
            (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
@@ -590,4 +589,28 @@
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
+          (#'search.index/delete-obsolete-tables!))))))
+
+(deftest when-index-created
+  (when (search/supports-index?)
+    (binding [search.index/*index-version-id* "index-age-test"]
+      (try
+        (let [table-name (search.index/gen-table-name)
+              version @#'search.index/*index-version-id*]
+
+          (testing "Nil age if no active table"
+            (is (nil? (#'search.index/when-index-created))))
+
+          (testing "Returns age of active table"
+            (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
+              (search.index/create-table! table-name)
+              (search-index-metadata/create-pending! :appdb version table-name)
+              (search-index-metadata/active-pending! :appdb version)
+              (t2/update! :model/SearchIndexMetadata
+                          :index_name  (name table-name)
+                          {:created_at  update-time})
+
+              (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
           (#'search.index/delete-obsolete-tables!))))))

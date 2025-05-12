@@ -19,7 +19,8 @@
       "label": ".Team/SemanticLayer",
       "members": [
         "kamilmielnik",
-        "lbrdnk"
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
@@ -86,6 +87,18 @@
         "camsaul",
         "escherize"
       ]
+    },
+     {
+      "name": "Metabot",
+      "label": ".Team/Metabot",
+      "members": [
+        "somtom"
+      ]
+    },
+    {
+      "name": "Product Growth",
+      "label": ".Team/ProductGrowth",
+      "members": ["nemanjaglumac"]
     }
   ]
 }

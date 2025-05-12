@@ -4,7 +4,7 @@
   #_{:clj-kondo/ignore [:consistent-alias]}
   (:require
    [clojure.test :refer :all]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
@@ -103,6 +103,7 @@
                      {:search-native-query true})))))))
 
 (deftest joined-with-table?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [expected args]
        (= expected (apply #'search.filter/joined-with-table? args))
 

@@ -15,7 +15,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -250,17 +249,15 @@
                                     :limit        5})
                                  qp.compile/compile
                                  :query))
-
           native-query (mt/native-query {:query native-sub-query})
 
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
+          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card     (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
-        [:model/Card card (assoc {:dataset_query native-query}
-                                 :result_metadata
-                                 (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                                     first
-                                     :result-metadata))]
+        [:model/Card card {:dataset_query native-query
+                           :entity_id       (:entity-id metadata-card)
+                           :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
                           :type     "query"
                           :query    {:source-table (str "card__" (u/the-id card))}}]
@@ -687,6 +684,35 @@
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))))))
 
+(deftest ^:parallel parameter-remapping-test
+  (testing "field values"
+    (let [parameter {:values_query_type    "list"
+                     :values_source_type   nil
+                     :values_source_config {}
+                     :name                 "ID 2"
+                     :slug                 "id_2"
+                     :id                   "707f4bbf"
+                     :type                 "id"
+                     :sectionId            "string"}
+          body      {:parameter parameter
+                     :field_ids [(mt/id :people :id)]
+                     :value     1}]
+      (is (= [1 "Hudson Borer"]
+             (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body)))))
+  (testing "static list"
+    (let [parameter {:name                 "Static Category label"
+                     :id                   "list-param-id"
+                     :type                 "category"
+                     :values_source_type   "static-list"
+                     :values_source_config {:values [["A frican" "Af"]
+                                                     ["American" "Am"]
+                                                     ["A   sian" "As"]]}}
+          body      {:parameter parameter
+                     :field_ids [(mt/id :people :name)]
+                     :value     "A   sian"}]
+      (is (= ["A   sian" "As"]
+             (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
+
 (deftest ^:parallel adhoc-mlv2-query-test
   (testing "POST /api/dataset"
     (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
@@ -758,6 +784,29 @@
     (is (=? {:databases [{:id (mt/id)}]
              :tables    empty?
              :fields    [{:id (mt/id :people :id)}]}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                              :template-tags
+                                              {"id" {:name         "id"
+                                                     :display-name "Id"
+                                                     :type         :dimension
+                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                     :widget-type  :id
+                                                     :default      nil}}}})))))
+
+(deftest ^:parallel dataset-metadata-has-entity-ids-test
+  (testing "MBQL query"
+    (is (=? {:databases api.test-util/all-have-entity-ids?
+             :tables    api.test-util/all-have-entity-ids?
+             :fields    api.test-util/all-have-entity-ids?}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                  (mt/mbql-query products)))))
+  (testing "Parameterized native query"
+    (is (=? {:databases api.test-util/all-have-entity-ids?
+             :tables    api.test-util/all-have-entity-ids?
+             :fields    api.test-util/all-have-entity-ids?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                   {:database (mt/id)
                                    :type     :native

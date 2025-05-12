@@ -51,14 +51,23 @@ driver:
           required: true
           visible-if:
             use-m2m: true
+      - merge:
+        - multi-level-schema
+        - display-name: Enable multiple catalogs
       - name: catalog
-        display-name: Catalog
+        display-name: Default Catalog
         placeholder: default
-        helper-text: Specify the catalog to connect to.
+        helper-text: Specify the default catalog to connect to.
         required: true
       - name: schema-filters
         type: schema-filters
-        display-name: Schemas
+        display-name: Catalogs and Schemas
+        placeholder: >-
+          If multiple catalogs enabled:
+              E.x. catalog_1.schema, catalog_2\.*, catalog_3\.auth*
+
+          Otherwise:
+              E.x. schema_1,auth*
         helper-text: Optionally filter which schemas are visible.
       - advanced-options-start
       - merge:

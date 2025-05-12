@@ -2,17 +2,18 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import type { DashboardCardCustomMenuItem } from "embedding-sdk";
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type { DashCardId, Dataset } from "metabase-types/api";
 
 import { canDownloadResults, canEditQuestion } from "./utils";
 
@@ -21,12 +22,16 @@ type DashCardMenuItemsProps = {
   result: Dataset;
   isDownloadingData: boolean;
   onDownload: () => void;
+  onEditVisualization?: () => void;
+  dashcardId?: DashCardId;
 };
 export const DashCardMenuItems = ({
   question,
   result,
   isDownloadingData,
   onDownload,
+  onEditVisualization,
+  dashcardId,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
@@ -51,7 +56,14 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && canEditQuestion(question)) {
+    if (onEditVisualization) {
+      items.push({
+        key: "MB_EDIT_VISUALIZER_QUESTION",
+        iconName: "pencil",
+        label: t`Edit visualization`,
+        onClick: onEditVisualization,
+      });
+    } else if (withEditLink && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
@@ -90,6 +102,12 @@ export const DashCardMenuItems = ({
       });
     }
 
+    items.push(
+      ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
+        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
+        .filter(isNotNull),
+    );
+
     if (customItems) {
       items.push(
         ...customItems.map((item) => {
@@ -116,6 +134,9 @@ export const DashCardMenuItems = ({
     result,
     withDownloads,
     withEditLink,
+    onEditVisualization,
+    dashcardId,
+    dispatch,
   ]);
 
   return menuItems.map((item) => {
@@ -127,6 +148,7 @@ export const DashCardMenuItems = ({
         {...rest}
         key={key}
         leftSection={<Icon name={iconName} aria-hidden />}
+        aria-label={item.label}
       >
         {item.label}
       </Menu.Item>

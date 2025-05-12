@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { DashboardId } from "./dashboard";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -56,7 +57,8 @@ export type EngineFieldType =
   | "select"
   | "textFile"
   | "info"
-  | "section";
+  | "section"
+  | "hidden";
 
 export type EngineFieldTreatType = "base64";
 
@@ -66,7 +68,7 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type: "official" | "community" | "partner";
+  type: "official" | "community";
   contact: EngineSourceContact | null;
 }
 
@@ -139,6 +141,20 @@ export type LoadingMessage =
   | "loading-results";
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
+
+export type GdrivePayload = {
+  status: "not-connected" | "syncing" | "active" | "paused" | "error";
+  url?: string;
+  message?: string; // only for errors
+  created_at?: number;
+  created_by_id?: UserId;
+  sync_started_at?: number;
+  last_sync_at?: number;
+  next_sync_at?: number;
+  error_message?: string;
+  db_id?: number;
+  error?: string;
+};
 
 const tokenStatusFeatures = [
   "advanced-config",
@@ -226,6 +242,11 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "metabot_v3",
+  "ai_sql_fixer",
+  "ai_sql_generation",
+  "database_routing",
+  "development-mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -238,16 +259,24 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+export interface SettingDefinition<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key>;
-  default?: SettingValue<Key>;
+  value?: EnterpriseSettingValue<Key>;
+  default?: EnterpriseSettingValue<Key>;
   display_name?: string;
   description?: string | ReactNode | null;
   type?: InputSettingType;
 }
+
+export type SettingDefinitionMap<
+  T extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = {
+  [K in T]: SettingDefinition<K>;
+};
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
 
@@ -268,6 +297,9 @@ export interface UploadsSettings {
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-from-name": string | null;
+  "email-from-address": string | null;
+  "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
   "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
@@ -308,6 +340,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
+  "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
@@ -321,13 +354,14 @@ interface AdminSettings {
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
-  "version-info": VersionInfo | null;
+  "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
+  gsheets: Partial<GdrivePayload>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -359,24 +393,19 @@ interface PublicSettings {
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
-  "custom-homepage-dashboard": number | null;
+  "custom-homepage-dashboard": DashboardId | null;
+  "development-mode?": boolean;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
-  "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
+  "enable-sandboxes?": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
-  gsheets: {
-    status: "not-connected" | "loading" | "complete" | "error";
-    folder_url: string | null;
-    error?: string;
-    "created-by-id"?: UserId;
-  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
@@ -467,3 +496,39 @@ export type Settings = InstanceSettings &
 export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
+
+export type ColorSettings = Record<string, string>;
+
+export type IllustrationSettingValue = "default" | "none" | "custom";
+export type TimeoutValue = { amount: number; unit: string };
+
+export interface EnterpriseSettings extends Settings {
+  "application-colors"?: ColorSettings | null;
+  "application-logo-url"?: string;
+  "login-page-illustration"?: IllustrationSettingValue;
+  "login-page-illustration-custom"?: string;
+  "landing-page-illustration"?: IllustrationSettingValue;
+  "landing-page-illustration-custom"?: string;
+  "no-data-illustration"?: IllustrationSettingValue;
+  "no-data-illustration-custom"?: string;
+  "no-object-illustration"?: IllustrationSettingValue;
+  "no-object-illustration-custom"?: string;
+  "landing-page"?: string;
+  "ee-ai-features-enabled"?: boolean;
+  "ee-openai-api-key"?: string;
+  "ee-openai-model"?: string;
+  "saml-user-provisioning-enabled?"?: boolean;
+  "session-timeout": TimeoutValue | null;
+  "scim-enabled"?: boolean | null;
+  "scim-base-url"?: string;
+  "send-new-sso-user-admin-email?"?: boolean;
+  /**
+   * @deprecated
+   */
+  application_logo_url?: string;
+}
+
+export type EnterpriseSettingKey = keyof EnterpriseSettings;
+export type EnterpriseSettingValue<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = EnterpriseSettings[Key];

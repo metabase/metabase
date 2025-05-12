@@ -18,7 +18,6 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]))
@@ -43,6 +42,12 @@
                               :test/time-type                  false
                               :schemas                         true
                               :datetime-diff                   true
+                              :expression-literals             true
+                              :expressions/integer             true
+                              :expressions/float               true
+                              :expressions/text                true
+                              :expressions/date                true
+                              :split-part                      true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false
                               :window-functions/cumulative     (not config/is-test?)
@@ -189,14 +194,14 @@
 (defmethod driver/upload-type->database-type :clickhouse
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              "Nullable(String)"
-    ::upload/text                     "Nullable(String)"
-    ::upload/int                      "Nullable(Int64)"
-    ::upload/float                    "Nullable(Float64)"
-    ::upload/boolean                  "Nullable(Boolean)"
-    ::upload/date                     "Nullable(Date32)"
-    ::upload/datetime                 "Nullable(DateTime64(3))"
-    ::upload/offset-datetime          nil))
+    :metabase.upload/varchar-255              "Nullable(String)"
+    :metabase.upload/text                     "Nullable(String)"
+    :metabase.upload/int                      "Nullable(Int64)"
+    :metabase.upload/float                    "Nullable(Float64)"
+    :metabase.upload/boolean                  "Nullable(Boolean)"
+    :metabase.upload/date                     "Nullable(Date32)"
+    :metabase.upload/datetime                 "Nullable(DateTime64(3))"
+    :metabase.upload/offset-datetime          nil))
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]

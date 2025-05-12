@@ -65,6 +65,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
   viewHeight: number;
+  highlightedLineNumbers?: number[];
 
   isOpen?: boolean;
   isInitiallyOpen?: boolean;
@@ -96,7 +97,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
-  setNativeEditorSelectedRange: (range: SelectionRange) => void;
+  setNativeEditorSelectedRange: (range: SelectionRange[]) => void;
   openDataReferenceAtQuestion: (id: CardId) => void;
   openSnippetModalWithSelectedText: () => void;
   insertSnippet: (snippet: NativeQuerySnippet) => void;
@@ -311,6 +312,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       setParameterValueToDefault,
       forwardedRef,
       runQuery,
+      highlightedLineNumbers,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -386,6 +388,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               ref={this.editor}
               query={question.query()}
               readOnly={readOnly}
+              highlightedLineNumbers={highlightedLineNumbers}
               onChange={this.onChange}
               onRunQuery={runQuery}
               onSelectionChange={setNativeEditorSelectedRange}
@@ -398,6 +401,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 features={sidebarFeatures}
                 onShowPromptInput={this.togglePromptVisibility}
                 onFormatQuery={this.formatQuery}
+                onGenerateQuery={this.onChange}
                 {...this.props}
               />
             )}

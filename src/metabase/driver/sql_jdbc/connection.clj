@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.database-routing.core :as database-routing]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -12,9 +13,9 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.logger :as logger]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -95,10 +96,9 @@ When all connections are in use then Metabase will be slower to return results f
 For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
-  will kill connections that time out, but in practice it seems that connections disappear into the ether every once
-  in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
-  timeout in [[metabase.query-processor.context/query-timeout-ms]] by default."
+  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
+  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
+  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
   :visibility :internal
   :type       :integer
   :getter     (fn []
@@ -131,8 +131,10 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    "acquireRetryAttempts"         (if config/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
-   "minPoolSize"                  1
-   "initialPoolSize"              1
+   "minPoolSize"                  (if (:router-database-id database)
+                                    0 1)
+   "initialPoolSize"              (if (:router-database-id database)
+                                    0 1)
    "maxPoolSize"                  (jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
@@ -289,6 +291,8 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
+  (when-let [db-id (u/id db-or-id-or-spec)]
+    (database-routing/check-allowed-access! db-id))
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)

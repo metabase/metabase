@@ -6,7 +6,7 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -44,7 +44,7 @@
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
-  (into {} (for [col (request/with-current-user nil
+  (into {} (for [col (request/as-admin
                        ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
                         {:database (database/table-id->database-id table-id)
                          :type     :query

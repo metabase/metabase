@@ -61,7 +61,7 @@ By default, Metabase will execute a query as soon as you choose an grouping opti
 ### Choose when syncs and scans happen
 
 See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
-  
+
 ### Periodically refingerprint tables
 
 > Periodic refingerprinting will increase the load on your database.
@@ -127,7 +127,8 @@ There may be additional permissions required for other Athena functionality, lik
         "athena:StopQueryExecution",
         "athena:CreatePreparedStatement",
         "athena:DeletePreparedStatement",
-        "athena:GetPreparedStatement"
+        "athena:GetPreparedStatement",
+        "athena:GetTableMetadata"
       ],
       "Resource": "*"
     },

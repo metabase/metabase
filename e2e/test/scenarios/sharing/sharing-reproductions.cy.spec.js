@@ -320,7 +320,8 @@ describe("issue 21559", { tags: "@external" }, () => {
     });
   });
 
-  it("should respect dashboard card visualization (metabase#21559)", () => {
+  // TODO: implement this using the visualizer
+  it.skip("should respect dashboard card visualization (metabase#21559)", () => {
     cy.findByTestId("add-series-button").click({ force: true });
 
     cy.findByTestId("add-series-modal").within(() => {
@@ -959,7 +960,7 @@ describe("issue 16108", () => {
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("download").realHover();
-    H.tooltip().findByText("Download full results");
+    H.tooltip().findByText("Download results");
     H.sharingMenuButton().realHover();
     H.tooltip().findByText("Sharing");
   });

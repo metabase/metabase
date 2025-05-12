@@ -63,6 +63,7 @@
 (def ^:private cards
   {:cards [{:name          "My Card"
             :id            1
+            :entity-id     (u/generate-nano-id)
             :type          :question
             :dataset-query (lib.tu.macros/mbql-query checkins
                              {:aggregation [[:count]]
@@ -211,13 +212,13 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__abc"
+                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
                                                    {:lib/type      :metadata/column
                                                     :name          "sum"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__sum"
+                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
@@ -237,7 +238,7 @@
                                 (merge
                                  {:lib/type      :metadata/card
                                   :id            (inc idx)
-                                  :entity_id     eid
+                                  :entity-id     eid
                                   :database-id   (:id (lib.metadata/database metadata-provider))
                                   :name          (str "Mock " (name table) " card")
                                   :dataset-query (if native?
@@ -328,6 +329,26 @@
    (providers.mock/mock-metadata-provider
     {:cards (vals (mock-cards))})))
 
+(defn as-model
+  "Given a mock card, make it a model.
+
+  This sets the `:type` of the card, and also adds `model[...]__...` to the `:ident`s in its `:result-metadata`, if any.
+
+  If the `:type` is already `:model`, this does nothing. Randomizes an `:entity-id` if not provided."
+  [card]
+  (if (= (:type card) :model)
+    card ; Do nothing if it's already a model.
+    (let [eid (or (:entity-id card)
+                  (lib/random-ident))]
+      (-> card
+          (assoc :type      :model
+                 :entity-id eid)
+          (m/update-existing :result-metadata
+                             (fn [metadata]
+                               (mapv #(cond-> %
+                                        (:ident %) (lib/add-model-ident eid))
+                                     metadata)))))))
+
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
   with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
@@ -371,3 +392,8 @@
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))
+
+(defn placeholder-entity-id?
+  "True if the string `s` is exactly a placeholder `entity_id` of the type generated for ad-hoc cards."
+  [s]
+  (lib.metadata.ident/placeholder? s))

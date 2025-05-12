@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { InteractiveQuestionProps } from "embedding-sdk";
+import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
@@ -38,7 +38,7 @@ export const InteractiveAdHocQuestion = ({
   initialSqlParameters,
   onNavigateBack,
 }: InteractiveAdHocQuestionProps &
-  Omit<InteractiveQuestionProps, "questionId"> &
+  Omit<BaseInteractiveQuestionProps, "questionId"> &
   InteractiveQuestionDefaultViewProps) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),

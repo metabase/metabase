@@ -15,12 +15,10 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.config :as config]
    [metabase.models.collection :as collection]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.cache :as setting.cache]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -29,7 +27,11 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
-   [metabase.task :as task]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting]
+   [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
@@ -186,13 +188,6 @@
             :ip_address         "0:0:0:0:0:0:0:1"
             :timestamp          (t/zoned-date-time)})
 
-   :model/LegacyMetric
-   (fn [_] (default-timestamped
-            {:creator_id  (rasta-id)
-             :definition  {}
-             :description "Lookin' for a blueberry"
-             :name        "Toucans in the rainforest"}))
-
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
@@ -238,6 +233,9 @@
 
    :model/PermissionsGroup
    (fn [_] {:name (u.random/random-name)})
+
+   :model/PermissionsGroupMembership
+   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
 
    :model/Pulse
    (fn [_] (default-timestamped
@@ -452,7 +450,7 @@
                         (catch Exception e
                           (when-not raw-setting?
                             (throw e))))]
-    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
+    (if (and (not raw-setting?) (setting/env-var-value setting-k))
       (do-with-temp-env-var-value! (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value :model/Setting :key setting-k)
@@ -464,7 +462,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
+              (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                 (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -479,7 +477,7 @@
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
+                (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
@@ -513,7 +511,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
-  using [[metabase.models.setting/defsetting]]."
+  using [[metabase.settings.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -659,13 +657,13 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
           (with-redefs [qs/initialize (constantly temp-scheduler)
                         ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
                         ;; after it's done, but we need the scheduler for testing
@@ -680,7 +678,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task/*quartz-scheduler*)
+     (qs/start @task.impl/*quartz-scheduler*)
      (thunk))))
 
 (defmacro with-temp-scheduler!
@@ -700,7 +698,7 @@
   "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler. Intended so we
   can test that things were scheduled correctly."
   []
-  (when-let [^Scheduler scheduler (#'task/scheduler)]
+  (when-let [^Scheduler scheduler (task/scheduler)]
     (vec
      (sort-by
       :key

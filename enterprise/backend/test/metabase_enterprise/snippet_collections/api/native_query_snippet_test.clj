@@ -25,8 +25,8 @@
           (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
               (mt/with-premium-features #{}
-                (is (= true
-                       (has-perms? snippet))
+                (is (true?
+                     (has-perms? snippet))
                     "allowed?")))
             (testing "\nWith EE features enabled"
               (mt/with-premium-features #{:snippet-collections}
@@ -45,8 +45,8 @@
                       "allowed?"))
                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                 (testing (format "\nShould be allowed if we have write perms for %s" collection-name)
-                  (is (= true
-                         (has-perms? snippet))
+                  (is (true?
+                       (has-perms? snippet))
                       "allowed?"))))))))))
 
 (deftest list-test
@@ -118,8 +118,8 @@
                     (testing (format "\nMove from %s -> %s should need write ('curate') perms for both" (:name source-collection) (:name dest-collection))
                       (testing "\nShould be allowed if EE perms aren't enabled"
                         (mt/with-premium-features #{}
-                          (is (= true
-                                 (has-perms?)))))
+                          (is (true?
+                               (has-perms?)))))
                       (mt/with-premium-features #{:snippet-collections}
                         (doseq [c [source-collection dest-collection]]
                           (testing (format "\nPerms for only %s should fail" (:name c))
@@ -133,8 +133,8 @@
                           (try
                             (doseq [c [source-collection dest-collection]]
                               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c))
-                            (is (= true
-                                   (has-perms?)))
+                            (is (true?
+                                 (has-perms?)))
                             (finally
                               (doseq [c [source-collection dest-collection]]
                                 (perms/revoke-collection-permissions! (perms-group/all-users) c)))))))))))))))))
@@ -166,7 +166,7 @@
                                      (= (:id snippet) (:id a-snippet)))
                                    response))))]
           (testing "\nIf we have a valid EE token, we should only see Snippets in the Root Collection with valid perms"
-            (mt/with-premium-features #{:enhancements}
+            (mt/with-premium-features #{:snippet-collections}
               (is (false? (can-see-snippet?)))
               (perms/grant-collection-read-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?)))))

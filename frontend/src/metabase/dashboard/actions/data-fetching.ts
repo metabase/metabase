@@ -36,7 +36,7 @@ import {
   getDashboardQuestions,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
-import { addFields, addParamValues } from "metabase/redux/metadata";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -47,6 +47,7 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -102,7 +103,23 @@ function isNewDashcard(dashcard: DashboardCard) {
 function isNewAdditionalSeriesCard(
   card: Card,
   dashcard: QuestionDashboardCard,
+  dashcardBeforeEditing?: DashboardCard,
 ) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    if (!dashcardBeforeEditing || !("series" in dashcardBeforeEditing)) {
+      return false;
+    }
+
+    const prevSeries = dashcardBeforeEditing.series ?? [];
+    const newSeries = dashcard.series ?? [];
+
+    return (
+      card.id !== dashcard.card_id &&
+      !prevSeries.some((s) => s.id === card.id) &&
+      newSeries.some((s) => s.id === card.id)
+    );
+  }
+
   return (
     card.id !== dashcard.card_id &&
     !dashcard.series?.some((s) => s.id === card.id)
@@ -282,6 +299,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled = true;
     });
 
+    const metadata = getMetadata(getState());
     const queryOptions = {
       cancelled: deferred.promise,
     };
@@ -299,7 +317,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          PublicApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             uuid: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -314,7 +336,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
+        maybeUsePivotEndpoint(
+          EmbedApi.dashboardCardQuery,
+          card,
+          metadata,
+        )(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -329,10 +355,11 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
-          { ...datasetQuery, ignore_cache: ignoreCache },
-          queryOptions,
-        ),
+        maybeUsePivotEndpoint(
+          MetabaseApi.dataset,
+          card,
+          metadata,
+        )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
       );
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
@@ -347,7 +374,7 @@ export const fetchCardDataAction = createAsyncThunk<
       const shouldUseCardQueryEndpoint =
         isNewDashcard(dashcard) ||
         (isQuestionDashCard(dashcard) &&
-          isNewAdditionalSeriesCard(card, dashcard)) ||
+          isNewAdditionalSeriesCard(card, dashcard, dashcardBeforeEditing)) ||
         hasReplacedCard;
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
@@ -366,9 +393,12 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-
       result = await fetchDataOrError(
-        maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
+        maybeUsePivotEndpoint(
+          endpoint,
+          card,
+          metadata,
+        )(requestBody, queryOptions),
       );
     }
 
@@ -722,9 +752,6 @@ export const fetchDashboard = createAsyncThunk(
         });
       }
 
-      if (result.param_values) {
-        await dispatch(addParamValues(result.param_values));
-      }
       if (result.param_fields) {
         await dispatch(addFields(result.param_fields));
       }

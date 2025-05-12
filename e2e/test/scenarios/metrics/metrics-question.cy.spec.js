@@ -74,9 +74,8 @@ describe("scenarios > metrics > question", () => {
       cy.findByText("Product").click();
       cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");

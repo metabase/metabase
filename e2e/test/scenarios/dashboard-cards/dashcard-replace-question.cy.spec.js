@@ -179,7 +179,15 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
 
     // There're two toasts: "Undo replace" and "Auto-connect"
-    H.undoToastList().eq(0).button("Undo").click();
+    H.undoToastList()
+      .should("have.length", 2)
+      .eq(0)
+      .should(($el) => {
+        // we wait for element to take its position after animation
+        expect($el.position().top).to.be.equal(0);
+      })
+      .button("Undo")
+      .click();
 
     // Ensure we kept viz settings and parameter mapping changes from before
     findTargetDashcard().within(() => {

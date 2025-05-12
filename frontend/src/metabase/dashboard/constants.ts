@@ -17,6 +17,7 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
     sharing: "sharing",
     settings: "settings",
     info: "info",
+    analyze: "analyze",
   };
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
@@ -65,6 +66,6 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   hideParameters: null,
   font: null,
   theme: "light",
-  downloadsEnabled: { pdf: true, dashcard: true },
+  downloadsEnabled: { pdf: true, results: true },
   withFooter: true,
 };

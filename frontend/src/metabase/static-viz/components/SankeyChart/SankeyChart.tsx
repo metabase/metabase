@@ -7,6 +7,8 @@ import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/la
 import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
 import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
 
+import Watermark from "../../watermark.svg?component";
+
 const WIDTH = 540;
 const HEIGHT = 360;
 
@@ -19,6 +21,7 @@ export const SankeyChart = ({
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
+  hasDevWatermark = false,
 }: StaticChartProps) => {
   const chart = init(null, null, {
     renderer: "svg",
@@ -49,6 +52,15 @@ export const SankeyChart = ({
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height}>
       <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={height}
+          width={width}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 };

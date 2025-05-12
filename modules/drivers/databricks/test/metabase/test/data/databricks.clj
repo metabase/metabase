@@ -52,17 +52,24 @@
 
 (defmethod tx/dbdef->connection-details :databricks
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
-  (merge
-   {:host      (tx/db-test-env-var-or-throw :databricks :host)
-    :token     (tx/db-test-env-var-or-throw :databricks :token)
-    :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
-    :catalog   (tx/db-test-env-var-or-throw :databricks :catalog)}
-   ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
-   ;; in catalog on one Metabase database connection. Following expression generates schema filters so only one schema
-   ;; is treated as a Metabase database, for compatibility with existing tests.
-   (when (string? (not-empty database-name))
-     {:schema-filters-type "inclusion"
-      :schema-filters-patterns database-name})))
+  (let [catalog (tx/db-test-env-var-or-throw :databricks :catalog)
+        multi-level? (tx/db-test-env-var :databricks :multi-level-schema)
+        ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
+        ;; in catalog or all catalogs on one Metabase database connection. Following expression generates schema
+        ;; filters so only one schema is treated as a Metabase database, for compatibility with existing tests.
+        schema-filters (when (or (string? (not-empty database-name))
+                                 multi-level?)
+                         {:schema-filters-type "inclusion"
+                          :schema-filters-patterns (str
+                                                    (when multi-level? (str catalog "."))
+                                                    (if database-name database-name "*"))})]
+    (merge
+     {:host (tx/db-test-env-var-or-throw :databricks :host)
+      :token (tx/db-test-env-var-or-throw :databricks :token)
+      :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
+      :catalog catalog
+      :multi-level-schema multi-level?}
+     schema-filters)))
 
 (defn- existing-databases
   "Set of databases that already exist. Used to avoid creating those"

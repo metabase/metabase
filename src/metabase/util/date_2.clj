@@ -218,7 +218,7 @@
     :year})
 
 (defn- start-of-week []
-  (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
+  (keyword ((requiring-resolve 'metabase.settings.deprecated-grab-bag/start-of-week))))
 
 (let [m (u.date.common/static-instances DayOfWeek)]
   (defn- day-of-week*

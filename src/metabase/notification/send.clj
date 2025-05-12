@@ -4,17 +4,17 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.models.task-history :as task-history]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.settings.core :as setting]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable Executors ExecutorService)
+   (java.util.concurrent Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
 
@@ -31,7 +31,10 @@
   :default    3
   :export?    false
   :type       :integer
-  :visibility :internal)
+  :visibility :internal
+  :doc "If Metabase stops sending notifications like alerts, it may be because long-running
+  queries are clogging the notification queue. You may be able to unclog the queue by
+  increasing the size of the thread pool dedicated to notifications.")
 
 (def ^:private default-retry-config
   {:max-attempts            (if config/is-dev? 2 7)
@@ -178,9 +181,8 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/warnf e "Error sending to channel %s"
-                                     (handler->channel-name handler))))))))
-              (do-after-notification-sent notification-info notification-payload)
+                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))))
+              (do-after-notification-sent hydrated-notification notification-payload)
               (log/info "Sent successfully")
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
@@ -333,28 +335,39 @@
                   pool-size
                   (.build
                    (doto (BasicThreadFactory$Builder.)
-                     (.namingPattern "send-notification-thread-pool-%d"))))]
+                     (.namingPattern "send-notification-thread-pool-%d"))))
+        start-worker! (fn []
+                        (.submit ^ThreadPoolExecutor executor
+                                 ^Callable (fn []
+                                             (while (not (Thread/interrupted))
+                                               (try
+                                                 (let [notification (take-notification! queue)]
+                                                   (send-notification-sync! notification))
+                                                 (catch InterruptedException _
+                                                   (log/info "Notification worker interrupted, shutting down")
+                                                   (throw (InterruptedException.)))
+                                                 (catch Throwable e
+                                                   (log/error e "Error in notification worker")))))))
+        ensure-enough-workers! (fn []
+                                 (dotimes [i (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
+                                   (log/debugf "Not enough workers, starting a new one %d/%d"
+                                               (+ (.getActiveCount ^ThreadPoolExecutor executor) i)
+                                               pool-size)
+                                   (start-worker!)))]
+
     (.addShutdownHook
      (Runtime/getRuntime)
      (Thread. ^Runnable (fn []
-                          (.shutdownNow ^ExecutorService executor)
+                          (.shutdownNow ^ThreadPoolExecutor executor)
                           (try
-                            (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
+                            (.awaitTermination ^ThreadPoolExecutor executor 30 java.util.concurrent.TimeUnit/SECONDS)
                             (catch InterruptedException _
                               (log/warn "Interrupted while waiting for notification executor to terminate"))))))
+    (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
-      (.submit ^ExecutorService executor
-               ^Callable (fn []
-                           (while (not (Thread/interrupted))
-                             (try
-                               (let [notification (take-notification! queue)]
-                                 (send-notification-sync! notification))
-                               (catch InterruptedException _
-                                 (log/info "Notification worker interrupted, shutting down")
-                                 (throw (InterruptedException.)))
-                               (catch Exception e
-                                 (log/error e "Error in notification worker")))))))
+      (start-worker!))
     (fn [notification]
+      (ensure-enough-workers!)
       (put-notification! queue notification))))
 
 (defonce ^{:private true
@@ -385,7 +398,7 @@
                      :payload_type    (:payload_type notification)}
     (let [options      (merge *default-options* options)
           notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-      (log/debugf "Sending %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
+      (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
       (if (:notification/sync? options)
         (send-notification-sync! notification)
         (send-notification-async! notification)))))

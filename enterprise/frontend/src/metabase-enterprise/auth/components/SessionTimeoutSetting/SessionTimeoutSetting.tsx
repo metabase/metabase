@@ -1,38 +1,29 @@
-import type { ChangeEventHandler } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import Select from "metabase/core/components/Select";
-import Toggle from "metabase/core/components/Toggle";
-
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
-  ErrorMessage,
-  SessionTimeoutInput,
-  SessionTimeoutInputContainer,
-  SessionTimeoutSettingContainer,
-  SessionTimeoutSettingRoot,
-} from "./SessionTimeoutSetting.styled";
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useAdminSetting } from "metabase/api/utils";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { Flex, Select, Stack, Text, TextInput } from "metabase/ui";
+import type { TimeoutValue } from "metabase-types/api";
 
-const UNITS = [
-  { value: "minutes", name: t`minutes` },
-  { value: "hours", name: t`hours` },
+const getUnits = () => [
+  { value: "minutes", label: t`minutes` },
+  { value: "hours", label: t`hours` },
 ];
 
-const DEFAULT_VALUE = { amount: 30, unit: UNITS[0].value };
-
-type TimeoutValue = { amount: number; unit: string };
-interface SessionTimeoutSettingProps {
-  setting: {
-    key: string;
-    value: TimeoutValue | null;
-    default: string;
-  };
-
-  onChange: (value: TimeoutValue | null) => void;
-}
+const DEFAULT_VALUE = { amount: 30, unit: getUnits()[0].value };
 
 // This should mirror the BE validation of the session-timeout setting.
-const validate = (value: TimeoutValue) => {
+const validate = (value: TimeoutValue | null) => {
+  if (value === null) {
+    return null;
+  }
+
   if (value.amount <= 0) {
     return t`Timeout must be greater than 0`;
   }
@@ -47,68 +38,121 @@ const validate = (value: TimeoutValue) => {
   return null;
 };
 
-const SessionTimeoutSetting = ({
-  setting,
-  onChange,
-}: SessionTimeoutSettingProps) => {
-  const [value, setValue] = useState(setting.value ?? DEFAULT_VALUE);
+export const SessionTimeoutSetting = () => {
+  const {
+    value: settingValue,
+    updateSetting,
+    updateSettingsResult,
+    settingDetails,
+  } = useAdminSetting("session-timeout");
+  const [localValue, setLocalValue] = useState<TimeoutValue | null>(
+    settingValue ?? DEFAULT_VALUE,
+  );
+  const [error, setError] = useState<string | null>(null);
 
-  const handleValueChange = (newValue: Partial<TimeoutValue>) => {
-    setValue((prev) => ({ ...prev, ...newValue }));
+  useEffect(() => {
+    setLocalValue(settingValue ?? DEFAULT_VALUE);
+  }, [settingValue]);
+
+  const handleChange = (newValue: Partial<TimeoutValue> | null) => {
+    if (newValue === null) {
+      setLocalValue(null);
+      return null;
+    } else {
+      const fullValue = {
+        ...DEFAULT_VALUE,
+        ...localValue,
+        ...newValue,
+      };
+      setLocalValue(fullValue);
+      return fullValue;
+    }
   };
 
-  const error = validate(value);
+  const handleSave = async (newValue: TimeoutValue | null) => {
+    setError(null);
+    const errorMessage = validate(newValue);
 
-  const handleCommitSettings = (value: TimeoutValue | null) => {
-    !error && onChange(value);
-  };
-
-  const handleBlurChange: ChangeEventHandler<HTMLInputElement> = () => {
-    handleCommitSettings(value);
-  };
-
-  const handleUnitChange: ChangeEventHandler<HTMLInputElement> = (e) => {
-    const unit = e.target.value;
-    handleValueChange({ unit });
-    handleCommitSettings({ ...value, unit });
+    if (!errorMessage) {
+      await updateSetting({
+        key: "session-timeout",
+        value: newValue,
+      });
+    } else {
+      setError(errorMessage);
+    }
   };
 
   const handleToggle = (isEnabled: boolean) => {
-    onChange(isEnabled ? DEFAULT_VALUE : null);
-    setValue(DEFAULT_VALUE);
+    const newValue = isEnabled ? DEFAULT_VALUE : null;
+    handleChange(newValue);
+    handleSave(newValue);
   };
 
-  const isEnabled = setting.value != null;
+  const hasSessionTimeoutFeature = useHasTokenFeature("session_timeout_config");
+
+  if (!hasSessionTimeoutFeature) {
+    return null;
+  }
+
+  if (settingDetails?.is_env_setting && !!settingDetails.env_name) {
+    return (
+      <Stack gap="sm">
+        <SettingHeader
+          id="session-timeout"
+          title={t`Session timeout`}
+          description={t`Time before inactive users are logged out.`}
+        />
+        <SetByEnvVar varName={settingDetails.env_name} />
+      </Stack>
+    );
+  }
 
   return (
-    <SessionTimeoutSettingRoot>
-      <SessionTimeoutSettingContainer>
-        <Toggle value={setting.value != null} onChange={handleToggle} />
-
-        {isEnabled && (
-          <SessionTimeoutInputContainer>
-            <SessionTimeoutInput
-              type="number"
-              data-testid="session-timeout-input"
-              placeholder=""
-              value={value?.amount.toString()}
-              onChange={(e) =>
-                handleValueChange({ amount: parseInt(e.target.value, 10) })
-              }
-              onBlur={handleBlurChange}
-            />
-            <Select
-              value={value?.unit.toString()}
-              options={UNITS}
-              onChange={handleUnitChange}
-            />
-          </SessionTimeoutInputContainer>
-        )}
-      </SessionTimeoutSettingContainer>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
-    </SessionTimeoutSettingRoot>
+    <Stack gap="sm">
+      <SettingHeader
+        id="session-timeout"
+        title={t`Session timeout`}
+        description={t`Time before inactive users are logged out.`}
+      />
+      <BasicAdminSettingInput
+        value={!!settingValue}
+        disabled={updateSettingsResult.isLoading}
+        name="session-timeout"
+        onChange={(isEnabled) => handleToggle(Boolean(isEnabled))}
+        inputType="boolean"
+      />
+      {!!settingValue && (
+        <Flex gap="sm" mt="md">
+          <TextInput
+            type="number"
+            data-testid="session-timeout-input"
+            aria-label={t`Amount`}
+            placeholder=""
+            value={localValue?.amount.toString()}
+            onChange={(e) => {
+              handleChange({
+                amount: Number(e.target.value),
+              });
+            }}
+            onBlur={() => handleSave(localValue)}
+          />
+          <Select
+            value={localValue?.unit}
+            data={getUnits()}
+            aria-label={t`Unit`}
+            onChange={(newUnit: string) => {
+              const newValue = handleChange({ unit: newUnit });
+              handleSave(newValue);
+            }}
+          />
+        </Flex>
+      )}
+      {error && (
+        <Text c="error" size="sm">
+          {error}
+        </Text>
+      )}
+    </Stack>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SessionTimeoutSetting;

@@ -4,11 +4,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -27,10 +27,10 @@
 
   More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
   []
-  (-> (Thread/currentThread)
-      (.getContextClassLoader)
-      (.getResource "")
-      (str/starts-with? "jar:")))
+  (= "jar" (.. (Thread/currentThread)
+               getContextClassLoader
+               (getResource ".keep-me")
+               getProtocol)))
 
 (defn- get-jar-path
   "Returns the path to the currently running jar file.

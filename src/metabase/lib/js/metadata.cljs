@@ -509,9 +509,9 @@
 (defn- metadatas-for-table
   [metadata metadata-type table-id]
   (let [k (case metadata-type
-            :metadata/column        :fields
-            :metadata/metric        :metrics
-            :metadata/segment       :segments)]
+            :metadata/column  :fields
+            :metadata/metric  :metrics
+            :metadata/segment :segments)]
     (into []
           (keep (fn [[_id dlay]]
                   (when-let [object (some-> dlay deref)]

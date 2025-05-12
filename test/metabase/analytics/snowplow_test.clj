@@ -5,7 +5,8 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.public-settings :as public-settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -102,7 +103,7 @@
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
               :data {:id                           (analytics.settings/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
-                     :token_features               (public-settings/token-features)
+                     :token_features               (premium-features/token-features)
                      :created_at                   (analytics/instance-creation)
                      :application_database         (#'snowplow/app-db-type)
                      :application_database_version (#'snowplow/app-db-version)}}

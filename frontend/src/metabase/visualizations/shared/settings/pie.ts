@@ -8,6 +8,7 @@ import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import { getPieColumns } from "metabase/visualizations/echarts/pie/model";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
+import { getHexColor } from "metabase/visualizations/lib/color";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import { unaggregatedDataWarningPie } from "metabase/visualizations/lib/warnings";
@@ -260,11 +261,7 @@ export function getPieRows(
       // Historically we have used the dimension value in the `pie.colors`
       // setting instead of the key computed above. For compatibility with
       // existing questions we will continue to use the dimension value.
-      //
-      // Additionally, some older questions have non-hex color values such as
-      // hsl strings so we need to convert everything to hsl for compatibilty
-      // with Batik in the backend static viz rendering pipeline.
-      const color = Color(colors[String(dimensionValue)]).hex();
+      const color = getHexColor(colors[String(dimensionValue)]);
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {

@@ -154,6 +154,7 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -169,8 +170,33 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
+    }),
+    persistDatabase: builder.mutation<void, DatabaseId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/persist/database/${id}/persist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
+    unpersistDatabase: builder.mutation<void, DatabaseId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/persist/database/${id}/unpersist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
+    dismissDatabaseSyncSpinner: builder.mutation<void, DatabaseId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/database/${id}/dismiss_spinner`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("database"), idTag("database", id)]),
     }),
     syncDatabaseSchema: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
@@ -183,6 +209,7 @@ export const databaseApi = Api.injectEndpoints({
           tag("table"),
           tag("field"),
           tag("field-values"),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -192,7 +219,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${databaseId}/rescan_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
     discardDatabaseFieldValues: builder.mutation<void, DatabaseId>({
       query: (databaseId) => ({
@@ -200,9 +227,9 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${databaseId}/discard_values`,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("field-values")]),
+        invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    addSampleDatabase: builder.mutation<void, Database>({
+    addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
         url: `/api/database/sample_database`,
@@ -248,11 +275,15 @@ export const {
   useCreateDatabaseMutation,
   useUpdateDatabaseMutation,
   useDeleteDatabaseMutation,
+  usePersistDatabaseMutation,
+  useUnpersistDatabaseMutation,
+  useDismissDatabaseSyncSpinnerMutation,
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
+  useAddSampleDatabaseMutation,
   useListCardAutocompleteSuggestionsQuery,
   useLazyListCardAutocompleteSuggestionsQuery,
 } = databaseApi;

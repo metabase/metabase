@@ -45,7 +45,7 @@ docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase met
 
 ## Environment variables on Metabase Cloud
 
-If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help-premium) to adjust environment variables for your Metabase.
 
 ---
 
@@ -255,10 +255,10 @@ Range: 1-100. To limit the total number of rows included in the file attachment
 ### `MB_BACKFILL_ENTITY_IDS_REPEAT_MS`
 
 - Type: integer
-- Default: `2000`
+- Default: `3000`
 - [Exported as](../installation-and-operation/serialization.md): `backfill-entity-ids-repeat-ms`.
 
-Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.
+Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely.
 
 ### `MB_BCC_ENABLED`
 
@@ -573,17 +573,6 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via static embedding?
 
-### `MB_ENABLE_FIELD_USAGE_ANALYSIS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `enable-field-usage-analysis`
-
-Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
-    application database.
-
-    Turn off by default since we haven't had an user-facing feature that uses this data yet.
-
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -690,7 +679,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `https://www.metabase.com/help/premium`
+- Default: `https://www.metabase.com/help-premium`
 - [Configuration file name](./config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
@@ -1127,6 +1116,10 @@ The base URL where dashboard notitification links will point to instead of the M
 
 The size of the thread pool used to send notifications.
 
+If Metabase stops sending notifications like alerts, it may be because long-running
+  queries are clogging the notification queue. You may be able to unclog the queue by
+  increasing the size of the thread pool dedicated to notifications.
+
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
 - Type: string
@@ -1426,7 +1419,7 @@ Is SCIM currently enabled?
 ### `MB_SEARCH_ENGINE`
 
 - Type: keyword
-- Default: `:appdb`
+- Default: `:in-place`
 
 Which engine to use when performing search. Supported values are :in-place and :appdb.
 
@@ -1959,29 +1952,15 @@ When set, this will encrypt database credentials stored in the application datab
 
 Also see documentation page [Encrypting database details at rest](../databases/encrypting-details-at-rest.md).
 
-### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
-
-Type: integer<br>
-Default: `1200`<br>
-Since: v47.4
-
-Metabase's query processor will normally kill connections when their queries time out, but in practice some connections can be severed and go undetected by Metabase, staying alive even after a query returns or times out. This environment variable tells Metabase how long to wait before killing connections if no response is received from the connection.
-
-This variable affects connections that are severed and undetected by Metabase (that is, in situations where Metabase never receives a connection closed signal and is treating an inactive connection as active). You may want to adjust this variable's value if your connection is unreliable or is a dynamic connections behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to your database is severed.
-
-Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
-
 ### `MB_JDBC_DATA_WAREHOUSE_DEBUG_UNRETURNED_CONNECTION_STACK_TRACES`
 
 Type: boolean<br>
 Default: `false`<br>
 Since: v51.3
 
-If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
+If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
 In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
-
-To set a timeout for how long Metabase should wait before it kills unreturned connections, see [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 

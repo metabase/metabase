@@ -29,7 +29,9 @@
 
  [sql-jdbc.describe-table
   add-table-pks
+  database-type->base-type-or-warn
   describe-fields
+  describe-fields-pre-process-xf
   describe-fields-sql
   describe-fks
   describe-fks-sql

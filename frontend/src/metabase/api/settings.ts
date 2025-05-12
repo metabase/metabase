@@ -1,7 +1,11 @@
+import _ from "underscore";
+
 import type {
+  EnterpriseSettingKey,
+  EnterpriseSettingValue,
+  EnterpriseSettings,
   SettingDefinition,
-  SettingKey,
-  SettingValue,
+  SettingDefinitionMap,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -10,13 +14,15 @@ import { invalidateTags, tag } from "./tags";
 export const settingsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     // admin-only endpoint that returns all settings with lots of extra metadata
-    getAdminSettingsDetails: builder.query<SettingDefinition[], void>({
+    getAdminSettingsDetails: builder.query<SettingDefinitionMap, void>({
       query: () => ({
         method: "GET",
         url: "/api/setting",
       }),
+      transformResponse: (response: SettingDefinition[]) =>
+        _.indexBy(response, "key") as SettingDefinitionMap,
     }),
-    getSetting: builder.query<SettingValue, SettingKey>({
+    getSetting: builder.query<EnterpriseSettingValue, EnterpriseSettingKey>({
       query: (name) => ({
         method: "GET",
         url: `/api/setting/${encodeURIComponent(name)}`,
@@ -26,8 +32,8 @@ export const settingsApi = Api.injectEndpoints({
     updateSetting: builder.mutation<
       void,
       {
-        key: SettingKey;
-        value: SettingValue;
+        key: EnterpriseSettingKey;
+        value: EnterpriseSettingValue<EnterpriseSettingKey>;
       }
     >({
       query: ({ key, value }) => ({
@@ -38,7 +44,7 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
-    updateSettings: builder.mutation<void, Record<SettingKey, SettingValue>>({
+    updateSettings: builder.mutation<void, Partial<EnterpriseSettings>>({
       query: (settings) => ({
         method: "PUT",
         url: `/api/setting`,

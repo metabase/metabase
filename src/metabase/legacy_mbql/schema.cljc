@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -42,7 +42,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
@@ -415,7 +415,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer :float
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -635,8 +635,10 @@
   x NumericExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :expressions/integer}} integer
-  x [:or NumericExpressionArg
-     StringExpressionArg])
+  x [:or NumericExpressionArg StringExpressionArg])
+
+(defclause ^{:requires-features #{:expressions :expressions/float}} float
+  x StringExpressionArg)
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -709,7 +711,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
-  string StringExpressionArg)
+  string [:or StringExpressionArg DateTimeExpressionArg])
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date))
@@ -819,10 +821,13 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(def ^:private Emptyable
+  [:or StringExpressionArg Field])
+
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
-(defclause ^:sugar is-empty,  field Field)
-(defclause ^:sugar not-empty, field Field)
+(defclause ^:sugar is-empty  field Emptyable)
+(defclause ^:sugar not-empty field Emptyable)
 
 (def ^:private StringFilterOptions
   [:map
@@ -957,7 +962,7 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
 
@@ -1040,10 +1045,9 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
+;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
-  metric-id ::lib.schema.id/metric)
+  metric-id ::lib.schema.id/card)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

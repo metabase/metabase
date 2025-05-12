@@ -9,6 +9,7 @@ dbms_version:
   - 1
 created_at: '2024-08-28T14:38:42.764234Z'
 creator_id: null
+entity_id: ymbeYS8YN6P6Vltnq81Ib
 timezone: UTC
 auto_run_queries: true
 refingerprint: null
@@ -27,7 +28,7 @@ initial_sync_status: complete
 serdes/meta:
 - id: test-data (h2)
   model: Database
-entity_id: ymbeYS8YN6P6Vltnq81Ib
+router_database_id: null
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null
