@@ -33,6 +33,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -434,7 +435,7 @@
    value     ms/NonBlankString}
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (mw.session/as-admin
-      (api.card/param-remapped-value card param-key value))))
+      (api.card/param-remapped-value card param-key (codec/url-decode value)))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
@@ -466,7 +467,7 @@
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/dashboard-param-remapped-value dashboard param-key value)))))
+        (api.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

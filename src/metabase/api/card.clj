@@ -49,6 +49,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -924,7 +925,7 @@
    param-key ms/NonBlankString
    value     ms/NonBlankString}
   (-> (api/read-check :model/Card id)
-      (param-remapped-value param-key value)))
+      (param-remapped-value param-key (codec/url-decode value))))
 
 (defn- from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."

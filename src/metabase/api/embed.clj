@@ -30,6 +30,7 @@
    [metabase.util.embed :as embed]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -224,7 +225,7 @@
   {token     ms/NonBlankString
    param-key ms/NonBlankString
    value     ms/NonBlankString}
-  (api.embed.common/dashboard-param-remapped-value token param-key value))
+  (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
 
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
@@ -262,7 +263,7 @@
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
                                                  :card           card
                                                  :param-key      param-key
-                                                 :value          value})))
+                                                 :value          (codec/url-decode value)})))
 
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
