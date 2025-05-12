@@ -63,7 +63,7 @@
       :xlsx (read-xlsx results)
       :json (tabulate-maps results))))
 
-(defn card-download
+(defn- card-download
   "Provides the result of the card download via the card api in `export-format`,
   formatting rows if `format-rows` is true, and pivoting the results if `pivot` is true."
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
@@ -82,10 +82,7 @@
   [card {:keys [export-format format-rows pivot]}]
   (testing "Sanity check"
     (mt/with-test-user :crowberto
-      (assert (mi/can-read? (mt/db))))
-    (when-let [table-id (get-in card [:dataset_query :source-table])]
-      (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
-        (assert (mi/can-read? :model/Card (parse-long card-id-str))))))
+      (assert (mi/can-read? (mt/db)))))
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
@@ -98,7 +95,7 @@
                               :pivot_results (boolean pivot)})
        (process-results export-format)))
 
-(defn public-question-download
+(defn- public-question-download
   [card {:keys [export-format format-rows pivot]
          :or   {format-rows false
                 pivot       false}}]
