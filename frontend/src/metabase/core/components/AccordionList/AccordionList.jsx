@@ -68,6 +68,7 @@ export default class AccordionList extends Component {
     openSection: PropTypes.number,
     onChange: PropTypes.func,
     onChangeSection: PropTypes.func,
+    onChangeSearchText: PropTypes.func,
 
     // section getters/render props
     renderSectionIcon: PropTypes.func,
@@ -267,6 +268,7 @@ export default class AccordionList extends Component {
 
   handleChangeSearchText = (searchText) => {
     this.setState({ searchText, cursor: null });
+    this.props.onChangeSearchText?.(searchText);
   };
 
   searchPredicate = (item, searchPropMember) => {
