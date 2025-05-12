@@ -98,12 +98,17 @@
                  :analyzed    3
                  :executed    4
                  :failed      5
-                 :blocked     6}
-        num->kw (set/map-invert kw->num)]
-    {:in  (merge kw->num                        ; Handle keywords
-                 (update-keys kw->num str)      ; or strings
-                 {nil (kw->num :not-started)})  ; or nil
-     :out #(num->kw % :not-started)}))
+                 :blocked     6
+                 ;; Set only when an unrecognized value is seen, eg. when rolling back from a newer version of Metabase
+                 ;; that introduced a new value in this enum.
+                 :unknown     7}
+        num->kw (set/map-invert kw->num)
+        inbound (merge kw->num                  ; Handle keywords
+                       (update-keys kw->num str)      ; or strings
+                       {nil (kw->num :not-started)})] ; and treat nil as `:not-started`
+    ;; If the value isn't recognized by this version of Metabase, treat it as `:unknown`, and it can be re-analyzed.
+    {:in  #(get inbound % :unknown)
+     :out #(num->kw % :unknown)}))
 
 (t2/deftransforms :model/Card
   {:dataset_query           mi/transform-metabase-query
@@ -870,7 +875,8 @@
   ;; Mark :not-started cards as eligible for :priority analysis.
   ;; If the atom contains `nil`, do nothing - the backfill job isn't running.
   (when (and (= state :not-started)
-             @cards-for-priority-analysis)
+             (when-let [cards @cards-for-priority-analysis]
+               (< (count cards) 10000)))
     (swap! cards-for-priority-analysis conj (:id card)))
   ;; When backfilling a card (indicated by `*upstream-cards-without-idents*`), if we see a card which is not :executed
   ;; or :analyzed it's a potential blocker - put it in the list of blockers.

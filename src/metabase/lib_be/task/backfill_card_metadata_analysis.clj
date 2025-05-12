@@ -102,8 +102,12 @@
                     :else                                       ; Some idents failed validation: failed
                     {:metadata_analysis_state   :failed
                      :metadata_analysis_blocker nil})]
-      (t2/update! :model/Card (:id card) updates)
-      (:metadata_analysis_state updates))))
+      (if (pos? (t2/update! :model/Card (:id card)
+                            ;; Guarding against concurrent updates; return :skipped in case of a concurrent edit.
+                            {:updated_at (:updated_at card)}
+                            updates))
+        (:metadata_analysis_state updates)
+        :skipped))))
 
 ;; ## Entry point for analysis
 (defn- analyze-card!
@@ -125,19 +129,25 @@
   Returns either the new state of the card, or `:skipped` if it's already `:failed` or `:blocked`."
   [{state :metadata_analysis_state
     cols  :result_metadata
-    :keys [id] :as card}]
+    :keys [id updated_at] :as card}]
   (case state
     ;; If the card has meanwhile been marked `:executed` or `:analyzed`, mark it as :failed since something went wrong.
-    (:executed :analyzed)    (when-not (card/all-idents-valid? card cols)
-                               (t2/update! :model/Card id {:metadata_analysis_state :failed})
-                               :failed)
+    (:executed :analyzed)
+    (if (card/all-idents-valid? card cols)
+      state
+      (if (pos? (t2/update! :model/Card id {:updated_at updated_at} {:metadata_analysis_state :failed}))
+        :failed
+        ; The update! above guards against concurrent edits; return :skipped in that case.
+        :skipped))
 
     ;; If the card has been concurrently marked `:failed` or `:blocked`, just skip it.
-    (:failed :blocked)       (do (log/debugf "Card %d is marked as %s; skipping analysis" id state)
-                                 :skipped)
+    (:failed :blocked)
+    (do (log/debugf "Card %d is marked as %s; skipping analysis" id state)
+        :skipped)
 
     ;; Run the analysis and consider the results.
-    (:not-started :priority) (backfill-idents-for-card! card)))
+    (:not-started :priority :unknown)
+    (backfill-idents-for-card! card)))
 
 (defn- batched-metadata-analysis!
   "Runs a batch of metadata analysis, one card at a time."
@@ -147,13 +157,14 @@
     (doseq [needed-batch (partition-all 1000 priority-cards)]
       (u/prog1 (t2/update! :model/Card
                            :id [:in needed-batch]
-                           :metadata_analysis_state :not-started ; Skip cards that were analyzed in the meantime.
+                           ; Skip cards that were analyzed in the meantime.
+                           :metadata_analysis_state [:in [:not-started :unknown]]
                            {:metadata_analysis_state :priority})
         (log/debugf "Marked %d cards as :priority for analysis" (or <> 0)))))
   (let [prioritized (t2/select :model/Card :metadata_analysis_state :priority {:limit *batch-size*})
         headroom    (- *batch-size* (count prioritized))
         extras      (when (pos? headroom)
-                      (t2/select :model/Card :metadata_analysis_state :not-started {:limit headroom}))
+                      (t2/select :model/Card :metadata_analysis_state [:in [:not-started :unknown]] {:limit headroom}))
         the-cards   (concat prioritized extras)]
     (task-history/with-task-history {:task            "card_metadata_analysis"
                                      :on-success-info (fn [update-map result]

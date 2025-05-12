@@ -264,11 +264,13 @@
                   (fn [metadata _card]
                     (mapv #(assoc % :ident (lib/native-ident (:name %) ""))
                           metadata))]
-      (is (= :failed (#'analysis/backfill-idents-for-card! card))))
+      ;; Concurrently edit the card.
+      (t2/update! :model/Card (:id card) {:name "something else"})
+      ;; Then pass the previously fetched `card` into the backfill function: since the updated_at has changed, the
+      ;; backfill is :skipped.
+      (is (= :skipped (#'analysis/backfill-idents-for-card! card))))
     (let [backfilled (t2/select-one :model/Card (:id card))]
-      (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
-               :metadata_analysis_state   :failed
-               :metadata_analysis_blocker nil}
+      (is (=? (assoc card :name "something else" :updated_at #(not= % (:updated_at card)))
               backfilled)))))
 
 (deftest ^:synchronized analyze-card!-test-1-not-started-all-valid
@@ -372,7 +374,7 @@
                                         mt/card-with-metadata)]
       (is (every? :ident (:result_metadata card)))
       (t2/with-call-count [call-count]
-        (is (nil? (#'analysis/analyze-card! card)))
+        (is (= state (#'analysis/analyze-card! card)))
         (is (= 0 (call-count))
             "no updates are made for valid, already completed cards"))
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
@@ -393,6 +395,18 @@
       (is (=? {:result_metadata           (:result_metadata card) ; Unchanged
                :metadata_analysis_state   :failed
                :metadata_analysis_blocker nil}
+              (t2/select-one :model/Card (:id card)))))))
+
+(deftest ^:synchronized analyze-card!-test-4c-already-done-but-invalid-with-concurrent-edit
+  (doseq [state [:analyzed :executed]]
+    (mt/with-temp [:model/Card card (-> {:dataset_query           (mt/mbql-query orders
+                                                                    {:expressions {"tax_rate" [:/ $tax $subtotal]}})
+                                         :metadata_analysis_state state}
+                                        mt/card-with-metadata
+                                        (assoc-in [:result_metadata 0 :ident] ""))]
+      (with-redefs [t2/update! (constantly 0)]
+        (is (= :skipped (#'analysis/analyze-card! card))))
+      (is (=? card
               (t2/select-one :model/Card (:id card)))))))
 
 (deftest ^:synchronized analyze-card!-test-5-skip-failed-and-blocked
@@ -426,7 +440,7 @@
   (mt/with-temp [:model/Card c1 {:metadata_analysis_state :not-started}
                  :model/Card c2 {:metadata_analysis_state :not-started}
                  :model/Card c3 {:metadata_analysis_state :analyzed}
-                 :model/Card c4 {:metadata_analysis_state :not-started}
+                 :model/Card c4 {:metadata_analysis_state :unknown}
                  :model/Card c5 {:metadata_analysis_state :not-started}
                  :model/Card c6 {:metadata_analysis_state :priority}]
     (let [analyzed (atom #{})]
@@ -467,7 +481,7 @@
           (testing "c3 has been concurrently analyzed; it is left alone"
             (is (= :analyzed (t2/select-one-fn :metadata_analysis_state :model/Card (:id c3)))))
           (testing "c4 and c5 are untouched"
-            (is (= :not-started (t2/select-one-fn :metadata_analysis_state :model/Card (:id c4))))
+            (is (= :unknown     (t2/select-one-fn :metadata_analysis_state :model/Card (:id c4))))
             (is (= :not-started (t2/select-one-fn :metadata_analysis_state :model/Card (:id c5)))))
           (testing "c6 remained at :priority"
             (is (= :priority (t2/select-one-fn :metadata_analysis_state :model/Card (:id c6))))))
@@ -479,5 +493,3 @@
             (is (contains? @analyzed (:id c1)))
             (is (contains? @analyzed (:id c2)))
             (is (contains? @analyzed (:id c6)))))))))
-
-#_(t2/update! :model/Card :metadata_analysis_state :priority {:metadata_analysis_state :not-started})
