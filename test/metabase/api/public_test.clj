@@ -1003,6 +1003,14 @@
                                                                                     (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
 
+(defmacro with-sharing-enabled-and-temp-dashcard-referencing!
+  {:style/indent 3}
+  [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
+  `(do-with-sharing-enabled-and-temp-dashcard-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+      ~@body)))
+
 ;;; ------------------------------------------- GET /api/public/action/:uuid -------------------------------------------
 
 (deftest fetch-action-test

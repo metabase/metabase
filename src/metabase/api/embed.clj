@@ -20,7 +20,6 @@
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.api.public :as api.public]
    [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -179,7 +178,7 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
-                              :export-format api.dataset/export-format-regex]
+                      :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id format_rows pivot_results :as {:keys [query-params]}]
@@ -263,7 +262,7 @@
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
                                                  :card           card
                                                  :param-key      param-key
-                                                 :value          (codec/url-decode value)})))
+                                                 :value          value})))
 
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.

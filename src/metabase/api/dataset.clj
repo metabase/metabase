@@ -13,9 +13,9 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :refer [Table]]
@@ -251,7 +251,7 @@
 
 (api/defendpoint POST "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  [query :as {{:keys [parameter field_ids]} :body}]
+  [value :as {{:keys [parameter field_ids]} :body}]
   {parameter ms/Parameter
    field_ids [:maybe [:sequential ms/PositiveInt]]
    value     ms/NonBlankString}

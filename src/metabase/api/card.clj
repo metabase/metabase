@@ -919,8 +919,8 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/card/1/params/abc/remapping?value=100"
-  [card-id param-key value]
-  {card-id   ms/PositiveInt
+  [id param-key value]
+  {id        ms/PositiveInt
    param-key ms/NonBlankString
    value     ms/NonBlankString}
   (-> (api/read-check :model/Card id)

@@ -19,8 +19,6 @@
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
