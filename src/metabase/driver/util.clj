@@ -507,6 +507,7 @@
     "databricks"
     "druid"
     "druid-jdbc"
+    "duckdb"
     "h2"
     "mongo"
     "mysql"

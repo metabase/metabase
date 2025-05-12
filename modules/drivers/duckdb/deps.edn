@@ -1,0 +1,5 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {org.duckdb/duckdb_jdbc {:mvn/version "1.2.2.0"}}}
