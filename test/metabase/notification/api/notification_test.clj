@@ -1089,8 +1089,8 @@
                             :email       "crowberto@metabase.com"
                             :first_name  "Crowberto"
                             :last_name   "Corv"}
-                  :rows [{:ID 1 :Name "African"}
-                         {:ID 2 :Name "American"}]}
+                  :rows [{:ID 1 :NAME "African"}
+                         {:ID 2 :NAME "American"}]}
                  (:payload result))))))
 
     (testing "email"

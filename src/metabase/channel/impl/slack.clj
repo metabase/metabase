@@ -137,7 +137,7 @@
     {:creator  (select-keys ?creator [:first_name :last_name :email :common_name])
      :card     {:id   ?card_id
                 :name ?card_name}
-     :rows     (let [col-names (map :display_name ?result_cols)]
+     :rows     (let [col-names (map :name ?result_cols)]
                  (vec (for [row ?result_rows]
                         (zipmap col-names row))))}))
 
@@ -149,8 +149,7 @@
         _             (assert link-template "No template found")
         card-url-text (some->> (update-in notification-payload [:payload :card_part] channel.shared/maybe-realize-data-rows)
                                (channel/template-context channel-type payload-type)
-                               (channel.template/render-template link-template)
-                               (#(markdown/process-markdown % :slack)))
+                               (channel.template/render-template link-template))
         blocks        (concat [{:type "header"
                                 :text {:type "plain_text"
                                        :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
@@ -214,7 +213,11 @@
   (let [event-name (:event_name context)
         template   (or template
                        (channel.template/default-template :notification/system-event context channel-type))
-        sections    [(text->markdown-section (channel.template/render-template template notification-payload))]]
+        sections    [{:type "section"
+                      :text {:type "mrkdwn"
+                             :text (truncate
+                                    (channel.template/render-template template notification-payload)
+                                    block-text-length-limit)}}]]
     (assert template (str "No template found for event " event-name))
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
