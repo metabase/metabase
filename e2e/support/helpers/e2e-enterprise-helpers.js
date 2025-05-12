@@ -17,7 +17,7 @@ export const onlyOnOSS = () => cy.onlyOn(isOSS);
  *
  * @param {boolean} cond
  */
-export const conditionalDescribe = cond => (cond ? describe : describe.skip);
+export const conditionalDescribe = (cond) => (cond ? describe : describe.skip);
 
 export const describeEE = conditionalDescribe(isEE);
 
@@ -25,7 +25,7 @@ export const describeEE = conditionalDescribe(isEE);
  *
  * @param {("all"|"none")} featuresScope
  */
-export const setTokenFeatures = featuresScope => {
+export const setTokenFeatures = (featuresScope) => {
   if (!isEE) {
     throw new Error(
       "You must run Metabase® Enterprise Edition™ for token to make sense.\nMake sure you have `MB_EDITION=ee` in your environment variables.",
@@ -81,9 +81,9 @@ export const deleteToken = () => {
   });
 };
 
-export const mockSessionPropertiesTokenFeatures = features => {
-  cy.intercept({ method: "GET", url: "/api/session/properties" }, request => {
-    request.on("response", response => {
+export const mockSessionPropertiesTokenFeatures = (features) => {
+  cy.intercept({ method: "GET", url: "/api/session/properties" }, (request) => {
+    request.on("response", (response) => {
       if (typeof response.body === "object") {
         response.body = {
           ...response.body,
@@ -100,7 +100,7 @@ export const mockSessionPropertiesTokenFeatures = features => {
 // Gets an object that reflects a *partial* premium feature error - it must
 // be a partial, otherwise we would need to have a stack trace in this error
 // object.
-export const getPartialPremiumFeatureError = name => ({
+export const getPartialPremiumFeatureError = (name) => ({
   cause: `${name} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/`,
   data: {
     "status-code": 402,

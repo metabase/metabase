@@ -88,7 +88,7 @@ export function Heading({
             placeholder={placeholder}
             value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => setTextValue(e.target.value)}
+            onChange={(e) => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
             onBlur={() => {
               toggleFocusOff();

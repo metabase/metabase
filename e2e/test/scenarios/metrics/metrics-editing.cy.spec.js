@@ -551,7 +551,7 @@ function addStringCategoryFilter({ tableName, columnName, values }) {
       cy.findByText(tableName).click();
     }
     cy.findByText(columnName).click();
-    values.forEach(value => cy.findByText(value).click());
+    values.forEach((value) => cy.findByText(value).click());
     cy.button("Add filter").click();
   });
 }

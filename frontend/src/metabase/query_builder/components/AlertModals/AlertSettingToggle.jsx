@@ -16,7 +16,7 @@ export const AlertSettingToggle = ({
     <h3 className={cx(CS.textDark, CS.mb1)}>{title}</h3>
     <Radio
       value={alert[setting]}
-      onChange={value => onAlertChange({ ...alert, [setting]: value })}
+      onChange={(value) => onAlertChange({ ...alert, [setting]: value })}
       options={[
         { name: trueText, value: true },
         { name: falseText, value: false },

@@ -8,7 +8,7 @@ import { Box, List } from "metabase/ui";
 import { UpsellCard } from "./components";
 
 export const UpsellSSO = ({ source }: { source: string }) => {
-  const tokenFeatures = useSelector(state =>
+  const tokenFeatures = useSelector((state) =>
     getSetting(state, "token-features"),
   );
 

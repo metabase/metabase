@@ -10,13 +10,13 @@ import { AlertGoalToggles } from "./AlertGoalToggles";
 import { getScheduleFromChannel } from "./schedule";
 
 class AlertEditFormInner extends Component {
-  onScheduleChange = schedule => {
+  onScheduleChange = (schedule) => {
     const { alert, onAlertChange } = this.props;
 
     // update the same schedule to all channels at once
     onAlertChange({
       ...alert,
-      channels: alert.channels.map(channel => ({ ...channel, ...schedule })),
+      channels: alert.channels.map((channel) => ({ ...channel, ...schedule })),
     });
   };
 
@@ -48,6 +48,6 @@ class AlertEditFormInner extends Component {
 }
 
 export const AlertEditForm = connect(
-  state => ({ isAdmin: getUserIsAdmin(state) }),
+  (state) => ({ isAdmin: getUserIsAdmin(state) }),
   null,
 )(AlertEditFormInner);

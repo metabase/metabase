@@ -34,7 +34,7 @@ export const Editor = ({ onApply = () => {} }: EditorProps) => {
     return isQuestionRunnable(question, isDirty);
   }, [question, isDirty]);
 
-  const reportTimezone = useSelector(state =>
+  const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
 

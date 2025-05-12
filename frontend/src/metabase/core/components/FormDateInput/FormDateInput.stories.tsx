@@ -9,7 +9,7 @@ export default {
   component: FormDateInput,
 };
 
-const Template: StoryFn<typeof FormDateInput> = args => {
+const Template: StoryFn<typeof FormDateInput> = (args) => {
   const initialValues = { value: undefined };
   const handleSubmit = () => undefined;
 

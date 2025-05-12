@@ -144,7 +144,7 @@ function compileFunctionCall(node: Node, opts: Options): Expr {
 
 function compileArgList(node: Node, opts: Options): Expr[] {
   assert(node.type === ARG_LIST, "Invalid Node Type");
-  return node.children.map(child => {
+  return node.children.map((child) => {
     const func = getCompileFunction(child);
     if (!func) {
       throw new CompileError(t`Invalid node type`, { node: child });

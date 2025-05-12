@@ -116,7 +116,7 @@ const ChartColorTable = ({
       <TableBody>
         {colorGroups.map((colorGroup, index) => (
           <TableBodyRow key={index}>
-            {colorGroup.map(colorName => (
+            {colorGroup.map((colorName) => (
               <ChartColorCell
                 key={colorName}
                 color={colors[colorName]}

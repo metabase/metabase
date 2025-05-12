@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { PureComponent } from "react";
+import { PureComponent, forwardRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -59,12 +59,12 @@ const defaultProps = {
   onUpdateQuestion: () => {},
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
-  onChangeLocation: location => {
+  onChangeLocation: (location) => {
     window.location = location;
   },
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
@@ -72,45 +72,95 @@ const mapStateToProps = state => ({
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
-class Visualization extends PureComponent {
-  state = {
-    getHref: undefined,
-    hovered: null,
-    clicked: null,
-    error: null,
-    genericError: null,
-    warnings: [],
-    series: null,
-    visualization: null,
-    computedSettings: {},
-  };
+const isLoading = (series) => {
+  return !(
+    series &&
+    series.length > 0 &&
+    _.every(
+      series,
+      (s) => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+    )
+  );
+};
 
-  UNSAFE_componentWillMount() {
-    this.transform(this.props);
+const deriveStateFromProps = (props) => {
+  const transformed = props.rawSeries
+    ? getVisualizationTransformed(extractRemappings(props.rawSeries))
+    : null;
+
+  const series = transformed?.series;
+
+  const computedSettings = !isLoading(series)
+    ? getComputedSettingsForSeries(series)
+    : {};
+
+  return {
+    series,
+    computedSettings,
+    visualization: transformed?.visualization,
+  };
+};
+
+class Visualization extends PureComponent {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      getHref: undefined,
+      hovered: null,
+      clicked: null,
+      error: null,
+      genericError: null,
+      warnings: [],
+      series: null,
+      visualization: null,
+      computedSettings: {},
+    };
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  static getDerivedStateFromProps(props, state) {
+    // When these props has changed, we need to re-derive the state.
+    // getDerivedStateFromProps does not have access to the last props, so
     if (
-      !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !equals(newProps.settings, this.props.settings) ||
-      !equals(newProps.timelineEvents, this.props.timelineEvents) ||
+      !isSameSeries(props.rawSeries, state._lastProps?.rawSeries) ||
+      !equals(props.settings, state._lastProps?.settings) ||
+      !equals(props.timelineEvents, state._lastProps?.timelineEvents) ||
       !equals(
-        newProps.selectedTimelineEventIds,
-        this.props.selectedTimelineEventIds,
+        props.selectedTimelineEventIds,
+        state._lastProps?.selectedTimelineEventIds,
       )
     ) {
-      this.transform(newProps);
-    }
-  }
+      return {
+        ...deriveStateFromProps(props),
 
-  componentDidMount() {
-    this.updateWarnings();
+        // Reset the state to its initial values when these props have changed
+        hovered: null,
+        error: null,
+        genericError: null,
+        warnings: [],
+
+        // Store last properties to compare with the next call
+        _lastProps: _.pick(props, [
+          "rawSeries",
+          "settings",
+          "timelineEvents",
+          "selectedTimelineEventIds",
+        ]),
+      };
+    }
+
+    // Do not alter the state if the above props have not changed
+    return null;
   }
 
   componentDidUpdate(prevProps, prevState) {
     if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
       this.updateWarnings();
     }
+  }
+
+  componentDidMount() {
+    this.updateWarnings();
   }
 
   componentDidCatch(error, info) {
@@ -125,9 +175,9 @@ class Visualization extends PureComponent {
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
-          .filter(s => s.data && s.data.rows_truncated != null)
+          .filter((s) => s.data && s.data.rows_truncated != null)
           .map(
-            s =>
+            (s) =>
               t`Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`,
           ),
       );
@@ -141,39 +191,7 @@ class Visualization extends PureComponent {
     }
   }
 
-  transform(newProps) {
-    const transformed = newProps.rawSeries
-      ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
-      : null;
-    const series = transformed && transformed.series;
-    const visualization = transformed && transformed.visualization;
-    const computedSettings = !this.isLoading(series)
-      ? getComputedSettingsForSeries(series)
-      : {};
-
-    this.setState({
-      hovered: null,
-      error: null,
-      genericError: null,
-      warnings: [],
-      series: series,
-      visualization: visualization,
-      computedSettings: computedSettings,
-    });
-  }
-
-  isLoading = series => {
-    return !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
-  };
-
-  handleHoverChange = hovered => {
+  handleHoverChange = (hovered) => {
     if (hovered) {
       this.setState({ hovered });
       // If we previously set a timeout for clearing the hover clear it now since we received
@@ -198,13 +216,18 @@ class Visualization extends PureComponent {
       : undefined;
   }
 
-  getMode(maybeModeOrQueryMode, question) {
-    if (maybeModeOrQueryMode instanceof Mode) {
-      return maybeModeOrQueryMode;
+  getMode(modeOrModeGetter, question) {
+    const modeOrQueryMode =
+      typeof modeOrModeGetter === "function"
+        ? modeOrModeGetter({ question })
+        : modeOrModeGetter;
+
+    if (modeOrQueryMode instanceof Mode) {
+      return modeOrQueryMode;
     }
 
-    if (question && maybeModeOrQueryMode) {
-      return new Mode(question, maybeModeOrQueryMode);
+    if (question && modeOrQueryMode) {
+      return new Mode(question, modeOrQueryMode);
     }
 
     if (question) {
@@ -224,7 +247,7 @@ class Visualization extends PureComponent {
     } = this.props;
 
     const card =
-      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
+      rawSeries.find((series) => series.card.id === clicked.cardId)?.card ??
       rawSeries[0].card;
 
     const question = this._getQuestionForCardCached(metadata, card);
@@ -244,7 +267,7 @@ class Visualization extends PureComponent {
       : [];
   }
 
-  visualizationIsClickable = clicked => {
+  visualizationIsClickable = (clicked) => {
     try {
       return this.getClickActions(clicked).length > 0;
     } catch (e) {
@@ -253,7 +276,7 @@ class Visualization extends PureComponent {
     }
   };
 
-  handleVisualizationClick = clicked => {
+  handleVisualizationClick = (clicked) => {
     const { handleVisualizationClick } = this.props;
 
     if (typeof handleVisualizationClick === "function") {
@@ -284,7 +307,7 @@ class Visualization extends PureComponent {
     const { rawSeries } = this.props;
 
     const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
+      rawSeries.find((series) => series.card.id === nextCard?.id)?.card ??
       rawSeries[0].card;
 
     this.props.onChangeCardAndRun({
@@ -301,12 +324,12 @@ class Visualization extends PureComponent {
     }
   };
 
-  onRenderError = error => {
+  onRenderError = (error) => {
     console.error(error);
     this.setState({ error });
   };
 
-  onErrorBoundaryError = genericError => {
+  onErrorBoundaryError = (genericError) => {
     this.setState({ genericError });
   };
 
@@ -354,7 +377,7 @@ class Visualization extends PureComponent {
     let error = this.props.error || this.state.error;
     let noResults = false;
     let isPlaceholder = false;
-    const loading = this.isLoading(series);
+    const loading = isLoading(series);
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
@@ -400,7 +423,7 @@ class Visualization extends PureComponent {
     if (!error && !genericError) {
       noResults = _.every(
         series,
-        s => s && s.data && datasetContainsNoResults(s.data),
+        (s) => s && s.data && datasetContainsNoResults(s.data),
       );
     }
 
@@ -455,11 +478,16 @@ class Visualization extends PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
-      <ErrorBoundary onError={this.onErrorBoundaryError}>
+      <ErrorBoundary
+        onError={this.onErrorBoundaryError}
+        ref={this.props.forwardedRef}
+      >
         <VisualizationRoot
           className={className}
           style={style}
           data-testid="visualization-root"
+          data-viz-ui-name={visualization?.uiName}
+          ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
             <VisualizationHeader>
@@ -551,11 +579,18 @@ class Visualization extends PureComponent {
 
 Visualization.defaultProps = defaultProps;
 
+const VisualizationMemoized = memoizeClass("_getQuestionForCardCached")(
+  Visualization,
+);
+
 export default _.compose(
+  connect(mapStateToProps),
   ExplicitSize({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
+    refreshMode: (props) => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
-  connect(mapStateToProps),
-  memoizeClass("_getQuestionForCardCached"),
-)(Visualization);
+)(
+  forwardRef(function VisualizationForwardRef(props, ref) {
+    return <VisualizationMemoized {...props} forwardedRef={ref} />;
+  }),
+);

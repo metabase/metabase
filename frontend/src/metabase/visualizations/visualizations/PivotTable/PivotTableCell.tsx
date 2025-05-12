@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type * as React from "react";
+import * as React from "react";
 import type { ControlPosition, DraggableBounds } from "react-draggable";
 import Draggable from "react-draggable";
 
@@ -61,6 +61,8 @@ export function Cell({
   onResize,
   showTooltip = true,
 }: CellProps) {
+  const resizeHandleRef = React.useRef<HTMLDivElement>(null);
+
   return (
     <PivotTableCell
       data-allow-page-break-after
@@ -104,8 +106,12 @@ export function Cell({
             onStop={(e, { x }) => {
               onResize(x);
             }}
+            nodeRef={resizeHandleRef}
           >
-            <ResizeHandle data-testid="pivot-table-resize-handle" />
+            <ResizeHandle
+              data-testid="pivot-table-resize-handle"
+              ref={resizeHandleRef}
+            />
           </Draggable>
         )}
       </>

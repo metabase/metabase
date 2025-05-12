@@ -15,7 +15,7 @@ const fadeIn = {
   out: { opacity: 0 },
   transitionProperty: "opacity",
 };
-export const ViewHeaderContainer = props => {
+export const ViewHeaderContainer = (props) => {
   const { question, onUnarchive, onMove, onDeletePermanently } = props;
   const query = question.query();
   const card = question.card();
@@ -33,7 +33,7 @@ export const ViewHeaderContainer = props => {
           canRestore={card.can_restore}
           canDelete={card.can_delete}
           onUnarchive={() => onUnarchive(question)}
-          onMove={collection => onMove(question, collection)}
+          onMove={(collection) => onMove(question, collection)}
           onDeletePermanently={() => onDeletePermanently(card.id)}
         />
       )}
@@ -47,7 +47,7 @@ export const ViewHeaderContainer = props => {
       />
       {/*This is used so that the New Question Header is unmounted after the animation*/}
       <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-        {style => <NewQuestionHeader className={CS.spread} style={style} />}
+        {(style) => <NewQuestionHeader className={CS.spread} style={style} />}
       </Transition>
     </QueryBuilderViewHeaderContainer>
   );

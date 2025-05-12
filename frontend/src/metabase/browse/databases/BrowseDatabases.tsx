@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
 import { color } from "metabase/lib/colors";
@@ -69,7 +69,7 @@ export const BrowseDatabases = () => {
           <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
-              databases.map(database => (
+              databases.map((database) => (
                 <Link to={Urls.browseDatabase(database)} key={database.id}>
                   <DatabaseCard
                     bg="bg-white"

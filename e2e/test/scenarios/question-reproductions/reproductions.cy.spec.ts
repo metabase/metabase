@@ -153,13 +153,13 @@ describe("issue 39487", () => {
   }
 
   function measureInitialValues() {
-    measureDatetimeFilterPickerHeight().then(initialPickerHeight => {
+    measureDatetimeFilterPickerHeight().then((initialPickerHeight) => {
       cy.wrap(initialPickerHeight).as("initialPickerHeight");
     });
-    measureNextButtonRect().then(nextButtonRect => {
+    measureNextButtonRect().then((nextButtonRect) => {
       cy.wrap(nextButtonRect).as("nextButtonRect");
     });
-    measurePreviousButtonRect().then(previousButtonRect => {
+    measurePreviousButtonRect().then((previousButtonRect) => {
       cy.wrap(previousButtonRect).as("previousButtonRect");
     });
   }
@@ -171,24 +171,24 @@ describe("issue 39487", () => {
   }
 
   function assertDatetimeFilterPickerHeightDidNotChange() {
-    cy.get("@initialPickerHeight").then(initialPickerHeight => {
-      measureDatetimeFilterPickerHeight().then(height => {
+    cy.get("@initialPickerHeight").then((initialPickerHeight) => {
+      measureDatetimeFilterPickerHeight().then((height) => {
         expect(height).to.eq(initialPickerHeight);
       });
     });
   }
 
   function assertPreviousButtonRectDidNotChange() {
-    cy.get("@previousButtonRect").then(previousButtonRect => {
-      measurePreviousButtonRect().then(rect => {
+    cy.get("@previousButtonRect").then((previousButtonRect) => {
+      measurePreviousButtonRect().then((rect) => {
         expect(rect).to.deep.eq(previousButtonRect);
       });
     });
   }
 
   function assertNextButtonRectDidNotChange() {
-    cy.get("@nextButtonRect").then(nextButtonRect => {
-      measureNextButtonRect().then(rect => {
+    cy.get("@nextButtonRect").then((nextButtonRect) => {
+      measureNextButtonRect().then((rect) => {
         expect(rect).to.deep.eq(nextButtonRect);
       });
     });

@@ -29,7 +29,7 @@ export function getOperatorByTypeAndName(type, name) {
 }
 
 export function getSupportedAggregationOperators(database) {
-  return AGGREGATION_OPERATORS.filter(operator => {
+  return AGGREGATION_OPERATORS.filter((operator) => {
     if (!operator.requiredDriverFeature) {
       return true;
     }
@@ -40,7 +40,7 @@ export function getSupportedAggregationOperators(database) {
 function populateFields(aggregationOperator, fields) {
   return {
     ...aggregationOperator,
-    fields: aggregationOperator.validFieldsFilters.map(validFieldsFilters =>
+    fields: aggregationOperator.validFieldsFilters.map((validFieldsFilters) =>
       validFieldsFilters(fields),
     ),
   };
@@ -48,11 +48,11 @@ function populateFields(aggregationOperator, fields) {
 
 export function getAggregationOperators(database, fields) {
   return getSupportedAggregationOperators(database)
-    .map(operator => populateFields(operator, fields))
+    .map((operator) => populateFields(operator, fields))
     .filter(
-      aggregation =>
+      (aggregation) =>
         !aggregation.requiresField ||
-        aggregation.fields.every(fields => fields.length > 0),
+        aggregation.fields.every((fields) => fields.length > 0),
     );
 }
 

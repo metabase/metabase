@@ -61,10 +61,10 @@ describe("scenarios > question > new", () => {
 
         const searchResultItems = cy.findAllByTestId("result-item");
 
-        searchResultItems.then($results => {
+        searchResultItems.then(($results) => {
           const types = $results
             .toArray()
-            .map(element => element.getAttribute("data-model-type"));
+            .map((element) => element.getAttribute("data-model-type"));
 
           // Search results include both saved questions and database tables
           expect(types).to.include("card");
@@ -433,7 +433,7 @@ describe("scenarios > question > new", () => {
       H.queryBuilderHeader().button("Save").click();
       cy.log("default selected collection is the root collection");
 
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
         cy.wait("@createQuestion");
       });
@@ -465,7 +465,7 @@ describe("scenarios > question > new", () => {
         H.queryBuilderHeader().button("Save").click();
         cy.log("default selected collection is the root collection");
 
-        cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByTestId("save-question-modal").within((modal) => {
           cy.findByText("Save").click();
           cy.wait("@createQuestion");
         });

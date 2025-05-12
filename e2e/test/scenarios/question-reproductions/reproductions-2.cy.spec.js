@@ -491,14 +491,14 @@ describe("issue 30165", () => {
 
     cy.findByTestId("native-query-editor").type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
     cy.findByTestId("native-query-editor").type(" LIMIT 10");
     H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -670,7 +670,7 @@ describe("issue 43216", () => {
 
 function updateQuestion() {
   H.queryBuilderHeader().findByText("Save").click();
-  cy.findByTestId("save-question-modal").within(modal => {
+  cy.findByTestId("save-question-modal").within((modal) => {
     cy.findByText("Save").click();
   });
 }

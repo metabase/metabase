@@ -36,7 +36,7 @@ export function OffsetPresets({
 
   return (
     <Flex align="flex-end" pos="relative" gap="sm">
-      {presets.map(preset => (
+      {presets.map((preset) => (
         <Button
           key={preset.shortName}
           variant={preset.shortName === bucket ? "filled" : "default"}
@@ -68,7 +68,7 @@ function getPreferredPresets(
   );
 
   const availablePresets = availableBuckets
-    .map(availableBucket => {
+    .map((availableBucket) => {
       const info = Lib.displayInfo(query, stageIndex, availableBucket);
       if (info.isTemporalExtraction) {
         return null;
@@ -83,7 +83,7 @@ function getPreferredPresets(
     })
     .filter((preset): preset is Preset => preset !== null);
 
-  const sortedPresets = _.sortBy(availablePresets, availablePreset => {
+  const sortedPresets = _.sortBy(availablePresets, (availablePreset) => {
     const index = PREFERRED_PRESET_UNITS.indexOf(availablePreset.shortName);
 
     if (availablePreset.isCurrent) {

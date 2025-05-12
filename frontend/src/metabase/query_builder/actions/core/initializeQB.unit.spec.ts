@@ -79,7 +79,7 @@ async function baseSetup({
   jest.runAllTimers();
 
   const actions = dispatch.mock.calls.find(
-    call => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+    (call) => call[0]?.type === "metabase/qb/INITIALIZE_QB",
   );
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
@@ -226,7 +226,7 @@ describe("QB Actions > initializeQB", () => {
   ];
 
   describe("common", () => {
-    ALL_TEST_CASES.forEach(testCase => {
+    ALL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -316,7 +316,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("saved questions and models", () => {
-    [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(testCase => {
+    [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -384,7 +384,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("saved questions", () => {
-    SAVED_QUESTION_TEST_CASES.forEach(testCase => {
+    SAVED_QUESTION_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -416,7 +416,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("unsaved questions", () => {
-    UNSAVED_QUESTION_TEST_CASES.forEach(testCase => {
+    UNSAVED_QUESTION_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       const ORIGINAL_CARD_ID = 321;
@@ -538,7 +538,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("models", () => {
-    MODEL_TEST_CASES.forEach(testCase => {
+    MODEL_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
@@ -599,7 +599,7 @@ describe("QB Actions > initializeQB", () => {
   });
 
   describe("native questions with snippets", () => {
-    NATIVE_SNIPPETS_TEST_CASES.forEach(testCase => {
+    NATIVE_SNIPPETS_TEST_CASES.forEach((testCase) => {
       const { card, questionType } = testCase;
 
       type SnippetsSetupOpts = Omit<SetupOpts, "card"> & {

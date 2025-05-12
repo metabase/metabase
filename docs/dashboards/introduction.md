@@ -37,7 +37,7 @@ There are two ways to add questions to a dashboard: from the dashboard, or from 
 
 Once you add a question to your dashboard, it’ll look something like this:
 
-![First Dashboard](images/first.png)
+![First Dashboard](./images/first.png)
 
 ## Adding headings or descriptions with text cards
 
@@ -45,7 +45,7 @@ Another neat thing you can do is add heading and text cards to your dashboards. 
 
 To add a new text card, create a new dashboard (or edit an existing one) and click on the text card button, **T**, in the top-right:
 
-![Text card button](images/text-card-button.png)
+![Text card button](./images/text-card-button.png)
 
 You have two options:
 
@@ -54,11 +54,11 @@ You have two options:
 
 Each text card has two modes: writing and previewing. When you click to focus on the card, the card will enter editing mode. When you click away from the card, Metabase will render the card to show you what it will look like on the live dashboard.
 
-![Markdown](images/markdown.png)
+![Markdown](./images/markdown.png)
 
 You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
 
-![Result](images/result.png)
+![Result](./images/result.png)
 
 To learn more, see [Fun with Markdown in your dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown).
 
@@ -155,7 +155,7 @@ To edit dashboard cards and move them around, click the **pencil** icon in the t
 
 Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
-![Editing dashboard](images/duplicate-card.png)
+![Editing dashboard](./images/duplicate-card.png)
 
 - **Duplicate a card**: hover over the card and click the Duplicate icon.
 - **Move a card to a new tab**: hover over the card, click the move icon, and select that tab you want to move the card to.
@@ -205,7 +205,7 @@ You can change a card's visualization settings (to add a goal line, for example)
 
 Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **palette** icon to edit a card's visualization's settings.
 
-![Visualization settings](images/visualization-settings.png)
+![Visualization settings](./images/visualization-settings.png)
 
 ### Hiding a card when it doesn't return results
 
@@ -235,7 +235,7 @@ After you've made your ideal dashboard, you may want to put the dashboard on a T
 
 To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions). Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
 
-![Night mode](images/dark-mode.png)
+![Night mode](./images/dark-mode.png)
 
 ## Auto refresh
 

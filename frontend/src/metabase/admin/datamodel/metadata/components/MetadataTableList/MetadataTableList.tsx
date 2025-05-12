@@ -60,14 +60,14 @@ interface DispatchProps {
 type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSelectDatabase: databaseId =>
+  onSelectDatabase: (databaseId) =>
     dispatch(push(Urls.dataModelDatabase(databaseId))),
   onSelectTable: (databaseId, schemaId, tableId) =>
     dispatch(push(Urls.dataModelTable(databaseId, schemaId, tableId))),
   onUpdateTableVisibility: async (tables, visibility) =>
     dispatch(
       Tables.actions.bulkUpdate({
-        ids: tables.map(table => table.id),
+        ids: tables.map((table) => table.id),
         visibility_type: visibility,
       }),
     ),
@@ -89,9 +89,11 @@ const MetadataTableList = ({
     const searchValue = searchText.toLowerCase();
 
     return _.chain(allTables)
-      .filter(table => table.displayName().toLowerCase().includes(searchValue))
-      .sortBy(table => table.displayName())
-      .partition(table => table.visibility_type != null)
+      .filter((table) =>
+        table.displayName().toLowerCase().includes(searchValue),
+      )
+      .sortBy((table) => table.displayName())
+      .partition((table) => table.visibility_type != null)
       .value();
   }, [allTables, searchText]);
 
@@ -126,7 +128,7 @@ const MetadataTableList = ({
             onUpdateTableVisibility={onUpdateTableVisibility}
           />
         )}
-        {visibleTables.map(table => (
+        {visibleTables.map((table) => (
           <TableRow
             key={table.id}
             table={table}
@@ -142,7 +144,7 @@ const MetadataTableList = ({
             onUpdateTableVisibility={onUpdateTableVisibility}
           />
         )}
-        {hiddenTables.map(table => (
+        {hiddenTables.map((table) => (
           <TableRow
             key={table.id}
             table={table}
@@ -360,7 +362,7 @@ const getReloadInterval = (
   _props: TableLoaderProps,
   tables = [],
 ) => {
-  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+  return tables.some((t) => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

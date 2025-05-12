@@ -29,7 +29,7 @@ const makeRecentFilter = (
 ) => {
   return (recentItems: RecentItem[]) =>
     recentItems.filter(
-      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
     );
 };
 
@@ -38,7 +38,7 @@ const makeSearchResultFilter = (
 ) => {
   return (searchResults: SearchResult[]) =>
     searchResults.filter(
-      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
     );
 };
 
@@ -139,7 +139,7 @@ export const BulkMoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={newCollection => onMove({ id: newCollection.id })}
+      onChange={(newCollection) => onMove({ id: newCollection.id })}
       options={{
         showSearch: true,
         allowCreateNew: true,

@@ -64,7 +64,7 @@ export function PermissionsTable({
   };
 
   const handleConfirm = () => {
-    setConfirmations(prev => prev.slice(1));
+    setConfirmations((prev) => prev.slice(1));
     if (confirmations.length === 1) {
       confirmActionRef.current();
       confirmActionRef.current = null;
@@ -100,7 +100,7 @@ export function PermissionsTable({
           </tr>
         </thead>
         <tbody>
-          {entities.map(entity => {
+          {entities.map((entity) => {
             const entityName = (
               <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
@@ -133,7 +133,7 @@ export function PermissionsTable({
                         onChange={(value, toggleState) =>
                           handleChange(value, toggleState, entity, permission)
                         }
-                        onAction={actionCreator =>
+                        onAction={(actionCreator) =>
                           onAction(actionCreator, entity)
                         }
                         colorScheme={colorScheme}

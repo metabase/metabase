@@ -30,7 +30,7 @@ const durationStrategyValidationSchema = Yup.object({
   unit: Yup.string().test(
     "is-duration-unit",
     "${path} is not a valid duration",
-    value => !!value && durationUnits.has(value),
+    (value) => !!value && durationUnits.has(value),
   ),
 });
 

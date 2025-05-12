@@ -66,7 +66,7 @@ export const AddFilterParameterButton = () => {
       </Menu.Target>
       <Menu.Dropdown data-testid="add-filter-parameter-dropdown">
         <Menu.Label>{t`Add a filter or parameter`}</Menu.Label>
-        {sections.map(section => (
+        {sections.map((section) => (
           <Menu.Item
             key={section.id}
             icon={<Icon name={getParameterIconName(section.id)} />}

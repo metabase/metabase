@@ -52,7 +52,7 @@ export default function ParameterFieldWidget({
     multi && !parameter.hasVariableTemplateTagTarget;
 
   const isValid =
-    unsavedValue.every(value => value != null) &&
+    unsavedValue.every((value) => value != null) &&
     (supportsMultipleValues || unsavedValue.length === numFields);
 
   return (
@@ -62,12 +62,12 @@ export default function ParameterFieldWidget({
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
         )}
 
-        {_.times(numFields, index => {
+        {_.times(numFields, (index) => {
           const value = supportsMultipleValues
             ? unsavedValue
             : [unsavedValue[index]];
           const onValueChange = supportsMultipleValues
-            ? newValues => setUnsavedValue(newValues)
+            ? (newValues) => setUnsavedValue(newValues)
             : ([value]) => {
                 const newValues = [...unsavedValue];
                 newValues[index] = value;

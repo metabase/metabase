@@ -6,7 +6,7 @@ import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
 import { createMockCard } from "metabase-types/api/mocks";
-import type { EmbedOptions } from "metabase-types/store";
+import type { InteractiveEmbeddingOptions } from "metabase-types/store";
 import {
   createMockAppState,
   createMockEmbedOptions,
@@ -166,7 +166,7 @@ describe("AppBar", () => {
   });
 });
 
-function setup(embedOptions: Partial<EmbedOptions>) {
+function setup(embedOptions: Partial<InteractiveEmbeddingOptions>) {
   setupCollectionsEndpoints({ collections: [] });
 
   return renderWithProviders(<Route path="*" component={AppBar} />, {

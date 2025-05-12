@@ -314,6 +314,17 @@
                                 :user_id (:id user-to-update)
                                 :group_id (:id group-to-add))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
+                          new-user-group-membership (conj current-user-group-membership
+                                                          {:id               (:id group-to-add)
+                                                           :is_group_manager true})]
+                      (testing (format "- add user to group with %s user without group_manager set" (mt/user-descriptor user))
+                        (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
+                                              {:user_group_memberships (map #(dissoc % :is_group_manager) new-user-group-membership)})))
+
+                    (t2/delete! :model/PermissionsGroupMembership
+                                :user_id (:id user-to-update)
+                                :group_id (:id group-to-add))
+                    (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (conj current-user-group-membership
                                                               {:id               (:id group-to-add)
                                                                :is_group_manager true})]

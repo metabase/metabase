@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
 
+import { forwardRef } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
@@ -21,7 +22,7 @@ import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import * as Lib from "metabase-lib";
 
-import DatasetEditor from "../../../DatasetEditor";
+import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
 import ViewSidebar from "../../ViewSidebar";
@@ -36,7 +37,7 @@ import {
   QueryBuilderViewRoot,
 } from "./View.styled";
 
-const ViewInner = props => {
+const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const {
     question,
     result,
@@ -93,7 +94,9 @@ const ViewInner = props => {
 
   // if we don't have a question at all or no databases then we are initializing, so keep it simple
   if (!question || !databases) {
-    return <LoadingAndErrorWrapper className={CS.fullHeight} loading />;
+    return (
+      <LoadingAndErrorWrapper className={CS.fullHeight} loading ref={ref} />
+    );
   }
 
   const query = question.query();
@@ -106,9 +109,10 @@ const ViewInner = props => {
   if ((isModel || isMetric) && queryBuilderMode === "dataset") {
     return (
       <>
-        {isModel && <DatasetEditor {...props} />}
+        {isModel && <DatasetEditor {...props} ref={ref} />}
         {isMetric && (
           <MetricEditor
+            ref={ref}
             question={question}
             result={result}
             rawSeries={rawSeries}
@@ -117,15 +121,15 @@ const ViewInner = props => {
             isResultDirty={isResultDirty}
             isRunning={isRunning}
             onChange={updateQuestion}
-            onCreate={async question => {
+            onCreate={async (question) => {
               await onCreate(question);
               setQueryBuilderMode("view");
             }}
-            onSave={async question => {
+            onSave={async (question) => {
               await onSave(question);
               setQueryBuilderMode("view");
             }}
-            onCancel={question => {
+            onCancel={(question) => {
               if (question.isSaved()) {
                 cancelQuestionChanges();
                 runDirtyQuestionQuery();
@@ -182,9 +186,8 @@ const ViewInner = props => {
     .with({ isShowingQuestionInfoSidebar: true }, () => 0)
     .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
     .otherwise(() => SIDEBAR_SIZES.NORMAL);
-
   return (
-    <div className={CS.fullHeight}>
+    <div className={CS.fullHeight} ref={ref}>
       <QueryBuilderViewRoot
         className={QueryBuilderS.QueryBuilder}
         data-testid="query-builder-root"
@@ -273,11 +276,11 @@ const ViewInner = props => {
       />
     </div>
   );
-};
+});
 
-const mapDispatchToProps = dispatch => ({
-  onSetDatabaseId: id => dispatch(rememberLastUsedDatabase(id)),
-  onUnarchive: async question => {
+const mapDispatchToProps = (dispatch) => ({
+  onSetDatabaseId: (id) => dispatch(rememberLastUsedDatabase(id)),
+  onUnarchive: async (question) => {
     await dispatch(setArchivedQuestion(question, false));
     await dispatch(Bookmarks.actions.invalidateLists());
   },
@@ -287,7 +290,7 @@ const mapDispatchToProps = dispatch => ({
         notify: { undo: false },
       }),
     ),
-  onDeletePermanently: id => {
+  onDeletePermanently: (id) => {
     const deleteAction = Questions.actions.delete({ id });
     dispatch(deletePermanently(deleteAction));
   },
@@ -295,5 +298,5 @@ const mapDispatchToProps = dispatch => ({
 
 export const View = _.compose(
   ExplicitSize({ refreshMode: "debounceLeading" }),
-  connect(null, mapDispatchToProps),
+  connect(null, mapDispatchToProps, null, { forwardRef: true }),
 )(ViewInner);

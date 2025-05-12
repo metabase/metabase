@@ -58,13 +58,13 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     sizes: {
-      xs: theme => ({
+      xs: (theme) => ({
         input: {
           fontSize: theme.fontSizes.sm,
           lineHeight: theme.lineHeight,
         },
       }),
-      md: theme => ({
+      md: (theme) => ({
         input: {
           fontSize: theme.fontSizes.md,
           lineHeight: rem(24),
@@ -125,7 +125,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
       size: "md",
       inputWrapperOrder: ["label", "description", "error", "input"],
     },
-    styles: theme => ({
+    styles: (theme) => ({
       label: {
         color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.sm,

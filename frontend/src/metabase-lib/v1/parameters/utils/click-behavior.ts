@@ -75,13 +75,13 @@ export function getDataFromClicked({
 }): ValueAndColumnForColumnNameDate {
   const column = [
     ...dimensions,
-    ...data.map(d => ({
+    ...data.map((d) => ({
       column: d.col,
       // When the data is changed to a display value for use in tooltips, we can set clickBehaviorValue to the raw value for filtering.
       value: d.clickBehaviorValue || d.value,
     })),
   ]
-    .filter(d => d.column != null)
+    .filter((d) => d.column != null)
     .reduce<ValueAndColumnForColumnNameDate["column"]>(
       (acc, { column, value }) => {
         if (!column) {
@@ -110,7 +110,7 @@ export function getDataFromClicked({
     ]),
   );
 
-  const parameterBySlug = _.mapObject(parameterValuesBySlug, value => ({
+  const parameterBySlug = _.mapObject(parameterValuesBySlug, (value) => ({
     value,
   }));
 
@@ -171,7 +171,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
             targetColumn,
           );
         },
-        parameter: parameter =>
+        parameter: (parameter) =>
           columnFilterForParameter(query, stageIndex, parameter)(targetColumn),
         userAttribute: () => Lib.isString(targetColumn),
       },
@@ -192,7 +192,7 @@ function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
   return legacyQuery
     .dimensionOptions()
     .all()
-    .map(templateTagDimension => {
+    .map((templateTagDimension) => {
       const { name, id } = (
         templateTagDimension as unknown as TemplateTagDimension
       ).tag();
@@ -203,7 +203,7 @@ function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
 
       const parentType =
         [TYPE.Temporal, TYPE.Number, TYPE.Text].find(
-          t => typeof base_type === "string" && isa(base_type, t),
+          (t) => typeof base_type === "string" && isa(base_type, t),
         ) || base_type;
 
       return {
@@ -217,7 +217,7 @@ function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
                 parentType &&
                 isa(column.base_type, parentType),
             ),
-          parameter: parameter =>
+          parameter: (parameter) =>
             dimensionFilterForParameter(parameter)(templateTagDimension),
           userAttribute: () => parentType === TYPE.Text,
         },
@@ -226,7 +226,7 @@ function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
 }
 
 function getTargetsForVariables(legacyQuery: NativeQuery): Target[] {
-  return legacyQuery.variables().map(templateTagVariable => {
+  return legacyQuery.variables().map((templateTagVariable) => {
     const { name, id, type } = checkNotNull(templateTagVariable.tag());
     const target: ClickBehaviorTarget = { type: "variable", id: name };
     const parentType = type
@@ -249,7 +249,7 @@ function getTargetsForVariables(legacyQuery: NativeQuery): Target[] {
           Boolean(
             column.base_type && parentType && isa(column.base_type, parentType),
           ),
-        parameter: parameter =>
+        parameter: (parameter) =>
           variableFilterForParameter(parameter)(templateTagVariable),
         userAttribute: () => parentType === TYPE.Text,
       },
@@ -265,7 +265,7 @@ export function getTargetsForDashboard(
     return [];
   }
 
-  return dashboard.parameters.map(parameter => {
+  return dashboard.parameters.map((parameter) => {
     const { type, id, name } = parameter;
     const filter = baseTypeFilterForParameterType(type);
     return {
@@ -275,7 +275,7 @@ export function getTargetsForDashboard(
       sourceFilters: {
         column: (c: DatasetColumn) =>
           notRelativeDateOrRange(parameter) && filter(c.base_type),
-        parameter: sourceParam => {
+        parameter: (sourceParam) => {
           // parameter IDs are generated client-side, so they might not be unique
           // if dashboard is a clone, it will have identical parameter IDs to the original
           const isSameParameter =
@@ -306,7 +306,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
     if (typeof baseType === "undefined") {
       return false;
     }
-    return allowedTypes.some(allowedType => isa(baseType, allowedType));
+    return allowedTypes.some((allowedType) => isa(baseType, allowedType));
   };
 }
 
@@ -351,7 +351,9 @@ export function canSaveClickBehavior(
     clickBehavior.linkType === "dashboard"
   ) {
     const tabs = targetDashboard?.tabs || [];
-    const dashboardTabExists = tabs.some(tab => tab.id === clickBehavior.tabId);
+    const dashboardTabExists = tabs.some(
+      (tab) => tab.id === clickBehavior.tabId,
+    );
 
     if (tabs.length > 1 && !dashboardTabExists) {
       // If the target dashboard tab has been deleted, and there are other tabs
@@ -474,7 +476,7 @@ function getParameter(
 ): Parameter | undefined {
   if (clickBehavior.type === "crossfilter") {
     const parameters = extraData.parameters ?? [];
-    return parameters.find(parameter => parameter.id === target.id);
+    return parameters.find((parameter) => parameter.id === target.id);
   }
 
   if (
@@ -488,7 +490,7 @@ function getParameter(
       extraData.dashboard?.id === dashboardId
         ? (extraData.parameters ?? [])
         : (extraData.dashboards?.[dashboardId]?.parameters ?? []);
-    return parameters.find(parameter => parameter.id === target.id);
+    return parameters.find((parameter) => parameter.id === target.id);
   }
 
   return undefined;

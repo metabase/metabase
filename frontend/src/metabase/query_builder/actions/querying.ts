@@ -146,10 +146,10 @@ export const runQuestionQuery = ({
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
-      .then(queryResults => {
+      .then((queryResults) => {
         return dispatch(queryCompleted(question, queryResults));
       })
-      .catch(error => dispatch(queryErrored(startTime, error)));
+      .catch((error) => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };

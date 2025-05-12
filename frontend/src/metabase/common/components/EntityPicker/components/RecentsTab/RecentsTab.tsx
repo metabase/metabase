@@ -35,8 +35,8 @@ export const RecentsTab = <
       {recentItems.length > 0 ? (
         <GroupedRecentsList
           items={recentItems}
-          onItemSelect={item => onItemSelect(item as unknown as Item)}
-          isSelectedItem={item =>
+          onItemSelect={(item) => onItemSelect(item as unknown as Item)}
+          isSelectedItem={(item) =>
             isSelectedItem(item as unknown as Item, selectedItem)
           }
         />

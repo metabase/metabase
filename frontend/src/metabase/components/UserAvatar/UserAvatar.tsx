@@ -56,7 +56,7 @@ function nameInitials(user: User | Group) {
 }
 
 function emailInitials(user: User) {
-  const email = [user.email, user.common_name].find(maybeEmail =>
+  const email = [user.email, user.common_name].find((maybeEmail) =>
     isEmail(maybeEmail),
   );
   if (email) {

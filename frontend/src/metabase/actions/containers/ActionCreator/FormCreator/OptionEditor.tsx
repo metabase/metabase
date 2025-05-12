@@ -19,7 +19,7 @@ export const textToOptions = (text: string): FieldValueOptions => {
   const options = text
     .trim()
     .split("\n")
-    .map(option => option.trim())
+    .map((option) => option.trim())
     .filter(Boolean);
   const uniqueOptions = [...new Set(options)];
 
@@ -31,7 +31,7 @@ function transformOptionsIfNeeded(
   fieldType: FieldType,
 ) {
   if (fieldType === "number") {
-    return options.map(option => Number(option));
+    return options.map((option) => Number(option));
   }
 
   return options;
@@ -42,7 +42,7 @@ function getValidationError(options: FieldValueOptions, fieldType: FieldType) {
     return;
   }
 
-  const isValid = options.every(option => !Number.isNaN(option));
+  const isValid = options.every((option) => !Number.isNaN(option));
 
   return isValid ? undefined : t`Invalid number format`;
 }

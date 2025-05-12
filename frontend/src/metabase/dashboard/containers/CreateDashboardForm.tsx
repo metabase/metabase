@@ -56,7 +56,7 @@ export function CreateDashboardForm({
   filterPersonalCollections,
   collectionId,
 }: CreateDashboardFormOwnProps) {
-  const initialCollectionId = useSelector(state =>
+  const initialCollectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, { collectionId }),
   );
 

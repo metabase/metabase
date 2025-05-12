@@ -34,7 +34,7 @@ class SegmentListAppInner extends Component {
             </tr>
           </thead>
           <tbody>
-            {segments.map(segment => (
+            {segments.map((segment) => (
               <SegmentItem
                 key={segment.id}
                 onRetire={() => setArchived(segment, true)}

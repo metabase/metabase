@@ -165,6 +165,6 @@ export const StyledResizableBox = styled(ResizableBox)<
     isOpen: boolean;
   }
 >`
-  display: ${props => (props.isOpen ? "flex" : "none")};
+  display: ${(props) => (props.isOpen ? "flex" : "none")};
   border-top: 1px solid var(--mb-color-border);
 `;

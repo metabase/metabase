@@ -8,7 +8,9 @@ import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
 const TABS = ["Previous", "Current", "Next"];
-const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
+const TAB_CASES = TABS.flatMap((fromTab) =>
+  TABS.map((toTab) => [fromTab, toTab]),
+);
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;

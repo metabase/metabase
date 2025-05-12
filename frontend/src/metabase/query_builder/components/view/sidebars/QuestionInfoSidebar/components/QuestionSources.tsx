@@ -25,7 +25,7 @@ export const QuestionSources = () => {
           formatTableAsComponent: false,
         }) as QuestionSource[])
       : [];
-    return sources.map(source => ({
+    return sources.map((source) => ({
       ...source,
       iconProps: getIconPropsForSource(source),
     }));

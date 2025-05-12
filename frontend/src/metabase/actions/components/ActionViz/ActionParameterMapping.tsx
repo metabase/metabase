@@ -158,7 +158,7 @@ export const ActionParameterMappingItem = ({
             hasDefaultValue,
             defaultValue,
           }),
-          ...dashboardParameters.map(dashboardParam => ({
+          ...dashboardParameters.map((dashboardParam) => ({
             key: dashboardParam.id,
             name: dashboardParam.name,
             value: dashboardParam.id,

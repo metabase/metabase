@@ -98,7 +98,7 @@ export default class PinMap extends Component {
     this.setState({ lat, lng });
   };
 
-  onMapZoomChange = zoom => {
+  onMapZoomChange = (zoom) => {
     this.setState({ zoom });
   };
 
@@ -114,18 +114,18 @@ export default class PinMap extends Component {
     } = props;
     const latitudeIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.latitude_column"],
+      (col) => col.name === settings["map.latitude_column"],
     );
     const longitudeIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.longitude_column"],
+      (col) => col.name === settings["map.longitude_column"],
     );
     const metricIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.metric_column"],
+      (col) => col.name === settings["map.metric_column"],
     );
 
-    const allPoints = rows.map(row => [
+    const allPoints = rows.map((row) => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
@@ -155,8 +155,8 @@ export default class PinMap extends Component {
 
     const bounds = L.latLngBounds(points.length > 0 ? points : WORLD_BOUNDS);
 
-    const min = d3.min(points, point => point[2]);
-    const max = d3.max(points, point => point[2]);
+    const min = d3.min(points, (point) => point[2]);
+    const max = d3.max(points, (point) => point[2]);
 
     const binWidth =
       cols[longitudeIndex] &&
@@ -199,12 +199,12 @@ export default class PinMap extends Component {
           CS.hoverParent,
           CS.hoverVisibility,
         )}
-        onMouseDownCapture={e => e.stopPropagation() /* prevent dragging */}
+        onMouseDownCapture={(e) => e.stopPropagation() /* prevent dragging */}
       >
         {Map ? (
           <Map
             {...mapProps}
-            ref={map => (this._map = map)}
+            ref={(map) => (this._map = map)}
             className={cx(
               CS.absolute,
               CS.top,
@@ -224,7 +224,7 @@ export default class PinMap extends Component {
             max={max}
             binWidth={binWidth}
             binHeight={binHeight}
-            onFiltering={filtering => this.setState({ filtering })}
+            onFiltering={(filtering) => this.setState({ filtering })}
           />
         ) : null}
         <div

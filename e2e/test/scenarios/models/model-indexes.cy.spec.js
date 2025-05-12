@@ -26,7 +26,7 @@ describe("scenarios > model indexes", () => {
       { wrapId: true, idAlias: "modelId" },
     );
 
-    cy.get("@modelId").then(_modelId => {
+    cy.get("@modelId").then((_modelId) => {
       modelId = _modelId;
     });
   });
@@ -155,7 +155,7 @@ describe("scenarios > model indexes", () => {
       },
     );
 
-    cy.get("@people_model_id").then(peopleModelId => {
+    cy.get("@people_model_id").then((peopleModelId) => {
       createModelIndex({
         modelId: peopleModelId,
         pkName: "ID",
@@ -225,7 +225,7 @@ function editTitleMetadata() {
   H.openColumnOptions("Title");
 }
 
-const expectCardQueries = num =>
-  cy.get("@cardGet.all").then(interceptions => {
+const expectCardQueries = (num) =>
+  cy.get("@cardGet.all").then((interceptions) => {
     expect(interceptions).to.have.length(num);
   });

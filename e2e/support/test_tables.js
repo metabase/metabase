@@ -7,11 +7,11 @@
 
 import { ip_addresses_rows, many_data_types_rows } from "./test_tables_data";
 
-export const colors27745 = async dbClient => {
+export const colors27745 = async (dbClient) => {
   const tableName = "colors27745";
 
   await dbClient.schema.dropTableIfExists(tableName);
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.increments("id").primary();
     table.string("name").unique().notNullable();
   });
@@ -25,11 +25,11 @@ export const colors27745 = async dbClient => {
   return null;
 };
 
-export const scoreboard_actions = async dbClient => {
+export const scoreboard_actions = async (dbClient) => {
   const tableName = "scoreboard_actions";
 
   await dbClient.schema.dropTableIfExists(tableName);
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.increments("id").primary();
     table.string("team_name").unique().notNullable();
     table.integer("score").notNullable().defaultTo(0);
@@ -57,12 +57,12 @@ export const scoreboard_actions = async dbClient => {
   return null;
 };
 
-export const many_data_types = async dbClient => {
+export const many_data_types = async (dbClient) => {
   const tableName = "many_data_types";
 
   await dbClient.schema.dropTableIfExists(tableName);
 
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.increments("id").primary();
     table.uuid("uuid");
 
@@ -102,12 +102,12 @@ export const many_data_types = async dbClient => {
   return null;
 };
 
-export const uuid_pk_table = async dbClient => {
+export const uuid_pk_table = async (dbClient) => {
   const tableName = "uuid_pk_table";
 
   await dbClient.schema.dropTableIfExists(tableName);
 
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.uuid("id").primary();
     table.string("name");
   });
@@ -120,12 +120,12 @@ export const uuid_pk_table = async dbClient => {
   return null;
 };
 
-export const composite_pk_table = async dbClient => {
+export const composite_pk_table = async (dbClient) => {
   const tableName = "composite_pk_table";
 
   await dbClient.schema.dropTableIfExists(tableName);
 
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.integer("id1");
     table.string("id2");
     table.string("name");
@@ -145,12 +145,12 @@ export const composite_pk_table = async dbClient => {
   return null;
 };
 
-export const no_pk_table = async dbClient => {
+export const no_pk_table = async (dbClient) => {
   const tableName = "no_pk_table";
 
   await dbClient.schema.dropTableIfExists(tableName);
 
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.string("name");
     table.integer("score");
   });
@@ -167,7 +167,7 @@ export const no_pk_table = async dbClient => {
   return null;
 };
 
-export const multi_schema = async dbClient => {
+export const multi_schema = async (dbClient) => {
   const schemas = {
     Domestic: {
       Animals: [
@@ -191,7 +191,7 @@ export const multi_schema = async dbClient => {
 
     for (const [table, rows] of Object.entries(tables)) {
       await dbClient.schema.withSchema(schema).dropTableIfExists(table);
-      await dbClient.schema.withSchema(schema).createTable(table, t => {
+      await dbClient.schema.withSchema(schema).createTable(table, (t) => {
         t.string("name");
         t.integer("score");
       });
@@ -202,12 +202,12 @@ export const multi_schema = async dbClient => {
   return schemas;
 };
 
-export const ip_addresses = async dbClient => {
+export const ip_addresses = async (dbClient) => {
   const tableName = "ip_addresses";
 
   await dbClient.schema.dropTableIfExists(tableName);
 
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.text("count");
   });
 
@@ -217,10 +217,10 @@ export const ip_addresses = async dbClient => {
   return null;
 };
 
-export const many_schemas = async dbClient => {
+export const many_schemas = async (dbClient) => {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const schemas = Object.fromEntries(
-    alphabet.map(letter => {
+    alphabet.map((letter) => {
       const key = `Schema ${letter}`;
       const value = [
         "Animals",
@@ -239,7 +239,7 @@ export const many_schemas = async dbClient => {
     await dbClient.schema.createSchemaIfNotExists(schemaName);
     await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
 
-    await dbClient.schema.withSchema(schemaName).createTable(table, t => {
+    await dbClient.schema.withSchema(schemaName).createTable(table, (t) => {
       t.string("name");
       t.integer("score");
     });
@@ -250,11 +250,11 @@ export const many_schemas = async dbClient => {
   return schemas;
 };
 
-export const cached_table = async dbClient => {
+export const cached_table = async (dbClient) => {
   const tableName = "cached_table";
 
   await dbClient.schema.dropTableIfExists(tableName);
-  await dbClient.schema.createTable(tableName, table => {
+  await dbClient.schema.createTable(tableName, (table) => {
     table.increments("id").primary();
     table.string("my_text").notNullable();
   });

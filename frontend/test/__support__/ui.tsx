@@ -2,8 +2,13 @@ import { Global } from "@emotion/react";
 import type { MantineThemeOverride } from "@mantine/core";
 import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
-import type { ByRoleMatcher } from "@testing-library/react";
-import { render, screen, waitFor } from "@testing-library/react";
+import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
+import {
+  screen,
+  render as testingLibraryRender,
+  waitFor,
+} from "@testing-library/react";
+import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
@@ -67,6 +72,76 @@ export function renderWithProviders(
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
+  const { wrapper, store, history } = getTestStoreAndWrapper({
+    mode,
+    initialRoute,
+    storeInitialState,
+    withRouter,
+    withKBar,
+    withDND,
+    withUndos,
+    customReducers,
+    theme,
+  });
+
+  const utils = testingLibraryRender(ui, {
+    wrapper,
+    ...options,
+  });
+
+  return {
+    ...utils,
+    store,
+    history,
+  };
+}
+
+export function renderHookWithProviders<TProps, TResult>(
+  hook: (props: TProps) => TResult,
+  {
+    mode = "default",
+    initialRoute = "/",
+    storeInitialState = {},
+    withRouter = false,
+    withKBar = false,
+    withDND = false,
+    withUndos = false,
+    customReducers,
+    theme,
+    ...renderHookOptions
+  }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
+) {
+  const { wrapper, store } = getTestStoreAndWrapper({
+    mode,
+    initialRoute,
+    storeInitialState,
+    withRouter,
+    withKBar,
+    withDND,
+    withUndos,
+    customReducers,
+    theme,
+  });
+
+  const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
+
+  return { ...renderHookReturn, store };
+}
+
+type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
+  Pick<Required<RenderWithProvidersOptions>, "initialRoute">;
+
+export function getTestStoreAndWrapper({
+  mode,
+  initialRoute,
+  storeInitialState,
+  withRouter,
+  withKBar,
+  withDND,
+  withUndos,
+  customReducers,
+  theme,
+}: GetTestStoreAndWrapperOptions) {
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -125,16 +200,7 @@ export function renderWithProviders(
     );
   };
 
-  const utils = render(ui, {
-    wrapper,
-    ...options,
-  });
-
-  return {
-    ...utils,
-    store,
-    history,
-  };
+  return { wrapper, store, history };
 }
 
 /**
@@ -246,7 +312,7 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
     const hasText = (node: Element | null | undefined) =>
       node?.textContent === textToFind;
     const childrenDoNotHaveText = element
-      ? Array.from(element.children).every(child => !hasText(child))
+      ? Array.from(element.children).every((child) => !hasText(child))
       : true;
 
     return hasText(element) && childrenDoNotHaveText;

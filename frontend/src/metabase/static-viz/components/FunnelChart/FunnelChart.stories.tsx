@@ -12,7 +12,7 @@ export default {
   component: FunnelChart,
 };
 
-const Template: StoryFn<FunnelProps> = args => {
+const Template: StoryFn<FunnelProps> = (args) => {
   return <FunnelChart {...args} />;
 };
 

@@ -26,7 +26,7 @@ describe("QuestionInfoSidebar", () => {
         description: DESCRIPTION,
         type: "model",
       }),
-    ])("should display description of a $name", async card => {
+    ])("should display description of a $name", async (card) => {
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
     });
@@ -60,7 +60,7 @@ describe("QuestionInfoSidebar", () => {
         setup({});
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(2);
-        expect(tabs.map(tab => tab.textContent)).toEqual([
+        expect(tabs.map((tab) => tab.textContent)).toEqual([
           "Overview",
           "History",
         ]);
@@ -72,7 +72,7 @@ describe("QuestionInfoSidebar", () => {
         setup({ user: { is_superuser: true } });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(3);
-        expect(tabs.map(tab => tab.textContent)).toEqual([
+        expect(tabs.map((tab) => tab.textContent)).toEqual([
           "Overview",
           "History",
           "Insights",

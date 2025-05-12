@@ -111,7 +111,7 @@ const getSamlCard = () => {
 };
 
 const enterSamlSettings = () => {
-  getSamlCertificate().then(certificate => {
+  getSamlCertificate().then((certificate) => {
     H.typeAndBlurUsingLabel(
       /SAML Identity Provider URL/,
       "https://example.test",

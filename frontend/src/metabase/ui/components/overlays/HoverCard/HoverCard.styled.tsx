@@ -9,7 +9,7 @@ export const getHoverCardOverrides =
         withinPortal: true,
         middlewares: { shift: true, flip: true, size: true },
       },
-      styles: theme => ({
+      styles: (theme) => ({
         dropdown: {
           padding: 0,
           overflow: "auto",

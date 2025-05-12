@@ -89,7 +89,7 @@ export default (PickerComponent, NameComponent, type) =>
               }
               className={cx(CS.p2, CS.overflowAuto)}
               value={value}
-              onChange={itemId => {
+              onChange={(itemId) => {
                 onChange(itemId);
                 onClose();
               }}

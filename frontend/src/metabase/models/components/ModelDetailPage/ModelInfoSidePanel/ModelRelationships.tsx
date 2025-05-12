@@ -22,7 +22,7 @@ function ModelRelationships({ model, mainTable }: Props) {
     const tablesPointingToMainTable = mainTable?.connectedTables() || [];
     return _.uniq(
       [...tablesMainTablePointsTo, ...tablesPointingToMainTable],
-      table => table.id,
+      (table) => table.id,
     );
   }, [model, mainTable]);
 
@@ -34,7 +34,7 @@ function ModelRelationships({ model, mainTable }: Props) {
     <ModelInfoSection>
       <ModelInfoTitle>{t`Relationships`}</ModelInfoTitle>
       <List data-testid="model-relationships">
-        {relatedTables.map(table => (
+        {relatedTables.map((table) => (
           <li key={table.id}>
             <ListItemLink
               to={ML_Urls.getUrl(table.newQuestion())}

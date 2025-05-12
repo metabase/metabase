@@ -7,7 +7,7 @@ interface SetupCardContainerProps {
 }
 
 export const SetupCardContainer = styled.div<SetupCardContainerProps>`
-  display: ${props => (props.isVisible ? "block" : "none")};
+  display: ${(props) => (props.isVisible ? "block" : "none")};
   margin-bottom: 1.75rem;
 
   ${breakpointMinLarge} {
@@ -17,7 +17,7 @@ export const SetupCardContainer = styled.div<SetupCardContainerProps>`
     bottom: 2em;
     max-width: 20%;
     margin-bottom: 0;
-    transform: ${props => `translateY(${props.isVisible ? "0" : "200%"})`};
+    transform: ${(props) => `translateY(${props.isVisible ? "0" : "200%"})`};
     transition: transform 0.4s;
   }
 `;

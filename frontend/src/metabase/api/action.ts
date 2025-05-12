@@ -9,13 +9,13 @@ import { Api } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
 
 export const actionApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getAction: builder.query<WritebackAction, GetActionRequest>({
       query: ({ id }) => ({
         method: "GET",
         url: `/api/action/${id}`,
       }),
-      providesTags: action => (action ? [idTag("action", action.id)] : []),
+      providesTags: (action) => (action ? [idTag("action", action.id)] : []),
     }),
     listPublicActions: builder.query<GetPublicAction[], void>({
       query: () => ({
@@ -23,7 +23,7 @@ export const actionApi = Api.injectEndpoints({
         url: "/api/action/public",
       }),
       providesTags: (actions = []) => [
-        ...actions.map(action => idTag("public-action", action.id)),
+        ...actions.map((action) => idTag("public-action", action.id)),
         listTag("public-action"),
       ],
     }),

@@ -52,8 +52,8 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "previous",
     displayName: t`Previous`,
-    init: filter => getPreviousDateFilter(filter),
-    test: filter => isPreviousDateFilter(filter),
+    init: (filter) => getPreviousDateFilter(filter),
+    test: (filter) => isPreviousDateFilter(filter),
     group: "relative",
     widget: PastPicker,
     options: { "include-current": true },
@@ -61,16 +61,16 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "current",
     displayName: t`Current`,
-    init: filter => getCurrentDateFilter(filter),
-    test: filter => isCurrentDateFilter(filter),
+    init: (filter) => getCurrentDateFilter(filter),
+    test: (filter) => isCurrentDateFilter(filter),
     group: "relative",
     widget: CurrentPicker,
   },
   {
     name: "next",
     displayName: t`Next`,
-    init: filter => getNextDateFilter(filter),
-    test: filter => isNextDateFilter(filter),
+    init: (filter) => getNextDateFilter(filter),
+    test: (filter) => isNextDateFilter(filter),
     group: "relative",
     widget: NextPicker,
     options: { "include-current": true },
@@ -78,32 +78,32 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "between",
     displayName: t`Between`,
-    init: filter => getBetweenDateFilter(filter),
-    test: filter => isBetweenFilter(filter),
+    init: (filter) => getBetweenDateFilter(filter),
+    test: (filter) => isBetweenFilter(filter),
     group: "specific",
     widget: BetweenPicker,
   },
   {
     name: "before",
     displayName: t`Before`,
-    init: filter => getBeforeDateFilter(filter),
-    test: filter => isBeforeDateFilter(filter),
+    init: (filter) => getBeforeDateFilter(filter),
+    test: (filter) => isBeforeDateFilter(filter),
     group: "specific",
     widget: BeforePicker,
   },
   {
     name: "on",
     displayName: t`On`,
-    init: filter => getOnDateFilter(filter),
-    test: filter => isOnDateFilter(filter),
+    init: (filter) => getOnDateFilter(filter),
+    test: (filter) => isOnDateFilter(filter),
     group: "specific",
     widget: SingleDatePicker,
   },
   {
     name: "after",
     displayName: t`After`,
-    init: filter => getAfterDateFilter(filter),
-    test: filter => isAfterDateFilter(filter),
+    init: (filter) => getAfterDateFilter(filter),
+    test: (filter) => isAfterDateFilter(filter),
     group: "specific",
     widget: AfterPicker,
   },
@@ -111,14 +111,14 @@ export const DATE_OPERATORS: DateOperator[] = [
     name: "exclude",
     displayName: t`Exclude...`,
     displayPrefix: t`Exclude`,
-    init: filter => getExcludeDateFilter(filter),
-    test: filter => isExcludeDateFilter(filter),
+    init: (filter) => getExcludeDateFilter(filter),
+    test: (filter) => isExcludeDateFilter(filter),
     widget: ExcludeDatePicker,
   },
 ];
 
 export function getOperator(filter: FilterMBQL, operators = DATE_OPERATORS) {
-  return _.find(operators, o => o.test(filter));
+  return _.find(operators, (o) => o.test(filter));
 }
 
 type Props = {
@@ -142,7 +142,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
 };
 
-const DatePicker: React.FC<React.PropsWithChildren<Props>> = props => {
+const DatePicker: React.FC<React.PropsWithChildren<Props>> = (props) => {
   const {
     className,
     filter,
@@ -181,7 +181,7 @@ const DatePicker: React.FC<React.PropsWithChildren<Props>> = props => {
         <DatePickerShortcuts
           className={CS.p2}
           dateShortcutOptions={dateShortcutOptions}
-          onFilterChange={filter => {
+          onFilterChange={(filter) => {
             setShowShortcuts(false);
             onFilterChange(filter);
           }}

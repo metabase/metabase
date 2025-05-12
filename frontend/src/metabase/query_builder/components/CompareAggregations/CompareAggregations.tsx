@@ -243,6 +243,6 @@ function convertColumnTypes(
   comparisonType: ComparisonType,
 ): ColumnType[] {
   return columnTypes.map(
-    columnType => comparisonTypeMapping[comparisonType][columnType],
+    (columnType) => comparisonTypeMapping[comparisonType][columnType],
   );
 }

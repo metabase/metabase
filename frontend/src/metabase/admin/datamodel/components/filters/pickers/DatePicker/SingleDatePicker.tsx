@@ -27,7 +27,7 @@ const SingleDatePicker = ({
     className={className}
     value={getDateFilterValue(filter)}
     selectAll={selectAll}
-    onChange={value => onFilterChange(setDateFilterValue(filter, value))}
+    onChange={(value) => onFilterChange(setDateFilterValue(filter, value))}
     onClear={() => onFilterChange(clearDateFilterTime(filter))}
     autoFocus
     hasCalendar

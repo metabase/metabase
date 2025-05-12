@@ -117,7 +117,7 @@ function FilterPopover({
       stageIndex={stageIndex}
       filter={filter}
       filterIndex={filterIndex}
-      onSelect={newFilter => {
+      onSelect={(newFilter) => {
         if (filter) {
           onUpdateFilter(filter, newFilter);
         } else {

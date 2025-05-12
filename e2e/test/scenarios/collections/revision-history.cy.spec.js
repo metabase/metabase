@@ -46,7 +46,7 @@ describe("revision history", () => {
 
   Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
     context(`${permission} access`, () => {
-      userGroup.forEach(user => {
+      userGroup.forEach((user) => {
         // This function `onlyOn` will not generate tests for any other condition.
         // It helps to make both our tests and Cypress runner sidebar clean
         onlyOn(permission === "curate", () => {

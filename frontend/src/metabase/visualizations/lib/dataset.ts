@@ -38,8 +38,8 @@ export const groupDatasetMetrics = (
   byColumns: string | string[],
 ): DatasetData => {
   const byColumnsNames = Array.isArray(byColumns) ? byColumns : [byColumns];
-  const byColumnsIndices = byColumnsNames.map(name =>
-    data.cols.findIndex(col => col.name === name),
+  const byColumnsIndices = byColumnsNames.map((name) =>
+    data.cols.findIndex((col) => col.name === name),
   );
 
   const metricColumnsIndices = new Set(
@@ -51,7 +51,9 @@ export const groupDatasetMetrics = (
   const groupedData = new Map<string, RowValues>();
 
   for (const row of data.rows) {
-    const groupKey = JSON.stringify(byColumnsIndices.map(index => row[index]));
+    const groupKey = JSON.stringify(
+      byColumnsIndices.map((index) => row[index]),
+    );
 
     const existingRowForKey = groupedData.get(groupKey);
     if (!existingRowForKey) {
@@ -83,7 +85,7 @@ export const groupRawSeriesMetrics = (
     return rawSeries;
   }
 
-  return rawSeries.map(singleSeries => ({
+  return rawSeries.map((singleSeries) => ({
     ...singleSeries,
     data: groupDatasetMetrics(singleSeries.data, byColumns),
   }));

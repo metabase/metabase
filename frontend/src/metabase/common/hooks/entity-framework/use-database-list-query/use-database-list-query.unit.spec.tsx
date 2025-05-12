@@ -4,7 +4,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { useDatabaseListQuery } from "./use-database-list-query";
@@ -20,7 +20,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(database => (
+      {data.map((database) => (
         <div key={database.id}>{database.name}</div>
       ))}
     </div>

@@ -218,7 +218,7 @@ export async function updateTemplateTagNames(
 ): Promise<NativeQuery> {
   const referencedCards = (
     await Promise.all(
-      query.referencedQuestionIds().map(async id => {
+      query.referencedQuestionIds().map(async (id) => {
         try {
           const actionResult = await dispatch(
             Questions.actions.fetch({ id }, { noEvent: true }),

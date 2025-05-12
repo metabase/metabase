@@ -25,7 +25,7 @@ export const DatabaseList = ({
   onClick,
 }: Props) => {
   const items: DataPickerFolderItem[] | undefined = useMemo(() => {
-    return databases?.map(database => ({
+    return databases?.map((database) => ({
       id: database.id,
       model: "database",
       name: database.name,

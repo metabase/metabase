@@ -131,7 +131,7 @@ export function getBreakout(
   stageIndex: number,
 ): BreakoutColumnAndBucket {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const breakoutIndex = breakouts.findIndex(breakout =>
+  const breakoutIndex = breakouts.findIndex((breakout) =>
     isTemporal(query, stageIndex, breakout),
   );
   if (breakoutIndex >= 0) {
@@ -147,7 +147,7 @@ export function getBreakout(
   }
 
   const columns = Lib.breakoutableColumns(query, stageIndex);
-  const temporalColumn = columns.find(column => Lib.isTemporal(column));
+  const temporalColumn = columns.find((column) => Lib.isTemporal(column));
 
   if (temporalColumn) {
     const bucket = Lib.defaultTemporalBucket(query, stageIndex, temporalColumn);
@@ -208,7 +208,7 @@ export function updateQueryWithCompareOffsetAggregations(
       stageIndex,
       matchedBreakout.column,
     ).find(
-      availableBucket =>
+      (availableBucket) =>
         Lib.displayInfo(query, stageIndex, availableBucket).shortName ===
         bucket,
     ) ?? null;
@@ -276,8 +276,8 @@ export function canAddTemporalCompareAggregation(
   }
 
   const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
-  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
-    Lib.isTemporalBucketable(query, stageIndex, column),
+  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(
+    (column) => Lib.isTemporalBucketable(query, stageIndex, column),
   );
 
   if (!hasAtLeastOneTemporalBreakoutColumn) {

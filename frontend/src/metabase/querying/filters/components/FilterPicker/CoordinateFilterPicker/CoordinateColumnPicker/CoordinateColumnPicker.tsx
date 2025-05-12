@@ -37,7 +37,9 @@ export function CoordinateColumnPicker({
   });
 
   const handleChange = (value: string | null) => {
-    const option = checkNotNull(options.find(option => option.value === value));
+    const option = checkNotNull(
+      options.find((option) => option.value === value),
+    );
     setValue(option.value);
     onChange(option.column);
   };

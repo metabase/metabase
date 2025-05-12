@@ -32,7 +32,7 @@ export const useBrowserRenderingContext = (
     });
 
     return {
-      getColor: name => color(name, palette),
+      getColor: (name) => color(name, palette),
       measureText: measureTextWidth,
       measureTextHeight,
       fontFamily: `${fontFamily}, Arial, sans-serif`,

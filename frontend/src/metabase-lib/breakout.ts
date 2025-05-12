@@ -29,7 +29,7 @@ export function replaceBreakouts(
 ) {
   let nextQuery = query;
 
-  breakouts(query, stageIndex).forEach(clause => {
+  breakouts(query, stageIndex).forEach((clause) => {
     nextQuery = removeClause(nextQuery, stageIndex, clause);
   });
 

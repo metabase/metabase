@@ -16,14 +16,14 @@ export function searchGroupItems(
   const isSearchingForSegments = t`segments`.includes(searchValue);
 
   const columnItems = groupItems
-    .flatMap(groupItem => groupItem.columnItems)
-    .filter(columnItem =>
+    .flatMap((groupItem) => groupItem.columnItems)
+    .filter((columnItem) =>
       columnItem.displayName.toLowerCase().includes(searchValue),
     );
   const segmentItems = groupItems
-    .flatMap(groupItem => groupItem.segmentItems)
+    .flatMap((groupItem) => groupItem.segmentItems)
     .filter(
-      segmentItem =>
+      (segmentItem) =>
         isSearchingForSegments ||
         segmentItem.displayName.toLowerCase().includes(searchValue),
     );

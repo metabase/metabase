@@ -224,7 +224,7 @@ const FieldCoercionStrategySection = ({
 }: FieldCoercionStrategySectionProps) => {
   const options = useMemo(
     () => [
-      ...field.coercionStrategyOptions().map(value => ({
+      ...field.coercionStrategyOptions().map((value) => ({
         name: humanizeCoercionStrategy(value),
         value,
       })),

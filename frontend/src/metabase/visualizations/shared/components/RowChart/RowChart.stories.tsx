@@ -14,7 +14,7 @@ export default {
   component: RowChart,
 };
 
-const Template: StoryFn<RowChartProps<any>> = args => {
+const Template: StoryFn<RowChartProps<any>> = (args) => {
   return (
     <Box h={600} bg="white" p="8px">
       <RowChart {...args} />

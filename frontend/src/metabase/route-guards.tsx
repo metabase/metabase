@@ -24,14 +24,14 @@ const MetabaseIsSetup = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "MetabaseIsSetup",
   redirectPath: "/setup",
   allowRedirectBack: false,
-  authenticatedSelector: state => getSetting(state, "has-user-setup"),
+  authenticatedSelector: (state) => getSetting(state, "has-user-setup"),
   redirectAction: routerActions.replace,
 });
 
 const UserIsAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAuthenticated",
   redirectPath: "/auth/login",
-  authenticatedSelector: state => !!state.currentUser,
+  authenticatedSelector: (state) => !!state.currentUser,
   redirectAction: routerActions.replace,
 });
 
@@ -39,7 +39,7 @@ const UserIsAdmin = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAdmin",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: state =>
+  authenticatedSelector: (state) =>
     Boolean(state.currentUser && state.currentUser.is_superuser),
   redirectAction: routerActions.replace,
 });
@@ -48,9 +48,9 @@ const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectPath: () => getRedirectUrl(),
   allowRedirectBack: false,
-  authenticatingSelector: state =>
+  authenticatingSelector: (state) =>
     state.auth.loginPending || !state.auth.redirect,
-  authenticatedSelector: state => !state.currentUser,
+  authenticatedSelector: (state) => !state.currentUser,
   redirectAction: routerActions.replace,
 });
 
@@ -58,7 +58,7 @@ const UserCanAccessSettings = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessSettings",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: state => (getAdminPaths(state)?.length ?? 0) > 0,
+  authenticatedSelector: (state) => (getAdminPaths(state)?.length ?? 0) > 0,
   redirectAction: routerActions.replace,
 });
 
@@ -66,7 +66,7 @@ export const UserCanAccessOnboarding = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessOnboarding",
   redirectPath: "/",
   allowRedirectBack: false,
-  authenticatedSelector: state => getCanAccessOnboardingPage(state),
+  authenticatedSelector: (state) => getCanAccessOnboardingPage(state),
   redirectAction: routerActions.replace,
 });
 

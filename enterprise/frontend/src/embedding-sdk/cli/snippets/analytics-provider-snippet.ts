@@ -4,6 +4,9 @@ import {createContext, useState} from 'react'
 // Used for the example theme switcher component
 export const AnalyticsContext = createContext({})
 
+// Demo provider that adds the state for the example theme switcher component.
+// Delete this once you've played around with the theme switcher, and use your
+// own application's theming instead.
 export const AnalyticsProvider = ({children}) => {
   const [themeKey, setThemeKey] = useState('light')
 
@@ -28,6 +31,8 @@ const AUTH_SERVER_DOWN_MESSAGE = \`
   Please start the server with 'npm run start'
 \`
 
+// Demo provider that adds the state for the example user and theme switcher component.
+// Delete this once you've implemented user authentication and theming in your application.
 export const AnalyticsProvider = ({children}) => {
   const [email, setEmail] = useState(null)
   const [authError, setAuthError] = useState(null)

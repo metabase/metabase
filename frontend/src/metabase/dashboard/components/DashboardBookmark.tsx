@@ -56,6 +56,6 @@ export const getIsBookmarked = ({
   dashboardId,
 }: IsBookmarkedSelectorProps) =>
   bookmarks.some(
-    bookmark =>
+    (bookmark) =>
       bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
   );

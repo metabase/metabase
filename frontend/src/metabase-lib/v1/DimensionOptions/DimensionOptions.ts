@@ -20,7 +20,7 @@ export default class DimensionOptions {
 
   all(): Dimension[] {
     const dimensions = this.dimensions;
-    const fksDimensions = this.fks.map(fk => fk.dimensions).flat();
+    const fksDimensions = this.fks.map((fk) => fk.dimensions).flat();
     return [...dimensions, ...fksDimensions];
   }
 
@@ -34,12 +34,12 @@ export default class DimensionOptions {
       return false;
     }
 
-    return !!this.all().find(dim => dimension.isSameBaseDimension(dim));
+    return !!this.all().find((dim) => dimension.isSameBaseDimension(dim));
   }
 
   sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
     const dimension =
-      this.dimensions.find(dimension => !dimension.isExpression()) ??
+      this.dimensions.find((dimension) => !dimension.isExpression()) ??
       this.dimensions[0];
     const table = dimension && dimension.field().table;
     const tableName = table ? table.objectName() : null;
@@ -48,16 +48,16 @@ export default class DimensionOptions {
       icon: this.icon || "table",
       items: [
         ...extraItems,
-        ...this.dimensions.map(dimension => ({
+        ...this.dimensions.map((dimension) => ({
           dimension,
         })),
       ],
     };
 
-    const sections: DimensionOptionsSection[] = this.fks.map(fk => ({
+    const sections: DimensionOptionsSection[] = this.fks.map((fk) => ({
       name: fk.name || (fk.field && fk.field.targetObjectName()),
       icon: fk.icon || "connections",
-      items: fk.dimensions.map(dimension => ({
+      items: fk.dimensions.map((dimension) => ({
         dimension,
       })),
     }));

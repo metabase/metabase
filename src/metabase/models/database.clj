@@ -1,7 +1,10 @@
 (ns metabase.models.database
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.data :as data]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
@@ -22,6 +25,7 @@
     :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -147,11 +151,55 @@
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
-(defn check-and-schedule-tasks!
-  "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
+(defn maybe-test-and-migrate-details!
+  "When a driver has db-details to test and migrate:
+   we loop through them until we find one that works and update the database with the working details."
+  [{:keys [engine details] :as database}]
+  (if-let [details-to-test (seq (driver/db-details-to-test-and-migrate (keyword engine) details))]
+    (do
+      (log/infof "Attempting to connect to %d possible legacy details" (count details-to-test))
+      (loop [[test-details & tail] details-to-test]
+        (if test-details
+          (if (driver.u/can-connect-with-details? engine (assoc test-details :engine engine))
+            (let [keys-remaining (-> test-details keys set)
+                  [_ removed _] (data/diff keys-remaining (-> details keys set))]
+              (log/infof "Successfully connected, migrating to: %s" (pr-str {:keys keys-remaining :keys-removed removed}))
+              (t2/update! :model/Database (:id database) {:details test-details})
+              test-details)
+            (recur tail))
+          ;; if we go through the list and we can't fine a working detail to test, keep original value
+          details)))
+    details))
+
+(defn health-check-database!
+  "Checks database health off-thread.
+   - checks connectivity
+   - cleans-up ambiguous legacy, db-details"
+  [{:keys [engine] :as database}]
+  (when-not (or (:is_audit database) (:is_sample database))
+    (log/info (u/format-color :cyan "Health check: queueing %s {:id %d}" (:name database) (:id database)))
+    (sync.concurrent/submit-task
+     (fn []
+       (let [details (maybe-test-and-migrate-details! database)]
+         (try
+           (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
+           (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+             (do
+               (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
+               (prometheus/inc! :metabase-database/healthy {:driver engine} 1))
+             (do
+               (log/warn (u/format-color :yellow "Health check: failure %s {:id %d}" (:name database) (:id database)))
+               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))
+           (catch Throwable e
+             (do
+               (log/error e (u/format-color :red "Health check: failure with error %s {:id %d}" (:name database) (:id database)))
+               (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))))
+
+(defn check-health!
+  "Health checks databases connected to metabase asynchronously using a thread pool."
   []
   (doseq [database (t2/select :model/Database)]
-    (check-and-schedule-tasks-for-db! database)))
+    (health-check-database! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
 ;; implement behavior when an object is deleted can do it without having to put code here

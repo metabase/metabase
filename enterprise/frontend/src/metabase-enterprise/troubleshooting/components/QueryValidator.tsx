@@ -105,14 +105,14 @@ export const QueryValidator = () => {
 
   const processedData: TableRow[] = useMemo(
     () =>
-      invalidCards?.data.map(card => ({
+      invalidCards?.data.map((card) => ({
         name: card.name,
         created_by: card.creator?.common_name || "",
         collectionTooltip: getCollectionPathAsString(card.collection),
         collection_path: [
           ...(card.collection?.effective_ancestors || []),
           card.collection,
-        ].map(c => getCollectionName(c)),
+        ].map((c) => getCollectionName(c)),
         error: formatErrorString(card.errors),
         last_edited_at: card.updated_at,
         id: card.id,
@@ -152,7 +152,7 @@ export const QueryValidator = () => {
           className={S.table}
           columns={COLUMNS}
           rows={processedData}
-          rowRenderer={row => <QueryValidatorRow row={row} />}
+          rowRenderer={(row) => <QueryValidatorRow row={row} />}
           sortColumnName={sortColumn}
           sortDirection={sortDirection}
           onSort={(name, direction) => {

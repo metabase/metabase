@@ -34,7 +34,7 @@ export const CleanupCollectionModalFilters = ({
           icon={<Icon name="calendar" />}
           data={dateFilterOptions}
           value={dateFilter}
-          onChange={option => {
+          onChange={(option) => {
             option && isDateFilter(option) && onDateFilterChange(option);
           }}
           mx=".5rem"
@@ -47,7 +47,7 @@ export const CleanupCollectionModalFilters = ({
         label={<Text>{t`Include items in sub-collections`}</Text>}
         role="switch"
         checked={recursiveFilter}
-        onChange={e => onRecursiveFilterChange(e.target.checked)}
+        onChange={(e) => onRecursiveFilterChange(e.target.checked)}
       />
     </Flex>
   </Flex>

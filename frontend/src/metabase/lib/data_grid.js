@@ -27,27 +27,27 @@ export function multiLevelPivot(data, settings) {
     data.cols,
   );
   const columnsWithoutPivotGroup = data.cols.filter(
-    col => !isPivotGroupColumn(col),
+    (col) => !isPivotGroupColumn(col),
   );
 
   const {
     columns: columnColumnIndexes,
     rows: rowColumnIndexes,
     values: valueColumnIndexes,
-  } = _.mapObject(columnSplit, columnNames =>
+  } = _.mapObject(columnSplit, (columnNames) =>
     columnNames
-      .map(columnName =>
-        columnsWithoutPivotGroup.findIndex(col => col.name === columnName),
+      .map((columnName) =>
+        columnsWithoutPivotGroup.findIndex((col) => col.name === columnName),
       )
-      .filter(index => index !== -1),
+      .filter((index) => index !== -1),
   );
 
   const { pivotData, columns } = splitPivotData(data);
-  const columnSettings = columns.map(column => settings.column(column));
+  const columnSettings = columns.map((column) => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
   const collapsedSubtotals = filterCollapsedSubtotals(
     allCollapsedSubtotals,
-    rowColumnIndexes.map(index => columnSettings[index]),
+    rowColumnIndexes.map((index) => columnSettings[index]),
   );
 
   // we build a tree for each tuple of pivoted column/row values seen in the data
@@ -79,11 +79,11 @@ export function multiLevelPivot(data, settings) {
 
     // save the value columns keyed by the values in the column/row pivoted columns
     const valueKey = JSON.stringify(
-      columnColumnIndexes.concat(rowColumnIndexes).map(index => row[index]),
+      columnColumnIndexes.concat(rowColumnIndexes).map((index) => row[index]),
     );
-    const values = valueColumnIndexes.map(index => row[index]);
+    const values = valueColumnIndexes.map((index) => row[index]);
     const valueColumns = valueColumnIndexes.map(
-      index => columnSettings[index]?.column,
+      (index) => columnSettings[index]?.column,
     );
 
     valuesByKey[valueKey] = {
@@ -105,9 +105,9 @@ export function multiLevelPivot(data, settings) {
     const indexes = JSON.parse(subtotalName);
     subtotalValues[subtotalName] = {};
     for (const row of subtotal) {
-      const valueKey = JSON.stringify(indexes.map(index => row[index]));
+      const valueKey = JSON.stringify(indexes.map((index) => row[index]));
       subtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
-        index => row[index],
+        (index) => row[index],
       );
     }
   }
@@ -117,16 +117,16 @@ export function multiLevelPivot(data, settings) {
     valueColumnIndexes,
     columnColumnIndexes,
     rowColumnIndexes,
-  ].map(indexes =>
-    indexes.map(index =>
+  ].map((indexes) =>
+    indexes.map((index) =>
       _.memoize(
-        value => formatValue(value, columnSettings[index]),
-        value => [value, index].join(),
+        (value) => formatValue(value, columnSettings[index]),
+        (value) => [value, index].join(),
       ),
     ),
   );
 
-  const topIndexColumns = columnColumnIndexes.map(index => columns[index]);
+  const topIndexColumns = columnColumnIndexes.map((index) => columns[index]);
   const formattedColumnTreeWithoutValues = formatValuesInTree(
     columnColumnTree,
     topIndexFormatters,
@@ -146,9 +146,9 @@ export function multiLevelPivot(data, settings) {
   }
 
   const columnIndex = addEmptyIndexItem(
-    formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
+    formattedColumnTreeWithoutValues.flatMap((root) => enumeratePaths(root)),
   );
-  const valueColumns = valueColumnIndexes.map(index => [
+  const valueColumns = valueColumnIndexes.map((index) => [
     columns[index],
     columnSettings[index],
   ]);
@@ -157,14 +157,14 @@ export function multiLevelPivot(data, settings) {
     valueColumns,
   );
 
-  const leftIndexColumns = rowColumnIndexes.map(index => columns[index]);
+  const leftIndexColumns = rowColumnIndexes.map((index) => columns[index]);
   const formattedRowTreeWithoutSubtotals = formatValuesInTree(
     rowColumnTree,
     leftIndexFormatters,
     leftIndexColumns,
   );
   const showSubtotalsByColumn = rowColumnIndexes.map(
-    index => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
+    (index) => getIn(columnSettings, [index, COLUMN_SHOW_TOTALS]) !== false,
   );
 
   const formattedRowTree = settings["pivot.show_column_totals"]
@@ -185,7 +185,7 @@ export function multiLevelPivot(data, settings) {
   }
 
   const rowIndex = addEmptyIndexItem(
-    formattedRowTree.flatMap(root => enumeratePaths(root)),
+    formattedRowTree.flatMap((root) => enumeratePaths(root)),
   );
 
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
@@ -227,19 +227,19 @@ export function multiLevelPivot(data, settings) {
 // We use that column to split apart the data and convert the field refs to indexes.
 function splitPivotData(data) {
   const groupIndex = data.cols.findIndex(isPivotGroupColumn);
-  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-  const breakouts = columns.filter(col => col.source === "breakout");
+  const columns = data.cols.filter((col) => !isPivotGroupColumn(col));
+  const breakouts = columns.filter((col) => col.source === "breakout");
 
   const pivotData = _.chain(data.rows)
-    .groupBy(row => row[groupIndex])
+    .groupBy((row) => row[groupIndex])
     .pairs()
     .map(([key, rows]) => {
       key = parseInt(key);
       const indexes = _.range(breakouts.length).filter(
-        index => !((1 << index) & key),
+        (index) => !((1 << index) & key),
       );
       const keyAsIndexes = JSON.stringify(indexes);
-      const rowsWithoutColumn = rows.map(row =>
+      const rowsWithoutColumn = rows.map((row) =>
         row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
       );
 
@@ -259,9 +259,9 @@ function addEmptyIndexItem(index) {
 // TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
 function filterCollapsedSubtotals(collapsedSubtotals, columnSettings) {
   const columnIsCollapsible = columnSettings.map(
-    settings => settings[COLUMN_SHOW_TOTALS] !== false,
+    (settings) => settings[COLUMN_SHOW_TOTALS] !== false,
   );
-  return collapsedSubtotals.filter(pathOrLengthString => {
+  return collapsedSubtotals.filter((pathOrLengthString) => {
     const pathOrLength = JSON.parse(pathOrLengthString);
     const length = Array.isArray(pathOrLength)
       ? pathOrLength.length
@@ -281,7 +281,7 @@ function createRowSectionGetter({
   rowIndex,
   colorGetter,
 }) {
-  const formatValues = values =>
+  const formatValues = (values) =>
     values === undefined
       ? Array(valueFormatters.length).fill({ value: null })
       : values.map((v, i) => ({ value: valueFormatters[i](v) }));
@@ -289,13 +289,13 @@ function createRowSectionGetter({
     formatValues(
       getIn(
         subtotalValues,
-        [breakoutIndexes, values].map(a =>
+        [breakoutIndexes, values].map((a) =>
           JSON.stringify(
             _.sortBy(a, (_value, index) => breakoutIndexes[index]),
           ),
         ),
       ),
-    ).map(value => ({ ...value, isSubtotal: true, ...otherAttrs }));
+    ).map((value) => ({ ...value, isSubtotal: true, ...otherAttrs }));
 
   const getter = (columnIdx, rowIdx) => {
     const columnValues = columnIndex[columnIdx] || [];
@@ -345,7 +345,7 @@ function enumeratePaths(
   const pathWithValue = [...path, rawValue];
   return children.length === 0
     ? [pathWithValue]
-    : children.flatMap(child => enumeratePaths(child, pathWithValue));
+    : children.flatMap((child) => enumeratePaths(child, pathWithValue));
 }
 
 function formatValuesInTree(
@@ -396,9 +396,9 @@ function addSubtotals(rowColumnTree, showSubtotalsByColumn) {
   // If top-level items are flat, subtotals will just repeat their corresponding row
   // https://github.com/metabase/metabase/issues/15211
   // https://github.com/metabase/metabase/pull/16566
-  const notFlat = rowColumnTree.some(item => item.children.length > 1);
+  const notFlat = rowColumnTree.some((item) => item.children.length > 1);
 
-  return rowColumnTree.flatMap(item =>
+  return rowColumnTree.flatMap((item) =>
     addSubtotal(item, showSubtotalsByColumn, {
       shouldShowSubtotal: notFlat || item.children.length > 1,
     }),
@@ -428,7 +428,7 @@ function addSubtotal(
   const node = {
     ...item,
     hasSubtotal,
-    children: item.children.flatMap(child =>
+    children: item.children.flatMap((child) =>
       // add subtotals until the last level
       child.children.length > 0
         ? addSubtotal(child, showSubtotalsByColumn, {
@@ -454,7 +454,7 @@ function updateValueObject(
   for (const index of indexes) {
     const value = row[index];
     prefix.push(value);
-    let seenValue = currentLevelSeenValues.find(d => d.value === value);
+    let seenValue = currentLevelSeenValues.find((d) => d.value === value);
     const isCollapsed =
       // the specific path is collapsed
       collapsedSubtotals.includes(JSON.stringify(prefix)) ||

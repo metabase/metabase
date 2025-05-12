@@ -98,7 +98,7 @@ function getDateTimeFieldRef(field: Field, bucketing?: string) {
 
 // add temporal-unit to fields if any of them have a time component
 function getDateTimeDimensionFromFilterAndValues(filter: FilterMBQL) {
-  let values = filter.slice(2).map(value => value && getDate(value));
+  let values = filter.slice(2).map((value) => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const dimension = getDateTimeDimensionFromFilter(filter, bucketing);
   const { hours, minutes } = getTimeComponent(values[0]);
@@ -117,7 +117,7 @@ function getDateTimeDimensionFromFilterAndValues(filter: FilterMBQL) {
       ];
     }
   }
-  return [dimension, ...values.filter(value => value !== undefined)];
+  return [dimension, ...values.filter((value) => value !== undefined)];
 }
 
 function getOnFilterDimensionAndValues(filter: FilterMBQL) {

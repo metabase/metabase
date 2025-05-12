@@ -35,7 +35,7 @@ export function DefaultFilterPicker({
 
   const handleOperatorChange = (operator: string) => {
     const option = availableOptions.find(
-      option => option.operator === operator,
+      (option) => option.operator === operator,
     );
     if (option) {
       setOperator(option.operator);
@@ -65,7 +65,7 @@ export function DefaultFilterPicker({
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
           <Stack p="md" spacing="sm">
-            {availableOptions.map(option => (
+            {availableOptions.map((option) => (
               <Radio
                 key={option.operator}
                 value={option.operator}

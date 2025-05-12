@@ -121,7 +121,7 @@ jobs:
           SPLIT_TIME_THRESHOLD: 5.0
         shell: bash
         run: |
-          node e2e/runner/run_cypress_ci.js test \
+          node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
@@ -129,7 +129,7 @@ jobs:
         if: ${{ inputs.specs }}
         shell: bash
         run: |
-          node e2e/runner/run_cypress_ci.js test \
+          node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}

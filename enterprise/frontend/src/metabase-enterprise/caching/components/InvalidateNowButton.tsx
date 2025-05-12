@@ -71,7 +71,7 @@ const InvalidateNowFormBody = ({
     <>
       <Form>
         <StyledInvalidateNowButton
-          onClick={e => {
+          onClick={(e) => {
             confirmInvalidation();
             e.preventDefault();
             return false;

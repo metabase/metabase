@@ -50,7 +50,7 @@ describe("ParameterLinkedFilters", () => {
 
   it.each(["static-list", "card"])(
     "should not show linked filter options if the parameter has a %s source",
-    valuesSourceType => {
+    (valuesSourceType) => {
       setup({
         parameter: createMockUiParameter({
           id: "p1",

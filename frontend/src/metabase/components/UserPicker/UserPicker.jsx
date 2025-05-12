@@ -26,18 +26,18 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
     : null;
 
   const options = useMemo(() => {
-    return users.map(user => ({ value: user }));
+    return users.map((user) => ({ value: user }));
   }, [users]);
 
-  const idKey = useCallback(value => {
+  const idKey = useCallback((value) => {
     return value.id || value.email;
   }, []);
 
-  const valueRenderer = useCallback(value => {
+  const valueRenderer = useCallback((value) => {
     return value.common_name;
   }, []);
 
-  const optionRenderer = useCallback(option => {
+  const optionRenderer = useCallback((option) => {
     return (
       <UserPickerOption>
         <UserPickerAvatar user={option.value} />
@@ -53,7 +53,7 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
     );
   }, []);
 
-  const parseFreeformValue = useCallback(text => {
+  const parseFreeformValue = useCallback((text) => {
     if (isEmail(text)) {
       return { email: text };
     }

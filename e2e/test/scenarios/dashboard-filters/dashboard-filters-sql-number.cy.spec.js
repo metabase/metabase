@@ -124,7 +124,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     },
   ];
 
-  const parameterMapping = filterDetails.map(filter => ({
+  const parameterMapping = filterDetails.map((filter) => ({
     parameter_id: filter.id,
     target: ["variable", ["template-tag", filter.slug]],
   }));
@@ -154,7 +154,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
             id,
             card_id,
             ...dashcardDetails,
-            parameter_mappings: parameterMapping.map(mapping => ({
+            parameter_mappings: parameterMapping.map((mapping) => ({
               ...mapping,
               card_id,
             })),

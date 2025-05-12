@@ -51,7 +51,7 @@ export const PerformanceApp = ({
   return (
     <Tabs
       value={tabId}
-      onTabChange={value => {
+      onTabChange={(value) => {
         if (isValidTabId(value)) {
           dispatch(
             push(

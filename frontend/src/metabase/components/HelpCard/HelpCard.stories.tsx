@@ -7,7 +7,7 @@ export default {
   component: HelpCard,
 };
 
-const Template: StoryFn<HelpCardProps> = args => {
+const Template: StoryFn<HelpCardProps> = (args) => {
   return <HelpCard {...args} />;
 };
 

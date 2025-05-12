@@ -14,9 +14,9 @@ const YearPicker = ({ value, onChange, ...selectProps }: YearPickerProps) => (
   <Select
     className={CS.borderless}
     {...selectProps}
-    data={YEARS.map(year => String(year))}
+    data={YEARS.map((year) => String(year))}
     value={String(value)}
-    onChange={year => year && onChange(parseInt(year, 10))}
+    onChange={(year) => year && onChange(parseInt(year, 10))}
     w="6rem"
     classNames={{
       dropdown: CS.ParameterDropdownWidth,

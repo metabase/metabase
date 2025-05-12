@@ -531,17 +531,18 @@
       (is (= [["20th Century Cafe" 2 2 0]
               ["25°" 2 2 0]
               ["33 Taps" 2 2 0]]
-             (mt/formatted-rows
-              [str int int int]
-              (mt/run-mbql-query venues
-                {:source-query {:source-table (mt/id :venues)
-                                :aggregation  [[:min (mt/id :venues :price)]
-                                               [:max (mt/id :venues :price)]]
-                                :breakout     [[:field (mt/id :venues :name) nil]]
-                                :limit        3}
-                 :expressions  {:price_range [:-
-                                              [:field "max" {:base-type :type/Number}]
-                                              [:field "min" {:base-type :type/Number}]]}})))))))
+             (sort-by first
+                      (mt/formatted-rows
+                       [str int int int]
+                       (mt/run-mbql-query venues
+                         {:source-query {:source-table (mt/id :venues)
+                                         :aggregation  [[:min (mt/id :venues :price)]
+                                                        [:max (mt/id :venues :price)]]
+                                         :breakout     [[:field (mt/id :venues :name) nil]]
+                                         :limit        3}
+                          :expressions  {:price_range [:-
+                                                       [:field "max" {:base-type :type/Number}]
+                                                       [:field "min" {:base-type :type/Number}]]}}))))))))
 
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

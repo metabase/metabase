@@ -27,7 +27,7 @@ export function FilterSearchInput({ value, onChange }: FilterSearchInputProps) {
       icon={<Icon name="search" />}
       placeholder={t`Search for a column…`}
       aria-hidden
-      onChange={event => setInputText(event.currentTarget.value)}
+      onChange={(event) => setInputText(event.currentTarget.value)}
     />
   );
 }

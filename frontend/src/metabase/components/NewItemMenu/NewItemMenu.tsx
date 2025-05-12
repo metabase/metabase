@@ -49,7 +49,7 @@ const NewItemMenu = ({
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
-  const lastUsedDatabaseId = useSelector(state =>
+  const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
 

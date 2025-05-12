@@ -27,8 +27,8 @@ export const SettingSelect = ({
       placeholder={placeholder}
       value={(value as string) ?? defaultValue}
       disabled={disabled}
-      onChange={value => onChange(value)}
-      data={checkNotNull(customOptions).map(option => {
+      onChange={(value) => onChange(value)}
+      data={checkNotNull(customOptions).map((option) => {
         return {
           label: option.name,
           value: option.value as string,

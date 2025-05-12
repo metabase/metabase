@@ -123,7 +123,7 @@ export const addSectionToDashboard =
 
     const sectionDashcards = sectionLayout
       .getLayout(position)
-      .map(dashcardOverrides =>
+      .map((dashcardOverrides) =>
         createDashCard({
           dashboard_id: dashId,
           dashboard_tab_id: tabId ?? null,
@@ -257,7 +257,7 @@ export const removeCardFromDashboard = createThunkAction(
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
   }) =>
-    dispatch => {
+    (dispatch) => {
       dispatch(closeAddCardAutoWireToasts());
 
       dispatch(cancelFetchCardData(cardId, dashcardId));

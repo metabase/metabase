@@ -1,6 +1,6 @@
 function mockProperty(propertyOrObject, value, url) {
-  cy.intercept("GET", url, req => {
-    req.reply(res => {
+  cy.intercept("GET", url, (req) => {
+    req.reply((res) => {
       if (typeof propertyOrObject === "object") {
         Object.assign(res.body, propertyOrObject);
       }

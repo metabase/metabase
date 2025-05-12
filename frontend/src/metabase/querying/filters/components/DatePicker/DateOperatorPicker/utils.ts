@@ -16,9 +16,11 @@ export function getAvailableOptions(
   availableOperators: ReadonlyArray<DatePickerOperator>,
 ): OperatorOption[] {
   return OPERATOR_OPTIONS.filter(
-    option =>
+    (option) =>
       option.operators.length === 0 ||
-      option.operators.some(operator => availableOperators.includes(operator)),
+      option.operators.some((operator) =>
+        availableOperators.includes(operator),
+      ),
   );
 }
 

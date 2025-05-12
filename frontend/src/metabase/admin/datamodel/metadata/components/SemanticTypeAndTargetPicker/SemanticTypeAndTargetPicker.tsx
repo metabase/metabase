@@ -199,7 +199,7 @@ const getFkFieldPlaceholder = (field: Field, idFields: Field[]) => {
   const isRestrictedFKTargetSelected =
     field.isFK() &&
     field.fk_target_field_id != null &&
-    !idFields?.some(idField => idField.id === field.fk_target_field_id);
+    !idFields?.some((idField) => idField.id === field.fk_target_field_id);
 
   if (isRestrictedFKTargetSelected) {
     return t`Field access denied`;
@@ -217,7 +217,7 @@ const getTypeOptionSection = (option: TypeOption) => {
 };
 
 const hasMultipleSchemas = (field: Field[]) => {
-  const schemas = new Set(field.map(field => field.table?.schema));
+  const schemas = new Set(field.map((field) => field.table?.schema));
   return schemas.size > 1;
 };
 

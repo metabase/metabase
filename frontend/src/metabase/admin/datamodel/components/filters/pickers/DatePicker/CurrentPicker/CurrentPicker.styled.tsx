@@ -34,6 +34,6 @@ export const CurrentButton = styled(Button)<ButtonProps>`
 
   &:hover {
     color: white;
-    background-color: ${props => props.primaryColor || color("brand")};
+    background-color: ${(props) => props.primaryColor || color("brand")};
   }
 `;

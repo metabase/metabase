@@ -14,12 +14,12 @@ export const RemoveButton = styled.button<RemoveButtonProps>`
   cursor: pointer;
   border-radius: 0 8px 8px 0;
   border-left: 1px solid ${() => alpha(color("bg-white"), 0.25)};
-  color: ${props =>
+  color: ${(props) =>
     props.isConditionComplete ? color("text-white") : color("brand")};
 
   &:hover,
   &:focus {
-    background-color: ${props =>
+    background-color: ${(props) =>
       props.isConditionComplete ? lighten("brand", 0.1) : alpha("brand", 0.2)};
   }
 `;

@@ -230,7 +230,7 @@ export function ViewTitleHeaderRightSide({
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}
-            onClick={event => {
+            onClick={(event) => {
               event.preventDefault();
               if (!isSaveDisabled) {
                 onOpenModal(MODAL_TYPES.SAVE);

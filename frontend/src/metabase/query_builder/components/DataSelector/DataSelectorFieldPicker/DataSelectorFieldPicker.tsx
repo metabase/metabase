@@ -60,7 +60,7 @@ const DataSelectorFieldPicker = ({
   const sections = [
     {
       name: header,
-      items: fields.map(field => ({
+      items: fields.map((field) => ({
         name: field.displayName(),
         field: field,
       })),

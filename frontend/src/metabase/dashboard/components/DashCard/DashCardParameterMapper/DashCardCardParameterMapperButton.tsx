@@ -78,7 +78,7 @@ export const DashCardCardParameterMapperButton = ({
           buttonIcon: (
             <CloseIconButton
               aria-label={t`Disconnect`}
-              onClick={e => {
+              onClick={(e) => {
                 handleChangeTarget(null);
                 e.stopPropagation();
               }}
@@ -105,7 +105,7 @@ export const DashCardCardParameterMapperButton = ({
             <CloseIconButton
               role="button"
               aria-label={t`Disconnect`}
-              onClick={e => {
+              onClick={(e) => {
                 handleChangeTarget(null);
                 e.stopPropagation();
               }}
@@ -143,6 +143,7 @@ export const DashCardCardParameterMapperButton = ({
             }}
             target={target}
             mappingOptions={mappingOptions}
+            selectedMappingOption={selectedMappingOption}
           />
         }
       >
@@ -155,7 +156,7 @@ export const DashCardCardParameterMapperButton = ({
           onClick={() => {
             setIsDropdownVisible(true);
           }}
-          onKeyDown={e => {
+          onKeyDown={(e) => {
             if (e.key === "Enter") {
               setIsDropdownVisible(true);
             }

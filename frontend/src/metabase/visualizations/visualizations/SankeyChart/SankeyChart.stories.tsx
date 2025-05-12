@@ -10,7 +10,7 @@ export default {
   component: IsomorphicVisualizationStory,
 };
 
-const Template: StoryFn<StaticChartProps> = args => {
+const Template: StoryFn<StaticChartProps> = (args) => {
   return <IsomorphicVisualizationStory {...args} />;
 };
 

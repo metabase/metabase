@@ -9,7 +9,7 @@ import * as Lib from "metabase-lib";
 import { DatasetNotebook } from "./DatasetNotebook";
 
 const QueryEditorContainer = styled.div`
-  visibility: ${props => (props.isActive ? "visible" : "hidden")};
+  visibility: ${(props) => (props.isActive ? "visible" : "hidden")};
 `;
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };

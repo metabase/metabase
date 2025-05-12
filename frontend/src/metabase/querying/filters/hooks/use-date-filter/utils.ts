@@ -155,7 +155,7 @@ export function getPickerOperators(
   column: Lib.ColumnMetadata,
 ): DatePickerOperator[] {
   return Lib.filterableColumnOperators(column)
-    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
+    .map((operator) => Lib.displayInfo(query, stageIndex, operator).shortName)
     .filter(isDatePickerOperator);
 }
 
@@ -165,6 +165,6 @@ export function getPickerUnits(
   column: Lib.ColumnMetadata,
 ): DatePickerUnit[] {
   return Lib.availableTemporalBuckets(query, stageIndex, column)
-    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
+    .map((operator) => Lib.displayInfo(query, stageIndex, operator).shortName)
     .filter(isDatePickerUnit);
 }

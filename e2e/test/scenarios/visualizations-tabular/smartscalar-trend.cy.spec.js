@@ -495,4 +495,44 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("warning").should("not.exist");
     H.cartesianChartCircle().should("have.length", 3);
   });
+
+  it("should support quick-filter drill thru (metabase#46168)", () => {
+    H.createQuestion(
+      {
+        name: "46168",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: AGGREGATIONS,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "smartscalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("scalar-period")
+      .findByText("Apr 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("344").click();
+
+    H.popover().within(() => {
+      // Validate expected filter options
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+
+      // Apply the drill
+      cy.findByText(">").click();
+    });
+
+    // Validate that the filter was applied
+    cy.findByTestId("scalar-period")
+      .findByText("Mar 2026")
+      .should("be.visible");
+    cy.findByTestId("scalar-container").findByText("527").should("be.visible");
+  });
 });

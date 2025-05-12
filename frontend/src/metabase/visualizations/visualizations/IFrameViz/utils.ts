@@ -5,17 +5,17 @@ const embedLinkTransformers: {
   transform: (url: URL) => string;
 }[] = [
   {
-    test: url => ["loom.com", "www.loom.com"].includes(url.hostname),
-    transform: url => {
+    test: (url) => ["loom.com", "www.loom.com"].includes(url.hostname),
+    transform: (url) => {
       const newUrl = new URL(url);
       newUrl.pathname = newUrl.pathname.replace("/share/", "/embed/");
       return newUrl.toString();
     },
   },
   {
-    test: url =>
+    test: (url) =>
       ["youtube.com", "www.youtube.com", "youtu.be"].includes(url.hostname),
-    transform: url => {
+    transform: (url) => {
       let videoId: string | null;
       let playlistId: string | null;
 
@@ -41,9 +41,9 @@ const embedLinkTransformers: {
     },
   },
   {
-    test: url =>
+    test: (url) =>
       ["vimeo.com", "www.vimeo.com", "player.vimeo.com"].includes(url.hostname),
-    transform: url => {
+    transform: (url) => {
       const videoId = url.pathname.split("/").pop();
       return videoId
         ? `https://player.vimeo.com/video/${videoId}`
@@ -196,13 +196,13 @@ export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
     const rawAllowedDomains = allowedIframesSetting
       .replaceAll(",", "")
       .split("\n")
-      .map(host => host.trim());
+      .map((host) => host.trim());
 
     const parsedUrl = new URL(normalizeUrl(url));
     const hostname = parsedUrl.hostname;
     const port = parsedUrl.port;
 
-    return rawAllowedDomains.some(rawAllowedDomain => {
+    return rawAllowedDomains.some((rawAllowedDomain) => {
       try {
         const [rawAllowedDomainWithoutPort, allowedPort] =
           splitPortAndRest(rawAllowedDomain);

@@ -7,7 +7,7 @@ interface ButtonRootProps {
 }
 
 export const ButtonRoot = styled.a<ButtonRootProps>`
-  color: ${props => props.isSelected && color("brand")};
+  color: ${(props) => props.isSelected && color("brand")};
   transition: color 0.3s linear;
 
   &:hover {

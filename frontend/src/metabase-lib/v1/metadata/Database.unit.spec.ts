@@ -140,7 +140,7 @@ describe("Database", () => {
 
     it.each(["left-join", "right-join", "inner-join", "full-join"] as const)(
       "should return true for 'join' for %s",
-      feature => {
+      (feature) => {
         const database = setup({
           database: createMockDatabase({
             features: [feature],

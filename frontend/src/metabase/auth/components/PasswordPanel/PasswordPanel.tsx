@@ -45,7 +45,7 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
             {t`I seem to have forgotten my password`}
           </AuthButton>
         </ActionListItem>
-        {providers.map(provider => (
+        {providers.map((provider) => (
           <ActionListItem key={provider.name}>
             <provider.Button redirectUrl={redirectUrl} />
           </ActionListItem>

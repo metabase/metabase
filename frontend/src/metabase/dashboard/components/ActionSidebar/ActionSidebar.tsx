@@ -55,7 +55,7 @@ export function ActionSidebar({
   const dashcard = useMemo(
     () =>
       dashboard.dashcards.find(
-        dc => dc?.id === dashcardId && isActionDashCard(dc),
+        (dc) => dc?.id === dashcardId && isActionDashCard(dc),
       ) as ActionDashboardCard | undefined,
     [dashboard.dashcards, dashcardId],
   );
@@ -86,7 +86,7 @@ export function ActionSidebar({
               name="button_text"
               placeholder={t`Button text`}
               autoFocus
-              onChangeCapture={e =>
+              onChangeCapture={(e) =>
                 onUpdateVisualizationSettings({
                   "button.label": e.currentTarget.value,
                 })
@@ -96,7 +96,7 @@ export function ActionSidebar({
               title={t`Button variant`}
               name="button_variant"
               options={buttonVariantOptions}
-              onChange={e =>
+              onChange={(e) =>
                 onUpdateVisualizationSettings({
                   "button.variant": e.target.value,
                 })

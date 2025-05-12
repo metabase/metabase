@@ -110,7 +110,7 @@ describe("events utils", () => {
 
     it.each(["stacked", "normalized"])(
       "returns stacked tooltip model for stacked charts",
-      stackType => {
+      (stackType) => {
         const tooltipModel = getHoverData(
           barData,
           {

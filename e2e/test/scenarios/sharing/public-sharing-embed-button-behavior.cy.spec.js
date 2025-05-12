@@ -1,6 +1,6 @@
 import { H } from "e2e/support";
 
-["dashboard", "question"].forEach(resource => {
+["dashboard", "question"].forEach((resource) => {
   describe(`embed modal behavior for ${resource}s`, () => {
     beforeEach(() => {
       H.restore();
@@ -18,7 +18,7 @@ import { H } from "e2e/support";
 
       describe("when user is admin", () => {
         it(`should always show the embed button for ${resource}`, () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -34,7 +34,7 @@ import { H } from "e2e/support";
         it(`should not show embed button for ${resource}`, () => {
           cy.signInAsNormalUser();
 
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -53,7 +53,7 @@ import { H } from "e2e/support";
 
         describe("when user is admin", () => {
           it(`should show the embed menu for ${resource}`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -62,7 +62,7 @@ import { H } from "e2e/support";
           });
 
           it(`should let the user create a public link for ${resource}`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
@@ -77,7 +77,7 @@ import { H } from "e2e/support";
           it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
             cy.signInAsNormalUser();
 
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -88,7 +88,7 @@ import { H } from "e2e/support";
           });
 
           it(`should show the public link button if the ${resource} has a public link`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
@@ -99,7 +99,7 @@ import { H } from "e2e/support";
 
             cy.signInAsNormalUser();
 
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -121,7 +121,7 @@ import { H } from "e2e/support";
 
         describe("when user is admin", () => {
           it(`should show a disabled menu item for public links for ${resource} and allow the user to access the embed modal`, () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -148,7 +148,7 @@ import { H } from "e2e/support";
           it(`should show a disabled button for ${resource}`, () => {
             cy.signInAsNormalUser();
 
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
@@ -256,7 +256,7 @@ describe("#39152 sharing an unsaved question", () => {
   });
 });
 
-["dashboard", "question"].forEach(resource => {
+["dashboard", "question"].forEach((resource) => {
   H.describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
       H.restore();
@@ -277,7 +277,7 @@ describe("#39152 sharing an unsaved question", () => {
     describe(`when embedding ${resource}`, () => {
       describe("when interacting with public link popover", () => {
         it("should send `public_link_copied` event when copying public link", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -325,7 +325,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `public_link_removed` when removing the public link", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -341,7 +341,7 @@ describe("#39152 sharing an unsaved question", () => {
 
       describe("when interacting with public embedding", () => {
         it("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -350,7 +350,7 @@ describe("#39152 sharing an unsaved question", () => {
           H.modal().findByText("Get embedding code").click();
 
           // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
-          cy.window().then(win => {
+          cy.window().then((win) => {
             win.clipboardData = {
               setData: (...args) =>
                 // eslint-disable-next-line no-console
@@ -368,7 +368,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `public_link_removed` event when removing the public embed", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
 
@@ -387,7 +387,7 @@ describe("#39152 sharing an unsaved question", () => {
 
       describe("when interacting with static embedding", () => {
         it("should send `static_embed_code_copied` when copying the static embed code", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
           H.openStaticEmbeddingModal();
@@ -528,7 +528,7 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           it("should send `static_embed_code_copied` when copying the static embed code", () => {
-            cy.get("@resourceId").then(id => {
+            cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
             H.openStaticEmbeddingModal({ acceptTerms: false });
@@ -651,7 +651,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `static_embed_discarded` when discarding changes in the static embed modal", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
@@ -675,7 +675,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.then(function () {
             this.timeAfterResourceCreation = Date.now();
           });
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             visitResource(resource, id);
           });
           H.openStaticEmbeddingModal();
@@ -739,7 +739,7 @@ describe("#39152 sharing an unsaved question", () => {
         });
 
         it("should send `static_embed_unpublished` when unpublishing changes in the static embed modal", () => {
-          cy.get("@resourceId").then(id => {
+          cy.get("@resourceId").then((id) => {
             enableEmbeddingForResource({ resource, id });
             visitResource(resource, id);
           });
@@ -870,7 +870,7 @@ function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
     cy.findByTestId("public-link-input")
       .should("be.visible")
       .invoke("val")
-      .should(value => {
+      .should((value) => {
         expect(value).to.match(regex);
       });
 
@@ -881,7 +881,7 @@ function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
 }
 
 function closeTo(value, offset) {
-  return comparedValue => {
+  return (comparedValue) => {
     return Math.abs(comparedValue - value) <= offset;
   };
 }

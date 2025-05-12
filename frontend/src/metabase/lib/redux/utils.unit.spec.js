@@ -125,9 +125,7 @@ describe("Metadata", () => {
       });
 
       try {
-        const dataFail = await fetchData(argsFail).catch(error =>
-          console.log(error),
-        );
+        const dataFail = await fetchData(argsFail);
         expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
         expect(dataFail).toEqual(args.existingData);
       } catch (error) {

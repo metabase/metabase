@@ -8,7 +8,7 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       shadow: "md",
       withinPortal: true,
     },
-    styles: theme => ({
+    styles: (theme) => ({
       dropdown: {
         padding: "0.75rem !important",
         minWidth: "11.5rem",

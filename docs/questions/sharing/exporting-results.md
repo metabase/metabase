@@ -41,7 +41,7 @@ Just something to be aware of: when exporting results to an Excel document (.xls
 
 ## Exporting data via a public link
 
-You can also create a [public link](../sharing/public-links.md#public-link-to-export-question-results-in-csv-xlsx-json) that people can use to download data in a specific format, as well as [raw, unformatted question results](public-links.md#exporting-raw-unformatted-question-results).
+You can also create a [public link](../sharing/public-links.md#public-link-to-export-question-results-in-csv-xlsx-json) that people can use to download data in a specific format, as well as [raw, unformatted question results](./public-links.md#exporting-raw-unformatted-question-results).
 
 ## Exporting question data via alerts
 

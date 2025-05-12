@@ -10,7 +10,7 @@ export interface FilterTabListProps {
 export function FilterTabList({ groupItems }: FilterTabListProps) {
   return (
     <TabsListSidebar w="25%" pt="sm" pl="md">
-      {groupItems.map(groupItem => (
+      {groupItems.map((groupItem) => (
         <Tabs.Tab
           key={groupItem.key}
           value={groupItem.key}

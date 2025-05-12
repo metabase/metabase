@@ -2,13 +2,16 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
-import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
-import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
+import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type {
+  LoadSdkQuestionParams,
+  SdkQuestionId,
+} from "embedding-sdk/types/question";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
-import type { CardId, ParameterId } from "metabase-types/api";
+import type { ParameterId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
@@ -32,20 +35,26 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
-} & Pick<SaveQuestionProps, "saveToCollectionId">;
+  withDownloads?: boolean;
+
+  /**
+   * @deprecated Use `targetCollection` instead
+   */
+  saveToCollection?: SdkCollectionId;
+  targetCollection?: SdkCollectionId;
+};
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };
   params: { slug?: string };
 };
 
-export type InteractiveQuestionProviderWithLocationProps = PropsWithChildren<
-  InteractiveQuestionConfig & QuestionMockLocationParameters
->;
-
 export type InteractiveQuestionProviderProps = PropsWithChildren<
   InteractiveQuestionConfig &
-    Omit<LoadSdkQuestionParams, "cardId"> & { cardId?: CardId | string }
+    Omit<LoadSdkQuestionParams, "questionId"> & {
+      questionId: SdkQuestionId | null;
+      variant?: "static" | "interactive";
+    }
 >;
 
 export type InteractiveQuestionContextType = Omit<
@@ -54,8 +63,9 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "saveToCollectionId"
+    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
+  Pick<InteractiveQuestionProviderProps, "variant"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
@@ -65,4 +75,5 @@ export type InteractiveQuestionContextType = Omit<
     onSave: (question: Question) => Promise<void>;
   } & {
     isCardIdError: boolean;
+    originalId: SdkQuestionId | null;
   };

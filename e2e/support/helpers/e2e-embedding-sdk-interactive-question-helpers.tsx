@@ -31,7 +31,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
     entityPickerModal().within(() => {
       cy.findByText("Collections").click();
 
-      collectionPickerPath.forEach(collectionName =>
+      collectionPickerPath.forEach((collectionName) =>
         cy.findByText(collectionName).click(),
       );
 

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -59,7 +59,7 @@ const MAX_SEARCH_RESULTS = 100;
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
     fields: fields.map(
-      field =>
+      (field) =>
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
     ),
   };
@@ -103,37 +103,43 @@ export interface IFieldValuesWidgetProps {
   layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
 
-export function FieldValuesWidgetInner({
-  color,
-  maxResults = MAX_SEARCH_RESULTS,
-  alwaysShowOptions = true,
-  style = {},
-  formatOptions = {},
-  containerWidth,
-  maxWidth = 500,
-  minWidth,
-  width,
-  disableList = false,
-  disableSearch = false,
-  disablePKRemappingForSearch,
-  showOptionsInPopover = false,
-  parameter,
-  parameters,
-  fields,
-  dashboard,
-  question,
-  value,
-  onChange,
-  multi,
-  autoFocus,
-  className,
-  prefix,
-  placeholder,
-  checkedColor,
-  valueRenderer,
-  optionRenderer,
-  layoutRenderer,
-}: IFieldValuesWidgetProps) {
+export const FieldValuesWidgetInner = forwardRef<
+  HTMLDivElement,
+  IFieldValuesWidgetProps
+>(function FieldValuesWidgetInner(
+  {
+    color,
+    maxResults = MAX_SEARCH_RESULTS,
+    alwaysShowOptions = true,
+    style = {},
+    formatOptions = {},
+    containerWidth,
+    maxWidth = 500,
+    minWidth,
+    width,
+    disableList = false,
+    disableSearch = false,
+    disablePKRemappingForSearch,
+    showOptionsInPopover = false,
+    parameter,
+    parameters,
+    fields,
+    dashboard,
+    question,
+    value,
+    onChange,
+    multi,
+    autoFocus,
+    className,
+    prefix,
+    placeholder,
+    checkedColor,
+    valueRenderer,
+    optionRenderer,
+    layoutRenderer,
+  },
+  ref,
+) {
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");
@@ -306,7 +312,7 @@ export function FieldValuesWidgetInner({
 
   if (!valueRenderer) {
     valueRenderer = (value: string | number) => {
-      const option = options.find(option => getValue(option) === value);
+      const option = options.find((option) => getValue(option) === value);
       return renderValue({
         parameter,
         cardId: question?.id(),
@@ -394,7 +400,7 @@ export function FieldValuesWidgetInner({
   };
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary ref={ref}>
       <div
         data-testid="field-values-widget"
         style={{
@@ -402,6 +408,7 @@ export function FieldValuesWidgetInner({
           minWidth: minWidth ?? undefined,
           maxWidth: maxWidth ?? undefined,
         }}
+        ref={ref}
       >
         {isListMode && isLoading ? (
           <LoadingState />
@@ -419,7 +426,7 @@ export function FieldValuesWidgetInner({
           <SingleSelectListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
-            value={value.filter(v => v != null)}
+            value={value.filter((v) => v != null)}
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
@@ -428,7 +435,7 @@ export function FieldValuesWidgetInner({
         ) : (
           <TokenField
             prefix={prefix}
-            value={value.filter(v => v != null)}
+            value={value.filter((v) => v != null)}
             onChange={onChange}
             placeholder={tokenFieldPlaceholder}
             updateOnInputChange
@@ -450,7 +457,7 @@ export function FieldValuesWidgetInner({
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
               return option?.some?.(
-                value =>
+                (value) =>
                   value != null &&
                   String(value).toLowerCase().includes(lowerCaseFilterString),
               );
@@ -463,10 +470,15 @@ export function FieldValuesWidgetInner({
       </div>
     </ErrorBoundary>
   );
-}
+});
 
 export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
   FieldValuesWidgetInner,
+);
+
+// eslint-disable-next-line import/no-default-export
+export default connect(mapStateToProps, null, null, { forwardRef: true })(
+  FieldValuesWidget,
 );
 
 const LoadingState = () => (
@@ -500,9 +512,6 @@ const EveryOptionState = () => (
   <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
 );
 
-// eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps)(FieldValuesWidget);
-
 interface RenderOptionsProps {
   alwaysShowOptions: boolean;
   parameter?: Parameter;
@@ -517,7 +526,6 @@ interface RenderOptionsProps {
   isAllSelected: boolean;
   isFiltered: boolean;
 }
-
 function renderOptions({
   alwaysShowOptions,
   parameter,
@@ -562,7 +570,7 @@ function renderOptions({
         return (
           <NoMatchState
             fields={fields.map(
-              field =>
+              (field) =>
                 field.searchField(disablePKRemappingForSearch) as Field | null,
             )}
           />

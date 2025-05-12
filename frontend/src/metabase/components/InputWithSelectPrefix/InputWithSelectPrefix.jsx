@@ -21,8 +21,8 @@ function splitValue({
 
   const prefix = prefixes.find(
     caseInsensitivePrefix
-      ? p => value.toLowerCase().startsWith(p.toLowerCase())
-      : p => value.startsWith(p),
+      ? (p) => value.toLowerCase().startsWith(p.toLowerCase())
+      : (p) => value.startsWith(p),
   );
 
   return prefix ? [prefix, value.slice(prefix.length)] : [defaultPrefix, value];
@@ -81,10 +81,10 @@ export default class InputWithSelectPrefix extends Component {
         <Select
           className={CS.borderRight}
           value={prefix || defaultPrefix}
-          onChange={e => this.setState({ prefix: e.target.value })}
+          onChange={(e) => this.setState({ prefix: e.target.value })}
           buttonProps={{ className: CS.borderless }}
         >
-          {prefixes.map(p => (
+          {prefixes.map((p) => (
             <Option key={p} value={p}>
               {p}
             </Option>
@@ -95,7 +95,7 @@ export default class InputWithSelectPrefix extends Component {
           className={CS.flexFull}
           value={rest}
           placeholder={this.props.placeholder}
-          onBlurChange={e => this.setState({ rest: e.target.value })}
+          onBlurChange={(e) => this.setState({ rest: e.target.value })}
           size="large"
         />
       </div>

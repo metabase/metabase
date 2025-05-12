@@ -8,7 +8,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { createMockBookmark } from "metabase-types/api/mocks";
 
 import { useBookmarkListQuery } from "./use-bookmark-list-query";
@@ -24,7 +24,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(bookmark => (
+      {data.map((bookmark) => (
         <div key={bookmark.id}>{bookmark.name}</div>
       ))}
       <div data-testid="metadata">

@@ -61,4 +61,4 @@ Steps:
 
 5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
 
-See [here](dev-branch-docker.md) for more on running development branches of Metabase using Docker.
+See [here](./dev-branch-docker.md) for more on running development branches of Metabase using Docker.

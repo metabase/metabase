@@ -12,13 +12,13 @@ export interface FormCaptionProps {
 }
 
 export const FieldCaption = styled.div<FormCaptionProps>`
-  align-self: ${props =>
+  align-self: ${(props) =>
     props.orientation !== "vertical" && !props.hasDescription ? "center" : ""};
-  margin-left: ${props =>
+  margin-left: ${(props) =>
     props.orientation === "horizontal" &&
     props.alignment === "start" &&
     "0.5rem"};
-  margin-right: ${props =>
+  margin-right: ${(props) =>
     props.orientation === "horizontal" &&
     props.alignment === "end" &&
     "0.5rem"};
@@ -30,7 +30,7 @@ export interface FieldLabelProps {
 
 export const FieldLabel = styled.label<FieldLabelProps>`
   display: block;
-  color: ${props => (props.hasError ? color("error") : color("text-medium"))};
+  color: ${(props) => (props.hasError ? color("error") : color("text-medium"))};
   font-size: 0.77rem;
   font-weight: 900;
 `;
@@ -50,7 +50,7 @@ interface FieldLabelContainerProps {
 export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
   display: flex;
   align-items: center;
-  margin-bottom: ${props =>
+  margin-bottom: ${(props) =>
     props.orientation === "vertical" || props.hasDescription ? "0.5em" : ""};
 `;
 
@@ -87,8 +87,8 @@ export interface FieldRootProps {
 }
 
 export const FieldRoot = styled.div<FieldRootProps>`
-  display: ${props => props.orientation === "horizontal" && "flex"};
-  justify-content: ${props =>
+  display: ${(props) => props.orientation === "horizontal" && "flex"};
+  justify-content: ${(props) =>
     props.alignment === "end" &&
     props.orientation === "horizontal" &&
     "space-between"};

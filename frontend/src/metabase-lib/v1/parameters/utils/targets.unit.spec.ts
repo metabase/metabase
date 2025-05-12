@@ -733,7 +733,7 @@ function withColumnsStage(
   stageIndex: number,
   columns: (string | undefined)[][],
 ) {
-  return columns.map(column => withColumnStage(stageIndex, column));
+  return columns.map((column) => withColumnStage(stageIndex, column));
 }
 
 function withColumnStage(stageIndex: number, column: (string | undefined)[]) {

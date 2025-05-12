@@ -16,7 +16,7 @@ export const trackNewQuestionSaved = (
   });
 };
 
-export const trackTurnIntoModelClicked = question => {
+export const trackTurnIntoModelClicked = (question) => {
   trackSchemaEvent("question", {
     event: "turn_into_model_clicked",
     question_id: question.id(),

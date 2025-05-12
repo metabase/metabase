@@ -7,7 +7,7 @@ export interface ListCellItemProps {
 }
 
 export const ListCellItem = styled.div<ListCellItemProps>`
-  border-color: ${props => props.isClickable && alpha("accent2", 0.2)};
+  border-color: ${(props) => props.isClickable && alpha("accent2", 0.2)};
 `;
 
 export const Content = styled.div<{ isClickable: boolean }>`
@@ -15,7 +15,7 @@ export const Content = styled.div<{ isClickable: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.5rem;
-  cursor: ${props => (props.isClickable ? "pointer" : "default")};
+  cursor: ${(props) => (props.isClickable ? "pointer" : "default")};
   min-width: 0;
 `;
 

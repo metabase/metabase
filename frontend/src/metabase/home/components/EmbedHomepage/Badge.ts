@@ -9,7 +9,7 @@ const COLOR_VARIANTS = {
     background: "var(--mb-color-brand)",
   },
   gray: {
-    color: "var(--mb-color-text-black)",
+    color: "var(--mb-color-text-primary)",
     /* eslint-disable no-restricted-syntax -- we should find a way to use semantic colors here */
     background: "var(--mb-base-color-gray-20)",
   },
@@ -33,7 +33,7 @@ export const Badge = styled.span<{
   font-size: ${({ fz, theme }) => (fz ? theme.fontSizes[fz] : "0.625rem")};
   font-weight: 700;
   border-radius: 4px;
-  text-transform: ${props =>
+  text-transform: ${(props) =>
     (props.uppercase ?? true) ? "uppercase" : "none"};
   color: ${({ color }) => COLOR_VARIANTS[color].color};
   background: ${({ color }) => COLOR_VARIANTS[color].background};

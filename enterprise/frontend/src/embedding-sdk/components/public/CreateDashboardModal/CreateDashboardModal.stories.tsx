@@ -23,7 +23,9 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = args => (
+const Template: StoryFn<ComponentProps<typeof CreateDashboardModal>> = (
+  args,
+) => (
   <CreateDashboardModal
     onClose={action("onClose")}
     onCreate={action("onCreate")}
@@ -48,7 +50,7 @@ const HookTemplate: StoryFn<
   const props: CreateDashboardValues = {
     name: "Test",
     description: null,
-    collectionId: null,
+    collectionId: "root",
   };
 
   const handleDashboardCreate = async () => {

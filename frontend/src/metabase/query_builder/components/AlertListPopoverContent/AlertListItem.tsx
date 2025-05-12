@@ -51,11 +51,11 @@ export const AlertListItem = ({
   const isAdmin = user && user.is_superuser;
   const isCurrentUser = user && alert.creator.id === user.id;
 
-  const emailChannel = alert.channels.find(c => c.channel_type === "email");
+  const emailChannel = alert.channels.find((c) => c.channel_type === "email");
   const emailEnabled = emailChannel && emailChannel.enabled;
-  const slackChannel = alert.channels.find(c => c.channel_type === "slack");
+  const slackChannel = alert.channels.find((c) => c.channel_type === "slack");
   const slackEnabled = slackChannel && slackChannel.enabled;
-  const httpChannels = alert.channels.filter(c => c.channel_type === "http");
+  const httpChannels = alert.channels.filter((c) => c.channel_type === "http");
 
   return (
     <li

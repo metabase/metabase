@@ -9,7 +9,7 @@ export default {
   component: DateWidget,
 };
 
-const Template: StoryFn<typeof DateWidget> = args => {
+const Template: StoryFn<typeof DateWidget> = (args) => {
   const [value, setValue] = useState<Moment>();
   return <DateWidget {...args} value={value} onChange={setValue} />;
 };

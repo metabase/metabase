@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
-   [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
@@ -17,6 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.session :as session]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
@@ -516,7 +516,7 @@
     (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
-      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (req.util/device-info request))
+      (let [{session-uuid :id, :as session} (session/create-session! :password user (req.util/device-info request))
             response                        {:success    true
                                              :session_id (str session-uuid)}]
         (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))

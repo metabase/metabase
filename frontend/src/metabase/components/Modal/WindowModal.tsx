@@ -79,8 +79,8 @@ export class WindowModal extends Component<WindowModalProps> {
     const className = cx(
       this.props.className,
       ...modalSizes
-        .filter(type => this.props[type])
-        .map(type => MODAL_CLASSES[type]),
+        .filter((type) => this.props[type])
+        .map((type) => MODAL_CLASSES[type]),
     );
     return (
       <MaybeOnClickOutsideWrapper

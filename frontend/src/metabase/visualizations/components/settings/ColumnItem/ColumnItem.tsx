@@ -92,28 +92,28 @@ export const ColumnItem = ({
       {onEdit && (
         <ChartSettingActionIcon
           icon="ellipsis"
-          onClick={e => onEdit(e.currentTarget)}
+          onClick={(e) => onEdit(e.currentTarget)}
           data-testid={`${title}-settings-button`}
         />
       )}
       {onAdd && (
         <ChartSettingActionIcon
           icon="add"
-          onClick={e => onAdd(e.currentTarget)}
+          onClick={(e) => onAdd(e.currentTarget)}
           data-testid={`${title}-add-button`}
         />
       )}
       {onRemove && (
         <ChartSettingActionIcon
           icon={removeIcon}
-          onClick={e => onRemove(e.currentTarget)}
+          onClick={(e) => onRemove(e.currentTarget)}
           data-testid={`${title}-hide-button`}
         />
       )}
       {onEnable && (
         <ChartSettingActionIcon
           icon="eye_crossed_out"
-          onClick={e => onEnable(e.currentTarget)}
+          onClick={(e) => onEnable(e.currentTarget)}
           data-testid={`${title}-show-button`}
         />
       )}

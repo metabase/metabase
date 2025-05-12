@@ -25,8 +25,8 @@ export const fillScheduleTemplate = (
 ): ReactNode => {
   const segments = template
     .split(regexForSplittingOnPlaceholders)
-    .filter(part => part.trim());
-  const arr = segments.map(segment => {
+    .filter((part) => part.trim());
+  const arr = segments.map((segment) => {
     const match = segment.match(placeholderRegex);
     return match ? nodes[parseInt(match[1])] : segment.trim();
   });

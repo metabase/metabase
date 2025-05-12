@@ -37,7 +37,7 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
-export const DashboardData = ComposedComponent =>
+export const DashboardData = (ComposedComponent) =>
   connect(
     mapStateToProps,
     mapDispatchToProps,

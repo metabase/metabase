@@ -123,7 +123,7 @@ export const ModelPersistenceConfiguration = () => {
   const applicationName = useSelector(getApplicationName);
 
   const onSwitchChanged = useCallback<ChangeEventHandler<HTMLInputElement>>(
-    async e => {
+    async (e) => {
       const shouldEnable = e.target.checked;
       setModelPersistenceEnabled(shouldEnable);
       const promise = shouldEnable

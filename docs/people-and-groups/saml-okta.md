@@ -20,7 +20,7 @@ In the **Admin**>**Settings** section of the Admin area, go to the **Authenticat
 
 You'll see a SAML configuration form like this:
 
-![SAML form](images/saml-form.png)
+![SAML form](./images/saml-form.png)
 
 You'll need to use the information in this form to set up SAML in Okta.
 
@@ -139,10 +139,10 @@ You can use either:
 You can create a custom user profile attribute and fill it with the Metabase groups for each user.
 
 1. In Okta **Profile Editor**, [create a new User Profile attribute](https://help.okta.com/en-us/content/topics/users-groups-profiles/usgp-add-custom-user-attributes.htm) called `metabaseGroups`, which can be a `string` or a `string array`.
-   ![New User Profile attribute](images/okta-new-attribute.png)
+   ![New User Profile attribute](./images/okta-new-attribute.png)
 2. For each user in Okta, fill the `metabaseGroups` attribute with their Metabase group(s).
 
-   ![Metabase groups attribute](images/okta-adding-groups.png)
+   ![Metabase groups attribute](./images/okta-adding-groups.png)
 
    We recommend that you use the same names for the groups in Okta as you would use in Metabase.
 
@@ -152,7 +152,7 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
 3. In the **Okta SAML settings** for the Metabase app integration, add a new attribute statement `MetabaseGroupName` with the value `user.metabaseGroups` (the profile attribute you just created)
 
-   ![New attribute statement referencing the attribute](images/okta-new-attribute-custom.png)
+   ![New attribute statement referencing the attribute](./images/okta-new-attribute-custom.png)
 
 4. In **Metabase SAML settings**:
 
@@ -160,7 +160,7 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 - For each of the groups you added to Okta users, set up a new mapping to a Metabase group.
 - In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
 
-  ![Metabase group mapping](images/saml-okta-groups.png)
+  ![Metabase group mapping](./images/saml-okta-groups.png)
 
 ### Map Okta User Groups to Metabase groups
 
@@ -175,7 +175,7 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
    This expression will retrieve the names of Okta User Groups that a user is a part of and return them as an array.
 
-   ![New attribute statement for groups](images/okta-group-attribute.png)
+   ![New attribute statement for groups](./images/okta-group-attribute.png)
 
    > Your Okta account has to have `SAML_SUPPORT_ARRAY_ATTRIBUTES` enabled, as Metabase expects Okta to pass attributes as an array. If your Okta account is old, you might need to reach out to Okta support to enable `SAML_SUPPORT_ARRAY_ATTRIBUTES`.
 
@@ -187,7 +187,7 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 - For each of the groups you added to Okta users, set up a new mapping to a Metabase group.
 - In **Group attribute name**, enter `MetabaseGroupName` (the name of the SAML attribute statement).
 
-  ![Metabase group mapping](images/saml-okta-groups.png)
+  ![Metabase group mapping](./images/saml-okta-groups.png)
 
 ## Troubleshooting SAML issues
 

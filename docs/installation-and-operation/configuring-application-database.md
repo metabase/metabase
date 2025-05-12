@@ -130,7 +130,7 @@ Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify;
 
 ## Migrating from H2
 
-If you've started out using the default, H2 database, but you want to preserve the content you've created and move to a production application database, Metabase provides limited support for [migrating from H2 to PostgreSQL](migrating-from-h2.md).
+If you've started out using the default, H2 database, but you want to preserve the content you've created and move to a production application database, Metabase provides limited support for [migrating from H2 to PostgreSQL](./migrating-from-h2.md).
 
 ## Upgrading from a Metabase version pre-0.38
 

@@ -12,7 +12,7 @@ interface SearchInputProps extends TextInputProps {
 }
 
 export const SearchInput = styled(TextInput)<SearchInputProps>`
-  width: ${props => (props.isActive ? "20rem" : "1.75rem")};
+  width: ${(props) => (props.isActive ? "20rem" : "1.75rem")};
   transition: width 0.2s;
 
   @media (prefers-reduced-motion) {

@@ -159,7 +159,7 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
   return <PublicOrEmbeddedDashboardView {...args} />;
 };
 

@@ -150,7 +150,7 @@
             (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
             (qs/delete-job scheduler job-key)))))))
 
-(defn- init-scheduler!
+(defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []

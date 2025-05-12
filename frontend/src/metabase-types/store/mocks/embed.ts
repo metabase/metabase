@@ -1,6 +1,11 @@
-import type { EmbedOptions, EmbedState } from "metabase-types/store";
+import type {
+  EmbedState,
+  InteractiveEmbeddingOptions,
+} from "metabase-types/store";
 
-export const createMockEmbedOptions = (opts?: Partial<EmbedOptions>) => ({
+export const createMockEmbedOptions = (
+  opts?: Partial<InteractiveEmbeddingOptions>,
+) => ({
   ...opts,
 });
 

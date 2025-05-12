@@ -92,7 +92,7 @@ export const isNavigationAllowed = ({
     const isRunningModel = pathname === "/model" && hash.length > 0;
     const allowedPathnames = isNewQuestion
       ? ["/model/query", "/model/metadata"]
-      : validSlugs.flatMap(slug => [
+      : validSlugs.flatMap((slug) => [
           `/model/${slug}`,
           `/model/${slug}/query`,
           `/model/${slug}/metadata`,
@@ -106,7 +106,7 @@ export const isNavigationAllowed = ({
     const isRunningMetric = pathname === "/metric" && hash.length > 0;
     const allowedPathnames = isNewQuestion
       ? ["/metric/query", "/metric/metadata"]
-      : validSlugs.flatMap(slug => [
+      : validSlugs.flatMap((slug) => [
           `/metric/${slug}`,
           `/metric/${slug}/query`,
           `/metric/${slug}/metadata`,
@@ -118,7 +118,7 @@ export const isNavigationAllowed = ({
 
   if (isNative) {
     const allowedPathnames = [
-      ...validSlugs.map(slug => `/question/${slug}`),
+      ...validSlugs.map((slug) => `/question/${slug}`),
       "/question",
     ];
     const isRunningQuestion =
@@ -134,7 +134,7 @@ export const isNavigationAllowed = ({
   if (!isNewQuestion) {
     const isRunningQuestion =
       ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
-    const allowedPathnames = validSlugs.flatMap(slug => [
+    const allowedPathnames = validSlugs.flatMap((slug) => [
       `/question/${slug}`,
       `/question/${slug}/notebook`,
     ]);

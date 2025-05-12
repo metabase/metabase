@@ -72,7 +72,7 @@ export const selectEngine = createAction(SELECT_ENGINE);
 
 // Migrates old "Enable in-depth database analysis" option to new "Choose when syncs and scans happen" option
 // Migration is run as a separate action because that makes it easy to track in tests
-const migrateDatabaseToNewSchedulingSettings = database => {
+const migrateDatabaseToNewSchedulingSettings = (database) => {
   return async function (dispatch, getState) {
     if (
       database.details &&
@@ -287,9 +287,9 @@ const deletes = handleActions(
     [DELETE_DATABASE_STARTED]: (state, { payload: { databaseId } }) =>
       state.concat([databaseId]),
     [DELETE_DATABASE_FAILED]: (state, { payload: { databaseId, error } }) =>
-      state.filter(dbId => dbId !== databaseId),
+      state.filter((dbId) => dbId !== databaseId),
     [DELETE_DATABASE]: (state, { payload: { databaseId } }) =>
-      state.filter(dbId => dbId !== databaseId),
+      state.filter((dbId) => dbId !== databaseId),
   },
   [],
 );
@@ -304,7 +304,7 @@ const deletionError = handleActions(
 const sampleDatabase = handleActions(
   {
     [ADDING_SAMPLE_DATABASE]: () => ({ loading: true }),
-    [ADD_SAMPLE_DATABASE]: state => ({ ...state, loading: false }),
+    [ADD_SAMPLE_DATABASE]: (state) => ({ ...state, loading: false }),
     [ADD_SAMPLE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
       error,
     }),

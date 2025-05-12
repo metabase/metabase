@@ -113,7 +113,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Gadget", "false"],
       ["Gizmo", "false"],
       ["Widget", "false"],
-    ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
+    ].map((args) => checkLegendItemAriaCurrent(args[0], args[1]));
   });
 
   it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {

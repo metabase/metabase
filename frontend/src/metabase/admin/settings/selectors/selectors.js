@@ -122,7 +122,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
             }),
           refreshCurrentUser,
         ],
-        getProps: setting => ({
+        getProps: (setting) => ({
           value: setting.value,
         }),
         onChanged: (oldVal, newVal) => {
@@ -307,7 +307,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     tabs:
       PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
         ? undefined
-        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
+        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map((tab) => ({
             ...tab,
             isActive: tab.key === "authentication",
           })),
@@ -465,7 +465,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: settings =>
+    getHidden: (settings) =>
       !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
     order: 131,
     settings: [
@@ -485,7 +485,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings =>
+    getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
     order: 132,
@@ -502,7 +502,7 @@ export const getSettings = createSelector(
   getAdminSettingDefinitions,
   getAdminSettingWarnings,
   (settings, warnings) =>
-    settings.map(setting =>
+    settings.map((setting) =>
       warnings[setting.key]
         ? { ...setting, warning: warnings[setting.key] }
         : setting,
@@ -512,9 +512,9 @@ export const getSettings = createSelector(
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from
 // /api/session/properties API handler and getDerivedSettingValues returns them.
-export const getDerivedSettingValues = state => state.settings?.values ?? {};
+export const getDerivedSettingValues = (state) => state.settings?.values ?? {};
 
-export const getSettingValues = createSelector(getSettings, settings => {
+export const getSettingValues = createSelector(getSettings, (settings) => {
   const settingValues = {};
   for (const setting of settings) {
     settingValues[setting.key] = setting.value;
@@ -524,14 +524,14 @@ export const getSettingValues = createSelector(getSettings, settings => {
 
 export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
+  (settings) => {
     return settings.version?.tag;
   },
 );
 
 export const getLatestVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
+  (settings) => {
     const updateChannel = settings["update-channel"] ?? "latest";
     return settings["version-info"]?.[updateChannel]?.version;
   },

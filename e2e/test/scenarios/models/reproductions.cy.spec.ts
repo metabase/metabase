@@ -18,7 +18,7 @@ describe("issue 29943", () => {
     // drag & drop the Custom column 100 px to the left to switch it with Total column
     cy.findAllByTestId("header-cell")
       .contains("Custom")
-      .then(customColumn => {
+      .then((customColumn) => {
         const rect = customColumn[0].getBoundingClientRect();
         cy.wrap(customColumn)
           .trigger("mousedown")
@@ -116,7 +116,7 @@ describe("issue 35711", () => {
     // drag & drop the Total column 100 px to the left to switch it with Tax column
     cy.findAllByTestId("header-cell")
       .contains("Total")
-      .then(totalColumn => {
+      .then((totalColumn) => {
         const rect = totalColumn[0].getBoundingClientRect();
         cy.wrap(totalColumn)
           .trigger("mousedown")
@@ -354,7 +354,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
     H.saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
 
     cy.log("Make sure this works for the deeply nested models as well");
-    cy.get("@nestedModelId").then(nestedModelId => {
+    cy.get("@nestedModelId").then((nestedModelId) => {
       H.createQuestion(
         {
           type: "model",
@@ -893,7 +893,7 @@ describe("issue 39993", () => {
   function dragAndDrop(column: string, distance: number) {
     cy.findAllByTestId("header-cell")
       .contains(column)
-      .then(element => {
+      .then((element) => {
         const rect = element[0].getBoundingClientRect();
         cy.wrap(element)
           .trigger("mousedown")
@@ -1424,5 +1424,32 @@ describe("issue 51925", () => {
         .first()
         .should("have.attr", "href", "https://example.com/6");
     });
+  });
+});
+
+describe("issue 56698", () => {
+  beforeEach(() => {
+    H.restore();
+  });
+
+  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+    cy.log("create a native model");
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(
+      {
+        name: "Native model",
+        native: { query: "select 1 union all select 2" },
+        type: "model",
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.log("verify that we create an editable ad-hoc query");
+    cy.signIn("readonlynosql");
+    cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
+    H.assertQueryBuilderRowCount(2);
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    H.assertQueryBuilderRowCount(1);
   });
 });

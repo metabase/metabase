@@ -7,12 +7,12 @@ import type { State } from "metabase-types/store";
 export const getSettings: <S extends State>(state: S) => GetSettings<S> =
   createSelector(
     (state: State) => state.settings,
-    settings => settings.values,
+    (settings) => settings.values,
   );
 
 export const getSettingsLoading = createSelector(
   (state: State) => state.settings,
-  settings => settings.loading,
+  (settings) => settings.loading,
 );
 
 type GetSettings<S extends State> = S["settings"]["values"];

@@ -15,7 +15,7 @@ export function getStore(reducers, history, intialState) {
   return configureStore({
     reducer,
     preloadedState: intialState,
-    middleware: getDefaultMiddleware =>
+    middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         immutableCheck: false,
         serializableCheck: false,

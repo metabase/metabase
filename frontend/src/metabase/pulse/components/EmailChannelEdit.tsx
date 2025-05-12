@@ -26,7 +26,7 @@ export const EmailChannelEdit = ({
   invalidRecipientText: (domains: string) => string;
 }) => {
   const channelIndex = alert.channels.findIndex(
-    channel => channel.channel_type === "email",
+    (channel) => channel.channel_type === "email",
   );
   const channel = alert.channels[channelIndex];
 
@@ -42,7 +42,7 @@ export const EmailChannelEdit = ({
         <Switch
           className={CS.flexAlignRight}
           checked={channel?.enabled}
-          onChange={val =>
+          onChange={(val) =>
             toggleChannel("email", channelIndex, val.target.checked)
           }
         />

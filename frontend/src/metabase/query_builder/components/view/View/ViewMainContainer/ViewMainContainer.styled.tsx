@@ -14,7 +14,7 @@ export const QueryBuilderMain = styled.main<{
   flex-basis: 0;
 
   ${breakpointMaxSmall} {
-    ${props =>
+    ${(props) =>
       props.isSidebarOpen &&
       css`
         display: none !important;

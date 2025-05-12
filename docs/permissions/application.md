@@ -32,7 +32,7 @@ Settings access defines which groups can view and edit the settings under the Ad
 Monitoring access sets permissions for the following:
 
 - [Tools](../usage-and-performance-tools/tools.md)
-- [Troubleshooting](../troubleshooting-guide/index.md)
+- [Troubleshooting](../troubleshooting-guide/start.md)
 
 ## Subscriptions and alerts
 

@@ -279,8 +279,8 @@ describe("scenarios > models metadata", () => {
         { wrapId: true, idAlias: "modelId" },
       );
 
-      cy.get("@modelId").then(modelId => {
-        H.setModelMetadata(modelId, field => {
+      cy.get("@modelId").then((modelId) => {
+        H.setModelMetadata(modelId, (field) => {
           if (field.display_name === "USER_ID") {
             return {
               ...field,
@@ -304,7 +304,7 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should allow drills on FK columns", () => {
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
 
@@ -335,7 +335,7 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should show implicit joins on FK columns with real DB columns (#37067)", () => {
-      cy.get("@modelId").then(modelId => {
+      cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");
 
@@ -369,8 +369,8 @@ describe("scenarios > models metadata", () => {
     });
 
     it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
-      cy.get("@modelId").then(modelId => {
-        cy.createDashboard().then(response => {
+      cy.get("@modelId").then((modelId) => {
+        cy.createDashboard().then((response) => {
           const dashboardId = response.body.id;
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
@@ -442,7 +442,7 @@ describe("scenarios > models metadata", () => {
       { idAlias: "modelId", wrapId: true },
     );
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.setModelMetadata(modelId, (field, index) => ({
         ...field,
         id: ORDERS.ID,

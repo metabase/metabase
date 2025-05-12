@@ -4,7 +4,7 @@ import { useDeepCompareEffect } from "react-use";
 
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";

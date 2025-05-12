@@ -14,25 +14,25 @@ import {
 } from "./tags";
 
 export const datasetApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getAdhocQuery: builder.query<Dataset, DatasetQuery>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/dataset",
         body,
       }),
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/dataset/query_metadata",
         body,
       }),
-      providesTags: metadata =>
+      providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
     }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/dataset/native",
         body,

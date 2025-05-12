@@ -55,12 +55,12 @@ function SearchApp({ location }) {
   };
 
   const onChangeLocation = useCallback(
-    nextLocation => dispatch(push(nextLocation)),
+    (nextLocation) => dispatch(push(nextLocation)),
     [dispatch],
   );
 
   const onFilterChange = useCallback(
-    newFilters => {
+    (newFilters) => {
       onChangeLocation({
         pathname: "search",
         query: { q: searchText.trim(), ...newFilters },

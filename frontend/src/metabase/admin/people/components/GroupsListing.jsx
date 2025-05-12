@@ -8,7 +8,7 @@ import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -41,8 +41,8 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
           value={text}
           isValid={textIsValid}
           placeholder={t`Something like "Marketing"`}
-          onChange={e => onTextChange(e.target.value)}
-          onKeyDown={e => {
+          onChange={(e) => onTextChange(e.target.value)}
+          onKeyDown={(e) => {
             if (e.keyCode === KEYCODE_ENTER) {
               onCreateClicked();
             }
@@ -159,7 +159,7 @@ function EditingGroupRow({
           type="text"
           autoFocus={true}
           value={group.name}
-          onChange={e => onTextChange(e.target.value)}
+          onChange={(e) => onTextChange(e.target.value)}
         />
       </td>
       <td />
@@ -301,7 +301,7 @@ function GroupsTable({
             apiKeys={
               isDefaultGroup(group)
                 ? (apiKeys ?? [])
-                : (apiKeys?.filter(apiKey => apiKey.group.id === group.id) ??
+                : (apiKeys?.filter((apiKey) => apiKey.group.id === group.id) ??
                   [])
             }
             groupBeingEdited={groupBeingEdited}

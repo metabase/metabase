@@ -6,7 +6,7 @@ export const getImpersonation =
   (databaseId: DatabaseId, groupId: GroupId) =>
   (state: AdvancedPermissionsStoreState) =>
     state.plugins.advancedPermissionsPlugin.impersonations.find(
-      impersonation =>
+      (impersonation) =>
         impersonation.db_id === databaseId &&
         impersonation.group_id === groupId,
     );

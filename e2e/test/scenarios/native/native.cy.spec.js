@@ -108,7 +108,7 @@ describe("scenarios > question > native", () => {
       cy.findByLabelText("Name").type("Products on Category");
       cy.findByText("Save").click();
 
-      cy.wait("@card").should(xhr => {
+      cy.wait("@card").should((xhr) => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(1);
         const parameter = requestBody.parameters[0];
@@ -166,7 +166,7 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This has a value");
 
-    FILTERS.forEach(operator => {
+    FILTERS.forEach((operator) => {
       cy.log("Apply a filter");
       H.filter();
       H.filterField("V", {
@@ -240,7 +240,7 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
 
       // parameters[] should reflect the template tags
-      cy.wait("@card").then(xhr => {
+      cy.wait("@card").then((xhr) => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(2);
         cy.wrap(xhr.response.body.id).as("questionId");
@@ -250,10 +250,10 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
       cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
-      cy.wait("@cardQuestion").should(xhr => {
+      cy.wait("@cardQuestion").should((xhr) => {
         const responseBody = xhr.response?.body;
         expect(responseBody?.parameters?.length).to.equal(2);
       });
@@ -351,7 +351,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
   });
 
   it("should not display the query when you do not have native access to the data source", () => {
-    cy.get("@questionId").then(questionId =>
+    cy.get("@questionId").then((questionId) =>
       cy.visit(`/question/${questionId}`),
     );
 

@@ -7,9 +7,9 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.api.session :as api.session]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
+   [metabase.models.session :as session]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
@@ -103,7 +103,7 @@
           first-name   (get jwt-data (jwt-attribute-firstname))
           last-name    (get jwt-data (jwt-attribute-lastname))
           user         (fetch-or-create-user! first-name last-name email login-attrs)
-          session      (api.session/create-session! :sso user (req.util/device-info request))]
+          session      (session/create-session! :sso user (req.util/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 

@@ -111,7 +111,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
        *  - https://stackoverflow.com/a/52142935/8815185
        *  - https://github.com/cypress-io/cypress/discussions/21150#discussioncomment-2620947
        */
-      cy.once("fail", err => {
+      cy.once("fail", (err) => {
         expect(err.message).to.include(
           "`cy.click()` failed because this element",
         );
@@ -172,7 +172,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.openNotebook();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
-      .then($sidebar => {
+      .then(($sidebar) => {
         const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
         expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
       });
@@ -187,7 +187,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByLabelText("View the SQL").click();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
-      .then($sidebar => {
+      .then(($sidebar) => {
         const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
         expect(sidebarWidth).to.be.closeTo(minSidebarWidth, toleranceDelta);
       });
@@ -423,7 +423,7 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
     "updateSidebarWidth",
   );
 
-  cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
+  cy.findByTestId("native-query-preview-sidebar").then(($sidebar) => {
     const initialSidebarWidth = $sidebar[0].getBoundingClientRect().width;
 
     const options = {
@@ -446,7 +446,7 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
 
     cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
 
-    cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
+    cy.findByTestId("native-query-preview-sidebar").then(($sidebar) => {
       const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
       cb(initialSidebarWidth, sidebarWidth);
     });

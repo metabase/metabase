@@ -43,7 +43,7 @@ const ChartNestedSettingsSeriesSingle = ({
         <ColorSelector
           value={computedSettings.color}
           colors={getAccentColors()}
-          onChange={value => onChangeObjectSettings(object, { color: value })}
+          onChange={(value) => onChangeObjectSettings(object, { color: value })}
         />
         <SeriesNameInput
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
@@ -52,7 +52,7 @@ const ChartNestedSettingsSeriesSingle = ({
           subtitle={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
-          onBlurChange={e =>
+          onBlurChange={(e) =>
             onChangeObjectSettings(object, { title: e.target.value })
           }
         />

@@ -7,7 +7,7 @@ export const getDateInputOverrides =
         size: "md",
         inputWrapperOrder: ["label", "description", "input", "error"],
       },
-      styles: theme => ({
+      styles: (theme) => ({
         calendar: {
           padding: `${theme.spacing.sm} ${theme.spacing.md}`,
         },

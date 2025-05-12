@@ -30,7 +30,7 @@ const TableAccessChange = ({ tables, verb, colorClassName }) => {
         <span>
           <span className={colorClassName}>
             {" " +
-              (n => ngettext(msgid`${n} table`, `${n} tables`, n))(
+              ((n) => ngettext(msgid`${n} table`, `${n} tables`, n))(
                 tableEntries.length,
               )}
           </span>

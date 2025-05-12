@@ -20,7 +20,7 @@ export const FilterBadgeList = ({
   return (
     <BadgeList
       addButtonLabel={t`Add another filter`}
-      items={filterItems.map(item => ({ item, name: item.displayName }))}
+      items={filterItems.map((item) => ({ item, name: item.displayName }))}
       onAddItem={onAddItem}
       onSelectItem={onSelectItem}
       onRemoveItem={onRemoveItem}

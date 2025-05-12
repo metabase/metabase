@@ -30,8 +30,8 @@ function createOptionsFromValuesWithoutOptions(
 ): Option {
   const optionsMap = _.indexBy(options, "0");
   return values
-    .filter(value => typeof value !== "string" || !optionsMap[value])
-    .map(value => [value]);
+    .filter((value) => typeof value !== "string" || !optionsMap[value])
+    .map((value) => [value]);
 }
 
 const SingleSelectListField = ({
@@ -51,7 +51,7 @@ const SingleSelectListField = ({
   );
 
   const augmentedOptions = useMemo<Option[]>(() => {
-    return [...options.filter(option => option[0] != null), ...addedOptions];
+    return [...options.filter((option) => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
   const sortedOptions = useMemo(() => {
@@ -61,7 +61,7 @@ const SingleSelectListField = ({
 
     const [selected, unselected] = _.partition(
       augmentedOptions,
-      option => selectedValue === option[0],
+      (option) => selectedValue === option[0],
     );
 
     return [...selected, ...unselected];
@@ -84,7 +84,7 @@ const SingleSelectListField = ({
       return augmentedOptions;
     }
 
-    return augmentedOptions.filter(option => {
+    return augmentedOptions.filter((option) => {
       if (!option || option.length === 0) {
         return false;
       }
@@ -117,13 +117,13 @@ const SingleSelectListField = ({
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (
       event.key === "Enter" &&
-      !_.find(augmentedOptions, option => option[0] === filter)
+      !_.find(augmentedOptions, (option) => option[0] === filter)
     ) {
       setAddedOptions([...addedOptions, [filter]]);
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = evt => {
+  const handleFilterChange: InputProps["onChange"] = (evt) => {
     const value = evt.target.value;
     setFilter(value);
     onChange([]);
@@ -167,7 +167,7 @@ const SingleSelectListField = ({
 
       {!isLoading && (
         <OptionsList isDashboardFilter={isDashboardFilter}>
-          {filteredOptions.map(option => (
+          {filteredOptions.map((option) => (
             <OptionContainer key={option[0]}>
               <OptionItem
                 data-testid={`${option[0]}-filter-value`}
@@ -178,7 +178,7 @@ const SingleSelectListField = ({
                 }
                 selected={selectedValue === option[0]}
                 onClick={() => onClickOption(option[0])}
-                onMouseDown={e => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
               >
                 {optionRenderer(option)}
               </OptionItem>

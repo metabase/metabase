@@ -20,7 +20,7 @@ export const OptionRoot = styled.div<OptionRootProps>`
   width: 25%;
   text-align: center;
 
-  ${props =>
+  ${(props) =>
     props.isSelected &&
     `
     ${OptionIconContainer} {
@@ -66,7 +66,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   justify-content: center;
   align-items: center;
   color: ${getOptionIconColor};
-  background-color: ${props => props.isSelected && color("brand")};
+  background-color: ${(props) => props.isSelected && color("brand")};
   border-radius: 100%;
   border: 1px solid var(--mb-color-border);
   cursor: pointer;

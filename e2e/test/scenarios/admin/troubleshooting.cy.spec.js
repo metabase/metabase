@@ -85,8 +85,8 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
   function stubPageResponses({ page, alias }) {
     const offset = page * limit;
 
-    cy.intercept("GET", `/api/task?limit=${limit}&offset=${offset}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/task?limit=${limit}&offset=${offset}`, (req) => {
+      req.reply((res) => {
         res.body = {
           data: stubPageRows(page),
           limit,

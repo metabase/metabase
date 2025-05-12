@@ -18,7 +18,7 @@ describe(
   "admin > database > external databases > enable actions",
   { tags: ["@external", "@actions"] },
   () => {
-    ["mysql", "postgres"].forEach(dialect => {
+    ["mysql", "postgres"].forEach((dialect) => {
       it(`should show ${dialect} writable_db with actions enabled`, () => {
         H.restore(`${dialect}-writable`);
         cy.signInAsAdmin();
@@ -60,7 +60,7 @@ describe("admin > database > add", () => {
   function mockUploadServiceAccountJSON(fileContents) {
     // create blob to act as selected file
     cy.get("input[type=file]")
-      .then(async input => {
+      .then(async (input) => {
         const blob = await Cypress.Blob.binaryStringToBlob(fileContents);
         const file = new File([blob], "service-account.json");
         const dataTransfer = new DataTransfer();
@@ -74,7 +74,7 @@ describe("admin > database > add", () => {
   }
 
   function mockSuccessfulDatabaseSave() {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({ statusCode: 200, body: { id: 42 }, delay: 100 });
     }).as("createDatabase");
 
@@ -89,7 +89,7 @@ describe("admin > database > add", () => {
     }
     cy.wait("@getDatabases").then(({ response }) => {
       if (
-        response.body.data.some(db => db.initial_sync_status !== "complete")
+        response.body.data.some((db) => db.initial_sync_status !== "complete")
       ) {
         waitForDbSync(maxRetries - 1);
       }
@@ -166,8 +166,8 @@ describe("admin > database > add", () => {
         });
 
         const confirmSSLFields = (visible, hidden) => {
-          visible.forEach(field => cy.findByText(field));
-          hidden.forEach(field => cy.findByText(field).should("not.exist"));
+          visible.forEach((field) => cy.findByText(field));
+          hidden.forEach((field) => cy.findByText(field).should("not.exist"));
         };
 
         const ssl = "Use a secure connection (SSL)",
@@ -457,8 +457,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle malformed (null) database details (metabase#25715)", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
       });
     }).as("loadDatabase");
@@ -478,8 +478,8 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle is_attached_dwh databases", () => {
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, (req) => {
+      req.reply((res) => {
         res.body.details = null;
         res.body.is_attached_dwh = true;
       });
@@ -495,7 +495,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should show error upon a bad request", () => {
-    cy.intercept("POST", "/api/database", req => {
+    cy.intercept("POST", "/api/database", (req) => {
       req.reply({
         statusCode: 400,
         body: "DATABASE CONNECTION ERROR",
@@ -541,7 +541,7 @@ describe("scenarios > admin > databases > exceptions", () => {
             }
           : null,
       },
-      req => {
+      (req) => {
         req.reply({
           statusCode: 500,
           body: { message: errorMessage },
@@ -657,6 +657,55 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
       expect(body.is_full_sync).to.equal(false);
       expect(body.is_on_demand).to.equal(false);
+    });
+  });
+
+  it("allows to save the default schedule (metabase#57198)", () => {
+    const ACTION_BUTTON_DELAY = 5000;
+    const SAFETY_MARGIN = 2000;
+
+    visitDatabase(SAMPLE_DB_ID);
+    cy.get("main").findByText("Show advanced options").click();
+    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
+    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(false);
+      // frontend sends wrong value but backend automatically corrects it for us:
+      expect(response.body.schedules.cache_field_values).to.equal(null);
+    });
+
+    cy.findByLabelText("Regularly, on a schedule").click();
+    cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(true);
+      expect(body.is_on_demand).to.equal(false);
+      expect(body.schedules.cache_field_values).to.deep.eq({
+        schedule_day: "mon",
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      });
+    });
+
+    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.button("Save changes").click();
+    cy.button("Success").should("be.visible");
+    cy.button("Success", {
+      timeout: ACTION_BUTTON_DELAY + SAFETY_MARGIN,
+    }).should("not.exist");
+    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
+      expect(body.is_full_sync).to.equal(false);
+      expect(body.is_on_demand).to.equal(true);
+      expect(body.schedules.cache_field_values).to.equal(null);
     });
   });
 

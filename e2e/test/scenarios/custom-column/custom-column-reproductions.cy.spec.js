@@ -419,7 +419,7 @@ describe("issue 19744", () => {
 
   function addQuestionToDashboardAndVisit() {
     cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-      cy.get("@questionId").then(card_id => {
+      cy.get("@questionId").then((card_id) => {
         H.addOrUpdateDashboardCard({
           card_id,
           dashboard_id,
@@ -531,7 +531,7 @@ describe("issue 19745", () => {
   function updateQuestion() {
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -708,7 +708,7 @@ describe("issue 23862", () => {
           display: "table",
         },
         {
-          callback: xhr => expect(xhr.response.body.error).not.to.exist,
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
         },
       );
     });
@@ -829,7 +829,7 @@ describe.skip("issue 25189", () => {
   });
 });
 
-["postgres", "mysql"].forEach(dialect => {
+["postgres", "mysql"].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
 

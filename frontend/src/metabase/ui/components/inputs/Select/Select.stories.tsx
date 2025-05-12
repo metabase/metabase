@@ -30,12 +30,12 @@ const dataWithGroupsLarge = [
 
 const dataWithGroups = dataWithGroupsLarge.slice(0, 6);
 
-const dataWithIcons = dataWithGroups.map(item => ({
+const dataWithIcons = dataWithGroups.map((item) => ({
   ...item,
   group: undefined,
 }));
 
-const dataWithLabels = dataWithIcons.map(item => ({
+const dataWithLabels = dataWithIcons.map((item) => ({
   ...item,
   icon: undefined,
 }));

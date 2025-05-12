@@ -1,5 +1,6 @@
 import { merge } from "icepick";
 
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import {
   EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
@@ -63,7 +64,12 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   question: {
     backgroundColor: "transparent",
+
+    toolbar: {
+      backgroundColor: "var(--mb-color-background-disabled)",
+    },
   },
+
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
@@ -87,6 +93,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.px },
     },
+  },
+  popover: {
+    zIndex: DEFAULT_Z_INDEX,
   },
 };
 

@@ -36,7 +36,7 @@ function SemanticTypePicker({
   }, []);
 
   const onSelectValue = useCallback(
-    e => {
+    (e) => {
       if (e.target.value === field.value) {
         return;
       }
@@ -48,7 +48,7 @@ function SemanticTypePicker({
   );
 
   const pickerLabel = useMemo(() => {
-    const item = options.find(item => item.id === field.value);
+    const item = options.find((item) => item.id === field.value);
     return item?.name ?? t`None`;
   }, [field, options]);
 
@@ -76,8 +76,8 @@ function SemanticTypePicker({
         value={field.value}
         options={options}
         onChange={onSelectValue}
-        optionValueFn={o => o.id}
-        optionSectionFn={o => o.section}
+        optionValueFn={(o) => o.id}
+        optionSectionFn={(o) => o.section}
         placeholder={t`Select a semantic type`}
         searchProp="name"
         searchPlaceholder={t`Search for a special type`}

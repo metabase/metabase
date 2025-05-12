@@ -4,6 +4,14 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.53.0
+
+- Added the multi-method `bad-connection-details` to allow mocking bad connection parameters for tests.
+
+## Metabase 0.52.12
+
+- Added the multimethod `metabase.driver/db-details-to-test-and-migrate`. This can be used to cleanup and migrate ambiguous connection details from previous versions.
+
 ## Metabase 0.52.0
 
 - The Docker image for Metabase 0.52.0 now uses Java 21 instead of Java 11. Please make sure to test your driver

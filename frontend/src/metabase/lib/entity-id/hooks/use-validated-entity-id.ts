@@ -3,10 +3,19 @@ import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { useTranslateEntityIdQuery } from "metabase/api/entity-id";
-import type { BaseEntityId, CardId, DashboardId } from "metabase-types/api";
+import type {
+  BaseEntityId,
+  CardId,
+  CollectionId,
+  DashboardId,
+} from "metabase-types/api";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
-type SUPPORTED_ENTITIES = { dashboard: DashboardId; card: CardId };
+type SUPPORTED_ENTITIES = {
+  dashboard: DashboardId;
+  card: CardId;
+  collection: CollectionId;
+};
 
 /**
  * A hook that validates and potentially translates an entity ID.

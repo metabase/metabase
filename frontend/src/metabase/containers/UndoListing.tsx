@@ -98,7 +98,7 @@ export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
       duration={TOAST_TRANSITION_DURATION}
       timingFunction="ease"
     >
-      {styles => (
+      {(styles) => (
         <ToastCard
           dark
           data-testid="toast-undo"
@@ -156,11 +156,11 @@ export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
 }
 function UndoListingInner() {
   const dispatch = useDispatch();
-  const undos = useSelector(state => state.undo);
+  const undos = useSelector((state) => state.undo);
 
   return (
     <UndoList data-testid="undo-list" aria-label="undo-list">
-      {undos.map(undo => (
+      {undos.map((undo) => (
         <UndoToast
           key={undo._domId}
           undo={undo}

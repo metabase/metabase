@@ -7,11 +7,11 @@ import { SidebarItem } from "../SidebarItem";
 export const BehaviorOptionIcon = styled(SidebarItem.Icon)<{
   isSelected?: boolean;
 }>`
-  border-color: ${props =>
+  border-color: ${(props) =>
     props.isSelected ? "transparent" : "var(--mb-color-border)"};
 
   .Icon {
-    color: ${props =>
+    color: ${(props) =>
       props.isSelected ? color("text-white") : color("brand")};
   }
 `;

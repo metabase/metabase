@@ -21,7 +21,7 @@ const LimitInput = ({
   ...props
 }: LimitInputProps) => (
   <input
-    className={cx(CS.input, className, {
+    className={cx(CS.input, className, CS.bgWhite, {
       // HACK: reuse Button styles
       [ButtonsS.ButtonSmall]: small,
       [ButtonsS.ButtonMedium]: medium,

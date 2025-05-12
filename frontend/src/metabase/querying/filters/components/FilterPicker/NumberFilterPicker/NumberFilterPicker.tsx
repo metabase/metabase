@@ -139,7 +139,7 @@ function NumberValueInput({
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={newValue => onChange([newValue])}
+          onChange={(newValue) => onChange([newValue])}
         />
       </Flex>
     );

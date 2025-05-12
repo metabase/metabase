@@ -3,7 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { Component } from "react";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { connect } from "metabase/lib/redux";
 
 import entityType from "./EntityType";
@@ -29,7 +29,7 @@ const CONSUMED_PROPS = [
 // entities completely
 const getMemoizedEntityQuery = createSelector(
   (state, entityQuery) => entityQuery,
-  entityQuery => entityQuery,
+  (entityQuery) => entityQuery,
   {
     equalityFn: _.isEqual,
     devModeChecks: { identityFunctionCheck: "never" },
@@ -54,9 +54,9 @@ class EntityObjectLoaderInner extends Component {
 
     this._getWrappedObject = createSelector(
       [
-        props => props.object,
-        props => props.dispatch,
-        props => props.entityDef,
+        (props) => props.object,
+        (props) => props.dispatch,
+        (props) => props.entityDef,
       ],
       (object, dispatch, entityDef) =>
         object && entityDef.wrapEntity(object, dispatch),
@@ -193,12 +193,12 @@ export default EntityObjectLoader;
  * @deprecated HOCs are deprecated
  */
 export const entityObjectLoader =
-  eolProps =>
-  ComposedComponent =>
+  (eolProps) =>
+  (ComposedComponent) =>
   // eslint-disable-next-line react/display-name
-  props => (
+  (props) => (
     <EntityObjectLoader {...props} {...eolProps}>
-      {childProps => (
+      {(childProps) => (
         <ComposedComponent
           {..._.omit(props, ...CONSUMED_PROPS)}
           {...childProps}

@@ -4,7 +4,7 @@ import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideChannelListTags } from "./tags";
 
 const channelApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listChannels: builder.query<NotificationChannel[], void>({
       query: () => `api/channel`,
       providesTags: (channels = []) => provideChannelListTags(channels),
@@ -13,7 +13,7 @@ const channelApi = Api.injectEndpoints({
       Record<string, any>,
       { details: Omit<ChannelDetails, "fe-form-type"> }
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "api/channel/test",
         body: {
@@ -26,7 +26,7 @@ const channelApi = Api.injectEndpoints({
       NotificationChannel[],
       Omit<NotificationChannel, "created_at" | "updated_at" | "active" | "id">
     >({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "api/channel",
         body,
@@ -47,7 +47,7 @@ const channelApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("channel"), idTag("channel", id)]),
     }),
     deleteChannel: builder.mutation<void, number>({
-      query: id => ({
+      query: (id) => ({
         method: "PUT",
         url: `api/channel/${id}`,
         body: {

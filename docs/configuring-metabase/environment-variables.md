@@ -2045,7 +2045,7 @@ Default: `null`
 
 When set to `true`, will enable HTTPS with the options configured in the `MB_JETTY_SSL_*` variables.
 
-Also see the [Customizing Jetty web server](customizing-jetty-webserver.md) documentation page.
+Also see the [Customizing Jetty web server](../configuring-metabase/customizing-jetty-webserver.md) documentation page.
 
 ### `MB_JETTY_SSL_CLIENT_AUTH`
 

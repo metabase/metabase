@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -100,7 +100,7 @@ const propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 
-const SegmentFieldDetail = props => {
+const SegmentFieldDetail = (props) => {
   const {
     style,
     entity,
@@ -124,10 +124,11 @@ const SegmentFieldDetail = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields => onSubmit(fields, { ...props, resetForm: handleReset }),
+    onSubmit: (fields) =>
+      onSubmit(fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });

@@ -3,11 +3,11 @@ import { createRandom } from "./prng";
 export function generateExpression(seed, resultType, depth = 13) {
   const random = createRandom(seed);
 
-  const randomInt = max => Math.floor(max * random());
-  const randomItem = items => items[randomInt(items.length)];
-  const oneOf = functions => () => randomItem(functions).apply(null, []);
+  const randomInt = (max) => Math.floor(max * random());
+  const randomItem = (items) => items[randomInt(items.length)];
+  const oneOf = (functions) => () => randomItem(functions).apply(null, []);
   const listOf = (n, functions) => () =>
-    [...Array(n)].map(_ => oneOf(functions)());
+    [...Array(n)].map((_) => oneOf(functions)());
 
   const zero = () => 0;
   const one = () => 1;
@@ -50,15 +50,15 @@ export function generateExpression(seed, resultType, depth = 13) {
     Group: 6,
   };
 
-  const randomizeCase = str =>
+  const randomizeCase = (str) =>
     str
       .split("")
-      .map(ch => (randomInt(10) < 3 ? ch.toUpperCase() : ch))
+      .map((ch) => (randomInt(10) < 3 ? ch.toUpperCase() : ch))
       .join("");
 
-  const format = node => {
+  const format = (node) => {
     const spaces = () => listOf(1, [space, () => ""])().join("");
-    const blank = ch => spaces() + ch + spaces();
+    const blank = (ch) => spaces() + ch + spaces();
     let str = null;
     const { type, value, op, left, right, child, params } = node;
     switch (type) {
@@ -90,7 +90,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     return String(str);
   };
 
-  const coalesce = fn => {
+  const coalesce = (fn) => {
     return {
       type: NODE.FunctionCall,
       value: "coalesce",
@@ -98,7 +98,7 @@ export function generateExpression(seed, resultType, depth = 13) {
     };
   };
 
-  const caseExpression = fn => {
+  const caseExpression = (fn) => {
     const params = [];
     for (let i = 0; i < 1 + randomInt(3); ++i) {
       params.push(booleanExpression());
@@ -252,11 +252,11 @@ export function generateExpression(seed, resultType, depth = 13) {
   };
 
   const comparison = () => {
-    const isNumberValue = value =>
+    const isNumberValue = (value) =>
       typeof value === "number" ||
       (typeof value === "string" && value[0] !== '"');
 
-    const isValidLHS = node => {
+    const isValidLHS = (node) => {
       const { type, value, op, child } = node;
       if (type === NODE.Literal && isNumberValue(value)) {
         return false;

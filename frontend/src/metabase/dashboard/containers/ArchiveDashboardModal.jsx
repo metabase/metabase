@@ -13,9 +13,9 @@ import Dashboards from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   setDashboardArchived: () => dispatch(setArchivedDashboard(true)),
-  push: path => dispatch(push(path)),
+  push: (path) => dispatch(push(path)),
 });
 
 class ArchiveDashboardModal extends Component {

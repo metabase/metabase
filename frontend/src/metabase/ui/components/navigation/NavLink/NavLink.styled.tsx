@@ -3,7 +3,7 @@ import { rem } from "@mantine/core";
 
 export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
   NavLink: {
-    styles: theme => ({
+    styles: (theme) => ({
       root: {
         borderRadius: rem(8),
       },

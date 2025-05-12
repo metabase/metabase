@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import Alert from "metabase/core/components/Alert";
 import Button from "metabase/core/components/Button";
@@ -23,7 +23,7 @@ import {
 } from "./DeleteDatabaseModal.styled";
 
 const entityTypesCount = (usageInfo: DatabaseUsageInfo) => {
-  return Object.values(usageInfo).filter(value => value > 0).length;
+  return Object.values(usageInfo).filter((value) => value > 0).length;
 };
 
 const hasContentInDatabase = (usageInfo: DatabaseUsageInfo) => {
@@ -77,7 +77,7 @@ const DeleteDatabaseModal = ({
     }
   };
 
-  const handleEditConnectionDetailsClick: MouseEventHandler = e => {
+  const handleEditConnectionDetailsClick: MouseEventHandler = (e) => {
     e.preventDefault();
     onClose();
   };
@@ -157,7 +157,7 @@ const DeleteDatabaseModal = ({
                 autoFocus
                 placeholder={t`Are you completely sure?`}
                 value={databaseNameConfirmation}
-                onChange={e => setDatabaseNameConfirmation(e.target.value)}
+                onChange={(e) => setDatabaseNameConfirmation(e.target.value)}
               />
             </DatabaseNameInputContainer>
           </DeleteDatabaseModalSection>

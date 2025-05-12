@@ -95,7 +95,7 @@ export const SortableList = <T,>({
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
     if (over && active.id !== over.id) {
-      setItemIds(ids => {
+      setItemIds((ids) => {
         const oldIndex = ids.indexOf(active.id);
         const newIndex = ids.indexOf(over.id);
         return arrayMove(ids, oldIndex, newIndex);
@@ -108,7 +108,7 @@ export const SortableList = <T,>({
 
     onSortStart?.(event);
 
-    const item = items.find(item => getId(item) === event.active.id);
+    const item = items.find((item) => getId(item) === event.active.id);
     if (item) {
       setActiveItem(item);
     }
@@ -119,7 +119,7 @@ export const SortableList = <T,>({
     if (activeItem && onSortEnd) {
       onSortEnd({
         id: getId(activeItem),
-        newIndex: itemIds.findIndex(id => id === getId(activeItem)),
+        newIndex: itemIds.findIndex((id) => id === getId(activeItem)),
         itemIds,
       });
       setActiveItem(null);

@@ -158,7 +158,7 @@ export const ExpressionEditorSuggestions = forwardRef<
               onHighlightSuggestion={onHighlightSuggestion}
             />
           </ExpressionList>
-          {footers.map(suggestion => (
+          {footers.map((suggestion) => (
             <Footer
               key={suggestion.index}
               suggestion={suggestion}
@@ -365,7 +365,7 @@ function group(suggestions: Suggestion[]): Groups {
     shortcuts: [],
   };
 
-  suggestions.forEach(suggestion => {
+  suggestions.forEach((suggestion) => {
     if (suggestion.group) {
       groups[suggestion.group].push(suggestion);
     } else {

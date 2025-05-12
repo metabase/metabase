@@ -16,7 +16,7 @@ interface ToggleContentProps {
 }
 
 export const ToggleContent = styled.a<ToggleContentProps>`
-  display: ${props => (props.isReadOnly ? "none" : "flex")};
+  display: ${(props) => (props.isReadOnly ? "none" : "flex")};
   color: var(--mb-color-text-medium);
   font-size: 10px;
   font-weight: 700;

@@ -86,7 +86,7 @@ const getCollections = (state: State) =>
     }) ?? []
   ).filter(nonPersonalOrArchivedCollection);
 
-const getCollectionsTree = createSelector([getCollections], collections => {
+const getCollectionsTree = createSelector([getCollections], (collections) => {
   return [getRootCollectionTreeItem(), ...buildCollectionTree(collections)];
 });
 
@@ -140,7 +140,7 @@ const findCollection = (
   }
 
   const collection = collections.find(
-    collection => collection.id === collectionId,
+    (collection) => collection.id === collectionId,
   );
 
   if (collection) {
@@ -148,7 +148,7 @@ const findCollection = (
   }
 
   return findCollection(
-    collections.map(collection => collection.children ?? []).flat(),
+    collections.map((collection) => collection.children ?? []).flat(),
     collectionId,
   );
 };
@@ -317,7 +317,7 @@ function getPermissionsSet(
   permissions: CollectionPermissions,
   groupId: number,
 ) {
-  const perms = collections.map(collection =>
+  const perms = collections.map((collection) =>
     getCollectionPermission(permissions, groupId, collection.id),
   );
   return new Set(perms);

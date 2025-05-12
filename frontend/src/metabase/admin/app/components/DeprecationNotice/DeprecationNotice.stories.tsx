@@ -13,7 +13,7 @@ export default {
 };
 
 export const Default: StoryObj<DeprecationNoticeProps> = {
-  render: args => {
+  render: (args) => {
     return <DeprecationNotice {...args} />;
   },
 

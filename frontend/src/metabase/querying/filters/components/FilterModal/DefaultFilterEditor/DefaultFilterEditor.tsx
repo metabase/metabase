@@ -48,12 +48,12 @@ export function DefaultFilterEditor({
         </Grid.Col>
         <Grid.Col span={4}>
           <Group spacing="md">
-            {availableOptions.map(option => (
+            {availableOptions.map((option) => (
               <Checkbox
                 key={option.operator}
                 label={option.name}
                 checked={option.operator === operator}
-                onChange={event =>
+                onChange={(event) =>
                   handleOperatorChange(option, event.target.checked)
                 }
               />

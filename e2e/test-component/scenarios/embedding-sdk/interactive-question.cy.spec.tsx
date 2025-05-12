@@ -23,6 +23,7 @@ import {
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
+  mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -73,7 +74,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.findAllByTestId("cell-data").last().click();
 
-    cy.on("uncaught:exception", error => {
+    cy.on("uncaught:exception", (error) => {
       expect(
         error.message.includes(
           "Error converting :aggregation reference: no aggregation at index 0",
@@ -97,7 +98,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     const lastColumnName = "Max of Quantity";
     const columnNames = [firstColumnName, lastColumnName];
 
-    columnNames.forEach(columnName => {
+    columnNames.forEach((columnName) => {
       tableInteractive().findByText(columnName).should("be.visible");
 
       tableHeaderClick(columnName);
@@ -154,7 +155,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
   it("can save a question to a pre-defined collection", () => {
     mountInteractiveQuestion({
-      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+      targetCollection: Number(THIRD_COLLECTION_ID),
     });
 
     saveInteractiveQuestionAsNewQuestion({
@@ -166,6 +167,27 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(200);
       expect(response?.body.name).to.equal("Sample Orders 3");
       expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
+    });
+  });
+
+  it("can save a question to their personal collection", () => {
+    cy.intercept("/api/user/current").as("getUser");
+
+    mountInteractiveQuestion({
+      targetCollection: "personal",
+    });
+
+    cy.wait("@getUser").then(({ response: userResponse }) => {
+      saveInteractiveQuestionAsNewQuestion({
+        entityName: "Orders",
+        questionName: "Sample Orders 3",
+      });
+      const userCollection = userResponse?.body.personal_collection_id;
+      cy.wait("@createCard").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("Sample Orders 3");
+        expect(response?.body.collection_id).to.equal(userCollection);
+      });
     });
   });
 
@@ -184,7 +206,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       </Box>
     );
 
-    cy.get<string>("@questionId").then(questionId => {
+    cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<TestSuiteComponent questionId={questionId} />);
     });
 
@@ -248,7 +270,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     const onBeforeSaveSpy = cy.spy().as("onBeforeSaveSpy");
     const onSaveSpy = cy.spy().as("onSaveSpy");
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       mountSdkContent(
         <TestComponent
           questionId={questionId}
@@ -289,8 +311,16 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     // Expect the default summarization view to be there.
     cy.findByTestId("aggregation-picker").should("be.visible");
 
-    cy.on("uncaught:exception", error => {
+    cy.on("uncaught:exception", (error) => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
+    });
+  });
+
+  it("does not contain known console errors (metabase#48497)", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContentAndAssertNoKnownErrors(
+        <InteractiveQuestion questionId={questionId} />,
+      );
     });
   });
 
@@ -323,7 +353,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     successTestCases.forEach(({ name, questionIdAlias }) => {
       it(`should load question content for ${name}`, () => {
-        cy.get(questionIdAlias).then(questionId => {
+        cy.get(questionIdAlias).then((questionId) => {
           mountInteractiveQuestion({ questionId });
         });
 

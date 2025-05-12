@@ -1,0 +1,7 @@
+const SUCCESS_EXIT_CODE = 0;
+const FAILURE_EXIT_CODE = 1;
+
+module.exports = {
+  SUCCESS_EXIT_CODE,
+  FAILURE_EXIT_CODE,
+};

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -9,11 +10,13 @@ import {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-type QuestionTitleProps = {
+type GetQuestionTitleProps = {
   question?: Question;
 };
 
-export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
+export const getQuestionTitle = ({
+  question,
+}: GetQuestionTitleProps): string => {
   if (!question) {
     return t`New question`;
   }
@@ -39,8 +42,21 @@ export const getQuestionTitle = ({ question }: QuestionTitleProps): string => {
   return t`New question`;
 };
 
-export const QuestionTitle = ({ question }: QuestionTitleProps) => {
+type QuestionTitleProps = GetQuestionTitleProps & {
+  className?: string;
+  style?: CSSProperties;
+};
+
+export const QuestionTitle = ({
+  question,
+  className,
+  style,
+}: QuestionTitleProps) => {
   const questionTitle = getQuestionTitle({ question });
 
-  return <h2 className={cx(CS.h2, CS.textWrap)}>{questionTitle}</h2>;
+  return (
+    <h2 className={cx(CS.h2, CS.textWrap, className)} style={style}>
+      {questionTitle}
+    </h2>
+  );
 };

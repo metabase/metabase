@@ -11,7 +11,7 @@ export default {
   component: FileUploadStatusLarge,
 };
 
-const Template: StoryFn<FileUploadLargeProps> = args => {
+const Template: StoryFn<FileUploadLargeProps> = (args) => {
   return <FileUploadStatusLarge {...args} />;
 };
 

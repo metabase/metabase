@@ -102,7 +102,7 @@ export const DataPickerModal = ({
     (recentItems: RecentItem[]) => {
       if (databaseId) {
         return recentItems.filter(
-          item => getRecentItemDatabaseId(item) === databaseId,
+          (item) => getRecentItemDatabaseId(item) === databaseId,
         );
       }
 

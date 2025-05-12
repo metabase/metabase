@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import paginationState from "metabase/hoc/PaginationState";
 import { capitalize } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
@@ -77,7 +77,7 @@ const getEntityQuery = (state, props) =>
 // entities completely
 const getMemoizedEntityQuery = createSelector(
   getEntityQuery,
-  entityQuery => entityQuery,
+  (entityQuery) => entityQuery,
   {
     equalityFn: _.isEqual,
     devModeChecks: { identityFunctionCheck: "never" },
@@ -94,9 +94,13 @@ class EntityListLoaderInner extends Component {
     super(props);
 
     this._getWrappedList = createSelector(
-      [props => props.list, props => props.dispatch, props => props.entityDef],
+      [
+        (props) => props.list,
+        (props) => props.dispatch,
+        (props) => props.entityDef,
+      ],
       (list, dispatch, entityDef) =>
-        list && list.map(object => entityDef.wrapEntity(object, dispatch)),
+        list && list.map((object) => entityDef.wrapEntity(object, dispatch)),
     );
   }
 
@@ -303,11 +307,11 @@ export default EntityListLoader;
 /**
  * @deprecated HOCs are deprecated
  */
-export const entityListLoader = ellProps => ComposedComponent => {
+export const entityListLoader = (ellProps) => (ComposedComponent) => {
   function WrappedComponent(props) {
     return (
       <EntityListLoader {...props} {...ellProps}>
-        {childProps => (
+        {(childProps) => (
           <ComposedComponent
             {..._.omit(props, ...CONSUMED_PROPS)}
             {...childProps}

@@ -42,7 +42,7 @@ export const JoinCellItem = styled.button<{
     isColumnSelected
       ? getHasColumnStyle(theme, isOpen)
       : getNoColumnStyle(theme, isOpen)};
-  cursor: ${props => (props.isReadOnly ? "default" : "pointer")};
+  cursor: ${(props) => (props.isReadOnly ? "default" : "pointer")};
   transition:
     background 300ms linear,
     border 300ms linear,

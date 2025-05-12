@@ -17,10 +17,10 @@ const MockOption = ({ option }) => <span>{option}</span>;
 const DEFAULT_TOKEN_FIELD_PROPS = {
   options: [],
   value: [],
-  valueKey: option => option,
-  labelKey: option => option,
-  valueRenderer: value => <MockValue value={value} />,
-  optionRenderer: option => <MockOption option={option} />,
+  valueKey: (option) => option,
+  labelKey: (option) => option,
+  valueRenderer: (value) => <MockValue value={value} />,
+  optionRenderer: (option) => <MockOption option={option} />,
   layoutRenderer: ({ valuesList, optionsList }) => (
     <div>
       {valuesList}
@@ -44,7 +44,7 @@ class TokenFieldWithStateAndDefaults extends Component {
         {...DEFAULT_TOKEN_FIELD_PROPS}
         {...props}
         value={this.state.value}
-        onChange={value => {
+        onChange={(value) => {
           this.setState({ value });
           if (onChange) {
             onChange(value);
@@ -86,17 +86,17 @@ describe("TokenField", () => {
     return screen.queryAllByRole("listbox")[0];
   };
 
-  const type = str => fireEvent.change(input(), { target: { value: str } });
+  const type = (str) => fireEvent.change(input(), { target: { value: str } });
 
-  const clickText = str => fireEvent.click(screen.getByText(str));
+  const clickText = (str) => fireEvent.click(screen.getByText(str));
 
-  const inputKeydown = keyCode =>
+  const inputKeydown = (keyCode) =>
     fireEvent.keyDown(input(), { keyCode: keyCode });
 
-  const findWithinValues = collection =>
+  const findWithinValues = (collection) =>
     expect(values()).toHaveTextContent(collection.join(""));
 
-  const findWithinOptions = collection =>
+  const findWithinOptions = (collection) =>
     expect(options()).toHaveTextContent(collection.join(""));
 
   it("should render with no options or values", () => {
@@ -175,7 +175,7 @@ describe("TokenField", () => {
       <TokenFieldWithStateAndDefaults
         value={[]}
         options={["bar", "baz"]}
-        parseFreeformValue={value => value}
+        parseFreeformValue={(value) => value}
       />,
     );
     await userEvent.type(input(), "yep");
@@ -220,7 +220,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
         />,
       );
@@ -351,7 +351,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputBlur={false}
         />,
       );
@@ -378,7 +378,7 @@ describe("TokenField", () => {
           options={DEFAULT_OPTIONS}
           multi
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputBlur={true}
         />,
       );
@@ -403,7 +403,7 @@ describe("TokenField", () => {
       render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
           multi
         />,
@@ -427,7 +427,7 @@ describe("TokenField", () => {
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
         />,
       );
@@ -442,7 +442,7 @@ describe("TokenField", () => {
       render(
         <TokenFieldWithStateAndDefaults
           // return null for empty string since it's not a valid
-          parseFreeformValue={value => value || null}
+          parseFreeformValue={(value) => value || null}
           updateOnInputChange
         />,
       );

@@ -17,7 +17,7 @@ export const Container = styled.span<{ variant: string }>`
   flex-wrap: wrap;
 
   ${HeaderBadge} {
-    ${props =>
+    ${(props) =>
       props.variant === "head" &&
       css`
         font-size: 1.25rem;

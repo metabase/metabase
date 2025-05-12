@@ -21,7 +21,7 @@ export const SlackChannelEdit = ({
   onChannelPropertyChange: (index: number, name: string, value: any) => void;
 }) => {
   const channelIndex = alert.channels.findIndex(
-    channel => channel.channel_type === "slack",
+    (channel) => channel.channel_type === "slack",
   );
   const channel = alert.channels[channelIndex];
 
@@ -34,7 +34,7 @@ export const SlackChannelEdit = ({
         <Switch
           className={CS.flexAlignRight}
           checked={channel?.enabled}
-          onChange={val =>
+          onChange={(val) =>
             toggleChannel("slack", channelIndex, val.target.checked)
           }
         />

@@ -1,13 +1,16 @@
-import { SDK_PACKAGE_NAME } from "../constants/config";
 import type { DashboardInfo } from "../types/dashboard";
+import { getSdkPackageName } from "../utils/snippets-helpers";
 
 interface Options {
   dashboards: DashboardInfo[];
   userSwitcherEnabled: boolean;
+  isNextJs: boolean;
 }
 
 export const getAnalyticsDashboardSnippet = (options: Options) => {
-  const { dashboards, userSwitcherEnabled } = options;
+  const { dashboards, userSwitcherEnabled, isNextJs } = options;
+
+  const sdkPackageName = getSdkPackageName({ isNextJs });
 
   let imports = `import { ThemeSwitcher } from './theme-switcher'`;
 
@@ -17,7 +20,7 @@ export const getAnalyticsDashboardSnippet = (options: Options) => {
 
   return `
 import { useState, useContext, useReducer } from 'react'
-import { InteractiveDashboard, CreateQuestion } from '${SDK_PACKAGE_NAME}'
+import { InteractiveDashboard, InteractiveQuestion } from '${sdkPackageName}'
 import { AnalyticsContext } from "./analytics-provider"
 
 ${imports}
@@ -42,7 +45,7 @@ export const AnalyticsDashboard = () => {
             {isDashboard && (
               <select
                 className="dashboard-select"
-                onChange={(e) => setDashboardId(e.target.value)}
+                onChange={(e) => setDashboardId(Number(e.target.value))}
               >
                 {DASHBOARDS.map((dashboard) => (
                   <option key={dashboard.id} value={dashboard.id}>
@@ -70,7 +73,7 @@ export const AnalyticsDashboard = () => {
           />
         )}
 
-        {isCreateQuestion && <CreateQuestion />}
+        {isCreateQuestion && <InteractiveQuestion questionId="new" />}
       </div>
     </div>
   )

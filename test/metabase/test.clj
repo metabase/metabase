@@ -248,6 +248,7 @@
   bytes->base64-data-uri
   latest-audit-log-entry
   let-url
+  metric-value
   obj->json->obj
   ordered-subset?
   postwalk-pred
@@ -269,6 +270,7 @@
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
   with-anaphora
+  with-prometheus-system!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file

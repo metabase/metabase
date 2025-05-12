@@ -58,7 +58,7 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     }
   `};
 
-  ${props =>
+  ${(props) =>
     props.isAnimationDisabled
       ? css`
           transition: none;

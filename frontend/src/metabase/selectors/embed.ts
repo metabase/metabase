@@ -1,11 +1,11 @@
 import { isWithinIframe } from "metabase/lib/dom";
-import type { EmbedOptions, State } from "metabase-types/store";
+import type { InteractiveEmbeddingOptions, State } from "metabase-types/store";
 
 export const getIsEmbedded = (_state?: State): boolean => {
   return isWithinIframe();
 };
 
-export const getEmbedOptions = (state: State): EmbedOptions => {
+export const getEmbedOptions = (state: State): InteractiveEmbeddingOptions => {
   return state.embed.options;
 };
 

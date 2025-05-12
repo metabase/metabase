@@ -20,7 +20,7 @@ function getAvailableOptions() {
 
 export function getSelectedOption(value: DatePickerValue | undefined) {
   return getAvailableOptions().find(
-    option =>
+    (option) =>
       value?.type === "relative" &&
       option.value.value === value.value &&
       option.value.unit === value.unit,

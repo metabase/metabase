@@ -191,9 +191,9 @@ export function suggest({
     });
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
-        .map(name => MBQL_CLAUSES[name])
+        .map((name) => MBQL_CLAUSES[name])
         .filter(
-          clause => clause && database?.hasFeature(clause.requiresFeature),
+          (clause) => clause && database?.hasFeature(clause.requiresFeature),
         )
         .filter(function disableOffsetInFilterExpressions(clause) {
           const isOffset = clause.name === "offset";
@@ -201,7 +201,7 @@ export function suggest({
           const isOffsetInFilterExpression = isOffset && isFilterExpression;
           return !isOffsetInFilterExpression;
         })
-        .map(func => ({
+        .map((func) => ({
           type: "functions",
           name: func.displayName,
           text: suggestionText(func),
@@ -213,11 +213,11 @@ export function suggest({
     if (startRule === "aggregation") {
       suggestions.push(
         ...Array.from(AGGREGATION_FUNCTIONS)
-          .map(name => MBQL_CLAUSES[name])
+          .map((name) => MBQL_CLAUSES[name])
           .filter(
-            clause => clause && database?.hasFeature(clause.requiresFeature),
+            (clause) => clause && database?.hasFeature(clause.requiresFeature),
           )
-          .map(func => ({
+          .map((func) => ({
             type: "aggregations",
             name: func.displayName,
             text: suggestionText(func),
@@ -233,14 +233,14 @@ export function suggest({
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
       ...Lib.expressionableColumns(query, stageIndex, expressionIndex).map(
-        column => {
+        (column) => {
           const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
           return {
             type: "fields",
             name: displayInfo.longDisplayName,
             text: formatIdentifier(displayInfo.longDisplayName) + " ",
-            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+            alternates: EDITOR_FK_SYMBOLS.symbols.map((symbol) =>
               getDisplayNameWithSeparator(displayInfo.longDisplayName, symbol),
             ),
             index: targetOffset,
@@ -257,7 +257,7 @@ export function suggest({
 
     if (segments) {
       suggestions.push(
-        ...segments.map(segment => {
+        ...segments.map((segment) => {
           const displayInfo = Lib.displayInfo(query, stageIndex, segment);
 
           return {
@@ -277,7 +277,7 @@ export function suggest({
 
       if (metrics) {
         suggestions.push(
-          ...metrics.map(metric => {
+          ...metrics.map((metric) => {
             const displayInfo = Lib.displayInfo(query, stageIndex, metric);
 
             return {
@@ -319,11 +319,11 @@ export function suggest({
     }
   }
 
-  suggestions = suggestions.filter(suggestion => suggestion.range);
+  suggestions = suggestions.filter((suggestion) => suggestion.range);
 
   // deduplicate suggestions
   suggestions = _.chain(suggestions)
-    .uniq(suggestion => suggestion.text)
+    .uniq((suggestion) => suggestion.text)
     .value();
 
   // the only suggested function equals the prefix match?
@@ -343,7 +343,7 @@ export function suggest({
   }
 
   if (database) {
-    suggestions = suggestions.map(suggestion => {
+    suggestions = suggestions.map((suggestion) => {
       const name = getMBQLName(suggestion.name);
       if (!name) {
         return suggestion;

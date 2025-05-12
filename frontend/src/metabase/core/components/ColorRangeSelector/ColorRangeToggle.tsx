@@ -1,10 +1,11 @@
-import {
-  ToggleButton,
-  ToggleColorRange,
-  ToggleRoot,
-} from "./ColorRangeToggle.styled";
+import cx from "classnames";
 
-export interface ColorRangeToggleProps {
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Flex, type FlexProps, Icon } from "metabase/ui";
+
+import { ColorRange } from "../ColorRange";
+
+export interface ColorRangeToggleProps extends FlexProps {
   value: string[];
   isQuantile?: boolean;
   onToggleClick?: () => void;
@@ -18,21 +19,32 @@ const ColorRangeToggle = ({
   onToggleClick,
   onColorRangeSelect,
   showToggleButton = false,
-}: ColorRangeToggleProps) => {
-  return (
-    <ToggleRoot>
-      <ToggleColorRange
-        colors={value}
-        isQuantile={isQuantile}
-        onSelect={onColorRangeSelect}
-        aria-label={getColorRangeLabel(value)}
-      />
-      {showToggleButton && (
-        <ToggleButton icon="compare" small onClick={onToggleClick} />
+  ...flexProps
+}: ColorRangeToggleProps) => (
+  <Flex gap="sm" {...flexProps}>
+    <ColorRange
+      colors={value}
+      isQuantile={isQuantile}
+      onSelect={onColorRangeSelect}
+      aria-label={getColorRangeLabel(value)}
+      className={cx(
+        CS.flex1,
+        onColorRangeSelect ? CS.cursorPointer : CS.cursorDefault,
       )}
-    </ToggleRoot>
-  );
-};
+    />
+    {showToggleButton && (
+      <ActionIcon
+        onClick={onToggleClick}
+        variant="outline"
+        color="border"
+        p="sm"
+        size="lg"
+      >
+        <Icon c="text-medium" name="compare" />
+      </ActionIcon>
+    )}
+  </Flex>
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeToggle;

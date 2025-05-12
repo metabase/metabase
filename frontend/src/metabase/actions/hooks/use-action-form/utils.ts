@@ -125,7 +125,7 @@ export const getOrGenerateFieldSettings = (
   if (isGeneratedImplicitActionField) {
     const generatedFieldSettings = generateFieldSettingsFromParameters(params);
 
-    fieldValues.forEach(fieldValue => {
+    fieldValues.forEach((fieldValue) => {
       const singleFieldSettings = generatedFieldSettings[fieldValue.id];
       // this is the only field we sync with BE
       singleFieldSettings.hidden = fieldValue.hidden;

@@ -1,8 +1,12 @@
+// eslint-disable-next-line no-unconditional-metabase-links-render -- cli snippets
 export const THEME_SWITCHER_SNIPPET = `
 import { useContext } from 'react'
 
 import { AnalyticsContext } from './analytics-provider'
 
+// Demo component to switch between light and dark themes, for testing out themes.
+// In a real app, this would be implemented by your application.
+// See https://www.metabase.com/docs/latest/embedding/sdk/appearance
 export const ThemeSwitcher = () => {
   const { themeKey, setThemeKey } = useContext(AnalyticsContext)
 

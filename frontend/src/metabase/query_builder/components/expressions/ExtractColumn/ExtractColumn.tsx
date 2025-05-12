@@ -86,7 +86,7 @@ function ColumnPicker({
   const extractableColumns = useMemo(
     () =>
       Lib.expressionableColumns(query, stageIndex).filter(
-        column => Lib.columnExtractions(query, column).length > 0,
+        (column) => Lib.columnExtractions(query, column).length > 0,
       ),
     [query, stageIndex],
   );
@@ -111,7 +111,7 @@ function ColumnPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           onSelect={onSelect}
-          checkIsColumnSelected={item => item.column === column}
+          checkIsColumnSelected={(item) => item.column === column}
           width="100%"
           alwaysExpanded
           disableSearch
@@ -141,7 +141,7 @@ function ExtractionPicker({
 
   const extractions = useMemo(
     () =>
-      Lib.columnExtractions(query, column).map(extraction => ({
+      Lib.columnExtractions(query, column).map((extraction) => ({
         extraction,
         info: Lib.displayInfo(query, stageIndex, extraction),
       })),
@@ -156,7 +156,7 @@ function ExtractionPicker({
       />
       <Box p="sm">
         <Stack spacing={0}>
-          {extractions.map(extraction => (
+          {extractions.map((extraction) => (
             <ExtractColumnButton
               key={extraction.info.tag}
               title={extraction.info.displayName}

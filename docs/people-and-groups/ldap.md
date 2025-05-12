@@ -70,7 +70,7 @@ Scroll to **Group Schema** on the same LDAP settings page, and click the toggle 
 
 As you can see below, if you have an **Accounting** group in both your LDAP server and Metabase instance, you'll just need to supply the Distinguished Name from your LDAP server (in the example, it's `cn=Accounting,ou=Groups,dc=widgetco,dc=com`) and select its match from the dropdown of your existing Metabase groups.
 
-![Group Mapping](images/ldap-group-mapping.png)
+![Group Mapping](./images/ldap-group-mapping.png)
 
 Some things to keep in mind regarding group mapping:
 

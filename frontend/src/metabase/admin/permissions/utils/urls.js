@@ -7,7 +7,7 @@ import {
 export const DATABASES_BASE_PATH = `/admin/permissions/data/database`;
 export const GROUPS_BASE_PATH = `/admin/permissions/data/group`;
 
-export const getDatabaseFocusPermissionsUrl = entityId => {
+export const getDatabaseFocusPermissionsUrl = (entityId) => {
   if (entityId == null) {
     return DATABASES_BASE_PATH;
   }

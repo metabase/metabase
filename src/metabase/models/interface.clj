@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -26,6 +27,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
    [taoensso.nippy :as nippy]
@@ -56,6 +58,11 @@
   deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
   on a future deserialization."
   false)
+
+(def ^{:arglists '([x & _args])} dispatch-on-model
+  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -158,9 +165,29 @@
   [obj]
   (json-out obj false))
 
+(defn- elide-data [obj]
+  (walk/postwalk (fn [x] (cond
+                           (string? x) (string/elide x 250)
+                           (and (sequential? x) (> (count x) 50)) (take 50 x)
+                           :else x)) obj))
+
+(defn- json-in-with-eliding
+  [obj]
+  (if (string? obj)
+    obj
+    (json/encode (elide-data obj))))
+
 (def transform-json
   "Transform for json."
   {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-json-eliding
+  "Serializes object as JSON, but:
+    - elides any long strings to a max of 250 chars
+    - limits sequences to the first 50 entries
+   Useful for debugging/human-consuming information which can be unbounded-ly large"
+  {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
 (defn- serialize-mlv2-query
@@ -469,6 +496,15 @@
 
 ;; --- predefined hooks
 
+(defmulti non-timestamped-fields
+  "Return a set of fields that should not affect the timestamp of a model."
+  {:arglists '([instance])}
+  dispatch-on-model)
+
+(defmethod non-timestamped-fields :default
+  [_]
+  #{})
+
 (defn now
   "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
@@ -483,12 +519,15 @@
     (not (:created_at obj)) (assoc :created_at (now))))
 
 (defn- add-updated-at-timestamp [obj]
-  ;; don't stomp on `:updated_at` if it's already explicitly specified.
-  (let [changes-already-include-updated-at? (if (t2/instance? obj)
-                                              (:updated_at (t2/changes obj))
-                                              (:updated_at obj))]
+  (let [changed-fields (set (keys (if (t2/instance obj)
+                                    (t2/changes obj)
+                                    obj)))
+        ; don't stomp on `:updated_at` if it's already explicitly specified.
+        changes-already-include-updated-at? (some #{:updated_at} changed-fields)
+        has-non-ignored-fields? (seq (set/difference changed-fields (non-timestamped-fields obj)))
+        should-set-updated-at? (or (empty? changed-fields) (and has-non-ignored-fields? (not changes-already-include-updated-at?)))]
     (cond-> obj
-      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
+      should-set-updated-at? (assoc :updated_at (now)))))
 
 (t2/define-before-insert :hook/timestamped?
   [instance]
@@ -555,10 +594,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(def ^{:arglists '([x & _args])} dispatch-on-model
-  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
-  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
   "Return a set of permissions object paths that a user must have access to in order to access this object. This should

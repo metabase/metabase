@@ -26,7 +26,7 @@ export function DateOperatorPicker({
   }, [value]);
 
   const handleChange = (inputValue: string | null) => {
-    const option = options.find(option => option.value === inputValue);
+    const option = options.find((option) => option.value === inputValue);
     if (option) {
       onChange(setOptionType(value, option.value));
     }

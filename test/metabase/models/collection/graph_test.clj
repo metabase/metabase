@@ -180,7 +180,8 @@
           (is (= {:revision 1
                   :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :read}
                              (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
-                 (replace-collection-ids collection (graph :collections [collection]))))))))
+                 (replace-collection-ids collection (graph :collections [collection]))))
+          (is (= 1 (c-perm-revision/latest-id)))))))
 
   (testing "can we give them *write* perms?"
     (mt/with-non-admin-groups-no-root-collection-perms

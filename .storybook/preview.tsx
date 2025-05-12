@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/lib/delay
@@ -58,26 +58,36 @@ export const decorators = [
 
 function CssVariables() {
   const theme = useTheme();
-  const styles = css`
-    ${getMetabaseCssVariables(theme)}
 
-    :root {
-      --mb-default-font-family: "Lato";
+  // This can get expensive so we should memoize it separately
+  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
 
-      /*
+  const styles = useMemo(() => {
+    return css`
+      ${cssVariables}
+
+      :root {
+        --mb-default-font-family: "Lato";
+
+        /*
       Theming-specific CSS variables.
       These CSS variables are not part of the core design system colors.
     **/
-      --mb-color-bg-dashboard: var(--mb-color-bg-white);
-      --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
-    }
+        --mb-color-bg-dashboard: var(--mb-color-bg-white);
+        --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
+      }
 
-    /* For Embed frame questions to render properly */
-    #root:has([data-testid="embed-frame"]),
-    [data-testid="embed-frame"] {
-      height: 100%;
-    }
-  `;
+      /* For Embed frame questions to render properly */
+      #root:has([data-testid="embed-frame"]),
+      [data-testid="embed-frame"] {
+        height: 100%;
+      }
+    `;
+  }, [theme]);
 
   return <Global styles={styles} />;
 }
+
+const preview = { parameters, decorators };
+
+export default preview;

@@ -69,7 +69,7 @@ export function DateFilterEditor({
         </Grid.Col>
         <Grid.Col span={4}>
           <Flex gap="0.5rem">
-            {visibleOptions.map(option => {
+            {visibleOptions.map((option) => {
               const isSelected = option.shortcut === selectedOption?.shortcut;
               return (
                 <Button

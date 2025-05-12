@@ -7,7 +7,7 @@ import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import ModalContent from "metabase/components/ModalContent";
 import { Flex } from "metabase/ui";
 
-const formatChannelString = channels => {
+const formatChannelString = (channels) => {
   const lastChannel = channels[channels.length - 1];
   const restChannels = channels.slice(0, -1);
 

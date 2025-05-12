@@ -15,15 +15,15 @@ const propTypes = {
 
 const ProgressWrapper = styled.div`
   position: relative;
-  border: 1px solid ${props => props.color};
-  height: ${props => props.height};
+  border: 1px solid ${(props) => props.color};
+  height: ${(props) => props.height};
   border-radius: 99px;
   transition: border-color 0.3s;
 `;
 
 const Progress = styled.div`
   overflow: hidden;
-  background-color: ${props => props.color};
+  background-color: ${(props) => props.color};
   position: relative;
   height: 100%;
   top: 0;
@@ -31,15 +31,15 @@ const Progress = styled.div`
   border-radius: inherit;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-  width: ${props => props.width}%;
+  width: ${(props) => props.width}%;
   transition: background-color 0.3s;
 
   "&::before": {
-    display: ${props => (props.animated ? "block" : "none")};
+    display: ${(props) => (props.animated ? "block" : "none")};
     position: absolute;
     content: "";
     left: 0;
-    width: ${props => props.width / 4}%;
+    width: ${(props) => props.width / 4}%;
     height: 100%;
     background-color: var(--mb-color-bg-black);
   },

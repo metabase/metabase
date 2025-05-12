@@ -47,19 +47,19 @@ export const FieldPicker = ({
   ...props
 }: FieldPickerProps) => {
   const items = useMemo(() => {
-    const items = columns.map(column => ({
+    const items = columns.map((column) => ({
       column,
       columnInfo: Lib.displayInfo(query, stageIndex, column),
     }));
-    return items.map(item => ({
+    return items.map((item) => ({
       ...item,
       isSelected: isColumnSelected(item, items),
       isDisabled: isColumnDisabled?.(item, items),
     }));
   }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled]);
 
-  const isAll = items.every(item => item.isSelected);
-  const isNone = items.every(item => !item.isSelected);
+  const isAll = items.every((item) => item.isSelected);
+  const isNone = items.every((item) => !item.isSelected);
 
   const handleLabelToggle = () => {
     if (isAll) {
@@ -83,13 +83,15 @@ export const FieldPicker = ({
         </Label>
       </ToggleItem>
       <DelayGroup>
-        {items.map(item => (
+        {items.map((item) => (
           <li key={item.columnInfo.longDisplayName}>
             <Label as="label">
               <Checkbox
                 checked={item.isSelected}
                 disabled={item.isDisabled}
-                onChange={event => onToggle(item.column, event.target.checked)}
+                onChange={(event) =>
+                  onToggle(item.column, event.target.checked)
+                }
               />
               <ItemIcon
                 query={query}

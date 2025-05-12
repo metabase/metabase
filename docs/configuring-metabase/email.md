@@ -32,7 +32,7 @@ To start, go to the Admin Panel from the dropdown menu in the top right of Metab
 
 You should see this form:
 
-![Email Credentials](images/EmailCredentials.png)
+![Email Credentials](./images/EmailCredentials.png)
 
 Here you'll set:
 

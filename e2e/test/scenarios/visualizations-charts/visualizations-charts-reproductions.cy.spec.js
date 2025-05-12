@@ -84,7 +84,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     });
   });
 
-  ["Zero", "Nothing"].forEach(replacementValue => {
+  ["Zero", "Nothing"].forEach((replacementValue) => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
       H.openVizSettingsSidebar();
 
@@ -287,7 +287,7 @@ describe("issue 18061", () => {
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
-      cy.window().then(w => (w.beforeReload = true));
+      cy.window().then((w) => (w.beforeReload = true));
 
       H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
       cy.findByTestId("qb-filters-panel")
@@ -382,7 +382,7 @@ describe("issue 18063", () => {
 
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].forEach(field =>
+    ["Latitude field", "Longitude field"].forEach((field) =>
       H.leftSidebar().within(() => {
         toggleFieldSelectElement(field);
       }),
@@ -648,7 +648,7 @@ describe("issue 21665", () => {
   });
 
   it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       editQ2NativeQuery("select order by --", questionId);
     });
 
@@ -737,7 +737,7 @@ describe("issue 25007", () => {
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.popover().findByTextEnsureVisible("May 1–7, 2022");
+    H.echartsTooltip().findByText("May 1–7, 2022");
   });
 });
 
@@ -835,7 +835,7 @@ describe("issue 27279", () => {
     // need to add a single space on either side of the text as it is used as padding
     // in ECharts
     const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"].map(
-      str => ` ${str} `,
+      (str) => ` ${str} `,
     );
     compareValuesInOrder(
       H.echartsContainer()
@@ -925,7 +925,7 @@ describe("issue 27427", () => {
         method: "GET",
         url: `/api/pulse/preview_card/${id}`,
         failOnStatusCode: false,
-      }).then(response => {
+      }).then((response) => {
         callback(response);
       });
     });

@@ -280,7 +280,7 @@ describe("NativeQuery", () => {
         const q = makeQuery().setQueryText(
           "{{#1}} {{ #2 }} {{ #1-a-card-name }} {{ #1-a-card-name }}",
         );
-        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
+        expect(q.templateTags().map((v) => v["card-id"])).toEqual([1, 2, 1]);
       });
     });
   });
@@ -332,7 +332,7 @@ describe("NativeQuery", () => {
       );
       const variables = q.variables();
       expect(variables).toHaveLength(1);
-      expect(variables.map(v => v.displayName())).toEqual(["Category"]);
+      expect(variables.map((v) => v.displayName())).toEqual(["Category"]);
     });
 
     it("should not return variable for dimension template tag", () => {
@@ -359,7 +359,7 @@ describe("NativeQuery", () => {
         });
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);
-      expect(dimensions.map(d => d.displayName())).toEqual(["Category"]);
+      expect(dimensions.map((d) => d.displayName())).toEqual(["Category"]);
     });
   });
 

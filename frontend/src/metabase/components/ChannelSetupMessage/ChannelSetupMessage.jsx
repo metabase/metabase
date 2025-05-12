@@ -40,7 +40,7 @@ export default class ChannelSetupMessage extends Component {
     if (user.is_superuser) {
       content = (
         <div>
-          {channels.map(c => {
+          {channels.map((c) => {
             const config = CHANNEL_MAP[c.toLowerCase()];
 
             return config ? (

@@ -105,7 +105,7 @@ describe("metabase-lib/v1/operators/utils", () => {
     it("returns correct basic aggregation operators", () => {
       const database = getDatabase(["basic-aggregations"]);
       const operators = getSupportedAggregationOperators(database);
-      expect(operators.map(o => o.short)).toEqual([
+      expect(operators.map((o) => o.short)).toEqual([
         "rows",
         "count",
         "sum",
@@ -149,7 +149,7 @@ describe("metabase-lib/v1/operators/utils", () => {
       const fullOperators = getAggregationOperators(database, fields);
       return {
         fullOperators,
-        operators: fullOperators.map(operator => operator.short),
+        operators: fullOperators.map((operator) => operator.short),
         operatorByName: _.indexBy(fullOperators, "short"),
       };
     }
@@ -229,7 +229,7 @@ describe("metabase-lib/v1/operators/utils", () => {
     });
 
     describe("summable operators", () => {
-      ["sum", "avg", "cum-sum", "stddev"].forEach(operator => {
+      ["sum", "avg", "cum-sum", "stddev"].forEach((operator) => {
         describe(operator, () => {
           it("is not available without fields", () => {
             const { operators } = setup();
@@ -243,7 +243,7 @@ describe("metabase-lib/v1/operators/utils", () => {
             expect(operators).toEqual(expect.not.arrayContaining([operator]));
           });
 
-          ["base_type", "effective_type", "semantic_type"].forEach(type => {
+          ["base_type", "effective_type", "semantic_type"].forEach((type) => {
             it(`is available with numeric field's ${type}`, () => {
               const field = { [type]: TYPE.Number };
               const { operators, operatorByName } = setup({ fields: [field] });
@@ -256,7 +256,7 @@ describe("metabase-lib/v1/operators/utils", () => {
     });
 
     describe("scoping operators", () => {
-      ["min", "max"].forEach(operator => {
+      ["min", "max"].forEach((operator) => {
         describe(operator, () => {
           it("is not available without fields", () => {
             const { operators } = setup();
@@ -268,7 +268,7 @@ describe("metabase-lib/v1/operators/utils", () => {
             expect(operators).toEqual(expect.not.arrayContaining([operator]));
           });
 
-          ["base_type", "effective_type", "semantic_type"].forEach(type => {
+          ["base_type", "effective_type", "semantic_type"].forEach((type) => {
             it(`is available with numeric field's ${type}`, () => {
               const field = { [type]: TYPE.Number };
               const { operators, operatorByName } = setup({ fields: [field] });
@@ -301,7 +301,7 @@ describe("metabase-lib/v1/operators/utils", () => {
               field: { effective_type: TYPE.Boolean },
               name: "boolean (effective type)",
             },
-          ].forEach(testCase => {
+          ].forEach((testCase) => {
             const { field, name } = testCase;
 
             it(`is available for ${name} fields`, () => {

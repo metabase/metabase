@@ -118,7 +118,7 @@ function TimeValueInput({
         placeholder={t`Enter a time`}
         aria-label={t`Filter value`}
         clearable
-        onChange={newValue => onChange([newValue])}
+        onChange={(newValue) => onChange([newValue])}
         onFocus={onFocus}
         onBlur={onBlur}
       />
@@ -133,7 +133,7 @@ function TimeValueInput({
           value={value1}
           placeholder={t`Min`}
           clearable
-          onChange={newValue1 => onChange([newValue1, value2])}
+          onChange={(newValue1) => onChange([newValue1, value2])}
           onFocus={onFocus}
           onBlur={onBlur}
         />
@@ -142,7 +142,7 @@ function TimeValueInput({
           value={value2}
           placeholder={t`Max`}
           clearable
-          onChange={newValue2 => onChange([value1, newValue2])}
+          onChange={(newValue2) => onChange([value1, newValue2])}
           onFocus={onFocus}
           onBlur={onBlur}
         />

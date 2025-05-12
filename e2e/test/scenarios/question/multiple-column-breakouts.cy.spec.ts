@@ -305,6 +305,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover()
             .findByLabelText(columnName)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().last().findByText(bucket1Name).click();
           H.getNotebookStep("summarize")
@@ -440,6 +441,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(0)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket1Name).click();
           cy.wait("@dataset");
@@ -448,6 +450,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2)
             .eq(1)
             .findByLabelText(bucketLabel)
+            .realHover()
             .click();
           H.popover().findByText(bucket2Name).click();
           cy.wait("@dataset");
@@ -704,7 +707,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         setParametersAndAssertResults("@publicDashcardQuery");
 
         cy.log("set parameters in an embedded dashboard");
-        cy.get<number>("@dashboardId").then(dashboardId =>
+        cy.get<number>("@dashboardId").then((dashboardId) =>
           H.visitEmbeddedPage({
             resource: { dashboard: dashboardId },
             params: {},

@@ -77,7 +77,7 @@ const getStartingFromUnits = (
   selectedStartingFromUnit: string,
 ) => {
   const largerUnits = ALL_PERIODS.filter(
-    period => !isSmallerUnit(period, filterUnit),
+    (period) => !isSmallerUnit(period, filterUnit),
   );
 
   if (!largerUnits.includes(selectedStartingFromUnit)) {
@@ -155,8 +155,8 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
   const {
     filter,
     onFilterChange,
-    formatter = value => value,
-    offsetFormatter = value => value,
+    formatter = (value) => value,
+    offsetFormatter = (value) => value,
     className,
     primaryColor,
   } = props;
@@ -210,7 +210,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={newUnit =>
+        onChange={(newUnit) =>
           handleChangeUnitInput(newUnit as DurationInputArg2)
         }
         aria-label={t`Unit`}
@@ -268,7 +268,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
           <DateUnitSelector
             value={startingFrom[1]}
             primaryColor={primaryColor}
-            onChange={value => {
+            onChange={(value) => {
               onFilterChange(setStartingFrom(filter, startingFrom[0], value));
             }}
             formatDisplayName={(period, intervals) =>
@@ -295,13 +295,13 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
 };
 
 export const PastPicker = (props: RelativeDatePickerProps) => (
-  <RelativeDatePicker {...props} formatter={value => value * -1} />
+  <RelativeDatePicker {...props} formatter={(value) => value * -1} />
 );
 
 export const NextPicker = (props: RelativeDatePickerProps) => (
   <RelativeDatePicker
     {...props}
-    offsetFormatter={value => value * -1}
+    offsetFormatter={(value) => value * -1}
     reverseIconDirection
   />
 );

@@ -38,8 +38,8 @@ export function partialMatch(expression) {
 export function enclosingFunction(expression) {
   const { tokens } = tokenize(expression);
 
-  const isOpen = t => t.op === OP.OpenParenthesis;
-  const isClose = t => t.op === OP.CloseParenthesis;
+  const isOpen = (t) => t.op === OP.OpenParenthesis;
+  const isClose = (t) => t.op === OP.CloseParenthesis;
 
   let parenCount = 0;
   for (let i = tokens.length - 1; i > 0; --i) {

@@ -4,7 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { UpsellHosting } from "metabase/admin/upsells";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
@@ -114,9 +114,9 @@ class SetupCheckList extends Component {
   render() {
     let tasks, nextTask;
     if (this.state.tasks) {
-      tasks = this.state.tasks.map(section => ({
+      tasks = this.state.tasks.map((section) => ({
         ...section,
-        tasks: section.tasks.filter(task => {
+        tasks: section.tasks.filter((task) => {
           if (task.is_next_step) {
             nextTask = task;
           }
@@ -161,7 +161,7 @@ class SetupCheckList extends Component {
   }
 }
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   isPaidPlan: getIsPaidPlan(state),
 });
 

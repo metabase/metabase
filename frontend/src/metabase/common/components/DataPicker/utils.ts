@@ -74,7 +74,7 @@ export const getDbItem = (
     return null;
   }
 
-  const database = databases?.find(db => db.id === dbId);
+  const database = databases?.find((db) => db.id === dbId);
   const name = database?.name ?? "";
 
   return { model: "database", id: dbId, name };
@@ -103,7 +103,7 @@ export const getTableItem = (
     return null;
   }
 
-  const table = tables?.find(db => db.id === tableId);
+  const table = tables?.find((db) => db.id === tableId);
   const name = table?.name ?? "";
 
   return { model: "table", id: tableId, name };
@@ -162,7 +162,7 @@ export const createShouldShowItem = (
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      const hasCards = models.some(model => contents.includes(model));
+      const hasCards = models.some((model) => contents.includes(model));
 
       if (item.id !== "root" && !item.is_personal && !hasCards) {
         return false;

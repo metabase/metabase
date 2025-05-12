@@ -20,7 +20,7 @@ Metabase will only display events on time series charts when viewing an individu
 
 ## Timelines
 
-Timelines are groups of events associated with a [collection](collections.md).
+Timelines are groups of events associated with a [collection](./collections.md).
 
 ![Timeline sidebar](./images/timeline-sidebar.png)
 
@@ -34,7 +34,7 @@ Collections can have timelines, and timelines can contain events. In practice wh
 
 ### Adding events when viewing a collection
 
-When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
+When viewing a [collection](./collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
 
 ![In a collection, view or add events by clicking on the calendar icon](./images/event-calendar.png)
 

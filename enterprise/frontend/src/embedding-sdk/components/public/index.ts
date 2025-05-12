@@ -44,3 +44,9 @@ export const defineMetabaseAuthConfig = (
 ): MetabaseAuthConfig => config;
 
 export { defineMetabaseTheme };
+
+/**
+ * Intended for debugging purposes only, so we don't want to expose it in the d.ts files.
+ * @internal
+ */
+export { SdkDebugInfo } from "./debug/SdkDebugInfo";

@@ -31,12 +31,12 @@ const mapDispatchToProps = {
 
 export default _.compose(
   Alerts.loadList({
-    query: state => ({ user_id: getUserId(state) }),
+    query: (state) => ({ user_id: getUserId(state) }),
     reload: true,
   }),
   Pulses.loadList({
     // Load all pulses the current user is a creator or recipient of
-    query: state => ({ creator_or_recipient: true }),
+    query: (state) => ({ creator_or_recipient: true }),
     reload: true,
   }),
   connect(mapStateToProps, mapDispatchToProps),

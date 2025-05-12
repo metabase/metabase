@@ -28,7 +28,7 @@ export const LocaleProvider = ({
 
       setLocaleHeader(localeToLoad);
       loadLocalization(localeToLoad)
-        .then(translatedObject => {
+        .then((translatedObject) => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
         })

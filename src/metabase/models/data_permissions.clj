@@ -95,9 +95,9 @@
 
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 
-(defn- relevant-permissions-for-user-and-db
-  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables."
-  [user-id db-id]
+(defn- relevant-permissions-for-user-and-dbs
+  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables for the given sequence of database ids."
+  [user-id db-ids]
   (t2/select :model/DataPermissions
              {:select [:p.* [:pgm.user_id :user_id]]
               :from [[:permissions_group_membership :pgm]]
@@ -106,7 +106,7 @@
               :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
               :where [:and
                       [:= :pgm.user_id user-id]
-                      [:= :p.db_id db-id]
+                      [:in :p.db_id db-ids]
                       [:or
                        [:= :p.table_id nil]
                        [:= :mt.active true]]]}))
@@ -139,6 +139,22 @@
   When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
   (atom {:db-ids #{} :perms {}}))
 
+(defn prime-db-cache
+  "Prime the permissions cache for a given user and database IDs.
+  This can be called directly prior to checking the permissions for a large number of databases to improve performance"
+  [db-ids]
+  (let [{cached-db-ids :db-ids perms :perms} @*permissions-for-user*
+        filtered-ids (filter #(not (some #{%} cached-db-ids)) db-ids)]
+    (when (seq filtered-ids)
+      (let [fetched-perm-rows (relevant-permissions-for-user-and-dbs api/*current-user-id* filtered-ids)
+            new-cache (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
+                                (update-in m [user_id perm_type db_id] u/conjv row))
+                              perms
+                              fetched-perm-rows)]
+        (reset! *permissions-for-user*
+                {:db-ids (into (or cached-db-ids #{}) db-ids)
+                 :perms  new-cache})))))
+
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
   cached for the duration of a request. Empty on OSS instances."
@@ -166,18 +182,9 @@
   (if (or (= user-id api/*current-user-id*)
           (not *use-perms-cache?*))
     ;; Use the cache if we can; if not, add perms to the cache for this DB
-    (let [{:keys [db-ids perms]} @*permissions-for-user*]
-      (if (db-ids db-id)
-        (get-in perms [user-id perm-type db-id])
-        (let [fetched-perm-rows (relevant-permissions-for-user-and-db user-id db-id)
-              new-cache         (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
-                                          (update-in m [user_id perm_type db_id] u/conjv row))
-                                        perms
-                                        fetched-perm-rows)]
-          (reset! *permissions-for-user*
-                  {:db-ids (conj db-ids db-id)
-                   :perms  new-cache})
-          (get-in new-cache [user-id perm-type db-id]))))
+    (do
+      (prime-db-cache [db-id])
+      (get-in (:perms @*permissions-for-user*) [user-id perm-type db-id]))
     ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
     (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
 
@@ -795,10 +802,10 @@
                 (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
                 (batch-insert-permissions! (concat other-new-perms new-perms))))
             (let [existing-table-perms (t2/select :model/DataPermissions
-                                                  :perm_type (u/qualified-name perm-type)
-                                                  :group_id  group-id
-                                                  :db_id     db-id
                                                   {:where [:and
+                                                           [:= :group_id group-id]
+                                                           [:= :db_id db-id]
+                                                           [:= :perm_type (u/qualified-name perm-type)]
                                                            [:not= :table_id nil]
                                                            [:not [:in :table_id table-ids]]]})
                   existing-table-values (set (map :perm_value existing-table-perms))]
@@ -866,10 +873,12 @@
             db-id                  (:db_id table)
             schema-name            (:schema table)
             db-level-perms         (t2/select :model/DataPermissions
-                                              :perm_type (u/qualified-name perm-type)
-                                              :db_id db-id
-                                              :table_id nil
-                                              {:where [:in :group_id group-ids]})
+                                              {:where
+                                               [:and
+                                                [:= :db_id db-id]
+                                                [:= :table_id nil]
+                                                [:= :perm_type (u/qualified-name perm-type)]
+                                                [:in :group_id group-ids]]})
             db-level-group-ids     (set (map :group_id db-level-perms))
             new-perms              (reduce
                                     (fn [new-perms group-id]

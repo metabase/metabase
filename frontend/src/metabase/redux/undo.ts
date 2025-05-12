@@ -13,7 +13,7 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
-export const addUndo = createThunkAction(ADD_UNDO, undo => {
+export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
   return (dispatch, getState) => {
     const { icon = "check", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;
@@ -51,10 +51,10 @@ export const pauseUndo = createAction(PAUSE_UNDO, (undo: Undo) => {
 });
 
 const RESUME_UNDO = "metabase/questions/RESUME_UNDO";
-export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
+export const resumeUndo = createThunkAction(RESUME_UNDO, (undo) => {
   const restTime = undo.timeout - (undo.pausedAt - undo.startedAt);
 
-  return dispatch => {
+  return (dispatch) => {
     return {
       ...undo,
       timeoutId: setTimeout(
@@ -72,8 +72,8 @@ function getUndo(state: State, undoId: Undo["id"]) {
 
 const getAutoConnectedUndos = createSelector(
   [(state: State) => state.undo],
-  undos => {
-    return undos.filter(undo => undo.type === "filterAutoConnectDone");
+  (undos) => {
+    return undos.filter((undo) => undo.type === "filterAutoConnectDone");
   },
 );
 
@@ -84,7 +84,7 @@ export const getIsRecentlyAutoConnectedDashcard = createSelector(
     (_state, _props, parameterId) => parameterId,
   ],
   (undos, dashcardId, parameterId) => {
-    const isRecentlyAutoConnected = undos.some(undo => {
+    const isRecentlyAutoConnected = undos.some((undo) => {
       const isDashcardAutoConnected =
         undo.extraInfo?.dashcardIds?.includes(dashcardId);
       const isSameParameterSelected = undo.extraInfo?.parameterId
@@ -107,11 +107,11 @@ export const dismissUndo = createAction(
 
 export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);
 
-export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
+export const performUndo = createThunkAction(PERFORM_UNDO, (undoId) => {
   return (dispatch, getState) => {
     const undo = getUndo(getState(), undoId);
     if (undo) {
-      undo.actions?.forEach(action => dispatch(action));
+      undo.actions?.forEach((action) => dispatch(action));
       dispatch(dismissUndo({ undoId }));
     }
   };
@@ -167,7 +167,7 @@ export function undoReducer(
     }
 
     const undoId = payload;
-    const dismissedUndo = state.find(undo => undo.id === undoId);
+    const dismissedUndo = state.find((undo) => undo.id === undoId);
 
     if (dismissedUndo) {
       clearTimeoutForUndo(dismissedUndo);
@@ -176,7 +176,7 @@ export function undoReducer(
       console.warn("DISMISS_UNDO", payload);
       return state;
     }
-    return state.filter(undo => undo.id !== undoId);
+    return state.filter((undo) => undo.id !== undoId);
   } else if (type === DISMISS_ALL_UNDO) {
     for (const undo of state) {
       clearTimeoutForUndo(undo);
@@ -187,7 +187,7 @@ export function undoReducer(
       return state;
     }
 
-    return state.map(undo => {
+    return state.map((undo) => {
       if (undo.id === payload.id) {
         return {
           ...undo,
@@ -203,7 +203,7 @@ export function undoReducer(
       return state;
     }
 
-    return state.map(undo => {
+    return state.map((undo) => {
       if (undo.id === payload.id) {
         return {
           ...undo,

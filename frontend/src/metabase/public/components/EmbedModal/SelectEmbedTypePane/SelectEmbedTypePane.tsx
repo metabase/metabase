@@ -56,7 +56,7 @@ export function SelectEmbedTypePane({
     utm: utmTags,
   });
 
-  const isPublicSharingEnabled = useSelector(state =>
+  const isPublicSharingEnabled = useSelector((state) =>
     getSetting(state, "enable-public-sharing"),
   );
 
@@ -99,7 +99,7 @@ export function SelectEmbedTypePane({
 
   return (
     <Stack
-      display={"inline-flex"}
+      display="inline-flex"
       p="lg"
       spacing="lg"
       data-testid="sharing-pane-container"
@@ -169,7 +169,6 @@ export function SelectEmbedTypePane({
             title={t`Embedded analytics SDK`}
             badge={
               <>
-                <Badge color="gray">{t`Beta`}</Badge>
                 <Badge color="brand">{t`Pro`}</Badge>
               </>
             }

@@ -85,11 +85,11 @@ const NotificationCard = ({
 
 NotificationCard.propTypes = propTypes;
 
-const getChannelMessage = channel => {
+const getChannelMessage = (channel) => {
   return getCapitalizedMessage(formatChannel(channel));
 };
 
-const getCapitalizedMessage = message => {
+const getCapitalizedMessage = (message) => {
   const [firstLetter, ...otherLetters] = message;
   return [firstLetter.toUpperCase(), ...otherLetters].join("");
 };

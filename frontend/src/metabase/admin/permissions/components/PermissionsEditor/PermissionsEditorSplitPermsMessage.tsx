@@ -9,7 +9,7 @@ import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
 export const PermissionsEditorSplitPermsMessage = () => {
   const dispatch = useDispatch();
 
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "permissions/no-self-service-deprecation" }),
   );
 

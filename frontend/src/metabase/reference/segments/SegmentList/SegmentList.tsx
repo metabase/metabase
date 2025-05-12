@@ -6,7 +6,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
@@ -31,7 +31,7 @@ export function SegmentList({ style }: SegmentListProps) {
   const entities = useSelector(getSegments);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
-  const adminLink = useSelector(state =>
+  const adminLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "data-modeling/segments-and-metrics",
       anchor: "creating-a-segment",
@@ -50,7 +50,7 @@ export function SegmentList({ style }: SegmentListProps) {
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
                 {Object.values(entities).map(
-                  entity =>
+                  (entity) =>
                     entity &&
                     entity.id &&
                     entity.name && (

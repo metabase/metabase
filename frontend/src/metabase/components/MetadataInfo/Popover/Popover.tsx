@@ -90,7 +90,7 @@ export function Popover({
         <HackyInvisibleTargetFiller />
         <WidthBound
           width={width}
-          ref={node => {
+          ref={(node) => {
             setupCloseHandler(node, () => setIsOpen(false));
           }}
         >

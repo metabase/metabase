@@ -51,7 +51,7 @@ const Groups = createEntity({
   actions: {
     clearMember:
       async ({ id }) =>
-      async dispatch => {
+      async (dispatch) => {
         await dispatch(
           entityCompatibleQuery(
             id,
@@ -82,7 +82,7 @@ const Groups = createEntity({
         return assocIn(
           state,
           [groupId, "members"],
-          members.filter(m => m.membership_id !== membershipId),
+          members.filter((m) => m.membership_id !== membershipId),
         );
       } else {
         return state;

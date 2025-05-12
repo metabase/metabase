@@ -865,7 +865,12 @@
     :enabled   (t2/exists? :model/Table :is_upload true)}
    {:name      :snippet-collections
     :available (premium-features/enable-snippet-collections?)
-    :enabled   (t2/exists? :model/Collection :namespace "snippets")}])
+    :enabled   (t2/exists? :model/Collection :namespace "snippets")}
+   {:name      :starburst-legacy-impersonation
+    :available true
+    :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
+                    (some identity)
+                    boolean)}])
 
 (defn- snowplow-features
   []

@@ -36,7 +36,7 @@ describe("EmbedHomepage (OSS)", () => {
     setup();
 
     expect(
-      screen.getAllByRole("link", { name: "Check out the Quick Start" })[0],
+      screen.getAllByRole("link", { name: "Check out the Quickstart" })[0],
     ).toHaveAttribute(
       "href",
       "https://metaba.se/sdk-quick-start?utm_source=product&source_plan=oss&utm_content=embedding-homepage",

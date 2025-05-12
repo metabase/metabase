@@ -28,7 +28,7 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   height: 2rem;
   color: var(--mb-color-text-dark);
 
-  ${props => props.isHighlighted && highlighted}
+  ${(props) => props.isHighlighted && highlighted}
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
@@ -39,7 +39,7 @@ export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   padding-left: 0.875rem;
   margin-top: 12px;
 
-  ${props => props.isHighlighted && highlighted}
+  ${(props) => props.isHighlighted && highlighted}
 `;
 
 export const SuggestionTitle = styled.span`

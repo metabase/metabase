@@ -20,28 +20,28 @@ export const EmbedHomepage = () => {
   const exampleDashboardId = useSetting("example-dashboard-id");
   const [sendProductFeedback] = useSendProductFeedbackMutation();
 
-  const interactiveEmbeddingQuickStartUrl = useSelector(state =>
+  const interactiveEmbeddingQuickStartUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",
     }),
   );
-  const embeddingDocsUrl = useSelector(state =>
+  const embeddingDocsUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
     getDocsUrl(state, { page: "embedding/start" }),
   );
 
-  const learnMoreInteractiveEmbedding = useSelector(state =>
+  const learnMoreInteractiveEmbedding = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/interactive-embedding" }),
   );
 
-  const learnMoreStaticEmbedding = useSelector(state =>
+  const learnMoreStaticEmbedding = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
 
-  const plan = useSelector(state =>
+  const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
 

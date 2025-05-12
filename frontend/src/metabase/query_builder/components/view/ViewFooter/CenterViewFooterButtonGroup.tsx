@@ -15,7 +15,7 @@ export const CenterViewFooterButtonGroup = () => {
         className={CS.mx1}
         question={question}
         isShowingRawTable={isShowingRawTable}
-        onToggleRawTable={isShowingRawTable => {
+        onToggleRawTable={(isShowingRawTable) => {
           dispatch(setUIControls({ isShowingRawTable }));
         }}
       />

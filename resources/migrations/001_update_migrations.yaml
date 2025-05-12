@@ -10158,6 +10158,46 @@ databaseChangeLog:
             constraintName: idx_search_index_metadata_unique_status
             columnNames: engine, version, status
 
+  - changeSet:
+      id: v52.2025-01-05T00:00:01
+      author: escherize
+      comment: set enable-embedding-sdk false when embedding-app-origins-sdk value exists
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE key = 'embedding-app-origins-sdk';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'embedding-app-origins-sdk';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'embedding-app-origins-sdk';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              update setting set value = 'false' where key = 'enable-embedding-sdk';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting set `value` = 'false' where `key` = 'enable-embedding-sdk';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting set "VALUE" = 'false' where "KEY" = 'enable-embedding-sdk';
+      rollback: # not needed
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

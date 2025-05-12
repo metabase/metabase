@@ -128,7 +128,7 @@ export function ObjectDetailView({
     () =>
       passedZoomedRow ||
       (pkIndex !== undefined &&
-        data.rows.find(row => row[pkIndex] === zoomedRowID)) ||
+        data.rows.find((row) => row[pkIndex] === zoomedRowID)) ||
       undefined,
     [passedZoomedRow, pkIndex, data, zoomedRowID],
   );
@@ -190,10 +190,10 @@ export function ObjectDetailView({
         : undefined;
 
       MetabaseApi.dataset(datasetQuery)
-        .then(result => {
+        .then((result) => {
           if (result?.data?.rows?.length > 0) {
             const newRow = result.data.rows[0];
-            setData(prevData => ({
+            setData((prevData) => ({
               ...prevData,
               rows: [newRow, ...prevData.rows],
             }));
@@ -263,8 +263,8 @@ export function ObjectDetailView({
     ? getActionItems({
         actions,
         databases,
-        onDelete: action => setDeleteActionId(action.id),
-        onUpdate: action => setActionId(action.id),
+        onDelete: (action) => setDeleteActionId(action.id),
+        onUpdate: (action) => setActionId(action.id),
       })
     : [];
 

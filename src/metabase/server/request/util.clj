@@ -100,11 +100,12 @@
   [:map {:closed true}
    [:device_id          ms/NonBlankString]
    [:device_description ms/NonBlankString]
+   [:embedded           ms/BooleanValue]
    [:ip_address         ms/NonBlankString]])
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
+  [{{:strs [user-agent]} :headers, {:strs [token]} :query-params, :keys [browser-id], :as request}]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent
@@ -114,7 +115,8 @@
     (when-not (and id description ip-address)
       (log/warn "Error determining login history for request"))
     {:device_id          (or id (trs "unknown"))
-     :device_description (or description (trs "unknown"))
+     :device_description (or description (trs "unknown")),
+     :embedded           (= "true" token)
      :ip_address         (or ip-address (trs "unknown"))}))
 
 (defn describe-user-agent

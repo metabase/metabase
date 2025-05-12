@@ -27,13 +27,13 @@ export const InteractiveEmbeddingOptionCard = ({
   onToggle,
 }: EmbeddingOptionCardProps) => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
-  const plan = useSelector(state =>
+  const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
   const isInteractiveEmbeddingEnabled = useSetting(
     "enable-embedding-interactive",
   );
-  const quickStartUrl = useSelector(state =>
+  const quickStartUrl = useSelector((state) =>
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",
       utm: interactiveEmbeddingUtmTags,
@@ -74,7 +74,7 @@ export const InteractiveEmbeddingOptionCard = ({
         href={quickStartUrl}
         target="_blank"
       >
-        {t`Check out our Quick Start`}{" "}
+        {t`Check out our Quickstart`}{" "}
         <Box ml="sm" top="2.5px" pos="absolute" component="span">
           <Icon name="share" aria-hidden />
         </Box>

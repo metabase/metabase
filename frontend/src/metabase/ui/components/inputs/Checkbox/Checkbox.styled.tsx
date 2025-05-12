@@ -81,7 +81,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     variants: {
-      stacked: theme => ({
+      stacked: (theme) => ({
         inner: {
           position: "relative",
           zIndex: 0,

@@ -8,7 +8,7 @@ function checkFavicon(url) {
 }
 
 function checkLogo() {
-  cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(logo_data => {
+  cy.readFile("e2e/support/assets/logo.jpeg", "base64").then((logo_data) => {
     cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
   });
 }
@@ -59,7 +59,7 @@ H.describeEE("formatting > whitelabel", () => {
       beforeEach(() => {
         cy.log("Add a logo");
         cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-          logo_data => {
+          (logo_data) => {
             H.updateSetting(
               "application-logo-url",
               `data:image/jpeg;base64,${logo_data}`,
@@ -112,7 +112,7 @@ H.describeEE("formatting > whitelabel", () => {
         );
         H.undoToast().findByText("Changes saved").should("be.visible");
         cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
-          base64Url => {
+          (base64Url) => {
             const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
             cy.wrap(faviconUrl).as("faviconUrl");
             checkFavicon(faviconUrl);
@@ -120,7 +120,7 @@ H.describeEE("formatting > whitelabel", () => {
         );
         cy.signInAsNormalUser();
         cy.visit("/");
-        cy.get("@faviconUrl").then(faviconUrl => {
+        cy.get("@faviconUrl").then((faviconUrl) => {
           cy.get('head link[rel="icon"]')
             .get(`[href="${faviconUrl}"]`)
             .should("have.length", 1);
@@ -233,7 +233,7 @@ H.describeEE("formatting > whitelabel", () => {
             H.undoToast().findByText("Changes saved").should("be.visible");
 
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-              logo_data => {
+              (logo_data) => {
                 const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
                 cy.signOut();
                 cy.visit("/");
@@ -300,7 +300,7 @@ H.describeEE("formatting > whitelabel", () => {
           H.undoToast().findByText("Changes saved").should("be.visible");
 
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-            logo_data => {
+            (logo_data) => {
               const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
               cy.visit("/");
               cy.findByTestId("landing-page-illustration").should(
@@ -366,7 +366,7 @@ H.describeEE("formatting > whitelabel", () => {
 
           H.visitDashboard("@dashboardId");
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-            logo_data => {
+            (logo_data) => {
               const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
               cy.wrap(imageDataUrl).as("imageDataUrl");
               cy.findByAltText("No results").should(
@@ -378,7 +378,7 @@ H.describeEE("formatting > whitelabel", () => {
           );
 
           H.visitQuestion("@questionId");
-          cy.get("@imageDataUrl").then(imageDataUrl => {
+          cy.get("@imageDataUrl").then((imageDataUrl) => {
             cy.findByAltText("No results").should(
               "have.attr",
               "src",
@@ -437,7 +437,7 @@ H.describeEE("formatting > whitelabel", () => {
           H.modal().findByTestId("collection-picker-button").click();
           H.entityPickerModal().within(() => {
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-              logo_data => {
+              (logo_data) => {
                 const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
                 cy.wrap(imageDataUrl).as("imageDataUrl");
               },
@@ -447,7 +447,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByPlaceholderText("Search…").type(
               "This aren't the objects you're looking for",
             );
-            cy.get("@imageDataUrl").then(imageDataUrl => {
+            cy.get("@imageDataUrl").then((imageDataUrl) => {
               cy.findByAltText("No results").should(
                 "have.attr",
                 "src",

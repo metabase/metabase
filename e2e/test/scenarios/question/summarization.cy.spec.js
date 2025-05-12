@@ -93,16 +93,19 @@ describe("scenarios > question > summarize sidebar", () => {
       toBinning: "10 bins",
     });
 
-    H.getDimensionByName({ name: "Total" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    H.getDimensionByName({ name: "Quantity" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.getDimensionByName({ name: "Total" })
+      .scrollIntoView()
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Quantity" })
+      .should("have.attr", "aria-selected", "true")
+      .findByLabelText("Binning strategy")
+      .should("be.visible");
+    H.getDimensionByName({ name: "Discount" }).within(() => {
+      cy.button("Add dimension").realHover();
+      cy.findByLabelText("Binning strategy").should("be.visible");
+    });
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
@@ -200,7 +203,7 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.findByLabelText("Temporal bucket").click();
+      cy.findByLabelText("Temporal bucket").realHover().click();
     });
 
     H.popover()

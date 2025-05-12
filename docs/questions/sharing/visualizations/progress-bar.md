@@ -46,9 +46,9 @@ Selecting "**Style**: Percent" in format options will only change how the result
 
 ## Limitations and alternatives
 
-- Progress bars assume that your objective is to _increase_ a metric. If the objective is to decrease or reduce a metric, consider using the [gauge chart](gauge.md).
+- Progress bars assume that your objective is to _increase_ a metric. If the objective is to decrease or reduce a metric, consider using the [gauge chart](./gauge.md).
 
-- Progress bars don't support breakouts. If you'd like to display progress of a metric towards a goal across a breakout, consider using a [bar or line chart with a goal line](line-bar-and-area-charts.md#goal-lines).
+- Progress bars don't support breakouts. If you'd like to display progress of a metric towards a goal across a breakout, consider using a [bar or line chart with a goal line](./line-bar-and-area-charts.md#goal-lines).
 
 ## See also
 

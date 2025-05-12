@@ -193,7 +193,7 @@ describe("ListPickerConnected", () => {
       // there's a hidden input with the same value that you can't click
       const input = screen.getByRole("searchbox");
       await userEvent.click(input);
-      STATIC_VALUES.forEach(value =>
+      STATIC_VALUES.forEach((value) =>
         expect(screen.getByText(value)).toBeVisible(),
       );
 
@@ -217,15 +217,19 @@ describe("ListPickerConnected", () => {
       await userEvent.click(select);
       await userEvent.type(select, "Road");
 
-      STATIC_VALUES.filter(value => value.includes("Road")).forEach(value => {
-        const listItem = screen.queryByText(value);
-        expect(listItem).toBeVisible();
-      });
+      STATIC_VALUES.filter((value) => value.includes("Road")).forEach(
+        (value) => {
+          const listItem = screen.queryByText(value);
+          expect(listItem).toBeVisible();
+        },
+      );
 
-      STATIC_VALUES.filter(value => !value.includes("Road")).forEach(value => {
-        const listItem = screen.queryByText(value);
-        expect(listItem).not.toBeInTheDocument();
-      });
+      STATIC_VALUES.filter((value) => !value.includes("Road")).forEach(
+        (value) => {
+          const listItem = screen.queryByText(value);
+          expect(listItem).not.toBeInTheDocument();
+        },
+      );
     });
 
     it("clears value when clicked on Clear", async () => {
@@ -280,7 +284,7 @@ describe("ListPickerConnected", () => {
       await userEvent.click(
         screen.getByPlaceholderText("Select a default value…"),
       );
-      OTHER_VALUES.forEach(value => {
+      OTHER_VALUES.forEach((value) => {
         expect(screen.getByText(value)).toBeVisible();
       });
 
@@ -297,7 +301,7 @@ describe("ListPickerConnected", () => {
             screen.getByPlaceholderText("Select a default value…"),
           ),
       );
-      OTHER_VALUES.forEach(value => {
+      OTHER_VALUES.forEach((value) => {
         expect(screen.getByText(value)).toBeVisible();
       });
       await act(async () => await userEvent.click(screen.getByText("AL")));
@@ -320,23 +324,28 @@ describe("ListPickerConnected", () => {
       await userEvent.click(
         screen.getByPlaceholderText("Select a default value…"),
       );
-      OTHER_VALUES.forEach(value => {
+      OTHER_VALUES.forEach((value) => {
         expect(screen.getByText(value)).toBeVisible();
       });
     });
 
     // This probably shouldn't be supported but so far, it could happen
-    it.each([null, undefined])("renders with null/undefined values", value => {
-      expect(() => {
-        const { unmount } = setup({
-          value: value as any,
-          parameter: getEmptyParam(value),
-        });
+    it.each([null, undefined])(
+      "renders with null/undefined values",
+      (value) => {
+        expect(() => {
+          const { unmount } = setup({
+            value: value as any,
+            parameter: getEmptyParam(value),
+          });
 
-        userEvent.click(screen.getByPlaceholderText("Start typing to filter…"));
-        unmount();
-      }).not.toThrow();
-    });
+          userEvent.click(
+            screen.getByPlaceholderText("Start typing to filter…"),
+          );
+          unmount();
+        }).not.toThrow();
+      },
+    );
   });
 
   describe("parameters coming from card", () => {

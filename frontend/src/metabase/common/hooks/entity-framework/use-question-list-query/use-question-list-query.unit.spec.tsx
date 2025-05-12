@@ -5,7 +5,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { useQuestionListQuery } from "./use-question-list-query";
@@ -21,7 +21,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(question => (
+      {data.map((question) => (
         <div key={question.id()}>{question.displayName()}</div>
       ))}
 

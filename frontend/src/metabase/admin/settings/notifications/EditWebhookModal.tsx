@@ -45,7 +45,7 @@ export const EditWebhookModal = ({
       .then(() => {
         onClose();
       })
-      .catch(e => {
+      .catch((e) => {
         handleFieldError(e);
       });
   };

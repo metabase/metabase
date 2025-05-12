@@ -35,7 +35,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     beforeEach(cy.signInAsAdmin);
 
     it("should let you see all created alerts", () => {
-      cy.request("/api/alert").then(response => {
+      cy.request("/api/alert").then((response) => {
         expect(response.body).to.have.length(3);
       });
     });

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useSelector } from "metabase/lib/redux";
@@ -45,5 +45,5 @@ export const HomeRecentSection = () => {
 };
 
 export const recentsFilter = (results: RecentItem[]): RecentItem[] => {
-  return results.filter(item => item.model !== "collection").slice(0, 5);
+  return results.filter((item) => item.model !== "collection").slice(0, 5);
 };

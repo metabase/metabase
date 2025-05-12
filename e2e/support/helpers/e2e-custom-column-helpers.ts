@@ -39,10 +39,10 @@ export function enterCustomColumnDetails({
 }
 
 export function checkExpressionEditorHelperPopoverPosition() {
-  cy.findByTestId("expression-editor-textfield").then($target => {
+  cy.findByTestId("expression-editor-textfield").then(($target) => {
     const textfieldPosition = $target[0].getBoundingClientRect();
 
-    cy.findByTestId("expression-helper-popover").then($target => {
+    cy.findByTestId("expression-helper-popover").then(($target) => {
       const popoverPosition = $target[0].getBoundingClientRect();
 
       expect(textfieldPosition.top - popoverPosition.top).to.be.lessThan(

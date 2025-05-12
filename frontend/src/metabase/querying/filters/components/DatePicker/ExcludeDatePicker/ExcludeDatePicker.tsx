@@ -168,7 +168,7 @@ function ExcludeValuePicker({
 
   const handleToggleAll = (isChecked: boolean) => {
     if (isChecked) {
-      setValues(groups.flatMap(groups => groups.map(({ value }) => value)));
+      setValues(groups.flatMap((groups) => groups.map(({ value }) => value)));
     } else {
       setValues([]);
     }
@@ -181,7 +181,7 @@ function ExcludeValuePicker({
     if (isChecked) {
       setValues([...values, option.value]);
     } else {
-      setValues(values.filter(value => value !== option.value));
+      setValues(values.filter((value) => value !== option.value));
     }
   };
 
@@ -197,7 +197,7 @@ function ExcludeValuePicker({
         <Checkbox
           checked={isAll}
           label={isAll ? t`Select none` : t`Select all`}
-          onChange={event => handleToggleAll(event.target.checked)}
+          onChange={(event) => handleToggleAll(event.target.checked)}
         />
         <Divider />
         <Group>
@@ -208,7 +208,7 @@ function ExcludeValuePicker({
                   key={optionIndex}
                   label={option.label}
                   checked={values.includes(option.value)}
-                  onChange={event =>
+                  onChange={(event) =>
                     handleToggleOption(option, event.target.checked)
                   }
                 />

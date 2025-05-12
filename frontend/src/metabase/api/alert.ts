@@ -18,9 +18,9 @@ import {
 } from "./tags";
 
 export const alertApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listAlerts: builder.query<Alert[], ListAlertsRequest | void>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/alert",
         params,
@@ -36,14 +36,14 @@ export const alertApi = Api.injectEndpoints({
       providesTags: (alerts = []) => provideAlertListTags(alerts),
     }),
     getAlert: builder.query<Alert, AlertId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/alert/${id}`,
       }),
-      providesTags: alert => (alert ? provideAlertTags(alert) : []),
+      providesTags: (alert) => (alert ? provideAlertTags(alert) : []),
     }),
     createAlert: builder.mutation<Alert, CreateAlertRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/alert",
         body,
@@ -64,7 +64,7 @@ export const alertApi = Api.injectEndpoints({
         ]),
     }),
     deleteAlertSubscription: builder.mutation<void, AlertId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/alert/${id}/subscription`,
       }),
@@ -72,7 +72,7 @@ export const alertApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("alert"), idTag("alert", id)]),
     }),
     testAlert: builder.mutation<void, Partial<Alert> & { cards: AlertCard[] }>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: `/api/pulse/test`,
         body,

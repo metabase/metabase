@@ -10,6 +10,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
+   [iapetos.operations :as ops]
+   [iapetos.registry :as registry]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
@@ -59,6 +61,7 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
+   (org.eclipse.jetty.server Server)
    (org.quartz
     CronTrigger
     JobDetail
@@ -1561,3 +1564,34 @@
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
+
+(defn random-string
+  "Returns a string of `n` random alphanumeric characters."
+  [n]
+  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
+
+(defmacro with-prometheus-system!
+  "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
+  be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
+  registry and web-server."
+  [[port system] & body]
+  `(let [~system ^metabase.analytics.prometheus.PrometheusSystem
+         (#'metabase.analytics.prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
+         server#  ^Server (.web-server ~system)
+         ~port   (.. server# getURI getPort)]
+     (with-redefs [metabase.analytics.prometheus/system ~system]
+       (try ~@body
+            (finally (metabase.analytics.prometheus/stop-web-server ~system))))))
+
+(defn metric-value
+  "Return the value of `metric` in `system`'s registry."
+  ([system metric]
+   (metric-value system metric nil))
+  ([system metric labels]
+   (some-> system
+           :registry
+           (registry/get
+            {:name      (name metric)
+             :namespace (namespace metric)}
+            labels)
+           ops/read-value)))

@@ -5,12 +5,10 @@ import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
 import EventSandbox from "metabase/components/EventSandbox";
-import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
-import { useMantineTheme } from "metabase/ui";
 
 import type { SizeToFitOptions } from "./SizeToFitModifier";
 import { sizeToFitModifierFn } from "./SizeToFitModifier";
@@ -86,9 +84,6 @@ function TippyPopover({
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
 
-  const theme = useMantineTheme();
-  const { zIndex = DEFAULT_Z_INDEX } = theme.other.popover ?? {};
-
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
@@ -138,7 +133,8 @@ function TippyPopover({
     <TippyComponent
       className={cx("popover", className)}
       theme="popover"
-      zIndex={zIndex}
+      // Tippy's type definition does not support string z-index values
+      zIndex={"var(--mb-overlay-z-index)" as unknown as number}
       arrow={false}
       offset={OFFSET}
       appendTo={appendTo}

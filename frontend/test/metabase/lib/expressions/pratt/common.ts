@@ -41,7 +41,7 @@ export function compile(source: string, type: Type, opts: Opts = {}) {
       passes: opts.resolverPass
         ? [
             ...passes,
-            expression => resolve({ expression, type, fn: mockResolve }),
+            (expression) => resolve({ expression, type, fn: mockResolve }),
           ]
         : passes,
       getMBQLName,

@@ -17,8 +17,8 @@ import { PaletteFooter } from "./PaletteFooter";
 import { PaletteResults } from "./PaletteResults";
 
 /** Command palette */
-export const Palette = withRouter(props => {
-  const isLoggedIn = useSelector(state => !!getUser(state));
+export const Palette = withRouter((props) => {
+  const isLoggedIn = useSelector((state) => !!getUser(state));
 
   useCommandPaletteBasicActions({ ...props, isLoggedIn });
 
@@ -36,7 +36,7 @@ export const Palette = withRouter(props => {
 });
 
 const PaletteContainer = () => {
-  const { query } = useKBar(state => ({ actions: state.actions }));
+  const { query } = useKBar((state) => ({ actions: state.actions }));
   const ref = useRef(null);
 
   useOnClickOutside(ref, () => {

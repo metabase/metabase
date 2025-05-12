@@ -61,7 +61,7 @@ function getOptions(
   );
 
   return availableBuckets
-    .map(bucket => {
+    .map((bucket) => {
       const info = Lib.displayInfo(query, stageIndex, bucket);
       if (info.isTemporalExtraction) {
         return null;

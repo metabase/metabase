@@ -139,7 +139,7 @@ async function setup({
 
   const queryResult = createMockDataset({
     data: {
-      cols: ordersTable.getFields().map(field => field.column()),
+      cols: ordersTable.getFields().map((field) => field.column()),
     },
   });
 
@@ -165,7 +165,7 @@ async function setup({
   })(dispatch, getState);
 
   const actions = dispatch.mock.calls.find(
-    call => call[0]?.type === UPDATE_QUESTION,
+    (call) => call[0]?.type === UPDATE_QUESTION,
   );
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
@@ -297,7 +297,7 @@ describe("QB Actions > updateQuestion", () => {
   ];
 
   describe("common", () => {
-    ALL_TEST_CASES.forEach(testCase => {
+    ALL_TEST_CASES.forEach((testCase) => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
@@ -345,42 +345,48 @@ describe("QB Actions > updateQuestion", () => {
 
   describe("saved questions and models", () => {
     describe("common", () => {
-      [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(testCase => {
-        const { getCard, questionType } = testCase;
+      [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(
+        (testCase) => {
+          const { getCard, questionType } = testCase;
 
-        describe(questionType, () => {
-          it("turns question into ad-hoc", async () => {
-            const { question, result } = await setup({ card: getCard() });
-            expect(result.card.id).toBeUndefined();
-            expect(result.card.name).toBeUndefined();
-            expect(result.card.description).toBeUndefined();
-            expect(result.card.dataset_query).toEqual(question.datasetQuery());
-            expect(result.card.visualization_settings).toEqual(
-              question.settings(),
-            );
-          });
-
-          it("doesn't turn question into ad-hoc if `shouldStartAdHocQuestion` option is disabled", async () => {
-            const { question, result } = await setup({
-              card: getCard(),
-              shouldStartAdHocQuestion: false,
+          describe(questionType, () => {
+            it("turns question into ad-hoc", async () => {
+              const { question, result } = await setup({ card: getCard() });
+              expect(result.card.id).toBeUndefined();
+              expect(result.card.name).toBeUndefined();
+              expect(result.card.description).toBeUndefined();
+              expect(result.card.dataset_query).toEqual(
+                question.datasetQuery(),
+              );
+              expect(result.card.visualization_settings).toEqual(
+                question.settings(),
+              );
             });
 
-            expect(result.card.id).toBe(question.id());
-            expect(result.card.name).toBe(question.displayName());
-            expect(result.card.description).toBe(question.description());
-            expect(result.card.dataset_query).toEqual(question.datasetQuery());
-            expect(result.card.visualization_settings).toEqual(
-              question.settings(),
-            );
+            it("doesn't turn question into ad-hoc if `shouldStartAdHocQuestion` option is disabled", async () => {
+              const { question, result } = await setup({
+                card: getCard(),
+                shouldStartAdHocQuestion: false,
+              });
+
+              expect(result.card.id).toBe(question.id());
+              expect(result.card.name).toBe(question.displayName());
+              expect(result.card.description).toBe(question.description());
+              expect(result.card.dataset_query).toEqual(
+                question.datasetQuery(),
+              );
+              expect(result.card.visualization_settings).toEqual(
+                question.settings(),
+              );
+            });
           });
-        });
-      });
+        },
+      );
     });
 
     describe("structured questions and models", () => {
       [TEST_CASE.SAVED_STRUCTURED_QUESTION, TEST_CASE.STRUCTURED_MODEL].forEach(
-        testCase => {
+        (testCase) => {
           const { getCard, questionType } = testCase;
 
           describe(questionType, () => {
@@ -402,7 +408,7 @@ describe("QB Actions > updateQuestion", () => {
 
     describe("native questions and models", () => {
       [TEST_CASE.SAVED_NATIVE_QUESTION, TEST_CASE.NATIVE_MODEL].forEach(
-        testCase => {
+        (testCase) => {
           const { getCard, questionType } = testCase;
 
           describe(questionType, () => {
@@ -427,7 +433,7 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("saved questions", () => {
-    SAVED_QUESTION_TEST_CASES.forEach(testCase => {
+    SAVED_QUESTION_TEST_CASES.forEach((testCase) => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
@@ -442,7 +448,7 @@ describe("QB Actions > updateQuestion", () => {
 
   describe("models", () => {
     describe("common", () => {
-      MODEL_TEST_CASES.forEach(testCase => {
+      MODEL_TEST_CASES.forEach((testCase) => {
         const { getCard, questionType } = testCase;
 
         describe(questionType, () => {
@@ -484,7 +490,7 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("native", () => {
-    NATIVE_TEST_CASES.forEach(testCase => {
+    NATIVE_TEST_CASES.forEach((testCase) => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
@@ -500,7 +506,7 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("structured", () => {
-    STRUCTURED_MODEL_TEST_CASES.forEach(testCase => {
+    STRUCTURED_MODEL_TEST_CASES.forEach((testCase) => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
@@ -539,7 +545,7 @@ describe("QB Actions > updateQuestion", () => {
       });
     });
 
-    STRUCTURED_QUESTIONS_TEST_CASES.forEach(testCase => {
+    STRUCTURED_QUESTIONS_TEST_CASES.forEach((testCase) => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
@@ -684,7 +690,7 @@ describe("QB Actions > updateQuestion", () => {
       });
     });
 
-    [...NATIVE_TEST_CASES].forEach(testCase => {
+    [...NATIVE_TEST_CASES].forEach((testCase) => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {

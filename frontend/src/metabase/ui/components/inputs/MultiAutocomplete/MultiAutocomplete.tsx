@@ -129,7 +129,7 @@ export function MultiAutocomplete({
       setSelectedValues(unique([...lastSelectedValues]));
     }
 
-    const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
+    const quotes = Array.from(newSearchValue).filter((ch) => ch === '"').length;
 
     if (
       (last === "," && quotes % 2 === 0) ||
@@ -217,6 +217,6 @@ function getAvailableSelectItems(
 
 function defaultShouldCreate(query: string, selectedValues: string[]) {
   return (
-    query.trim().length > 0 && !selectedValues.some(value => value === query)
+    query.trim().length > 0 && !selectedValues.some((value) => value === query)
   );
 }

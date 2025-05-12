@@ -78,7 +78,7 @@ export const ErrorDiagnosticModal = ({
   const handleSubmit = (values: PayloadSelection) => {
     trackErrorDiagnosticModalSubmitted("download-diagnostics");
     const selectedKeys = Object.keys(values).filter(
-      key => values[key as keyof PayloadSelection],
+      (key) => values[key as keyof PayloadSelection],
     );
     const selectedInfo: Partial<ErrorPayload> = _.pick(
       errorInfo,
@@ -99,7 +99,7 @@ export const ErrorDiagnosticModal = ({
     const { description, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      key => diagnosticSelections[key],
+      (key) => diagnosticSelections[key],
     );
     const selectedInfo = {
       ..._.pick(errorInfo, ...selectedKeys),

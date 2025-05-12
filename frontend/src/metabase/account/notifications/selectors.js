@@ -14,11 +14,11 @@ export const getNotifications = createSelector(
   [({ alerts }) => alerts, ({ pulses }) => pulses],
   (alerts, pulses) => {
     const items = [
-      ...alerts.map(alert => ({
+      ...alerts.map((alert) => ({
         item: alert,
         type: "alert",
       })),
-      ...pulses.map(pulse => ({
+      ...pulses.map((pulse) => ({
         item: pulse,
         type: "pulse",
       })),

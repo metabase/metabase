@@ -33,7 +33,7 @@ export const BreakoutInner = ({
 
   return (
     <Group>
-      {breakoutItems.map(item => (
+      {breakoutItems.map((item) => (
         <Popover key={item.longDisplayName}>
           <Popover.Target>
             <BadgeListItem

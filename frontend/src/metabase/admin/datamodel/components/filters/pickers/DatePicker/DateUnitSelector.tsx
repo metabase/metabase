@@ -33,8 +33,8 @@ const DateUnitSelector = ({
   <Select
     className={cx(className)}
     value={value ? String(value) : null}
-    onChange={value => value && onChange(value)}
-    data={periods.map(period => ({
+    onChange={(value) => value && onChange(value)}
+    data={periods.map((period) => ({
       value: period,
       label: formatDisplayName(period, formatter(intervals) || 1),
     }))}

@@ -1,40 +1,10 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
-import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
+import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
+import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineTheme } from "metabase/ui";
-
-/** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */
-const CSS_VARIABLES_TO_SDK_THEME_MAP = {
-  "--mb-color-tooltip-text": "tooltip.textColor",
-  "--mb-color-tooltip-background": "tooltip.backgroundColor",
-  "--mb-color-tooltip-background-focused": "tooltip.focusedBackgroundColor",
-  "--mb-color-tooltip-text-secondary": "tooltip.secondaryTextColor",
-  "--mb-color-bg-dashboard": "dashboard.backgroundColor",
-  "--mb-color-bg-dashboard-card": "dashboard.card.backgroundColor",
-  "--mb-color-bg-question": "question.backgroundColor",
-  "--mb-color-text-collection-browser-expand-button":
-    "collectionBrowser.breadcrumbs.expandButton.textColor",
-  "--mb-color-bg-collection-browser-expand-button":
-    "collectionBrowser.breadcrumbs.expandButton.backgroundColor",
-  "--mb-color-text-collection-browser-expand-button-hover":
-    "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
-  "--mb-color-bg-collection-browser-expand-button-hover":
-    "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
-} satisfies Record<string, MetabaseComponentThemeKey>;
-
-// https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
-type FlattenObjectKeys<
-  T extends Record<string, unknown>,
-  Key = keyof T,
-> = Key extends string
-  ? T[Key] extends Record<string, unknown> | undefined
-    ? `${Key}.${FlattenObjectKeys<Exclude<T[Key], undefined>>}`
-    : `${Key}`
-  : never;
-
-type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
 
 /**
  * Defines the CSS variables used across Metabase.
@@ -49,6 +19,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-color-summarize: ${theme.fn.themeColor("summarize")};
       --mb-color-filter: ${theme.fn.themeColor("filter")};
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
@@ -59,6 +30,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
@@ -77,7 +49,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     /* Dynamic colors from SDK */
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
       ([_, metabaseColorNames]) => {
-        return metabaseColorNames.map(metabaseColorName => {
+        return metabaseColorNames.map((metabaseColorName) => {
           /**
            * Prevent returning the primary color when color is not found,
            * so we could add a logic to fallback to the default color ourselves.

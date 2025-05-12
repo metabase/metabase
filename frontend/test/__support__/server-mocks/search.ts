@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
-  fetchMock.get("path:/api/search", uri => {
+  fetchMock.get("path:/api/search", (uri) => {
     const url = new URL(uri);
     const models = url.searchParams.getAll("models");
     const limit = Number(url.searchParams.get("limit")) || 50;

@@ -1,4 +1,4 @@
-export interface EmbedOptions {
+export interface InteractiveEmbeddingOptions {
   font?: string;
   top_nav?: boolean;
   search?: boolean;
@@ -12,6 +12,6 @@ export interface EmbedOptions {
 }
 
 export interface EmbedState {
-  options: EmbedOptions;
+  options: InteractiveEmbeddingOptions;
   isEmbeddingSdk?: boolean;
 }

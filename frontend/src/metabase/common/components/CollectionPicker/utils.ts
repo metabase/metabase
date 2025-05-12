@@ -124,7 +124,7 @@ export const getPathLevelForItem = (
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(
-    level => String(level?.query?.id) === String(parentCollectionId),
+    (level) => String(level?.query?.id) === String(parentCollectionId),
   );
 
   return pathLevel === -1 ? 0 : pathLevel;

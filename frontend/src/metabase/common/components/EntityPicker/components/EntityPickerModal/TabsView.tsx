@@ -40,7 +40,7 @@ export const TabsView = <
       data-testid="tabs-view"
     >
       <Tabs.List px="1rem">
-        {tabs.map(tab => {
+        {tabs.map((tab) => {
           const { id, icon, displayName } = tab;
 
           return (
@@ -56,7 +56,7 @@ export const TabsView = <
         })}
       </Tabs.List>
 
-      {tabs.map(tab => {
+      {tabs.map((tab) => {
         const { id } = tab;
 
         return (
@@ -69,7 +69,7 @@ export const TabsView = <
             }}
           >
             {tab.render({
-              onItemSelect: item => onItemSelect(item, id),
+              onItemSelect: (item) => onItemSelect(item, id),
             })}
           </Tabs.Panel>
         );

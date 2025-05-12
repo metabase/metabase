@@ -93,7 +93,7 @@ describe("scenarios > dashboard", () => {
       });
 
       H.queryBuilderHeader().findByText("Save").click();
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
         cy.findByText("Save").click();
       });
@@ -106,7 +106,7 @@ describe("scenarios > dashboard", () => {
         cy.findByRole("tab", { name: /Dashboards/ }).click();
         cy.findByText(dashboardName)
           .closest("button")
-          .then($button => {
+          .then(($button) => {
             expect($button).to.have.attr("data-active", "true");
           });
         cy.button("Select").click();
@@ -139,7 +139,7 @@ describe("scenarios > dashboard", () => {
         H.appBar().findByText("New").click();
         H.popover().findByText("Dashboard").should("be.visible").click();
         const NEW_DASHBOARD = "Foo";
-        cy.findByTestId("new-dashboard-modal").then(modal => {
+        cy.findByTestId("new-dashboard-modal").then((modal) => {
           cy.findByRole("heading", { name: "New dashboard" });
           cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
           cy.findByTestId("collection-picker-button")
@@ -188,7 +188,7 @@ describe("scenarios > dashboard", () => {
       cy.log("Save new question from an ad-hoc query");
       H.openProductsTable();
       cy.findByTestId("qb-header").findByText("Save").click();
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByText("Save").click();
       });
       cy.wait("@saveQuestion");
@@ -383,7 +383,7 @@ describe("scenarios > dashboard", () => {
         H.showDashboardCardActions();
         H.getDashboardCardMenu().click();
         H.popover().findByText("Edit model").should("be.visible").click();
-        cy.get("@slug").then(slug => {
+        cy.get("@slug").then((slug) => {
           cy.location("pathname").should("eq", `/model/${slug}/query`);
         });
       });
@@ -409,7 +409,7 @@ describe("scenarios > dashboard", () => {
         H.showDashboardCardActions();
         H.getDashboardCardMenu().click();
         H.popover().findByText("Edit metric").should("be.visible").click();
-        cy.get("@slug").then(slug => {
+        cy.get("@slug").then((slug) => {
           cy.location("pathname").should("eq", `/metric/${slug}/query`);
         });
       });
@@ -525,7 +525,7 @@ describe("scenarios > dashboard", () => {
 
         H.sidesheet().within(() => {
           cy.log("Markdown content should not be bigger than its container");
-          cy.findByTestId("editable-text").then($markdown => {
+          cy.findByTestId("editable-text").then(($markdown) => {
             const el = $markdown[0];
 
             // vertical
@@ -548,7 +548,7 @@ describe("scenarios > dashboard", () => {
           );
           cy.findByTestId("editable-text")
             .click()
-            .then($el => {
+            .then(($el) => {
               const lineHeight = parseFloat(
                 window.getComputedStyle($el[0]).lineHeight,
               );
@@ -972,7 +972,7 @@ describe("scenarios > dashboard", () => {
 
     H.filterWidget().as("filterWidget").click();
 
-    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach((category) => {
       cy.findByText(category);
     });
 
@@ -1282,7 +1282,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
           },
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     // new dashboards should default to 'fixed' width
     H.assertDashboardFixedWidth();
@@ -1327,7 +1327,7 @@ function checkOptionsForFilter(filter) {
 }
 
 function assertScrollBarExists() {
-  cy.get("body").then($body => {
+  cy.get("body").then(($body) => {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });

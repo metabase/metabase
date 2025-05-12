@@ -64,7 +64,7 @@ View data permission settings apply to different levels in your database:
 
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
-For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
+For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](./collections.md).
 
 ### Can view data permission
 

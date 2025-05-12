@@ -35,7 +35,7 @@ describe("suggestWithFooters", () => {
   it("should return correct functions link for expressions", () => {
     const suggestions = setup({ startRule: "expression" });
 
-    expect(suggestions.find(suggestion => "footer" in suggestion)).toEqual({
+    expect(suggestions.find((suggestion) => "footer" in suggestion)).toEqual({
       footer: true,
       name: "Documentation",
       icon: "external",
@@ -45,7 +45,7 @@ describe("suggestWithFooters", () => {
 
   it("should return correct functions link for filters", () => {
     const suggestions = setup({ startRule: "boolean" });
-    expect(suggestions.find(suggestion => "footer" in suggestion)).toEqual({
+    expect(suggestions.find((suggestion) => "footer" in suggestion)).toEqual({
       footer: true,
       name: "Documentation",
       icon: "external",
@@ -55,7 +55,7 @@ describe("suggestWithFooters", () => {
 
   it("should return correct functions link for aggregations", () => {
     const suggestions = setup({ startRule: "aggregation" });
-    expect(suggestions.find(suggestion => "footer" in suggestion)).toEqual({
+    expect(suggestions.find((suggestion) => "footer" in suggestion)).toEqual({
       footer: true,
       name: "Documentation",
       icon: "external",

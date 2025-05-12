@@ -11,25 +11,25 @@ redirect_from:
 
 ## Enable SAML in Metabase
 
-First, follow our guide to [enable SAML authentication](authenticating-with-saml.md).
+First, follow our guide to [enable SAML authentication](./authenticating-with-saml.md).
 
 ## Add an Enterprise Application in Microsoft Entra ID
 
 Go to Microsoft Entra admin center and click on **Enterprise Applications** under Applications from the side bar. Once there, click on **+ New Application** in the bar on the top of the page.
 
-![AZEnterpriseApp](images/saml-azure-ad-enterprise-app.png)
+![AZEnterpriseApp](./images/saml-azure-ad-enterprise-app.png)
 
 In the new page click on **+ Create your own application** and a bar will open in the right side of the page. Enter "Metabase" as the name of the application, select `Integrate any other application you don't find in the gallery (Non-gallery)` as the option and click the **Create** button on the bottom of the bar.
 
-![AZMetabaseApp](images/saml-azure-ad-create.png)
+![AZMetabaseApp](./images/saml-azure-ad-create.png)
 
 On the application page, under **Manage**, select **Single Sign-on**, then click on the "SAML" button.
 
-![AZAppSAML](images/saml-azure-app-saml.png)
+![AZAppSAML](./images/saml-azure-app-saml.png)
 
 When the "Set up Single Sign-On with SAML" page appears, you'll see an option for "Basic SAML configuration". Click on the **Edit** button to enter the required info.
 
-![AZAzureStep1](images/saml-azure-step-1.png)
+![AZAzureStep1](./images/saml-azure-step-1.png)
 
 Fill out the following fields as follows and click "Save":
 

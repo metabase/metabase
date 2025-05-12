@@ -12,6 +12,8 @@
    [metabase.util.malli.schema :as ms]
    [ring.adapter.jetty :as ring-jetty])
   (:import
+   (java.net InetAddress)
+   (org.apache.http.impl.conn InMemoryDnsResolver)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -296,3 +298,14 @@
              (@#'api.geojson/builtin-geojson)))
       (is (= "Invalid custom GeoJSON key: us_states"
              (mt/user-real-request :crowberto :get 400 "geojson/us_states"))))))
+
+(deftest resolver-disallows-link-local-geojson-attack
+  (testing "Should block link local dns resolution"
+    (binding [api.geojson/*system-dns-resolver* (doto (InMemoryDnsResolver.)
+                                                  (.add "metabase.com"
+                                                        (into-array [(InetAddress/getByAddress (byte-array [1 1 1 1]))
+                                                                     (InetAddress/getByAddress (byte-array [169 254 169 254]))])))]
+      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
+                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
+                  "prohibited.")
+             (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))))

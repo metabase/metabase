@@ -54,7 +54,7 @@ export const HeaderTitleContainer = styled.span<{
   margin-top: 0;
   margin-bottom: 0;
 
-  ${props => getHeaderTitleContainerVariantStyle(props.variant)}
+  ${(props) => getHeaderTitleContainerVariantStyle(props.variant)}
 `;
 
 export const CloseButton = styled.a`

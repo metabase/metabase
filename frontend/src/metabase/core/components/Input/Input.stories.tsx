@@ -8,17 +8,17 @@ export default {
   component: Input,
 };
 
-const UncontrolledTemplate: StoryFn<InputProps> = args => {
+const UncontrolledTemplate: StoryFn<InputProps> = (args) => {
   return <Input {...args} />;
 };
 
-const ControlledTemplate: StoryFn<typeof Input> = args => {
+const ControlledTemplate: StoryFn<typeof Input> = (args) => {
   const [value, setValue] = useState("");
   return (
     <Input
       {...args}
       value={value}
-      onChange={e => setValue(e.target.value)}
+      onChange={(e) => setValue(e.target.value)}
       onResetClick={() => setValue("")}
     />
   );

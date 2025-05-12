@@ -2,11 +2,11 @@ import cx from "classnames";
 import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import QuestionDownloadPopover from "metabase/query_builder/components/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
@@ -60,7 +60,7 @@ export function PublicOrEmbeddedQuestionView({
   const question = new Question(card, metadata);
   const actionButtons =
     result && downloadsEnabled ? (
-      <QueryDownloadWidget
+      <QuestionDownloadPopover
         className={cx(CS.m1, CS.textMediumHover)}
         question={question}
         result={result}
@@ -103,11 +103,11 @@ export function PublicOrEmbeddedQuestionView({
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
             ) => {
-              setCard(prevCard =>
+              setCard((prevCard) =>
                 updateIn(
                   prevCard,
                   ["visualization_settings"],
-                  previousSettings => ({ ...previousSettings, ...settings }),
+                  (previousSettings) => ({ ...previousSettings, ...settings }),
                 ),
               );
             }}

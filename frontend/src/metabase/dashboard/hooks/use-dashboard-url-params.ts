@@ -50,14 +50,14 @@ export const useDashboardUrlParams = ({
   useLocationSync<boolean>({
     key: "fullscreen",
     value: isFullscreen,
-    onChange: value => onFullscreenChange(value ?? false),
+    onChange: (value) => onFullscreenChange(value ?? false),
     location,
   });
 
   useLocationSync<DisplayTheme>({
     key: "theme",
     value: theme,
-    onChange: value => setTheme(value ?? "light"),
+    onChange: (value) => setTheme(value ?? "light"),
     location,
   });
 

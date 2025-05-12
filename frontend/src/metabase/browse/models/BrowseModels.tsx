@@ -191,7 +191,7 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
     recentModels: (recentModelsResult.data ?? [])
       .filter(isRecentModel)
       .filter(
-        model => !filters.verified || model.moderated_status === "verified",
+        (model) => !filters.verified || model.moderated_status === "verified",
       )
       .slice(0, recentsCap),
   };

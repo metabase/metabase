@@ -14,7 +14,7 @@ export function fillParametersInText({
     (acc, mapping) => {
       const tagId = mapping.target[1];
       const parameter = dashboard.parameters?.find(
-        p => p.id === mapping.parameter_id,
+        (p) => p.id === mapping.parameter_id,
       );
 
       if (parameter) {

@@ -10,8 +10,8 @@ const mockFilter: SearchFilterComponent = {
   label: () => "Mock Filter",
   iconName: "filter",
   type: "toggle",
-  fromUrl: value => value,
-  toUrl: value => value,
+  fromUrl: (value) => value,
+  toUrl: (value) => value,
 };
 
 const MockToggleSidebarFilter = ({

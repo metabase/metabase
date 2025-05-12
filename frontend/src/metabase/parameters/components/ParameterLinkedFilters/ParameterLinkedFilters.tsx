@@ -2,7 +2,7 @@ import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import { Box, Switch } from "metabase/ui";
@@ -147,7 +147,7 @@ function UsableParameters({
       const newParameters = isFiltered
         ? (parameter.filteringParameters ?? []).concat(otherParameter.id)
         : (parameter.filteringParameters ?? []).filter(
-            id => id !== otherParameter.id,
+            (id) => id !== otherParameter.id,
           );
 
       onChangeFilteringParameters(newParameters);
@@ -169,7 +169,7 @@ function UsableParameters({
           <em key="text">{t`this`}</em>
         )} filter.`}
       </SectionMessage>
-      {usableParameters.map(otherParameter => (
+      {usableParameters.map((otherParameter) => (
         <LinkedParameter
           key={otherParameter.id}
           parameter={parameter}

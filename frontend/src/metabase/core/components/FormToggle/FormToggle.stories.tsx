@@ -9,7 +9,7 @@ export default {
   component: FormToggle,
 };
 
-const Template: StoryFn<typeof FormToggle> = args => {
+const Template: StoryFn<typeof FormToggle> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

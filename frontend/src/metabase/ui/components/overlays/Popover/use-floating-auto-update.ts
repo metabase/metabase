@@ -48,6 +48,6 @@ export function useFloatingAutoUpdate({
   }, positionDependencies);
 
   useDidUpdate(() => {
-    setDelayedUpdate(c => c + 1);
+    setDelayedUpdate((c) => c + 1);
   }, [opened]);
 }

@@ -73,7 +73,7 @@ describe("scenarios > public > question", () => {
       cy.wait("@publicQuery");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUuid => {
+      cy.get("@uuid").then((publicUuid) => {
         H.downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUuid },
           H.assertSheetRowsCount(5),
@@ -93,7 +93,7 @@ describe("scenarios > public > question", () => {
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").should($input => {
+          cy.findByTestId("public-link-input").should(($input) => {
             expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
           });
           cy.findByText("Remove public URL").should("not.exist");
@@ -143,7 +143,7 @@ describe("scenarios > public > question", () => {
 
     H.saveQuestion("test question", { wrapId: true });
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
@@ -168,7 +168,7 @@ describe("scenarios > public > question", () => {
         .type(`{leftarrow}{leftarrow}${id}`);
 
       H.saveQuestion("test question", { wrapId: true });
-      cy.get("@questionId").then(id => {
+      cy.get("@questionId").then((id) => {
         H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
           cy.signInAsNormalUser().then(() => {
@@ -217,7 +217,7 @@ H.describeEE("scenarios [EE] > public > question", () => {
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("/app/locales/de.json").as("deLocale");
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       H.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
@@ -237,13 +237,13 @@ H.describeEE("scenarios [EE] > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  cy.findByTestId("public-link-input").should($input => {
+  cy.findByTestId("public-link-input").should(($input) => {
     // Copied URL has no get params
     expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
   });
   cy.findByTestId("public-link-input")
     .invoke("val")
-    .then(publicURL => {
+    .then((publicURL) => {
       cy.signOut();
       cy.visit(publicURL);
     });

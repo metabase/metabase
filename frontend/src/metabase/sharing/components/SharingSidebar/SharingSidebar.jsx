@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import {
@@ -48,12 +48,12 @@ const CHANNEL_TYPES = {
   SLACK: "slack",
 };
 
-const cardsFromDashboard = dashboard => {
+const cardsFromDashboard = (dashboard) => {
   if (dashboard === undefined) {
     return [];
   }
 
-  return dashboard.dashcards.map(card => ({
+  return dashboard.dashcards.map((card) => ({
     id: card.card.id,
     collection_id: card.card.collection_id,
     description: card.card.description,
@@ -67,15 +67,15 @@ const cardsFromDashboard = dashboard => {
   }));
 };
 
-export const getSupportedCardsForSubscriptions = dashboard => {
+export const getSupportedCardsForSubscriptions = (dashboard) => {
   return cardsFromDashboard(dashboard).filter(
-    card => !isVirtualCardDisplayType(card.display),
+    (card) => !isVirtualCardDisplayType(card.display),
   );
 };
 
 const cardsToPulseCards = (cards, pulseCards) => {
-  return cards.map(card => {
-    const pulseCard = pulseCards.find(pc => pc.id === card.id) || card;
+  return cards.map((card) => {
+    const pulseCard = pulseCards.find((pc) => pc.id === card.id) || card;
     return {
       ...card,
       format_rows: pulseCard.format_rows,
@@ -216,11 +216,11 @@ class SharingSidebarInner extends Component {
     }
   };
 
-  setPulse = pulse => {
+  setPulse = (pulse) => {
     this.props.updateEditingPulse(pulse);
   };
 
-  setPulseWithChannel = type => {
+  setPulseWithChannel = (type) => {
     const { dashboard, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
@@ -262,7 +262,7 @@ class SharingSidebarInner extends Component {
     this.setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
   };
 
-  setPulseParameters = parameters => {
+  setPulseParameters = (parameters) => {
     const { pulse } = this.props;
 
     this.setPulse({

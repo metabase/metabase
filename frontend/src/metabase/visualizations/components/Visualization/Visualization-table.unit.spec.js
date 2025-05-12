@@ -50,7 +50,7 @@ describe("Table", () => {
 
     const bgColors = rows
       .map(([value]) => screen.getByText(String(value)))
-      .map(element =>
+      .map((element) =>
         window
           .getComputedStyle(element.parentNode)
           .getPropertyValue("background"),

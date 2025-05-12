@@ -42,7 +42,7 @@ describe("AccountHeader", () => {
 
   it("should show the password tab if it is enabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_IS_PASSWORD_USER.push(user => user.google_auth);
+    PLUGIN_IS_PASSWORD_USER.push((user) => user.google_auth);
 
     render(<AccountHeader user={user} />);
 
@@ -51,7 +51,7 @@ describe("AccountHeader", () => {
 
   it("should hide the password tab if it is disabled by a plugin", () => {
     const user = getUser();
-    PLUGIN_IS_PASSWORD_USER.push(user => !user.google_auth);
+    PLUGIN_IS_PASSWORD_USER.push((user) => !user.google_auth);
 
     render(<AccountHeader user={user} />);
 

@@ -89,7 +89,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   return rowIndexes;
 }
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   queryBuilderMode: getQueryBuilderMode(state),
   rowIndexToPkMap: getRowIndexToPKMap(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
@@ -97,8 +97,8 @@ const mapStateToProps = state => ({
   isRawTable: getIsShowingRawTable(state),
 });
 
-const mapDispatchToProps = dispatch => ({
-  onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
+const mapDispatchToProps = (dispatch) => ({
+  onZoomRow: (objectId) => dispatch(zoomInRow({ objectId })),
 });
 
 class TableInteractive extends Component {
@@ -111,8 +111,17 @@ class TableInteractive extends Component {
       contentWidths: null,
       showDetailShortcut: true,
     };
+
     this.columnHasResized = {};
+
+    /** @type {React.RefObject<HTMLDivElement>[]} */
     this.headerRefs = [];
+
+    /** @type {React.RefObject<HTMLDivElement>[]} */
+    this.resizeHandleRefs = [];
+
+    this._setupColumnHeaderDraggableRefs(props.data);
+
     this.detailShortcutRef = createRef();
 
     this.gridRef = createRef();
@@ -170,7 +179,7 @@ class TableInteractive extends Component {
     );
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     // for measuring cells:
     this._div = document.createElement("div");
     this._div.className = cx(TableS.TableInteractive, "test-TableInteractive");
@@ -251,7 +260,7 @@ class TableInteractive extends Component {
 
   _showDetailShortcut = (data, isPivoted) => {
     const hasAggregation = data.cols.some(
-      column => column.source === "aggregation",
+      (column) => column.source === "aggregation",
     );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
     const isModelEditor = this.props.queryBuilderMode === "dataset";
@@ -268,7 +277,9 @@ class TableInteractive extends Component {
   };
 
   _getColumnSettings(props) {
-    return props.data && props.data.cols.map(col => props.settings.column(col));
+    return (
+      props.data && props.data.cols.map((col) => props.settings.column(col))
+    );
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -291,6 +302,10 @@ class TableInteractive extends Component {
   }
 
   componentDidUpdate(prevProps) {
+    if (prevProps.data?.cols?.length !== this.props.data?.cols?.length) {
+      this._setupColumnHeaderDraggableRefs(this.props.data);
+    }
+
     if (
       !this.state.contentWidths ||
       prevProps.renderTableHeaderWrapper !== this.props.renderTableHeaderWrapper
@@ -315,6 +330,19 @@ class TableInteractive extends Component {
       this.props.height
     ) {
       this.props.dispatch(setUIControls({ scrollToLastColumn: false }));
+    }
+  }
+
+  _setupColumnHeaderDraggableRefs(data) {
+    const columnCount = data?.cols?.length;
+
+    // Initialize refs for each column headers.
+    // Without this, the draggable components will crash on React 19.
+    // This is because react-draggable uses ReactDOM.findDOMNode
+    // when `nodeRef` is falsey, which no longer exists on React 19.
+    if (columnCount !== undefined) {
+      this.headerRefs = [...Array(columnCount)].map(() => createRef());
+      this.resizeHandleRefs = [...Array(columnCount)].map(() => createRef());
     }
   }
 
@@ -352,7 +380,7 @@ class TableInteractive extends Component {
                   style: {},
                   isVirtual: true,
                 })}
-                {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                {pickRowsToMeasure(rows, columnIndex).map((rowIndex) =>
                   this.cellRenderer({
                     rowIndex,
                     columnIndex,
@@ -370,7 +398,7 @@ class TableInteractive extends Component {
     this._root = renderRoot(content, this._div);
   }
 
-  onMeasureHeaderRender = div => {
+  onMeasureHeaderRender = (div) => {
     const {
       data: { cols },
     } = this.props;
@@ -381,7 +409,7 @@ class TableInteractive extends Component {
 
     const contentWidths = [].map.call(
       div.getElementsByClassName("fake-column"),
-      columnElement => columnElement.offsetWidth,
+      (columnElement) => columnElement.offsetWidth,
     );
 
     const columnWidths = cols.map((col, index) => {
@@ -444,7 +472,7 @@ class TableInteractive extends Component {
 
     const enabledColumns = columns
       .map((c, index) => ({ ...c, index }))
-      .filter(c => c.enabled);
+      .filter((c) => c.enabled);
 
     const adjustedColumnIndex = enabledColumns[columnIndex].index;
     const adjustedNewColumnIndex = enabledColumns[newColumnIndex].index;
@@ -570,7 +598,7 @@ class TableInteractive extends Component {
     }
   }
 
-  pkClick = rowIndex => () => {
+  pkClick = (rowIndex) => () => {
     let objectId;
 
     if (this.state.IDColumn) {
@@ -582,7 +610,7 @@ class TableInteractive extends Component {
     this.props.onZoomRow(objectId);
   };
 
-  onKeyDown = event => {
+  onKeyDown = (event) => {
     const detailEl = this.detailShortcutRef.current;
     const visibleDetailButton =
       !!detailEl &&
@@ -634,14 +662,14 @@ class TableInteractive extends Component {
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
-    const handleClick = e => {
+    const handleClick = (e) => {
       if (!isClickable || !this.visualizationIsClickable(clicked)) {
         return;
       }
       this.onVisualizationClick(clicked, e.currentTarget);
     };
 
-    const handleKeyUp = e => {
+    const handleKeyUp = (e) => {
       if (!isClickable || !this.visualizationIsClickable(clicked)) {
         return;
       }
@@ -686,10 +714,12 @@ class TableInteractive extends Component {
         onClick={handleClick}
         onKeyUp={handleKeyUp}
         onMouseEnter={
-          showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
+          showDetailShortcut
+            ? (e) => this.handleHoverRow(e, rowIndex)
+            : undefined
         }
         onMouseLeave={
-          showDetailShortcut ? e => this.handleLeaveRow() : undefined
+          showDetailShortcut ? (e) => this.handleLeaveRow() : undefined
         }
         tabIndex="0"
       >
@@ -704,7 +734,7 @@ class TableInteractive extends Component {
             iconSize={10}
             icon="ellipsis"
             onlyIcon
-            onClick={e => this.handleExpandButtonClick(e, columnIndex)}
+            onClick={(e) => this.handleExpandButtonClick(e, columnIndex)}
           />
         )}
       </Box>
@@ -721,13 +751,13 @@ class TableInteractive extends Component {
     if (dragColStyle) {
       if (data.x < 0) {
         const left = dragColStyle.left + data.x;
-        const index = _.findIndex(columnPositions, p => left < p.center);
+        const index = _.findIndex(columnPositions, (p) => left < p.center);
         if (index >= 0) {
           return index;
         }
       } else if (data.x > 0) {
         const right = dragColStyle.left + dragColStyle.width + data.x;
-        const index = _.findLastIndex(columnPositions, p => right > p.center);
+        const index = _.findLastIndex(columnPositions, (p) => right > p.center);
         if (index >= 0) {
           return index;
         }
@@ -751,19 +781,19 @@ class TableInteractive extends Component {
     });
   };
 
-  getNewColumnLefts = dragColNewIndex => {
+  getNewColumnLefts = (dragColNewIndex) => {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
     let left = this.state.showDetailShortcut ? SIDEBAR_WIDTH : 0;
-    const lefts = indexes.map(index => {
+    const lefts = indexes.map((index) => {
       const thisLeft = left;
       left += columnPositions[index].width;
       return { index, left: thisLeft };
     });
     lefts.sort((a, b) => a.index - b.index);
-    return lefts.map(p => p.left);
+    return lefts.map((p) => p.left);
   };
 
   getColumnLeft(style, index) {
@@ -822,8 +852,14 @@ class TableInteractive extends Component {
 
     const columnInfoPopoverTestId = "field-info-popover";
 
+    // Wait for the refs to be set before rendering
+    if (!this.headerRefs[columnIndex] || !this.resizeHandleRefs[columnIndex]) {
+      return null;
+    }
+
     return (
       <TableDraggable
+        nodeRef={this.headerRefs[columnIndex]}
         enableUserSelectHack={false}
         enableCustomUserSelectHack={!isVirtual}
         /* needs to be index+name+counter so Draggable resets after each drag */
@@ -859,7 +895,10 @@ class TableInteractive extends Component {
           } else if (Math.abs(d.x) + Math.abs(d.y) < HEADER_DRAG_THRESHOLD) {
             // in setTimeout since headers will be rerendered due to DRAG_COUNTER changing
             setTimeout(() => {
-              this.onVisualizationClick(clicked, this.headerRefs[columnIndex]);
+              this.onVisualizationClick(
+                clicked,
+                this.headerRefs[columnIndex]?.current,
+              );
             });
           }
           this.setState({
@@ -872,7 +911,13 @@ class TableInteractive extends Component {
         }}
       >
         <Box
-          ref={e => (this.headerRefs[columnIndex] = e)}
+          ref={(element) => {
+            // We cannot have `null` in `nodeRef` as it will fallback to
+            // `findDOMNode` which no longer exists in React 19.
+            if (element) {
+              this.headerRefs[columnIndex].current = element;
+            }
+          }}
           style={{
             ...style,
             overflow: "visible" /* ensure resize handle is visible */,
@@ -907,7 +952,7 @@ class TableInteractive extends Component {
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
-              ? e => {
+              ? (e) => {
                   this.onVisualizationClick(clicked, e.currentTarget);
                 }
               : undefined
@@ -957,7 +1002,7 @@ class TableInteractive extends Component {
               x: this.getColumnWidth({ index: columnIndex }),
               y: 0,
             }}
-            onStart={e => {
+            onStart={(e) => {
               e.stopPropagation();
               this.setState({ dragColIndex: columnIndex });
             }}
@@ -967,8 +1012,16 @@ class TableInteractive extends Component {
               this.onColumnResize(columnIndex, x);
               this.setState({ dragColIndex: null });
             }}
+            nodeRef={this.resizeHandleRefs[columnIndex]}
           >
             <ResizeHandle
+              ref={(element) => {
+                // We cannot have `null` in `nodeRef` as it will fallback to
+                // `findDOMNode` which no longer exists in React 19.
+                if (element) {
+                  this.resizeHandleRefs[columnIndex].current = element;
+                }
+              }}
               style={{
                 zIndex: 99,
                 position: "absolute",
@@ -999,7 +1052,7 @@ class TableInteractive extends Component {
     return this.getColumnWidth({ index: dataIndex });
   };
 
-  _getColumnFullWidth = index => {
+  _getColumnFullWidth = (index) => {
     const { settings } = this.props;
     const { columnWidths } = this.state;
     const columnWidthsSetting = settings["table.column_widths"] || [];
@@ -1010,9 +1063,9 @@ class TableInteractive extends Component {
     return explicitWidth || calculatedWidth;
   };
 
-  handleExpandColumn = index =>
+  handleExpandColumn = (index) =>
     this.setState(
-      prevState => {
+      (prevState) => {
         const columnIsExpanded = prevState.columnIsExpanded.slice();
         columnIsExpanded[index] = true;
         return { columnIsExpanded };
@@ -1020,7 +1073,7 @@ class TableInteractive extends Component {
       () => this.recomputeGridSize(),
     );
 
-  isColumnWidthTruncated = index => {
+  isColumnWidthTruncated = (index) => {
     const { columnIsExpanded } = this.state;
 
     return (
@@ -1135,7 +1188,7 @@ class TableInteractive extends Component {
     } = this.props;
 
     if (!width || !height) {
-      return <div className={className} />;
+      return <div ref={this.props.forwardedRef} className={className} />;
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
@@ -1169,9 +1222,9 @@ class TableInteractive extends Component {
             } else {
               mainGridProps.scrollLeft = scrollLeft;
             }
-
             return (
               <TableInteractiveRoot
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,
@@ -1228,7 +1281,7 @@ class TableInteractive extends Component {
                     height={headerHeight - 1}
                     pageWidth={width}
                     totalWidth={totalWidth}
-                    onClick={evt => {
+                    onClick={(evt) => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
                         evt.target,
@@ -1237,7 +1290,9 @@ class TableInteractive extends Component {
                   />
                 )}
                 <Grid
-                  ref={ref => (this.header = ref)}
+                  ref={(ref) => {
+                    this.header = ref;
+                  }}
                   style={{
                     top: 0,
                     left: 0,
@@ -1257,7 +1312,7 @@ class TableInteractive extends Component {
                   rowHeight={headerHeight}
                   columnCount={cols.length + gutterColumn + shortcutColumn}
                   columnWidth={this.getDisplayColumnWidth}
-                  cellRenderer={props => {
+                  cellRenderer={(props) => {
                     if (props.columnIndex === 0 && gutterColumn) {
                       // we need a phantom cell to properly offset gutter columns
                       return null;
@@ -1295,7 +1350,7 @@ class TableInteractive extends Component {
                   columnWidth={this.getDisplayColumnWidth}
                   rowCount={rows.length}
                   rowHeight={ROW_HEIGHT}
-                  cellRenderer={props => {
+                  cellRenderer={(props) => {
                     if (props.columnIndex === 0 && gutterColumn) {
                       // we need a phantom cell to properly offset gutter columns
                       return null;
@@ -1357,20 +1412,27 @@ class TableInteractive extends Component {
   }
 }
 
+const TableInteractiveMemoized = memoizeClass(
+  "_getCellClickedObjectCached",
+  "_visualizationIsClickableCached",
+  "getCellBackgroundColor",
+  "getCellFormattedValue",
+  "getHeaderClickedObject",
+)(TableInteractive);
+
+const TableInteractiveWithRef = forwardRef((props, ref) => (
+  <TableInteractiveMemoized {...props} forwardedRef={ref} />
+));
+
+TableInteractiveWithRef.displayName = "TableInteractiveInner";
+
 export default _.compose(
   withMantineTheme,
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
   ExplicitSize({
-    refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+    refreshMode: (props) => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
-  memoizeClass(
-    "_getCellClickedObjectCached",
-    "_visualizationIsClickableCached",
-    "getCellBackgroundColor",
-    "getCellFormattedValue",
-    "getHeaderClickedObject",
-  ),
-)(TableInteractive);
+)(TableInteractiveWithRef);
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div

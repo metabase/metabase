@@ -86,7 +86,7 @@ function PermissionsPageLayout({
   const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
     useToggle(_showSplitPermsModal);
 
-  const saveError = useSelector(state => state.admin.permissions.saveError);
+  const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);

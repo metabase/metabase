@@ -68,7 +68,7 @@ function setup({
   });
   const metadata = getMetadata(state);
 
-  databases.forEach(db => {
+  databases.forEach((db) => {
     setupSchemaEndpoints(db);
   });
 
@@ -503,7 +503,7 @@ describe("Admin > Settings > UploadSetting", () => {
         },
       });
       updateSpy.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 500)),
+        () => new Promise((resolve) => setTimeout(resolve, 500)),
       );
 
       const prefixInput = await screen.findByPlaceholderText("upload_");
@@ -531,7 +531,7 @@ describe("Admin > Settings > UploadSetting", () => {
         },
       });
       updateSpy.mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 500)),
+        () => new Promise((resolve) => setTimeout(resolve, 500)),
       );
 
       const prefixInput = await screen.findByPlaceholderText("upload_");

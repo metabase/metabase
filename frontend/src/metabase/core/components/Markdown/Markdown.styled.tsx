@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import type { MarkdownProps } from "./Markdown";
 
 export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
-  ${props =>
+  ${(props) =>
     props.lineClamp &&
     css`
       display: -webkit-box;
@@ -31,12 +31,12 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   a {
     cursor: pointer;
     text-decoration: none;
-    color: ${props =>
+    color: ${(props) =>
       props.unstyleLinks ? color("text-white") : color("brand")};
   }
 
   a:hover {
-    text-decoration: ${props => (props.unstyleLinks ? "none" : "underline")};
+    text-decoration: ${(props) => (props.unstyleLinks ? "none" : "underline")};
   }
 
   img {
@@ -47,7 +47,7 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   hr {
     border: none;
     border-bottom: 1px solid
-      ${props =>
+      ${(props) =>
         props.dark ? "var(--mb-color-bg-dark)" : "var(--mb-color-border)"};
   }
 `;

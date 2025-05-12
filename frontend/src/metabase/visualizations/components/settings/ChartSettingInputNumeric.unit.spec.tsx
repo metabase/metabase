@@ -20,7 +20,6 @@ function setup({
     <ChartSettingInputNumeric
       value={value}
       onChange={onChange}
-      onChangeSettings={() => null}
       options={options}
     />,
   );

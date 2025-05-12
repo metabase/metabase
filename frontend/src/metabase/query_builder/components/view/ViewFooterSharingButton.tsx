@@ -10,7 +10,7 @@ import { getSetting } from "metabase/selectors/settings";
 export const ViewFooterSharingButton = (
   viewFooterButtonProps: Omit<ViewFooterButtonProps, "icon" | "data-testid">,
 ) => {
-  const isPublicSharingEnabled = useSelector(state =>
+  const isPublicSharingEnabled = useSelector((state) =>
     getSetting(state, "enable-public-sharing"),
   );
 

@@ -35,7 +35,7 @@ export const WebhookChannelEdit = ({
   });
 
   const channelIndex = alert.channels.findIndex(
-    channel =>
+    (channel) =>
       channel.channel_type === "http" && channel.channel_id === notification.id,
   );
   const channel = alert.channels[channelIndex];
@@ -70,7 +70,7 @@ export const WebhookChannelEdit = ({
         <Switch
           className={CS.flexAlignRight}
           checked={channel?.enabled}
-          onChange={val =>
+          onChange={(val) =>
             toggleChannel(
               "http",
               channelIndex,

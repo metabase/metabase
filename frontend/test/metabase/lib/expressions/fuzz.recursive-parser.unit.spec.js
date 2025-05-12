@@ -6,7 +6,7 @@ import { generateExpression } from "./generator";
 
 const fuzz = process.env.MB_FUZZ ? describe : _.noop;
 
-const handle = source => parse(source);
+const handle = (source) => parse(source);
 
 describe("metabase-lib/v1/expressions/recursive-parser", () => {
   // quick sanity check before the real fuzzing

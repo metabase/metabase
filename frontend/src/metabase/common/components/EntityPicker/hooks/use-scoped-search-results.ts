@@ -127,7 +127,7 @@ const tablesToSearchResults = (
   tables: Table[],
   dbName: string | undefined,
 ): SearchItem[] => {
-  return tables.map(table => ({
+  return tables.map((table) => ({
     ...table,
     id: Number(table.id),
     name: table.display_name,
@@ -145,7 +145,7 @@ const filterSearchResults = (
   searchQuery: string,
   searchModels: string[],
 ) => {
-  return results.filter(result => {
+  return results.filter((result) => {
     const matchesQuery = result.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());

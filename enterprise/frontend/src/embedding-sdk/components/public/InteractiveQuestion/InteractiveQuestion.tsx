@@ -1,16 +1,16 @@
 import type { PropsWithChildren } from "react";
 
-import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import {
   BackButton,
   Breakout,
   BreakoutDropdown,
   ChartTypeDropdown,
   ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
   Editor,
   EditorButton,
   Filter,
-  FilterButton,
   FilterDropdown,
   QuestionResetButton,
   QuestionSettings,
@@ -19,7 +19,6 @@ import {
   SaveButton,
   SdkSaveQuestionForm,
   Summarize,
-  SummarizeButton,
   SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
@@ -28,24 +27,27 @@ import {
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
-  InteractiveQuestionResult,
-  type InteractiveQuestionResultProps,
-} from "embedding-sdk/components/private/InteractiveQuestionResult";
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
+import type { SdkQuestionId } from "embedding-sdk/types/question";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: InteractiveQuestionProviderProps["cardId"];
+  questionId: SdkQuestionId;
   plugins?: InteractiveQuestionProviderProps["componentPlugins"];
 }> &
   Pick<
     InteractiveQuestionProviderProps,
+    | "questionId"
     | "onBeforeSave"
     | "onSave"
     | "entityTypeFilter"
     | "isSaveEnabled"
-    | "saveToCollectionId"
     | "initialSqlParameters"
+    | "withDownloads"
+    | "saveToCollection"
+    | "targetCollection"
   >;
 
 export const _InteractiveQuestion = ({
@@ -62,24 +64,27 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollectionId,
+  targetCollection,
+  saveToCollection,
   withChartTypeSelector = true,
+  withDownloads = false,
   initialSqlParameters,
 }: InteractiveQuestionProps &
-  InteractiveQuestionResultProps &
-  FlexibleSizeProps): JSX.Element | null => (
+  InteractiveQuestionDefaultViewProps): JSX.Element | null => (
   <InteractiveQuestionProvider
-    cardId={questionId}
+    questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollectionId={saveToCollectionId}
+    targetCollection={targetCollection}
+    saveToCollection={saveToCollection}
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
     {children ?? (
-      <InteractiveQuestionResult
+      <InteractiveQuestionDefaultView
         height={height}
         width={width}
         className={className}
@@ -98,11 +103,9 @@ const InteractiveQuestion = withPublicComponentWrapper(
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
-  FilterButton: typeof FilterButton;
   ResetButton: typeof QuestionResetButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
-  SummarizeButton: typeof SummarizeButton;
   SummarizeDropdown: typeof SummarizeDropdown;
   /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
@@ -115,21 +118,20 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
   ChartTypeDropdown: typeof ChartTypeDropdown;
-  EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
   QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.FilterButton = FilterButton;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeButton = SummarizeButton;
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
@@ -141,11 +143,11 @@ InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
-InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
 InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-
+InteractiveQuestion.DownloadWidget = DownloadWidget;
+InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
 export { InteractiveQuestion };

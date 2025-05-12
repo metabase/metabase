@@ -32,7 +32,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
       cy.findByText("Collection").click();
     });
 
-    cy.findByTestId("new-collection-modal").then(modal => {
+    cy.findByTestId("new-collection-modal").then((modal) => {
       cy.findByTestId("collection-picker-button").findByText("Our analytics");
 
       cy.findByPlaceholderText("My new fantastic collection").type(

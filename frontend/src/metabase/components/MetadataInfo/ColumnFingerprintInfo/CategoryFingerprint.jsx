@@ -115,8 +115,8 @@ ShortenedFieldValuesList.propTypes = {
 function ShortenedFieldValuesList({ isLoading, fieldValues }) {
   const shortenedValuesStr = fieldValues
     .slice(0, FIELD_VALUES_SHOW_LIMIT)
-    .map(value => (Array.isArray(value) ? value[0] : value))
-    .filter(value => value !== null)
+    .map((value) => (Array.isArray(value) ? value[0] : value))
+    .filter((value) => value !== null)
     .join(", ");
 
   return (

@@ -1670,3 +1670,22 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))))))
+
+(deftest ^:parallel pivot-xlsx-export-respects-custom-title
+  (testing "Pivot tables exported as xlsx should respect column title viz settings #51342"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CATEGORY"]
+                                                :columns []
+                                                :values  ["sum" "count"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:column_title "Custom Title"}}}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]
+                                                               [:count]]
+                                                 :breakout    [$category]})}]
+        (let [res (card-download card {:export-format :xlsx :format-rows true :pivot true})]
+          (is (= "Custom Title"
+                 (second (first res)))))))))

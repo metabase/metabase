@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 
 import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 import {

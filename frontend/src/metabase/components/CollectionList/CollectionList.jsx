@@ -23,8 +23,8 @@ function CollectionList({ collections, currentUser }) {
   return (
     <Grid>
       {collections
-        .filter(c => c.id !== currentUser.personal_collection_id)
-        .map(collection => (
+        .filter((c) => c.id !== currentUser.personal_collection_id)
+        .map((collection) => (
           <CollectionGridItem key={collection.id}>
             <CollectionItem collection={collection} />
           </CollectionGridItem>

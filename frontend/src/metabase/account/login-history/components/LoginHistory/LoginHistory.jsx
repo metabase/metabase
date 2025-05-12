@@ -45,15 +45,15 @@ const LoginHistoryGroup = ({ items, date }) => (
   <LoginGroup>
     <Label>{date}</Label>
     <div>
-      {items.map(item => (
+      {items.map((item) => (
         <LoginHistoryItem key={item.timestamp} item={item} />
       ))}
     </div>
   </LoginGroup>
 );
 
-const formatItems = items =>
-  items.map(item => {
+const formatItems = (items) =>
+  items.map((item) => {
     const parsedTimestamp = moment.parseZone(item.timestamp);
     return {
       ...item,
@@ -66,7 +66,7 @@ const formatItems = items =>
 
 function LoginHistoryList({ loginHistory }) {
   const items = formatItems(loginHistory);
-  const groups = _.groupBy(items, item => item.date);
+  const groups = _.groupBy(items, (item) => item.date);
 
   if (!items || !items.length) {
     return (

@@ -59,12 +59,12 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
               <>
                 <FieldList
                   fields={table.fields}
-                  onFieldClick={f => onItemClick("field", f)}
+                  onFieldClick={(f) => onItemClick("field", f)}
                 />
                 {table.connectedTables() && (
                   <ConnectedTableList
                     tables={table.connectedTables()}
-                    onTableClick={t => onItemClick("table", t)}
+                    onTableClick={(t) => onItemClick("table", t)}
                   />
                 )}
               </>
@@ -82,7 +82,7 @@ function TablePane({ table, onItemClick, onBack, onClose }: TablePaneProps) {
                   </NodeListTitleText>
                 </NodeListTitle>
                 <ul>
-                  {table.metrics?.map(metric => (
+                  {table.metrics?.map((metric) => (
                     <li key={metric.card().id}>
                       <NodeListItemLink
                         onClick={() => onItemClick("question", metric.card())}

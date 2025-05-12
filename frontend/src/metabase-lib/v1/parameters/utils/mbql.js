@@ -39,7 +39,8 @@ const timeParameterValueDeserializers = [
         withTemporalUnit(fieldRef, unit),
         ...options
           .filter(
-            ({ serialized }) => !!_.find(values, value => value === serialized),
+            ({ serialized }) =>
+              !!_.find(values, (value) => value === serialized),
           )
           .map(({ value }) => value),
       ];
@@ -149,7 +150,7 @@ export function dateParameterValueToMBQL(
   fieldRef,
   isDatePicker = true,
 ) {
-  const deserializer = timeParameterValueDeserializers.find(des =>
+  const deserializer = timeParameterValueDeserializers.find((des) =>
     des.testRegex.test(parameterValue),
   );
 
@@ -189,7 +190,7 @@ export function numberParameterValueToMBQL(parameter, fieldRef) {
   const operatorName = getParameterOperatorName(subtype);
 
   return [operatorName, fieldRef].concat(
-    [].concat(parameterValue).map(value => {
+    [].concat(parameterValue).map((value) => {
       const number = parseFloat(value);
       return isNaN(number) ? null : number;
     }),
@@ -251,7 +252,7 @@ export function applyFilterParameter(query, stageIndex, parameter) {
 
 export function applyTemporalUnitParameter(query, stageIndex, parameter) {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const columns = breakouts.map(breakout =>
+  const columns = breakouts.map((breakout) =>
     Lib.breakoutColumn(query, stageIndex, breakout),
   );
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
@@ -268,7 +269,7 @@ export function applyTemporalUnitParameter(query, stageIndex, parameter) {
   const breakout = breakouts[columnIndex];
   const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
   const bucket = buckets.find(
-    bucket =>
+    (bucket) =>
       Lib.displayInfo(query, stageIndex, bucket).shortName === parameter.value,
   );
   if (!bucket) {

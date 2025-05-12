@@ -226,7 +226,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           />
           <SegmentedControl
             value={amPm}
-            onChange={value =>
+            onChange={(value) =>
               this.handleChangeProperty("schedule_hour", hour + value * 12)
             }
             options={AM_PM_OPTIONS}

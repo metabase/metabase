@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import { BaseChartSettings } from "../BaseChartSettings";
-import { ChartSettingsRoot } from "../ChartSettings.styled";
 import { useChartSettingsState } from "../hooks";
 
 import type { QuestionChartSettingsProps } from "./types";
@@ -31,17 +30,16 @@ export const QuestionChartSettings = ({
   );
 
   return (
-    <ChartSettingsRoot>
-      <BaseChartSettings
-        question={question}
-        series={series}
-        onChange={onChange}
-        initial={initial}
-        computedSettings={computedSettings}
-        chartSettings={chartSettings}
-        transformedSeries={transformedSeries}
-        widgets={widgets}
-      />
-    </ChartSettingsRoot>
+    <BaseChartSettings
+      question={question}
+      series={series}
+      onChange={onChange}
+      initial={initial}
+      computedSettings={computedSettings}
+      chartSettings={chartSettings}
+      transformedSeries={transformedSeries}
+      widgets={widgets}
+      w="100%"
+    />
   );
 };

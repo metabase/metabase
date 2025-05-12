@@ -58,8 +58,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                 name: t`No field type`,
                 section: t`Other`,
               })}
-              optionValueFn={o => o.id}
-              optionSectionFn={o => o.section}
+              optionValueFn={(o) => o.id}
+              optionSectionFn={(o) => o.section}
             />
           ) : (
             <div className={cx(CS.flex, CS.alignCenter)}>
@@ -101,7 +101,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                   }
                   onChange={formField.fk_target_field_id.onChange}
                   options={Object.values(foreignKeys)}
-                  optionValueFn={o => o.id}
+                  optionValueFn={(o) => o.id}
                 />
               )
             : isTypeFK(field.semantic_type) && (

@@ -22,7 +22,7 @@ Before setting up SAML, make sure you know the password for your Metabase admin 
 
 Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click on the **Authentication** tab. Click the **Set up** button in the SAML section of the Authentication page, and you'll see this form:
 
-![SAML form](images/saml-form.png)
+![SAML form](./images/saml-form.png)
 
 The form includes three sections:
 
@@ -36,11 +36,11 @@ First you'll need to make sure things are configured correctly with your IdP. Ea
 
 We've written up some guides for the most common providers:
 
-- [Auth0](saml-auth0.md)
-- [Microsoft Entra ID](saml-azure.md)
-- [Google](saml-google.md)
-- [Keycloak](saml-keycloak.md)
-- [Okta](saml-okta.md)
+- [Auth0](./saml-auth0.md)
+- [Microsoft Entra ID](./saml-azure.md)
+- [Google](./saml-google.md)
+- [Keycloak](./saml-keycloak.md)
+- [Okta](./saml-okta.md)
 
 If you don't see your IdP listed here:
 
@@ -74,11 +74,11 @@ as the redirect URL in your IdP's SAML form.
 
 Different IdPs use different names for the redirect URL. Here are some common examples:
 
-| Provider               | Name                     |
-| ---------------------- | ------------------------ |
-| [Auth0](saml-auth0.md) | Application Callback URL |
-| [Okta](saml-okta.md)   | Single Sign On URL       |
-| OneLogin               | ACS (Consumer) URL       |
+| Provider                 | Name                     |
+| ------------------------ | ------------------------ |
+| [Auth0](./saml-auth0.md) | Application Callback URL |
+| [Okta](./saml-okta.md)   | Single Sign On URL       |
+| OneLogin                 | ACS (Consumer) URL       |
 
 ### User attributes
 
@@ -104,11 +104,11 @@ Metabase will redirect login requests to the Identity Provider URL, where people
 
 Different IdPs use different names for the Identity Provider URL. Here are some common examples:
 
-| Provider               | Name                                 |
-| ---------------------- | ------------------------------------ |
-| [Auth0](saml-auth0.md) | Identity Provider Login URL          |
-| [Okta](saml-okta.md)   | Identity Provider Single-Sign On URL |
-| OneLogin               | SAML 2.0 Endpoint (HTTP)             |
+| Provider                 | Name                                 |
+| ------------------------ | ------------------------------------ |
+| [Auth0](./saml-auth0.md) | Identity Provider Login URL          |
+| [Okta](./saml-okta.md)   | Identity Provider Single-Sign On URL |
+| OneLogin                 | SAML 2.0 Endpoint (HTTP)             |
 
 ### SAML identity provider issuer
 
@@ -116,11 +116,11 @@ The SAML identity provider issuer is a unique identifier for the IdP. You might 
 
 We recommend that you set this value to make your SAML configuration more secure.
 
-| Provider               | Name                        |
-| ---------------------- | --------------------------- |
-| [Auth0](saml-auth0.md) | Identity Provider Login URL |
-| [Okta](saml-okta.md)   | Identity Provider Issuer    |
-| OneLogin               | Issuer URL                  |
+| Provider                 | Name                        |
+| ------------------------ | --------------------------- |
+| [Auth0](./saml-auth0.md) | Identity Provider Login URL |
+| [Okta](./saml-okta.md)   | Identity Provider Issuer    |
+| OneLogin                 | Issuer URL                  |
 
 ### SAML identity provider certificate
 
@@ -130,11 +130,11 @@ Your IdP might have you download this certificate as a file (usually `.cer` or `
 
 Note that your certificate text may include header and footer comments that look like `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`. These comments should be included when pasting your certificate text into Metabase.
 
-| Provider               | Name                |
-| ---------------------- | ------------------- |
-| [Auth0](saml-auth0.md) | Signing Certificate |
-| [Okta](saml-okta.md)   | X.509 Certificate   |
-| OneLogin               | X.509 Certificate   |
+| Provider                 | Name                |
+| ------------------------ | ------------------- |
+| [Auth0](./saml-auth0.md) | Signing Certificate |
+| [Okta](./saml-okta.md)   | X.509 Certificate   |
+| OneLogin                 | X.509 Certificate   |
 
 ### Settings for signing SSO requests (optional)
 
@@ -178,7 +178,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 6. Click **Save**.
 7. After that, type in the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
 
-![Group schema](images/saml-okta-groups.png)
+![Group schema](./images/saml-okta-groups.png)
 
 ## Creating Metabase accounts with SSO
 
@@ -194,7 +194,7 @@ Metabase accounts created with an external identity provider login don't have pa
 
 To _require_ people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**. Turn off the **Enable Password Authentication** toggle.
 
-![Password disable](images/password-disable.png)
+![Password disable](./images/password-disable.png)
 
 ## New account notification emails
 

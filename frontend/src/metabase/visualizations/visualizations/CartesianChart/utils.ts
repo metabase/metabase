@@ -91,7 +91,7 @@ export const getHoveredEChartsSeriesDataKeyAndIndex = (
   // ECharts series contain goal line, trend lines, and timeline events so the series index
   // is different from one in chartModel.seriesModels
   const hoveredEChartsSeriesIndex = seriesOptions.findIndex(
-    series => series.id === hoveredSeriesDataKey,
+    (series) => series.id === hoveredSeriesDataKey,
   );
 
   return { hoveredSeriesDataKey, hoveredEChartsSeriesIndex };

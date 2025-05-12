@@ -7,8 +7,11 @@ import {
   useState,
 } from "react";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
@@ -26,7 +29,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  saveToCollectionId?: CollectionId;
+  targetCollection?: CollectionId;
 };
 
 export const SaveQuestionContext =
@@ -55,7 +58,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  saveToCollectionId,
+  targetCollection: userTargetCollection,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -63,6 +66,18 @@ export const SaveQuestionProvider = ({
   const defaultCollectionId = useGetDefaultCollectionId(
     originalQuestion?.collectionId(),
   );
+
+  const currentUser = useSelector(getCurrentUser);
+  const { id: collectionId } = useValidatedEntityId({
+    type: "collection",
+    id: userTargetCollection,
+  });
+
+  const targetCollection =
+    collectionId ||
+    (currentUser && userTargetCollection === "personal"
+      ? currentUser.personal_collection_id
+      : userTargetCollection);
 
   const initialValues: FormValues = useMemo(
     () => getInitialValues(originalQuestion, question, defaultCollectionId),
@@ -77,9 +92,9 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        saveToCollectionId,
+        targetCollection,
       }),
-    [originalQuestion, question, onSave, onCreate, saveToCollectionId],
+    [originalQuestion, question, onSave, onCreate, targetCollection],
   );
 
   // we care only about the very first result as question can be changed before
@@ -113,7 +128,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            saveToCollectionId,
+            targetCollection,
           }}
         >
           {children}

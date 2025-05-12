@@ -78,7 +78,7 @@ const DataSelectorTablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables.filter(isNotNull).map(table => ({
+        items: tables.filter(isNotNull).map((table) => ({
           name: table.displayName(),
           table: table,
           database: selectedDatabase,

@@ -7,6 +7,7 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Database]]
@@ -16,11 +17,14 @@
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -59,6 +63,50 @@
           (t2/delete! Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
+
+(deftest health-check-database-test
+  (mt/test-drivers (mt/normal-drivers)
+    (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+      (binding [h2/*allow-testing-h2-connections* true]
+        (testing "successes"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+              (database/health-check-database! (mt/db))
+              (is (== 1 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+
+        (testing "skip audit"
+          (mt/with-prometheus-system! [_ system]
+            (database/health-check-database! (assoc (mt/db) :is_audit true))
+            (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+
+        (testing "skip sample"
+          (mt/with-prometheus-system! [_ system]
+            (database/health-check-database! (assoc (mt/db) :is_sample true))
+            (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+
+        (testing "failures for timeout"
+          (mt/with-prometheus-system! [_ system]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms 0]
+              (database/health-check-database! (mt/db))
+              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+
+        (testing "failures for bad connections"
+          (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
+            (mt/with-prometheus-system! [_ system]
+              (database/health-check-database! (update (mt/db) :details merge bad-conn))
+              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+
+        (testing "failures for exception"
+          (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
+            (mt/with-prometheus-system! [_ system]
+              (database/health-check-database! (mt/db))
+              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
@@ -220,7 +268,66 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
-(defmethod driver/can-connect? :secret-test-driver [& _args] true)
+(def ^:private ^:dynamic *secret-can-connect?* (constantly true))
+
+(defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))
+
+(defmethod driver/db-details-to-test-and-migrate :secret-test-driver
+  [_ {:keys [password keystore-id] :as details}]
+  (when (and password keystore-id)
+    [(-> details
+         (assoc :keystore-value nil)
+         (dissoc :keystore-id))
+     (dissoc details :password)]))
+
+(deftest maybe-test-and-migrate-details!-no-connect-test
+  (mt/with-driver
+   :secret-test-driver
+    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
+                                       :name "Secret Test"
+                                       :details {:keystore-value "secret"
+                                                 :password "secret"}}]
+      (log/with-no-logs
+        (testing "neither connects"
+          (binding [*secret-can-connect?* (constantly false)]
+            (is (= (:details db)
+                   (database/maybe-test-and-migrate-details! db)))
+            (is (= (:details db)
+                   (t2/select-one-fn :details :model/Database (:id db)))
+                [(:id db) "query"])))))))
+
+(deftest maybe-test-and-migrate-details!-password-test
+  (mt/with-driver
+   :secret-test-driver
+    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
+                                       :name "Secret Test"
+                                       :details {:keystore-value "secret"
+                                                 :password "secret"}}]
+      (log/with-no-logs
+        (testing "password connects"
+          (binding [*secret-can-connect?* (fn [_driver details]
+                                            (contains? details :password))]
+            (is (= {:keystore-value nil
+                    :password "secret"}
+                   (database/maybe-test-and-migrate-details! db)))
+            (is (= {:password "secret"}
+                   (t2/select-one-fn :details :model/Database (:id db))))))))))
+
+(deftest maybe-test-and-migrate-details!-keystore-test
+  (mt/with-driver
+   :secret-test-driver
+    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
+                                       :name "Secret Test"
+                                       :details {:keystore-value "secret"
+                                                 :password "secret"}}]
+      (log/with-no-logs
+        (testing "keystore connects"
+          (binding [*secret-can-connect?* (fn [_driver details]
+                                            (get details :keystore-id))]
+            (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                   (database/maybe-test-and-migrate-details! db)))
+            (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                   (t2/select-one-fn :details :model/Database (:id db))))))))))
 
 (deftest secrets-in-details-test
   (mt/with-driver :secret-test-driver

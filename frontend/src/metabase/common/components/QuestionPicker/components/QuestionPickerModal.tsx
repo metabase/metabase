@@ -150,7 +150,7 @@ export const QuestionPickerModal = ({
     },
   ];
 
-  const filteredTabs = tabs.filter(tab =>
+  const filteredTabs = tabs.filter((tab) =>
     models.includes(tab.model as QuestionPickerModel),
   );
 
@@ -172,7 +172,7 @@ export const QuestionPickerModal = ({
             ? { filter_items_in_personal_collection: "exclude" }
             : undefined
       }
-      searchResultFilter={results => results}
+      searchResultFilter={(results) => results}
       actionButtons={[]}
     />
   );

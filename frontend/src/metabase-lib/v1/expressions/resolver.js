@@ -155,7 +155,7 @@ export function resolve({
     if (operandType) {
       return [
         op,
-        ...operands.map(operand =>
+        ...operands.map((operand) =>
           resolve({ expression: operand, type: operandType, fn, database }),
         ),
       ];

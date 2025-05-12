@@ -1,8 +1,16 @@
 export const ANALYTICS_CSS_SNIPPET = `
+body {
+  margin: 0;
+}
+
 .theme-switcher {
   width: 28px;
   height: 28px;
   cursor: pointer;
+}
+
+.analytics-root {
+  font-family: sans-serif;
 }
 
 .analytics-root.theme-light {
@@ -19,6 +27,13 @@ export const ANALYTICS_CSS_SNIPPET = `
   margin: 0 auto;
   min-height: 100vh;
   padding: 30px 0;
+  container-type: inline-size;
+}
+
+@container (max-width: 900px) {
+  .analytics-header {
+    flex-direction: column;
+  }
 }
 
 .analytics-header,

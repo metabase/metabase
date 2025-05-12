@@ -14,7 +14,7 @@ On the Azure management console, click on the **Resource Groups** icon at the to
 
 On the resource group page, click on the **+ Add** button in the top bar to create a new resource group. On the **Create a resource group** page, select your valid Azure Subscription, enter the name of your resource group, and select a region.
 
-![Create a Resource Group](images/AZResource_group_Add.png)
+![Create a Resource Group](./images/AZResource_group_Add.png)
 
 Click **Next** until you see the **Create** button, then click it.
 
@@ -24,11 +24,11 @@ When selecting the region for your Metabase, you should consider the location of
 
 At the center of the page, click on the **Create resources** button. Search for **VNET**:
 
-![VNET Marketplace](images/AZMarketPlaceVnet.png)
+![VNET Marketplace](./images/AZMarketPlaceVnet.png)
 
 Select the VNET product from Microsoft, and click **Create**:
 
-![VNET Product](images/AZVnet.png)
+![VNET Product](./images/AZVnet.png)
 
 Enter a name for the virtual network and select the same region you used for the resource group. Click on **Next: IP Addresses** button at the bottom.
 
@@ -39,7 +39,7 @@ In the IPv4 address, you should have a default value of 10.0.0.0/16 (otherwise a
 - one subnet named public, with the subnet address range of 10.0.1.0/24, and
 - one subnet named private with the subnet range of 10.0.2.0/24.
 
-![Azure network configuration](images/AZNetworks.png)
+![Azure network configuration](./images/AZNetworks.png)
 
 Click **Next** until you get to the **Review and create** page, then click on the **Create** button at the bottom to create your network.
 
@@ -47,7 +47,7 @@ Click **Next** until you get to the **Review and create** page, then click on th
 
 From the Azure Management console homepage, create a new resource. This time search for **Azure Database for PostgreSQL**. You can also find this database in the Marketplace menu under **Databases**.
 
-![Azure PostgreSQL](images/AZDatabase.png)
+![Azure PostgreSQL](./images/AZDatabase.png)
 
 In the next page you will have to select the way you will use the service. Choose **Single server** for now, which is a good starting point, but take into account that this will create just one instance of PostgreSQL that will be your single point of failure.
 
@@ -70,7 +70,7 @@ On the properties page for the Azure for PostgreSQL database, you can manage par
 
 On the left menu, click on **Private endpoint connection** which is situated under **Security**
 
-![Azure Database for PostgreSQL](images/AZPostgreSQLMain.png)
+![Azure Database for PostgreSQL](./images/AZPostgreSQLMain.png)
 
 Now click on the button of the top bar with a plus sign that says **Private endpoint**. In the page that opens:
 
@@ -78,7 +78,7 @@ Now click on the button of the top bar with a plus sign that says **Private endp
 2. On the **Resource** section of the configuration, ensure that **Resource type** is set to `Microsoft.DBforPostgreSQL/servers` which will enable you to select in the dropdown below the server created in the previous step, and leave **Target sub-resource** with the default value
 3. On the **Configuration** section, the only value that needs to be changed is the **Subnet** one, where you need to select the **private** subnet that you created on the first step of this guide, and leave everything else as it is.
 
-![Azure PrivateLink config](images/AZPrivateLink.png)
+![Azure PrivateLink config](./images/AZPrivateLink.png)
 
 Now go to the last step and click **Create**. Once the endpoint is created, you will need do two things before proceeding:
 
@@ -88,7 +88,7 @@ Now go to the last step and click **Create**. Once the endpoint is created, you 
 ## Step 5: Create web application (deploy Metabase)
 
 At last, the step where all the magic comes together: go to your resource group and add a new resource, or search for **Web App** in the Marketplace (blue globe icon).
-![Azure web app](images/AZMarketplaceWebApp.png)
+![Azure web app](./images/AZMarketplaceWebApp.png)
 
 Now set up the following values on the page (resource group should be the same as in the first step):
 
@@ -111,11 +111,11 @@ Click **Next** until you get to the last section, then click **Create**, and wai
 
 Now go to the application configuration page and click on **Settings** -> **Networking** on the left side of the page. On the next page, click on **Click here to configure** under **VNET integration**.
 
-![Azure VNET integration](images/AZVNETintegration.png)
+![Azure VNET integration](./images/AZVNETintegration.png)
 
 Now click on the huge plus sign next to **Add VNET** and select the VNET that you created, and the public subnet. Click **OK**.
 
-![Azure VNET public subnet](images/AZVNETPublicSubnet.png)
+![Azure VNET public subnet](./images/AZVNETPublicSubnet.png)
 
 Return to the application configuration page and click on **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
 

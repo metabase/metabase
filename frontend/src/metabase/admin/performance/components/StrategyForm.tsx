@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
@@ -132,7 +132,7 @@ export const StrategyForm = ({
 const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
   const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
   const defaultValues = _.object(
-    _.map(fieldNames, fieldName => [
+    _.map(fieldNames, (fieldName) => [
       fieldName,
       getDefaultValueForField(values.type, fieldName),
     ]),
@@ -367,7 +367,7 @@ const ScheduleStrategyFormFields = () => {
   const [schedule, setSchedule] = useState<ScheduleSettings>(
     initialSchedule || {},
   );
-  const timezone = useSelector(state =>
+  const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
   const onScheduleChange = useCallback(

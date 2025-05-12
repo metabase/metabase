@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.util :as u]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2]))
 
 (def ^:private tsv-language "english")
@@ -55,7 +56,7 @@
       (str/join " <-> " <>))
 
     ;; negation
-    (str/starts-with? word-or-phrase "-")
+    (re-find #"^-\w" word-or-phrase)
     (str "!" (quote* (subs word-or-phrase 1)))
 
     ;; just a regular word
@@ -88,7 +89,8 @@
            complete?      (not (str/ends-with? trimmed "\""))
            ;; TODO also only complete if the :context is appropriate
            maybe-complete (if complete? complete-last-word identity)]
-       (->> (split-preserving-quotes trimmed)
+       (->> (str/replace trimmed "\\" "\\\\")
+            split-preserving-quotes
             (remove str/blank?)
             (partition-by #{"or"})
             (remove #(= (first %) "or"))
@@ -115,7 +117,8 @@
                " @@ query")])})
 
 (defn- weighted-tsvector [weight text]
-  [:setweight [:to_tsvector [:inline tsv-language] [:cast text :text]] [:inline weight]])
+  ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
+  [:setweight [:to_tsvector [:inline tsv-language] [:cast (u.str/limit-bytes text 500000) :text]] [:inline weight]])
 
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector

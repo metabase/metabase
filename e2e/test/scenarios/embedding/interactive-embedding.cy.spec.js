@@ -351,7 +351,7 @@ H.describeEE("scenarios > embedding > full app", () => {
     function selectCard({ cardName, cardType, collectionNames }) {
       H.popover().within(() => {
         cy.findByText(cardTypeToLabel[cardType]).click();
-        collectionNames.forEach(collectionName =>
+        collectionNames.forEach((collectionName) =>
           cy.findByText(collectionName).click(),
         );
         cy.findByText(cardName).click();
@@ -517,7 +517,7 @@ H.describeEE("scenarios > embedding > full app", () => {
       });
     });
 
-    ["question", "model"].forEach(cardType => {
+    ["question", "model"].forEach((cardType) => {
       describe(cardType, () => {
         it("should select a data source in the root collection", () => {
           const cardDetails = {
@@ -914,7 +914,7 @@ H.describeEE("scenarios > embedding > full app", () => {
             size_y: 8,
           }),
         ],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         visitDashboardUrl({
           url: `/dashboard/${dashboard.id}`,
           qs: { header: false },
@@ -1041,7 +1041,7 @@ H.describeEE("scenarios > embedding > full app", () => {
         .findByText("I am a very long text card")
         .should("not.be.visible");
       cy.findByTestId("dashboard-parameters-widget-container").then(
-        $dashboardParameters => {
+        ($dashboardParameters) => {
           const dashboardParametersRect =
             $dashboardParameters[0].getBoundingClientRect();
           expect(dashboardParametersRect.x).to.equal(0);
@@ -1063,7 +1063,7 @@ H.describeEE("scenarios > embedding > full app", () => {
             text: "I am a text card",
           }),
         ],
-      }).then(dashboard => {
+      }).then((dashboard) => {
         H.visitFullAppEmbeddingUrl({
           url: `/dashboard/${dashboard.id}`,
           onBeforeLoad(window) {
@@ -1078,7 +1078,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value > 1000),
+            height: Cypress.sinon.match((value) => value > 1000),
           },
         },
       });
@@ -1090,7 +1090,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value < 400),
+            height: Cypress.sinon.match((value) => value < 400),
           },
         },
       });
@@ -1114,8 +1114,8 @@ H.describeEE("scenarios > embedding > full app", () => {
 
     it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
       const CSRF_TOKEN = "abcdefgh";
-      cy.intercept("GET", "/api/user/current", req => {
-        req.on("response", res => {
+      cy.intercept("GET", "/api/user/current", (req) => {
+        req.on("response", (res) => {
           res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
         });
       });
@@ -1131,7 +1131,7 @@ H.describeEE("scenarios > embedding > full app", () => {
 
       H.exportFromDashcard(".csv");
 
-      cy.wait("@CsvDownload").then(interception => {
+      cy.wait("@CsvDownload").then((interception) => {
         expect(
           interception.request.headers["x-metabase-anti-csrf-token"],
         ).to.equal(CSRF_TOKEN);
@@ -1169,18 +1169,18 @@ H.describeEE("scenarios > embedding > full app", () => {
   });
 });
 
-const visitQuestionUrl = urlOptions => {
+const visitQuestionUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
-const visitDashboardUrl = urlOptions => {
+const visitDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
-const visitXrayDashboardUrl = urlOptions => {
+const visitXrayDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
@@ -1188,7 +1188,7 @@ const visitXrayDashboardUrl = urlOptions => {
 const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
   cy.request("GET", `/api/dashboard/${dashboardId}`).then(({ body }) => {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-      dashcards: body.dashcards.map(card => ({
+      dashcards: body.dashcards.map((card) => ({
         ...card,
         visualization_settings: {
           click_behavior: {

@@ -62,7 +62,10 @@ export class DateQuarterYearWidget extends Component<Props, State> {
     return (
       <div className={CS.py2}>
         <div className={cx(CS.flex, CS.flexColumn, CS.alignCenter, CS.py1)}>
-          <YearPicker value={year} onChange={year => this.setState({ year })} />
+          <YearPicker
+            value={year}
+            onChange={(year) => this.setState({ year })}
+          />
         </div>
         <ol
           className={cx(
@@ -75,7 +78,7 @@ export class DateQuarterYearWidget extends Component<Props, State> {
           )}
           style={{ width: 150 }}
         >
-          {_.range(1, 5).map(q => (
+          {_.range(1, 5).map((q) => (
             <Quarter
               key={q}
               quarter={q}

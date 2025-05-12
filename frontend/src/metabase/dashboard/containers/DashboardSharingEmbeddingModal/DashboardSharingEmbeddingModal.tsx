@@ -53,13 +53,13 @@ export const DashboardSharingEmbeddingModal = ({
           onDeletePublicLink={() =>
             deletePublicDashboardLink({ id: dashboard.id })
           }
-          onUpdateEnableEmbedding={enable_embedding =>
+          onUpdateEnableEmbedding={(enable_embedding) =>
             updateDashboardEnableEmbedding({
               id: dashboard.id,
               enable_embedding,
             })
           }
-          onUpdateEmbeddingParams={embedding_params =>
+          onUpdateEmbeddingParams={(embedding_params) =>
             updateDashboardEmbeddingParams({
               id: dashboard.id,
               embedding_params,

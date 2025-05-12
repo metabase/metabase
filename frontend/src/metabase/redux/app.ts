@@ -87,7 +87,7 @@ export const toggleNavbar = createAction(TOGGLE_NAVBAR);
 const isNavbarOpen = handleActions(
   {
     [OPEN_NAVBAR]: () => true,
-    [TOGGLE_NAVBAR]: isOpen => !isOpen,
+    [TOGGLE_NAVBAR]: (isOpen) => !isOpen,
     [CLOSE_NAVBAR]: () => false,
     [LOCATION_CHANGE]: (
       prevState: boolean,

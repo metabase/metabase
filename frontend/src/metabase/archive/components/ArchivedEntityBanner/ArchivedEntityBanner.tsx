@@ -85,7 +85,7 @@ export const ArchivedEntityBanner = ({
         <CollectionPickerModal
           title={`Move ${name}`}
           value={{ id: "root", model: "collection" }}
-          onChange={collection => onMove?.(collection)}
+          onChange={(collection) => onMove?.(collection)}
           options={{
             showSearch: true,
             hasConfirmButtons: true,

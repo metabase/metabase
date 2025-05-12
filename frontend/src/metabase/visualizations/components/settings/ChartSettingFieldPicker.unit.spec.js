@@ -45,7 +45,7 @@ function getSeries(metricColumnProps) {
   ];
 }
 
-const setup = seriesDisplay => {
+const setup = (seriesDisplay) => {
   const series = getSeries(seriesDisplay);
   return renderWithProviders(
     <QuestionChartSettings series={series} initial={{ section: "Data" }} />,

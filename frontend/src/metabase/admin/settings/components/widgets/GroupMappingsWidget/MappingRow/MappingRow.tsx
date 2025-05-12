@@ -51,7 +51,7 @@ const MappingRow = ({
   // Mappings may receive group ids even from the back-end
   // if the groups themselves have been deleted.
   // Let's ensure this row works with the ones that exist.
-  const selectedGroupIdsFromGroupsThatExist = selectedGroupIds.filter(id =>
+  const selectedGroupIdsFromGroupsThatExist = selectedGroupIds.filter((id) =>
     _.findWhere(groups, { id: id }),
   );
 
@@ -86,9 +86,9 @@ const MappingRow = ({
       case "clear":
         return () =>
           Promise.all(
-            groupIds.map(async id => {
+            groupIds.map(async (id) => {
               try {
-                if (!isAdminGroup(groups.find(group => group.id === id))) {
+                if (!isAdminGroup(groups.find((group) => group.id === id))) {
                   await clearGroupMember({ id });
                 }
               } catch (error) {
@@ -99,9 +99,9 @@ const MappingRow = ({
       case "delete":
         return () =>
           Promise.all(
-            groupIds.map(async id => {
+            groupIds.map(async (id) => {
               try {
-                if (!isAdminGroup(groups.find(group => group.id === id))) {
+                if (!isAdminGroup(groups.find((group) => group.id === id))) {
                   await deleteGroup({ id });
                 }
               } catch (error) {
@@ -115,7 +115,7 @@ const MappingRow = ({
   };
 
   const firstGroupInMapping = groups.find(
-    group => group.id === selectedGroupIdsFromGroupsThatExist[0],
+    (group) => group.id === selectedGroupIdsFromGroupsThatExist[0],
   );
 
   const isMappingLinkedOnlyToAdminGroup =
