@@ -32,7 +32,7 @@ export const getCartesianChartDefinition = (
 ): Partial<Visualization> => {
   return {
     noHeader: true,
-    supportsSeries: true,
+    supportsVisualizer: true,
 
     isSensible: ({ cols, rows }) => {
       return (

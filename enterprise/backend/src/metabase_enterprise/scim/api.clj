@@ -2,9 +2,9 @@
   "/api/ee/scim/ endpoints"
   (:require
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.api-key :as api-key]
    [metabase.settings.core :refer [defsetting]]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]

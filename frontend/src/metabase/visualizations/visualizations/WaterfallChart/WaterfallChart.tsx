@@ -23,8 +23,7 @@ import { getCartesianChartDefinition } from "../CartesianChart/chart-definition"
 Object.assign(
   WaterfallChart,
   getCartesianChartDefinition({
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    uiName: t`Waterfall`,
+    getUiName: () => t`Waterfall`,
     identifier: "waterfall",
     iconName: "waterfall",
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -33,6 +32,7 @@ Object.assign(
     defaultSize: getDefaultSize("waterfall"),
     maxMetricsSupported: 1,
     maxDimensionsSupported: 1,
+    supportsVisualizer: false,
     settings: {
       ...GRAPH_AXIS_SETTINGS,
       "waterfall.increase_color": {

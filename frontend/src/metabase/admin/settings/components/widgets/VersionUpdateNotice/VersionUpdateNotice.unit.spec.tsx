@@ -1,5 +1,6 @@
 import {
   setupPropertiesEndpoints,
+  setupSettingEndpoint,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
@@ -27,11 +28,18 @@ const setup = (props: {
       hash: "4742ea1",
     },
     "update-channel": props.updateChannel,
-    "version-info": {
+    "is-hosted?": props.isHosted,
+  };
+
+  const settings = createMockSettings(versionNoticeSettings);
+  setupPropertiesEndpoints(settings);
+  setupUpdateSettingEndpoint();
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {
       beta: {
         version: "v1.54.0-beta",
         released: "2025-03-24",
-        rollout: 100,
         highlights: [],
       },
       latest: {
@@ -39,21 +47,15 @@ const setup = (props: {
         released: "2025-03-25",
         patch: true,
         highlights: [],
-        rollout: 100,
       },
       nightly: {
         version: "v1.52.3",
         released: "2024-12-16",
-        rollout: 100,
         highlights: [],
       },
     },
-    "is-hosted?": props.isHosted,
-  };
+  });
 
-  const settings = createMockSettings(versionNoticeSettings);
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       createMockSettingDefinition({ key: key as SettingKey, value }),

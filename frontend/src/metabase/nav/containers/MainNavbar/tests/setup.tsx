@@ -10,6 +10,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -132,6 +133,12 @@ export async function setup({
     collection: createMockCollection(OUR_ANALYTICS),
     collectionItems: [],
   });
+
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {},
+  });
+
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {

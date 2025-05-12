@@ -277,7 +277,7 @@
                                 cannot-check-message
                                 {:gdrive/conn-id conn-id
                                  :hm/exception e})))))
-        [hm-status {hm-status-code :status hm-body :body}] hm-response]
+        [hm-status {hm-status-code :status hm-body :body hm-err-body :ex-data}] hm-response]
     (if (= :ok hm-status)
       (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
              :as   _} (normalize-gdrive-conn hm-body)]
@@ -309,7 +309,7 @@
         (empty? saved-setting)
         {:status "not-connected"}
 
-        (= 403 hm-status-code)
+        (= 403 (or hm-status-code (:status hm-err-body)))
         (let [[list-status list-response] (hm-get-all-connections)]
           (if (and (= :ok list-status) (not (some (partial = conn-id) (set (map :id (:body list-response))))))
             (u/prog1 {:status "not-connected"}

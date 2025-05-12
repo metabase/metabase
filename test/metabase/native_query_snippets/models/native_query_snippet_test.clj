@@ -3,9 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -64,7 +62,7 @@
 
 (deftest identity-hash-test
   (testing "Native query snippet hashes are composed of the name and the collection's hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection         coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}
                      :model/NativeQuerySnippet snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]
         (is (= "7ac51ad0"

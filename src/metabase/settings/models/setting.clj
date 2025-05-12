@@ -10,9 +10,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins.classloader :as classloader]
    [metabase.server.middleware.json]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
@@ -357,25 +356,18 @@
 
 (defn- has-feature?
   [feature]
-  (u/ignore-exceptions
-    (classloader/require 'metabase.premium-features.token-check))
-  (let [has-feature?' (resolve 'metabase.premium-features.token-check/has-feature?)]
-    (has-feature?' feature)))
+  ((requiring-resolve 'metabase.premium-features.core/has-feature?) feature))
 
 (defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
   []
   (or api/*is-superuser?*
-      (do
-        (when config/ee-available?
-          (classloader/require 'metabase-enterprise.advanced-permissions.common
-                               'metabase.premium-features.token-check))
-        (if-let [current-user-has-application-permissions?
-                 (and (has-feature? :advanced-permissions)
-                      (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-          (current-user-has-application-permissions? :setting)
-          false))))
+      (when (and config/ee-available?
+                 (has-feature? :advanced-permissions))
+        ((requiring-resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?)
+         :setting))
+      false))
 
 (defn- current-user-can-access-setting?
   "This checks whether the current user should have the ability to read or write the provided setting.
@@ -966,6 +958,7 @@
                  :deprecated     nil
                  :enabled?       nil
                  :can-read-from-env?       true
+                 :include-in-list?         true
                  ;; Disable auditing by default for user- or database-local settings
                  :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
@@ -1220,6 +1213,12 @@
   (default: `:no-value` for most settings; `:never` for user- and database-local settings, settings with no setter,
   and `:sensitive` settings.)
 
+  ###### `include-in-list?`
+
+  Boolean that determines if this setting is included in the list of all settings when settings are listed through
+  either the `GET /api/session/properties` or `GET /api/setting` endpoints. `true` by default but should be set to
+  false for settings with very large sizes or that are only used in specific places.
+
   ###### `base`
 
   A map which can provide values for any of the above options, except for :export?.
@@ -1385,7 +1384,8 @@
       (user-facing-settings-matching
        (fn [setting]
          (and (contains? writable-visibilities (:visibility setting))
-              (not= (:database-local setting) :only)))
+              (not= (:database-local setting) :only)
+              (:include-in-list? setting)))
        options))))
 
 (defn admin-writable-site-wide-settings
@@ -1431,7 +1431,8 @@
      {}
      (comp (filter (fn [[_setting-name setting]]
                      (and (not (database-local-only? setting))
-                          (can-read-setting? setting visibilities))))
+                          (can-read-setting? setting visibilities)
+                          (:include-in-list? setting))))
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))

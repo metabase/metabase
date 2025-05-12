@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Anchor, Stack, Text } from "metabase/ui";
 
@@ -27,10 +27,17 @@ const DefaultViewTitleText = ({
   <Stack gap="xs">
     {originalName && withResetButton && isQuestionChanged && (
       <Text fw={600} size="sm">
-        Return to
-        <Anchor size="sm" ml="xs" color="brand" onClick={onReset}>
-          {originalName}
-        </Anchor>
+        {c("{0} refers to the name of the original question").jt`Return to ${(
+          <Anchor
+            key="anchor"
+            size="sm"
+            ml="xs"
+            color="brand"
+            onClick={onReset}
+          >
+            {originalName}
+          </Anchor>
+        )}`}
       </Text>
     )}
     {typeof Title === "function" ? <Title></Title> : Title}

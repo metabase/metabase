@@ -105,7 +105,7 @@ describe("ChartNestedSettingSeries", () => {
 
     const seriesSettings = screen.getByTestId("series-settings");
     expect(within(seriesSettings).getByText("Test 0")).toBeInTheDocument();
-    expect(screen.getByLabelText("series-name-input")).toHaveValue(
+    expect(screen.getByTestId("series-name-input")).toHaveValue(
       "Test 0 updated",
     );
   });
@@ -117,6 +117,6 @@ describe("ChartNestedSettingSeries", () => {
     expect(
       within(seriesSettings).queryByText("Test 0"),
     ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("series-name-input")).toHaveValue("Test 0");
+    expect(screen.getByTestId("series-name-input")).toHaveValue("Test 0");
   });
 });

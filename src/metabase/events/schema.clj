@@ -1,11 +1,13 @@
 (ns metabase.events.schema
   (:require
    [malli.util :as mut]
-   [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.view-log.core :as view-log]
    [toucan2.core :as t2]))
+
+;;; TODO -- move these into appropriate modules.
 
 (mu/defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
@@ -80,7 +82,7 @@
 (mr/def :event/card-read
   [:map {:closed true}
    ;; context is deliberately coupled to view-log's context
-   [:context view-log-impl/context]
+   [:context view-log/context]
    [:user-id [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 

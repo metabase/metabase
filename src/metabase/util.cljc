@@ -798,6 +798,11 @@
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
 
+(defn domain?
+  "Check if `s` is a valid domain name."
+  [s]
+  (sequential? (re-matches #"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$" s)))
+
 (defn pick-first
   "Returns a pair [match others] where match is the first element of `coll` for which `pred` returns
   a truthy value and others is a sequence of the other elements of `coll` with the order preserved.
@@ -1238,3 +1243,16 @@
        (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
+
+(defn find-first-map-indexed
+  "Finds the first map in `maps` that contains the value at the given key path,
+  and returns [index map]."
+  [maps ks value]
+  (first (keep-indexed
+          (fn [idx m] (when (= (get-in m ks) value) [idx m]))
+          maps)))
+
+(defn find-first-map
+  "Finds the first map in `maps` that contains the value at the given key path."
+  [maps ks value]
+  (second (find-first-map-indexed maps ks value)))
