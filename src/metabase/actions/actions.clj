@@ -228,7 +228,7 @@
    scope
    arg-map-or-maps
    & {:keys [policy existing-context]
-      :or   {policy :model-action}}]
+      :or   {policy :ad-hoc-action-invocation}}]
   (let [action-kw (keyword action)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         spec      (action-arg-map-spec action-kw)
@@ -241,15 +241,20 @@
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
         dbs       (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps)))
-        _         (when-not (= 1 (count dbs))
+        _         (when (> (count dbs) 1)
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400
                                      :database-ids (map :id dbs)})))
         db        (first dbs)
         driver    (:engine db)]
+
+    ;; -- * Authorization* --
+    ;; NOTE: policy should get subsumed by :scope
     ;; The action might not be database-centric (e.g., call a webhook)
     (when db
       (case policy
+        :ad-hoc-action-invocation
+        (check-actions-enabled-for-database! db)
         :model-action
         (check-actions-enabled-for-database! db)
         :data-editing
@@ -258,6 +263,15 @@
       (when (= :model-action policy)
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
+      (when (= :ad-hoc-action-invocation policy)
+        (doseq [arg-map arg-maps]
+          (cond
+            (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
+            (:table-id arg-map) (qp.perms/check-query-action-permissions*
+                                 {:type :query,
+                                  :database (:database arg-map)
+                                  :query {:source-table (:table-id arg-map)}}))))
+
       ;; TODO fix tons of tests which execute without user scope
       (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)
                                                        :scope   scope})]
@@ -302,7 +316,7 @@
 (s/def :actions.args/common
   (s/keys :req-un [:actions.args.common/database]))
 
-;;; Common base spec for all CRUD row Actions. All CRUD row Actions at least require
+;;; Common base spec for all CRUD model row Actions. All CRUD model row Actions at least require
 ;;;
 ;;;    {:database <id>, :query {:source-table <id>}}
 
@@ -402,25 +416,25 @@
   [_action]
   :actions.args.crud/row.delete)
 
-;;;; Bulk actions
+;;;; Table actions
 
-;;; All bulk Actions require at least
+;;; All table Actions require at least
 ;;;
 ;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
 
 (s/def :actions.args.crud.table.common/table-id
   :actions.args/id)
 
-(s/def :actions.args.crud.table/rows
-  (s/cat :rows (s/+ (s/map-of string? any?))))
+(s/def :actions.args.crud.table/row
+  (s/map-of string? any?))
 
 (s/def :actions.args.crud.table/common
   (s/merge
    :actions.args/common
    (s/keys :req-un [:actions.args.crud.table.common/table-id
-                    :actions.args.crud.table/rows])))
+                    :actions.args.crud.table/row])))
 
-;;; The request bodies for the bulk CRUD actions are all the same. The body of a request to `POST
+;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
 ;;; [[perform-action!]] with
 ;;;
@@ -432,51 +446,16 @@
 
 ;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
-(defn- normalize-table-crud-action-arg-map
-  [{:keys [database table-id row], row-or-rows :arg, :as _arg-map}]
-  {;; TODO get rid of these first two
-   :type     :query
-   :query    {:source-table table-id}
-   :database database
+(derive :table.row/create :table.row/common)
+(derive :table.row/update :table.row/common)
+(derive :table.row/delete :table.row/common)
+
+(defmethod action-arg-map-spec :table.row/common
+  [_action]
+  :actions.args.crud.table/common)
+
+(defmethod normalize-action-arg-map :table.row/common
+  [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
+  {:database (or database (when table-id (cached-database-via-table-id table-id)))
    :table-id table-id
-   ;; TODO stop overloading this and always take singular
-   :rows     (map #(update-keys % u/qualified-name)
-                  (or (when row [row])
-                      (if (map? row-or-rows)
-                        [row-or-rows]
-                        row-or-rows)))})
-
-(defmethod normalize-action-arg-map :table.row/create
-  [_action arg-map]
-  (normalize-table-crud-action-arg-map arg-map))
-
-(defmethod action-arg-map-spec :table.row/create
-  [_action]
-  :actions.args.crud.table/common)
-
-(defmethod normalize-action-arg-map :table.row/update
-  [_action arg-map]
-  (normalize-table-crud-action-arg-map arg-map))
-
-(defmethod action-arg-map-spec :table.row/update
-  [_action]
-  :actions.args.crud.table/common)
-
-;;;; `:table.row/delete`
-
-;;; Request-body should look like:
-;;;
-;;;    ;; single pk, two rows
-;;;    [{"ID": 76},
-;;;     {"ID": 77}]
-;;;
-;;;    ;; multiple pks, one row
-;;;    [{"PK1": 1, "PK2": "john"}]
-
-(defmethod normalize-action-arg-map :table.row/delete
-  [_action arg-map]
-  (normalize-table-crud-action-arg-map arg-map))
-
-(defmethod action-arg-map-spec :table.row/delete
-  [_action]
-  :actions.args.crud.table/common)
+   :row      (update-keys (or row row-arg) u/qualified-name)})
