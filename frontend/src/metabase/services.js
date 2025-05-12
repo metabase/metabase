@@ -456,11 +456,11 @@ export const I18NApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints("/api/public/card/:uuid", { uuid });
+  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints("/api/public/dashboard/:uuid", { uuid });
+  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
 }
 
 export function setEmbedQuestionEndpoints(token) {
