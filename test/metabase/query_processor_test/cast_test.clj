@@ -1,7 +1,9 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -500,7 +502,9 @@
 (defn- date-type? [col]
   (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
                                        :type/Text ;; sqlite uses text :(
-                                       :type/Date]))
+                                       :type/Date
+                                       :type/* ;; Mongo
+                                       ]))
 
 (defn- parse-date [s]
   (try
@@ -624,9 +628,9 @@
               (is (string? casted-value)))))))))
 
 (deftest ^:parallel text-cast-nested-native-query
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions/text)
-                         :mongo ;; because this requires a native query
-                         )
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/text)
+                                     ;; because this requires a native sql query
+                                     (-> metabase.driver.impl/hierarchy :descendants :sql))
     (let [mp (mt/metadata-provider)]
       (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
                                               {:expression "''" :db-type "TEXT"}
