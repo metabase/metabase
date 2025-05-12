@@ -2,8 +2,12 @@ import _ from "underscore";
 
 import { entityIdApi } from "metabase/api";
 import type { TranslateEntityIdResponse } from "metabase/api/entity-id";
+import { isTransientId } from "metabase/dashboard/utils";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 import type { Dispatch } from "metabase-types/store";
+
+import { isJWT } from "../utils";
+import { isUuid } from "../uuid";
 
 import type {
   SUPPORTED_ENTITIES,
@@ -22,7 +26,10 @@ export const fetchEntityId =
   async (
     dispatch: Dispatch,
   ): Promise<ValidatedEntityIdReturned<TEntity, TReturnedId>> => {
-    if (_.isNumber(id)) {
+    if (
+      id &&
+      (_.isNumber(id) || isUuid(id) || isJWT(id) || isTransientId(id))
+    ) {
       return { id: id as TReturnedId, isError: false };
     }
 
