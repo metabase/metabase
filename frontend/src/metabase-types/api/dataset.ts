@@ -1,4 +1,9 @@
-import type { CacheStrategy, LocalFieldReference } from "metabase-types/api";
+import type {
+  CacheStrategy,
+  LocalFieldReference,
+  Parameter,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
@@ -199,3 +204,9 @@ export type TemporalUnit =
   | "week-of-year"
   | "month-of-year"
   | "quarter-of-year";
+
+export type GetRemappedParameterValueRequest = {
+  parameter: Parameter;
+  field_ids: FieldId[];
+  value: ParameterValueOrArray;
+};
