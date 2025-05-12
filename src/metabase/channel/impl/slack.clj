@@ -213,7 +213,11 @@
   (let [event-name (:event_name context)
         template   (or template
                        (channel.template/default-template :notification/system-event context channel-type))
-        sections    [(text->markdown-section (channel.template/render-template template notification-payload))]]
+        sections    [{:type "section"
+                      :text {:type "mrkdwn"
+                             :text (truncate
+                                    (channel.template/render-template template notification-payload)
+                                    block-text-length-limit)}}]]
     (assert template (str "No template found for event " event-name))
     (for [channel (map notification-recipient->channel recipients)]
       {:channel channel
