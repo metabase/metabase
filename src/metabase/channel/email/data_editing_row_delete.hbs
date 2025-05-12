@@ -1,11 +1,22 @@
 {{> metabase/channel/email/_header.hbs }}
-  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); ">
-    <p>{{editor.first_name}} {{editor.last_name}} has deleted a row from {{table.name}}</p>
-    <p>Deleted row:</p>
-    <ul>
+<div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0,0,0,.08);">
+  <p><span style="font-weight: bold;">A record was <span style='font-style: italic;'>deleted</span></span> in <span style="color: #1976d2; text-decoration: underline;">Table {{table.name}}</span> by {{editor.first_name}} {{editor.last_name}}</p>
+  <table style="width: 100%; border-collapse: collapse; font-family: inherit; margin-top: 2em;">
+    <thead>
+      <tr style="border-bottom: 2px solid #ededed;">
+        <th style="text-align: left; padding: 10px 0 10px 0; font-weight: bold; font-size: 18px;">Field</th>
+        <th style="text-align: left; padding: 10px 0 10px 0; font-weight: bold; font-size: 18px;">Value</th>
+      </tr>
+    </thead>
+    <tbody>
       {{#each record}}
-        <li>{{@key}}: {{@value}}</li>
+      <tr style="border-bottom: 1px solid #ededed;">
+        <td style="padding: 12px 0; font-size: 16px;"><s>{{@key}}</s></td>
+        <td style="padding: 12px 0; font-size: 16px;">{{@value}}</td>
+      </tr>
       {{/each}}
-    </ul>
-  </div>
+    </tbody>
+  </table>
+  <div style="margin-top: 2em; font-size: 16px; color: #333;">This record is no longer available</div>
+</div>
 {{> metabase/channel/email/_footer.hbs }}
