@@ -233,8 +233,6 @@
    query     ms/NonBlankString}
   (parameter-values parameter field_ids query))
 
-(api/define-routes)
-
 (defn param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
   [[field-id :as field-ids] param value]
@@ -256,3 +254,5 @@
    field_ids [:maybe [:sequential ms/PositiveInt]]
    value     ms/NonBlankString}
   (param-remapped-value field_ids parameter value))
+
+(api/define-routes)
