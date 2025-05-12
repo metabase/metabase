@@ -24,10 +24,6 @@ interface Props {
 
 const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
 
-// TODO: remove this in Milestone 2
-// https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40
-const PREVIEW_NOT_IMPLEMENTED_YET = true;
-
 export const DataModel = ({ params }: Props) => {
   const { databaseId, tableId, schemaId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown =
@@ -123,11 +119,9 @@ export const DataModel = ({ params }: Props) => {
             </LoadingAndErrorWrapper>
           </Box>
 
-          {!PREVIEW_NOT_IMPLEMENTED_YET && (
-            <Box flex="1" p="xl" pl={0}>
-              <PreviewSection fieldId={fieldId} />
-            </Box>
-          )}
+          <Box flex="1" p="xl" pl={0}>
+            <PreviewSection fieldId={fieldId} />
+          </Box>
         </Flex>
       )}
     </Flex>
