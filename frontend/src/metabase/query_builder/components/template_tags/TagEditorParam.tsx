@@ -3,12 +3,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { connect } from "metabase/lib/redux";
+import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -78,7 +80,7 @@ function mapStateToProps(state: State) {
   };
 }
 
-const mapDispatchToProps = { fetchField };
+const mapDispatchToProps = { fetchField, setTemplateTagConfig };
 
 const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
   values_query_type: undefined,
@@ -260,6 +262,7 @@ class TagEditorParamInner extends Component<Props> {
       metadata,
       parameter,
       embeddedParameterVisibility,
+      setTemplateTagConfig,
     } = this.props;
     let widgetOptions: WidgetOption[] = [];
     let field: Field | null = null;
@@ -290,15 +293,22 @@ class TagEditorParamInner extends Component<Props> {
           {tag.name}
         </Box>
 
-        {isTemporalUnit && (
+        {isTemporalUnit && parameter && (
           <>
             <ContainerLabel paddingTop>{t`Variable type`}</ContainerLabel>
             <Box component="h3">{t`time_grouping`}</Box>
 
-            <ContainerLabel
-              paddingTop
-            >{t`Time grouping options`}</ContainerLabel>
-            <Box component="h3">{t`time_grouping`}</Box>
+            <Box mb="xl" mt="xl">
+              <SettingLabel>{t`Time grouping options`}</SettingLabel>
+              <TemporalUnitSettings
+                parameter={parameter}
+                onChangeTemporalUnits={(newTemporalUnits) => {
+                  setTemplateTagConfig(tag, {
+                    temporal_units: newTemporalUnits,
+                  });
+                }}
+              />
+            </Box>
           </>
         )}
 
@@ -350,7 +360,7 @@ class TagEditorParamInner extends Component<Props> {
 
         {parameter && (
           <DefaultRequiredValueControl
-            tag={tag}
+            tag={isTemporalUnit ? { ...tag, required: true } : tag}
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
             onChangeDefaultValue={(value) => {
@@ -369,3 +379,18 @@ export const TagEditorParam = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(TagEditorParamInner);
+
+function SettingLabel(
+  props: BoxProps & { id?: string; children?: React.ReactNode },
+) {
+  return (
+    <Box
+      component="label"
+      c="--mb-color-text-medium"
+      mb="sm"
+      fw="bold"
+      display="block"
+      {...props}
+    />
+  );
+}

@@ -45,9 +45,12 @@ export function getTemplateTagParameter(
   tag: TemplateTag,
   config?: ParameterValuesConfig,
 ): ParameterWithTarget {
+  const type = getParameterType(tag);
+  const isTemporalUnit = type === "temporal-unit";
+
   return {
     id: tag.id,
-    type: getParameterType(tag),
+    type,
     target: getParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
@@ -57,6 +60,9 @@ export function getTemplateTagParameter(
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
     values_source_config: config?.values_source_config,
+    ...(isTemporalUnit && {
+      temporal_units: config?.temporal_units,
+    }),
   };
 }
 
