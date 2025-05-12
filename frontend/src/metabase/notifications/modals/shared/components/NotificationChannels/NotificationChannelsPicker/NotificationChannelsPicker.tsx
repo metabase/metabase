@@ -194,13 +194,18 @@ const TemplateButton = React.forwardRef<HTMLDivElement, AccordionButtonProps>(
 );
 
 interface TemplateHelperTooltipProps {
-  formattedJson?: string;
+  payload?: any;
 }
 
-const TemplateHelperTooltip = ({
-  formattedJson = "",
-}: TemplateHelperTooltipProps) => {
+const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
   const [open, setOpen] = useState(false);
+  const formattedPayload = useMemo(() => {
+    if (!payload) {
+      return "";
+    }
+    return JSON.stringify(payload, null, 2);
+  }, [payload]);
+
   return (
     <Popover
       position="right"
@@ -243,7 +248,7 @@ const TemplateHelperTooltip = ({
             overflowY: "auto",
           }}
         >
-          <CodeEditor language="json" value={formattedJson} />
+          <CodeEditor language="json" value={formattedPayload} />
         </div>
       </Popover.Dropdown>
     </Popover>
@@ -587,13 +592,6 @@ export const NotificationChannelsPicker = ({
     return templateState.templates[channel]?.[field] || "";
   };
 
-  const formattedTemplateContext = useMemo(() => {
-    if (!templateContext) {
-      return "";
-    }
-    return JSON.stringify(templateContext, null, 2);
-  }, [templateContext]);
-
   const resetTemplateForChannel = useCallback(
     (channelKey: "email" | "slack") => {
       // Update internal state
@@ -652,7 +650,7 @@ export const NotificationChannelsPicker = ({
                       />
                     )}
                     <TemplateHelperTooltip
-                      formattedJson={formattedTemplateContext}
+                      payload={templateContext["channel/email"]}
                     />
                     {onPreviewClick && (
                       <TemplateButton
@@ -673,7 +671,7 @@ export const NotificationChannelsPicker = ({
                     <TemplateEditor
                       variant="textinput"
                       placeholder={t`Alert from {{payload.result.table.name}} table`}
-                      templateContext={templateContext}
+                      templateContext={templateContext["channel/email"]}
                       defaultValue={getTemplateValue("email", "subject")}
                       onChange={(value) => {
                         handleTemplateBlur("email", "subject", value);
@@ -694,7 +692,7 @@ export const NotificationChannelsPicker = ({
                     <TemplateEditor
                       variant="textarea"
                       placeholder={t`Your custom email template`}
-                      templateContext={templateContext}
+                      templateContext={templateContext["channel/email"]}
                       minHeight="10rem"
                       height="10rem"
                       defaultValue={getTemplateValue("email", "body")}
@@ -754,7 +752,7 @@ export const NotificationChannelsPicker = ({
                       />
                     )}
                     <TemplateHelperTooltip
-                      formattedJson={formattedTemplateContext}
+                      payload={templateContext["channel/slack"]}
                     />
                   </Flex>
                 </Flex>
@@ -764,7 +762,7 @@ export const NotificationChannelsPicker = ({
                     minHeight="10rem"
                     height="10rem"
                     placeholder={t`Your custom Markdown template`}
-                    templateContext={templateContext}
+                    templateContext={templateContext["channel/slack"]}
                     defaultValue={getTemplateValue("slack", "body")}
                     onBlur={(newValue) => {
                       handleTemplateBlur("slack", "body", newValue);

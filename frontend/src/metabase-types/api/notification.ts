@@ -17,7 +17,7 @@ export type NotificationTriggerEvent =
   | "event/row.updated"
   | "event/row.deleted";
 
-type NotificationPayloadType =
+export type NotificationPayloadType =
   | "notification/card"
   | "notification/system-event";
 
@@ -194,15 +194,21 @@ export type UpdateNotificationRequest =
   | UpdateTableNotificationRequest;
 
 export type GetNotificationPayloadExampleRequest = {
-  payload_type: NotificationPayloadType;
-  payload: Record<string, unknown>;
-  creator_id: UserId;
+  notification: {
+    payload_type: NotificationPayloadType;
+    payload: Record<string, unknown>;
+    creator_id: UserId;
+  };
+  channel_types: NotificationChannelType[];
 };
 
-export type GetNotificationPayloadExampleResponse = {
-  payload: any;
-  schema: any;
-};
+export type GetNotificationPayloadExampleResponse = Record<
+  NotificationChannelType,
+  {
+    payload: any;
+    schema: any;
+  }
+>;
 
 type BaseNotification = {
   id: NotificationId;

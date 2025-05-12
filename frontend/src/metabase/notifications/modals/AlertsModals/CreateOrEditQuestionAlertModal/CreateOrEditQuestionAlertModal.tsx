@@ -127,24 +127,28 @@ export const CreateOrEditQuestionAlertModal = ({
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
 
+  const channelTypes = useMemo(
+    () =>
+      notification?.handlers
+        ? notification.handlers
+            .map((h) => h.channel_type)
+            .filter((type): type is NotificationChannelType => !!type)
+        : [],
+    [notification?.handlers],
+  );
+
   const { data: defaultTemplates } = useGetDefaultNotificationTemplateQuery(
-    notification?.payload?.send_condition &&
-      user &&
-      notification.handlers.length > 0
+    notification?.payload?.send_condition && user && channelTypes.length > 0
       ? {
           notification: {
             payload_type: notification.payload_type,
             payload: notification.payload,
           },
-          channel_types: notification.handlers.map(
-            (h) => h.channel_type,
-          ) as NotificationChannelType[],
+          channel_types: channelTypes,
         }
       : skipToken,
     {
-      skip:
-        !notification?.payload?.send_condition ||
-        notification.handlers.length === 0,
+      skip: !notification?.payload?.send_condition || channelTypes.length === 0,
     },
   );
 
@@ -152,17 +156,18 @@ export const CreateOrEditQuestionAlertModal = ({
     notification?.payload_type &&
       notification?.payload &&
       user &&
-      notification.handlers.length > 0
+      channelTypes.length > 0
       ? {
-          payload_type: notification.payload_type,
-          payload: notification.payload,
-          creator_id: user.id,
+          notification: {
+            payload_type: notification.payload_type,
+            payload: notification.payload,
+            creator_id: user.id,
+          },
+          channel_types: channelTypes,
         }
       : skipToken,
     {
-      skip:
-        !notification?.payload?.send_condition ||
-        notification.handlers.length === 0,
+      skip: !notification?.payload?.send_condition || channelTypes.length === 0,
     },
   );
 
