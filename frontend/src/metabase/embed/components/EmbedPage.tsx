@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 
+import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { ColorPill } from "metabase/core/components/ColorPill";
 import { colors } from "metabase/lib/colors";
 import {
@@ -65,6 +66,12 @@ const exampleDashboards = [
     name: "Marketing Campaigns",
     description: "Campaign performance and ROI tracking",
     updatedAt: "1 week ago",
+  },
+  {
+    id: 5,
+    name: "Example Dashboard",
+    description: "A sample dashboard showing various chart types and features",
+    updatedAt: "2 weeks ago",
   },
 ];
 
@@ -211,7 +218,7 @@ const deserializeState = (encoded: string) => {
 export const EmbedPage = () => {
   const [currentStep, setCurrentStep] = useState<Step>("select-type");
   const [selectedType, setSelectedType] = useState<EmbedType>("dashboard");
-  const [selectedDashboard, setSelectedDashboard] = useState<number | null>(null);
+  const [selectedDashboard, setSelectedDashboard] = useState<number | null>(1);
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [allowDrillThrough, setAllowDrillThrough] = useState(false);
   const [allowDownloads, setAllowDownloads] = useState(false);
@@ -219,6 +226,7 @@ export const EmbedPage = () => {
   const [brandColor, setBrandColor] = useState(colors.brand);
   const [textColor, setTextColor] = useState(colors["text-dark"]);
   const [backgroundColor, setBackgroundColor] = useState(colors.white);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [parameterVisibility, setParameterVisibility] = useState<Record<string, boolean>>(
     exampleParameters.reduce((acc, param) => ({ ...acc, [param.id]: true }), {}),
   );
@@ -293,24 +301,6 @@ export const EmbedPage = () => {
     }
   };
 
-  const handleBookmark = () => {
-    const state = {
-      type: selectedType,
-      dashboard: selectedDashboard,
-      allowDrillThrough,
-      allowDownloads,
-      showTitle,
-      brandColor,
-      textColor,
-      backgroundColor,
-      parameterVisibility,
-    };
-    const encoded = serializeState(state);
-    const url = new URL(window.location.href);
-    url.searchParams.set("state", encoded);
-    window.history.pushState({}, "", url);
-  };
-
   const renderStepContent = () => {
     if (currentStep === "select-type") {
       return (
@@ -338,9 +328,19 @@ export const EmbedPage = () => {
     } else if (currentStep === "select-entity") {
       return (
         <Card p="md" mb="md">
-          <Text size="lg" fw="bold" mb="md">
-            Select a dashboard to embed
-          </Text>
+          <Group justify="space-between" mb="md">
+            <Text size="lg" fw="bold">
+              Select a dashboard to embed
+            </Text>
+            <ActionIcon
+              variant="outline"
+              size="lg"
+              onClick={() => setIsPickerOpen(true)}
+              title="Browse dashboards"
+            >
+              <Icon name="search" size={16} />
+            </ActionIcon>
+          </Group>
           <Stack gap="md">
             {exampleDashboards.map((dashboard) => (
               <Card
@@ -352,6 +352,14 @@ export const EmbedPage = () => {
                   backgroundColor:
                     selectedDashboard === dashboard.id
                       ? "var(--mb-color-bg-light)"
+                      : undefined,
+                  borderColor:
+                    selectedDashboard === dashboard.id
+                      ? "var(--mb-color-brand)"
+                      : undefined,
+                  borderWidth:
+                    selectedDashboard === dashboard.id
+                      ? "2px"
                       : undefined,
                 }}
                 onClick={() => setSelectedDashboard(dashboard.id)}
@@ -368,6 +376,22 @@ export const EmbedPage = () => {
               </Card>
             ))}
           </Stack>
+          {isPickerOpen && (
+            <DashboardPickerModal
+              title="Select a dashboard"
+              value={selectedDashboard ? { id: selectedDashboard, model: "dashboard" } : undefined}
+              onChange={item => {
+                setSelectedDashboard(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id);
+                setIsPickerOpen(false);
+              }}
+              onClose={() => setIsPickerOpen(false)}
+              options={{
+                showPersonalCollections: true,
+                showRootCollection: true,
+                hasConfirmButtons: false,
+              }}
+            />
+          )}
         </Card>
       );
     } else if (currentStep === "configure") {
@@ -497,48 +521,8 @@ export const EmbedPage = () => {
               Embed Code
             </Text>
             <Stack gap="xs">
-              <Code block>
-                {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example code snippet for admins */}
-                {`<script src="https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/app/embed.js"></script>
-
-<div id="metabase-embed-container"></div>
-
-<script>
-  const { MetabaseEmbed } = window["metabase.embed"];
-
-  const embed = new MetabaseEmbed({
-    target: "#metabase-embed-container",
-
-    // IMPORTANT: You must create a least privileged and sandboxed API key for
-    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
-    apiKey: "${exampleApiKey}",
-
-    url: "${exampleEmbedUrl}"
-  });
-</script>`}
-              </Code>
-              <Button
-                leftSection={<Icon name="copy" size={16} />}
-                onClick={() => copyToClipboard(`<script src="https://simple-interactive-embedding-prototype.hosted.staging.metabase.com/app/embed.js"></script>
-
-<div id="metabase-embed-container"></div>
-
-<script>
-  const { MetabaseEmbed } = window["metabase.embed"];
-
-  const embed = new MetabaseEmbed({
-    target: "#metabase-embed-container",
-
-    // IMPORTANT: You must create a least privileged and sandboxed API key for
-    // public usage. Otherwise, you risk exposing Metabase to unwanted access.
-    apiKey: "${exampleApiKey}",
-
-    url: "${exampleEmbedUrl}"
-  });
-</script>`)}
-              >
-                Copy Code
-              </Button>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example URL for embedding */}
+              <Code block>{exampleEmbedUrl}</Code>
             </Stack>
           </Card>
         </Stack>
