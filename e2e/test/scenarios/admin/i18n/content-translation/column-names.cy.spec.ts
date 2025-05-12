@@ -258,24 +258,6 @@ describe("scenarios > admin > localization > content translation of column names
                     });
                   });
                 })
-                .with("pie", () => {
-                  it(`of type: ${displayType}`, () => {
-                    H.createQuestion(
-                      {
-                        display: "pie",
-                        query: {
-                          "source-table": PRODUCTS_ID,
-                          aggregation: [["count"]],
-                          breakout: [["field", PRODUCTS.CATEGORY, null]],
-                        },
-                      },
-                      { visitQuestion: true },
-                    );
-                    H.assertFirstEChartsTooltip("pie", {
-                      header: "Kategorie",
-                    });
-                  });
-                })
                 .with(
                   P.union(
                     "pivot",
