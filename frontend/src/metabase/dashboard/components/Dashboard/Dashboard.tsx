@@ -273,6 +273,7 @@ function Dashboard() {
                       reportAutoScrolledToDashcard={
                         reportAutoScrolledToDashcard
                       }
+                      handleSetEditing={handleSetEditing}
                     />
                   </FullWidthContainer>
                 )}

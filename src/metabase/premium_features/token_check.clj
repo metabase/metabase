@@ -16,9 +16,9 @@
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
-   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -62,8 +62,6 @@
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare premium-embedding-token)
-
 ;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
 ;; at a time.
 (let [f    (fn []
@@ -83,18 +81,12 @@
     (locking lock
       (f))))
 
-(defsetting active-users-count
-  (deferred-tru "Number of active users")
-  :visibility :admin
-  :type       :integer
-  :audit      :never
-  :setter     :none
-  :default    0
-  :export?    false
-  :getter     (fn []
-                (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-                  0
-                  (locking-active-user-count))))
+(defn -active-users-count
+  "Getter for the [[metabase.premium-features.settings/active-users-count]] Setting."
+  []
+  (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+    0
+    (locking-active-user-count)))
 
 (defenterprise embedding-settings
   "Boolean values that report on the state of different embedding configurations."
@@ -106,7 +98,7 @@
 
 (defn- stats-for-token-request
   []
-  (let [users (active-users-count)
+  (let [users (premium-features.settings/active-users-count)
         ext-users (internal-stats/external-users-count)
         embedding-dashboard-count (internal-stats/embedding-dashboard-count)
         embedding-question-count (internal-stats/embedding-question-count)
@@ -215,7 +207,7 @@
 (mu/defn max-users-allowed :- [:maybe pos-int?]
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   []
-  (when-let [token (premium-embedding-token)]
+  (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
@@ -293,50 +285,37 @@
     ;; otherwise return the features this token supports
     (set features)))
 
-(defsetting token-status
-  (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
-  :visibility :admin
-  :type       :json
-  :audit      :never
-  :setter     :none
-  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
+(defn -token-status
+  "Getter for the [[metabase.premium-features.settings/token-status]] setting."
+  []
+  (some-> (premium-features.settings/premium-embedding-token) (fetch-token-status)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             SETTING & RELATED FNS                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
+(defn -set-premium-embedding-token!
+  "Setter for the [[metabase.premium-features.settings/token-status]] setting."
+  [new-value]
+  ;; validate the new value if we're not unsetting it
+  (try
+    (when (seq new-value)
+      (when (mr/validate [:re AirgapToken] new-value)
+        (airgap-check-user-count))
+      (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
+                    (mr/validate [:re AirgapToken] new-value))
+        (throw (ex-info (tru "Token format is invalid.")
+                        {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+      (valid-token->features new-value)
+      (log/info "Token is valid."))
+    (setting/set-value-of-type! :string :premium-embedding-token new-value)
+    (catch Throwable e
+      (log/error e "Error setting premium features token")
+      ;; merge in error-details if present
+      (throw (ex-info (.getMessage e) (merge
+                                       {:message (.getMessage e), :status-code 400}
+                                       (ex-data e)))))))
 
-(defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
-  (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
-  :audit :never
-  :sensitive? true
-  :setter
-  (fn [new-value]
-    ;; validate the new value if we're not unsetting it
-    (try
-      (when (seq new-value)
-        (when (mr/validate [:re AirgapToken] new-value)
-          (airgap-check-user-count))
-        (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
-                      (mr/validate [:re AirgapToken] new-value))
-          (throw (ex-info (tru "Token format is invalid.")
-                          {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
-        (valid-token->features new-value)
-        (log/info "Token is valid."))
-      (setting/set-value-of-type! :string :premium-embedding-token new-value)
-      (catch Throwable e
-        (log/error e "Error setting premium features token")
-        (throw (ex-info (.getMessage e) (merge
-                                         {:message (.getMessage e), :status-code 400}
-                                         (ex-data e)))))))) ; merge in error-details if present
-
-(defsetting airgap-enabled
-  "Returns true if the current instance is airgapped."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :audit      :never
-  :export?    false
-  :getter     (fn [] (mr/validate AirgapToken (premium-embedding-token))))
+(defn -airgap-enabled
+  "Getter for [[metabase.premium-features.settings/airgap-enabled]]"
+  []
+  (mr/validate AirgapToken (premium-features.settings/premium-embedding-token)))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -349,16 +328,16 @@
     "Get the features associated with the system's premium features token."
     []
     (try
-      (or (some-> (premium-embedding-token) valid-token->features)
+      (or (some-> (premium-features.settings/premium-embedding-token) valid-token->features)
           #{})
       (catch Throwable e
-        (cached-logger (premium-embedding-token) e)
+        (cached-logger (premium-features.settings/premium-embedding-token) e)
         #{}))))
 
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
-  (some-> (premium-embedding-token)
+  (some-> (premium-features.settings/premium-embedding-token)
           fetch-token-status
           :plan-alias))
 
@@ -399,22 +378,10 @@
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 
-(defsetting is-hosted?
-  "Is the Metabase instance running in the cloud?"
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :audit      :never
-  :getter     (fn [] (boolean
-                      (and
-                       ((*token-features*) "hosting")
-                       (not (airgap-enabled)))))
-  :doc        false)
-
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."
   []
-  (or (is-hosted?) (has-feature? :audit-app)))
+  (or (premium-features.settings/is-hosted?) (has-feature? :audit-app)))
 
 (defenterprise decode-airgap-token
   "In OSS, this returns an empty map."

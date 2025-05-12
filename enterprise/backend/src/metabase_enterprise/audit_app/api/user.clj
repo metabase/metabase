@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.user :as api.user]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
