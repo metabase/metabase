@@ -5,7 +5,6 @@
   `metabase.driver.util.metadata-queries`."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
