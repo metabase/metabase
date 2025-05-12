@@ -93,9 +93,11 @@ export function FilterPicker({
     [onSelect, onClose],
   );
 
-  const handleOpenExpressionEditor = (clause?: Lib.ExpressionClause) => {
-    if (clause) {
-      setFilter(clause);
+  const [initialSource, setInitialSource] = useState("");
+
+  const handleOpenExpressionEditor = (source?: string) => {
+    if (source) {
+      setInitialSource(source);
     }
     openExpressionEditor();
   };
@@ -110,6 +112,7 @@ export function FilterPicker({
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
+        initialSource={initialSource}
       />
     );
   }

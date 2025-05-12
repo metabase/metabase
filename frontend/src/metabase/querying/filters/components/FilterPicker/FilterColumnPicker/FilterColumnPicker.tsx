@@ -30,7 +30,7 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: ColumnListItem | SegmentListItem) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: (expression?: Lib.ExpressionClause) => void;
+  onExpressionSelect?: (source?: string) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -118,14 +118,8 @@ export function FilterColumnPicker({
       onSegmentSelect(item);
     } else if (isCustomExpressionItem(item)) {
       const defn = getClauseDefinition(item.name);
-      const clause = defn
-        ? Lib.expressionClause({
-            operator: defn.name,
-            options: {},
-            args: [],
-          })
-        : undefined;
-      onExpressionSelect?.(clause);
+      const source = defn ? `${defn.displayName}(` : undefined;
+      onExpressionSelect?.(source);
     } else {
       onColumnSelect(item);
     }
@@ -138,12 +132,8 @@ export function FilterColumnPicker({
       const defn = getClauseDefinition(name);
       // TODO: make sure there are no other matches
       if (defn) {
-        const clause = Lib.expressionClause({
-          operator: defn.name,
-          options: {},
-          args: [],
-        });
-        onExpressionSelect?.(clause);
+        const source = `${defn.displayName}(`;
+        onExpressionSelect?.(source);
       }
     }
   };
