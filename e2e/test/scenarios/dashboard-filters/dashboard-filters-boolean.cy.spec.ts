@@ -24,45 +24,33 @@ describe(
     });
 
     it("should allow to map a boolean parameter to a boolean column of an MBQL query", () => {
-      cy.log("create dashboard");
       createQuestionAndDashboard();
-
-      cy.log("parameter mapping");
       mapParameter({ columnName: "Boolean" });
-
-      cy.log("parameter widget");
       testParameterWidget({
         allRowCountText: "200 rows",
         trueRowCountText: "1 row",
         falseRowCountText: "199 rows",
       });
-
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("Q1").click();
-      H.queryBuilderFiltersPanel()
-        .findByText("Boolean is true")
-        .should("be.visible");
-      H.assertQueryBuilderRowCount(1);
+      testDrillThru({
+        columnName: "Boolean",
+        trueRowCount: 1,
+        isNative: false,
+      });
     });
 
     it("should allow to map a boolean parameter to a boolean field filter of a SQL query", () => {
-      cy.log("create dashboard");
       createNativeQuestionAndDashboard();
-
-      cy.log("parameter mapping");
       mapParameter({ columnName: "Boolean" });
-
-      cy.log("parameter widget");
       testParameterWidget({
         allRowCountText: "2 rows",
         trueRowCountText: "1 row",
         falseRowCountText: "1 row",
       });
-
-      cy.log("drill-thru");
-      H.getDashboardCard().findByText("Q1").click();
-      H.assertQueryBuilderRowCount(1);
-      H.filterWidget().findByText("true").should("be.visible");
+      testDrillThru({
+        columnName: "Boolean",
+        trueRowCount: 1,
+        isNative: true,
+      });
     });
   },
 );
@@ -85,6 +73,8 @@ function createQuestionAndDashboard() {
 }
 
 function createNativeQuestionAndDashboard() {
+  cy.log("create dashboard");
+
   H.getTableId({ name: "many_data_types" }).then((tableId) => {
     H.getFieldId({ tableId, name: "boolean" }).then((fieldId) => {
       const questionDetails: NativeQuestionDetails = {
@@ -115,6 +105,7 @@ function createNativeQuestionAndDashboard() {
 }
 
 function mapParameter({ columnName }: { columnName: string }) {
+  cy.log("parameter mapping");
   H.editDashboard();
   H.setFilter("Boolean");
   H.selectDashboardFilter(H.getDashboardCard(), columnName);
@@ -149,4 +140,29 @@ function testParameterWidget({
     cy.findByText("Update filter").click();
   });
   H.getDashboardCard().findByText(trueRowCountText).should("be.visible");
+  H.filterWidget().icon("close").click();
+}
+
+function testDrillThru({
+  columnName,
+  trueRowCount,
+  isNative,
+}: {
+  columnName: string;
+  trueRowCount: number;
+  isNative: boolean;
+}) {
+  cy.log("drill-thru");
+  H.filterWidget().click();
+  H.popover().button("Add filter").click();
+  H.getDashboardCard().findByText("Q1").click();
+  H.assertQueryBuilderRowCount(trueRowCount);
+
+  if (isNative) {
+    H.filterWidget().findByText("true").should("be.visible");
+  } else {
+    H.queryBuilderFiltersPanel()
+      .findByText(`${columnName} is true`)
+      .should("be.visible");
+  }
 }
