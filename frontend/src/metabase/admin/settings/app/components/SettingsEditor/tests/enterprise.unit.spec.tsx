@@ -85,7 +85,9 @@ describe("SettingsEditor", () => {
     it("should not show JWT and SAML auth options", async () => {
       await setupEnterprise({ initialRoute: "/admin/settings/authentication" });
 
-      expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Sign in with Google"),
+      ).toBeInTheDocument();
 
       expect(screen.queryByText("SAML")).not.toBeInTheDocument();
       expect(
@@ -121,7 +123,9 @@ describe("SettingsEditor", () => {
         initialRoute: "/admin/settings/authentication",
       });
 
-      expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Sign in with Google"),
+      ).toBeInTheDocument();
 
       expect(screen.queryByText("Session timeout")).not.toBeInTheDocument();
     });

@@ -48,6 +48,7 @@ interface DashCardMenuProps {
   token?: string;
   visualizationSettings?: VisualizationSettings;
   downloadsEnabled: boolean;
+  onEditVisualization?: () => void;
 }
 
 export type DashCardMenuItem = {
@@ -78,6 +79,7 @@ export const DashCardMenu = ({
   dashcardId,
   uuid,
   token,
+  onEditVisualization,
 }: DashCardMenuProps) => {
   const store = useStore();
   const { plugins } = useInteractiveDashboardContext();
@@ -150,6 +152,7 @@ export const DashCardMenu = ({
         result={result}
         isDownloadingData={isDownloadingData}
         onDownload={() => setMenuView("download")}
+        onEditVisualization={onEditVisualization}
       />
     );
   };

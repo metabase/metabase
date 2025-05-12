@@ -1,6 +1,6 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.query.permissions :as query-perms]
