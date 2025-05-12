@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
@@ -8,10 +8,15 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
+import { isNotNull } from "metabase/lib/types";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import {
+  EXPRESSION_FUNCTIONS,
+  getClauseDefinition,
+} from "metabase-lib/v1/expressions";
 
 import { WIDTH } from "../constants";
 import type { ColumnListItem, SegmentListItem } from "../types";
@@ -25,18 +30,24 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: ColumnListItem | SegmentListItem) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: () => void;
+  onExpressionSelect?: (expression?: Lib.ExpressionClause) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
   withColumnItemIcon?: boolean;
 }
 
+type Item = {
+  type?: string;
+  displayName: string;
+  name: string;
+};
+
 type Section = {
   key?: string;
   type: string;
   name: string;
-  items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
+  items: Item[];
   icon?: IconName;
 };
 
@@ -56,6 +67,10 @@ export const isSegmentListItem = (
   return (item as SegmentListItem).segment != null;
 };
 
+export const isCustomExpressionItem = (item: Item) => {
+  return item.type === "custom-expression";
+};
+
 /**
  * Select a column, segment, or custom expression upon which to filter
  * Filter ColumnOrSegmentOrCustomExpressionPicker was too long of a name
@@ -72,6 +87,8 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  const [searchText, setSearchText] = useState("");
+
   const sections = useMemo(
     () =>
       getSections(
@@ -79,8 +96,15 @@ export function FilterColumnPicker({
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
+        searchText,
       ),
-    [query, stageIndexes, withColumnGroupIcon, withCustomExpression],
+    [
+      query,
+      stageIndexes,
+      withColumnGroupIcon,
+      withCustomExpression,
+      searchText,
+    ],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -92,8 +116,35 @@ export function FilterColumnPicker({
   const handleSelect = (item: ColumnListItem | SegmentListItem) => {
     if (isSegmentListItem(item)) {
       onSegmentSelect(item);
+    } else if (isCustomExpressionItem(item)) {
+      const defn = getClauseDefinition(item.name);
+      const clause = defn
+        ? Lib.expressionClause({
+            operator: defn.name,
+            options: {},
+            args: [],
+          })
+        : undefined;
+      onExpressionSelect?.(clause);
     } else {
       onColumnSelect(item);
+    }
+  };
+
+  const handleSearchTextChange = (searchText: string) => {
+    setSearchText(searchText);
+    if (searchText.endsWith("(")) {
+      const name = searchText.slice(0, -1);
+      const defn = getClauseDefinition(name);
+      // TODO: make sure there are no other matches
+      if (defn) {
+        const clause = Lib.expressionClause({
+          operator: defn.name,
+          options: {},
+          args: [],
+        });
+        onExpressionSelect?.(clause);
+      }
     }
   };
 
@@ -104,6 +155,7 @@ export function FilterColumnPicker({
         sections={sections}
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
+        onChangeSearchText={handleSearchTextChange}
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
@@ -129,6 +181,7 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
+  searchText: string,
 ) {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
@@ -172,8 +225,32 @@ function getSections(
     });
   });
 
+  const customExpressionSuggestions =
+    withCustomExpression && searchText
+      ? Object.keys(EXPRESSION_FUNCTIONS)
+          .map(getClauseDefinition)
+          .filter(isNotNull)
+          .filter((clause) =>
+            clause.displayName
+              .toLowerCase()
+              .startsWith(searchText.toLowerCase()),
+          )
+      : [];
+
+  const customExpressionSection: Section = {
+    key: "custom-expression-suggestions",
+    type: "section",
+    name: t`Custom Expression`,
+    items: customExpressionSuggestions.map((clause) => ({
+      type: "custom-expression",
+      name: clause.name,
+      displayName: clause.displayName,
+    })),
+  };
+
   return [
     ...columnSections,
+    customExpressionSection,
     ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
   ];
 }
