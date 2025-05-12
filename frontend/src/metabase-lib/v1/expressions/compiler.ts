@@ -41,11 +41,11 @@ export function compileExpression({
   hooks?: Hooks;
 }): CompileResult {
   try {
-    const { tokens } = lexify(source);
+    const tokens = lexify(source);
 
     hooks.lexified?.({ tokens });
 
-    const { root } = parse(tokens, { hooks });
+    const root = parse(tokens, { hooks });
     const expressionParts = compile(root, {
       expressionMode,
       resolver,

@@ -2,11 +2,16 @@ import type {
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
+  FieldValue,
+  GetRemappedParameterValueRequest,
   NativeDatasetResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideAdhocQueryMetadataTags } from "./tags";
+import {
+  provideAdhocQueryMetadataTags,
+  provideParameterValuesTags,
+} from "./tags";
 
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -33,6 +38,18 @@ export const datasetApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getRemappedParameterValue: builder.query<
+      FieldValue,
+      GetRemappedParameterValueRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/dataset/parameter/remapping",
+        body,
+      }),
+      providesTags: (_response, _error, { parameter }) =>
+        provideParameterValuesTags(parameter.id),
+    }),
   }),
 });
 
@@ -40,4 +57,5 @@ export const {
   useGetAdhocQueryQuery,
   useGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
+  useGetRemappedParameterValueQuery,
 } = datasetApi;

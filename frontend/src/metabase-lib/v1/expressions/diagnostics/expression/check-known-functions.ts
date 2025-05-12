@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { FIELD_MARKERS, getClauseDefinition } from "../../config";
+import { getClauseDefinition } from "../../clause";
 import { visit } from "../../visitor";
 import { error } from "../utils";
 
@@ -17,7 +17,7 @@ export function checkKnownFunctions({
     }
 
     const { operator } = node;
-    if (FIELD_MARKERS.has(operator) || operator === "value") {
+    if (operator === "value") {
       return;
     }
 

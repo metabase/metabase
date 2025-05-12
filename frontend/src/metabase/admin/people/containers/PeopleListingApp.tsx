@@ -1,12 +1,12 @@
-import cx from "classnames";
 import { t } from "ttag";
 
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import CS from "metabase/css/core/index.css";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Icon, Input, Radio } from "metabase/ui";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { Flex, Group, Icon, Input, Radio } from "metabase/ui";
 
 import { PeopleList } from "../components/PeopleList";
 import { USER_STATUS } from "../constants";
@@ -16,6 +16,13 @@ const PAGE_SIZE = 25;
 
 export function PeopleListingApp({ children }: { children: React.ReactNode }) {
   const isAdmin = useSelector(getUserIsAdmin);
+  const currentUser = useSelector(getUser);
+
+  const {
+    data: groups = [],
+    isLoading,
+    error,
+  } = useListPermissionsGroupsQuery();
 
   const {
     query,
@@ -32,10 +39,10 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
   };
 
   const headingContent = (
-    <div className={cx(CS.mb2, CS.flex, CS.alignCenter)}>
+    <Flex align="center" mb="xl">
       <Input
-        miw="18rem"
-        mr="1rem"
+        miw="14rem"
+        mr="xl"
         fz="sm"
         type="text"
         placeholder={t`Find someone`}
@@ -44,41 +51,52 @@ export function PeopleListingApp({ children }: { children: React.ReactNode }) {
         leftSection={<Icon c="text-secondary" name="search" size={16} />}
         rightSectionPointerEvents="all"
         rightSection={
-          searchInputValue === "" ? null : (
+          searchInputValue === "" ? (
+            <div /> // rendering null causes width change
+          ) : (
             <Input.ClearButton
               c={"text-secondary"}
               onClick={() => updateSearchInputValue("")}
-              style={{ zIndex: 1 }}
             />
           )
         }
       />
       {isAdmin && (
-        <Radio.Group value={status} onChange={updateStatus}>
+        <Radio.Group
+          value={status}
+          onChange={(val) => updateStatus(USER_STATUS[val])}
+        >
           <Group>
             <Radio label={t`Active`} value={USER_STATUS.active} />
             <Radio label={t`Deactivated`} value={USER_STATUS.deactivated} />
           </Group>
         </Radio.Group>
       )}
-    </div>
+    </Flex>
   );
 
   const buttonText =
     isAdmin && status === USER_STATUS.active ? t`Invite someone` : "";
 
   return (
-    <AdminPaneLayout
-      headingContent={headingContent}
-      buttonText={buttonText}
-      buttonLink={Urls.newUser()}
-    >
-      <PeopleList
-        query={query}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
-      />
-      {children}
-    </AdminPaneLayout>
+    <LoadingAndErrorWrapper error={error} loading={isLoading || !currentUser}>
+      <AdminPaneLayout
+        headingContent={headingContent}
+        buttonText={buttonText}
+        buttonLink={Urls.newUser()}
+      >
+        {currentUser && (
+          <PeopleList
+            groups={groups}
+            isAdmin={isAdmin}
+            currentUser={currentUser}
+            query={query}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
+          />
+        )}
+        {children}
+      </AdminPaneLayout>
+    </LoadingAndErrorWrapper>
   );
 }

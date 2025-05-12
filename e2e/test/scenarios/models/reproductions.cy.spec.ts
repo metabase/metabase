@@ -783,8 +783,7 @@ describe("issue 33844", () => {
   }
 
   it("should show hidden PKs in model metadata editor and object details after creating a model (metabase#33844)", () => {
-    cy.visit("/");
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
@@ -1058,10 +1057,9 @@ describe("issue 34514", () => {
     cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
     cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
-    cy.visit("/");
     // It's important to navigate via UI so that there are
     // enough entries in the browser history to go back to.
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
@@ -1134,7 +1132,9 @@ describe("issue 34514", () => {
     H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("We're experiencing server issues").should("not.exist");
-      cy.findByText("Query results will appear here.").should("be.visible");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
     });
   }
 });
@@ -1435,6 +1435,21 @@ describe("issue 51925", () => {
   });
 });
 
+describe("issue 53649", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
+    H.startNewNativeModel();
+
+    // If the app freezes, this won't work
+    H.NativeEditor.type("select 1");
+    H.NativeEditor.get().should("contain", "select 1");
+  });
+});
+
 describe("issue 56698", () => {
   beforeEach(() => {
     H.restore();
@@ -1459,5 +1474,36 @@ describe("issue 56698", () => {
     H.summarize();
     H.rightSidebar().button("Done").click();
     H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56775", () => {
+  const MODEL_NAME = "Model 56775";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        type: "model",
+        name: MODEL_NAME,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
+    H.openNotebook();
+    cy.button("Visualize").click();
+
+    cy.go("back");
+    H.openQuestionActions("Edit query definition");
+
+    cy.log("verify that the model definition is visible");
+    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
+    H.getNotebookStep("data").findByText("Products").should("be.visible");
   });
 });

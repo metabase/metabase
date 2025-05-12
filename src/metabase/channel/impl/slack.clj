@@ -5,7 +5,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
-   [metabase.integrations.slack :as slack]
+   [metabase.channel.slack :as slack]
    [metabase.models.params.shared :as shared.params]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.malli :as mu]

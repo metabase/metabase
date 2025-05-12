@@ -7,14 +7,14 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.config :as config :refer [*request-id*]]
    [metabase.db :as mdb]
-   [metabase.events :as events]
-   [metabase.models.api-key :as api-key]
+   [metabase.events.core :as events]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

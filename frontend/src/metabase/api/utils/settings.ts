@@ -5,12 +5,14 @@ import { useToast } from "metabase/common/hooks";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
+  EnterpriseSettings,
 } from "metabase-types/api";
 
 import { useGetSettingsQuery } from "../session";
 import {
   useGetAdminSettingsDetailsQuery,
   useUpdateSettingMutation,
+  useUpdateSettingsMutation,
 } from "../settings";
 
 /**
@@ -27,6 +29,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   const { data: settingsDetails, isLoading: detailsLoading } =
     useGetAdminSettingsDetailsQuery();
   const [updateSetting, updateSettingResult] = useUpdateSettingMutation();
+  const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
 
   const settingDetails = settingsDetails?.[settingName];
 
@@ -49,9 +52,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       }
 
       if (response.error) {
-        const message =
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving ${key}`;
+        const message = getErrorMessage(response.error, t`Error saving ${key}`);
 
         sendToast({ message, icon: "warning", toastColor: "danger" });
       } else {
@@ -62,6 +63,33 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSetting, sendToast],
   );
 
+  const handleUpdateSettings = useCallback(
+    async ({
+      toast = true,
+      ...settings
+    }: {
+      toast?: boolean;
+    } & Partial<EnterpriseSettings>) => {
+      const response = await updateSettings(settings);
+
+      if (!toast) {
+        return response;
+      }
+
+      if (response.error) {
+        const message =
+          (response.error as { data?: { message: string } })?.data?.message ||
+          t`Error saving settings`;
+
+        sendToast({ message, icon: "warning", toastColor: "danger" });
+      } else {
+        sendToast({ message: t`Changes saved`, icon: "check" });
+      }
+      return response;
+    },
+    [updateSettings, sendToast],
+  );
+
   const settingValue = settings?.[settingName];
 
   return {
@@ -69,8 +97,37 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     settingDetails,
     description: settingDetails?.description,
     updateSetting: handleUpdateSetting,
+    updateSettings: handleUpdateSettings,
     updateSettingResult,
+    updateSettingsResult,
     isLoading: settingsLoading || detailsLoading,
     ...apiProps,
   };
+};
+
+export const getErrorMessage = (
+  payload:
+    | unknown
+    | string
+    | { data: { message: string } | string }
+    | { message: string },
+  fallback: string = t`Something went wrong`,
+): string => {
+  if (typeof payload === "string") {
+    return payload || fallback;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return fallback;
+  }
+
+  if ("message" in payload) {
+    return getErrorMessage(payload.message, fallback);
+  }
+
+  if ("data" in payload) {
+    return getErrorMessage(payload.data, fallback);
+  }
+
+  return fallback;
 };

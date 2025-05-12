@@ -603,6 +603,76 @@ H.describeWithSnowplow("scenarios > setup", () => {
       source: "homepage",
     });
   });
+
+  it("should track when 'New' button is clicked", () => {
+    cy.visit("/");
+
+    cy.log("From the app bar");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "app-bar",
+    });
+
+    cy.log("Track closing the button as well");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").should("not.exist");
+    H.expectGoodSnowplowEvent(
+      {
+        event: "new_button_clicked",
+        triggered_from: "app-bar",
+      },
+      2,
+    );
+
+    cy.log("From the empty collection");
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+
+    cy.findByRole("dialog").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "empty-collection",
+    });
+  });
+
+  /**
+   * Until we refactor the NewItem menu component and drop EntityMenu from it,
+   * the only menu item that can have onClick handler is a "dashboard".
+   */
+  it("should track when a 'New' button's menu item is clicked", () => {
+    cy.visit("/");
+
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectGoodSnowplowEvent({
+      event: "new_button_item_clicked",
+      triggered_from: "dashboard",
+    });
+
+    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
+    cy.findByTestId("new-dashboard-modal").should("not.exist");
+
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectGoodSnowplowEvent(
+      {
+        event: "new_button_item_clicked",
+        triggered_from: "dashboard",
+      },
+      2,
+    );
+  });
 });
 
 const pinItem = (name) => {

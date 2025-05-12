@@ -15,8 +15,6 @@
    [metabase.config :as config]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -153,12 +151,11 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
-   :param_values {}, :param_fields nil :width "fixed"})
+   :param_fields nil :width "fixed"})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -676,10 +673,6 @@
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (= nil
                  (-> embedding-dashboard
-                     :param_values
-                     (get (mt/id :venues :name)))))
-          (is (= nil
-                 (-> embedding-dashboard
                      :param_fields
                      (get (mt/id :venues :name)))))
           (is (= 1
@@ -689,10 +682,6 @@
                      :parameter_mappings
                      count))))
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (= nil
-                 (-> eid-embedding-dashboard
-                     :param_values
-                     (get (mt/id :venues :name)))))
           (is (= nil
                  (-> eid-embedding-dashboard
                      :param_fields
@@ -737,10 +726,6 @@
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (some?
                (-> embedding-dashboard
-                   :param_values
-                   (get (mt/id :venues :name)))))
-          (is (some?
-               (-> embedding-dashboard
                    :param_fields
                    (get (mt/id :venues :name)))))
           (is (= 1
@@ -752,10 +737,6 @@
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
           (is (some?
                (-> eid-embedding-dashboard
-                   :param_values
-                   (get (mt/id :venues :name)))))
-          (is (some?
-               (-> eid-embedding-dashboard
                    :param_fields
                    (get (mt/id :venues :name)))))
           (is (= 1
@@ -764,49 +745,6 @@
                      first
                      :parameter_mappings
                      count))))))))
-
-(deftest linked-param-to-locked-removes-param-values-test
-  (testing "Check that a linked parameter to a locked params we remove the param_values."
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
-                                                         :embedding_params {:venue_name "locked" :category_name "enabled"}
-                                                         :name             "Test Dashboard"
-                                                         :parameters       [{:name      "venue_name"
-                                                                             :slug      "venue_name"
-                                                                             :id        "foo"
-                                                                             :type      :string/=
-                                                                             :sectionId "string"}
-                                                                            {:name                "category_name"
-                                                                             :filteringParameters ["foo"]
-                                                                             :slug                "category_name"
-                                                                             :id                  "bar"
-                                                                             :type                :string/=
-                                                                             :sectionId           "string"}]}
-                     :model/Card          {card-id :id} {:name "Dashboard Test Card"}
-                     :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
-                                                         :card_id            card-id
-                                                         :parameter_mappings [{:card_id      card-id
-                                                                               :slug         "venue_name"
-                                                                               :parameter_id "foo"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :venues :name) nil]]}
-                                                                              {:card_id      card-id
-                                                                               :slug         "category_name"
-                                                                               :parameter_id "bar"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :categories :name) nil]]}]}]
-        (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
-          (is (= []
-                 (-> embedding-dashboard
-                     :param_values
-                     (get (mt/id :categories :name))
-                     :values))))
-        (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (= []
-                 (-> eid-embedding-dashboard
-                     :param_values
-                     (get (mt/id :categories :name))
-                     :values))))))))
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
@@ -1055,64 +993,7 @@
             (is (= "completed"
                    (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
 
-;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
-
-(defn- field-values-url [card-or-dashboard field-or-id & [entity-id]]
-  (str
-   "embed/"
-   (condp mi/instance-of? card-or-dashboard
-     :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
-     :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
-   "/field/"
-   (u/the-id field-or-id)
-   "/values"))
-
-(defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
-  (with-embedding-enabled-and-new-secret-key!
-    (mt/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                           :enable_embedding true)]
-      (f card))))
-
-(defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
-  {:style/indent 3}
-  [table-kw field-kw [card-binding] & body]
-  `(do-with-embedding-enabled-and-temp-card-referencing!
-    ~table-kw ~field-kw
-    (fn [~(or card-binding '_)]
-      ~@body)))
-
-;; should be able to fetch values for a Field referenced by a public Card
-(deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
-  (field-values/clear-field-values-for-field! (mt/id :venues :name))
-  (is (= {:values          [["20th Century Cafe"]
-                            ["25°"]
-                            ["33 Taps"]
-                            ["800 Degrees Neapolitan Pizzeria"]
-                            ["BCD Tofu House"]]
-          :field_id        (mt/id :venues :name)
-          :has_more_values false}
-         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (-> (client/client :get 200 (field-values-url card (mt/id :venues :name)))
-               (update :values (partial take 5)))))))
-
-;; but for Fields that are not referenced we should get an Exception
-(deftest but-for-fields-that-are-not-referenced-we-should-get-an-exception
-  (is (= "Not found."
-         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (client/client :get 400 (field-values-url card (mt/id :venues :price)))))))
-
-;; Endpoint should fail if embedding is disabled
-(deftest endpoint-should-fail-if-embedding-is-disabled
-  (is (= "Embedding is not enabled."
-         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (mt/with-temporary-setting-values [enable-embedding-static false]
-             (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
-
-(deftest embedding-not-enabled-message
-  (is (= "Embedding is not enabled for this object."
-         (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (t2/update! :model/Card (u/the-id card) {:enable_embedding false})
-           (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
+;;; ------------------------------- GET /api/embed/card/:token/params/:param/values --------------------------------
 
 (deftest card-param-values
   (letfn [(search [card param-key prefix & [entity-id]]
@@ -1190,201 +1071,6 @@
                       :values          [["Fred 62"] ["Red Medicine"]]}
                      response)))))))))
 
-;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
-
-(defn- do-with-embedding-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
-  (with-embedding-enabled-and-new-secret-key!
-    (mt/with-temp [:model/Dashboard     dashboard {:enable_embedding true}
-                   :model/Card          card      (public-test/mbql-card-referencing table-kw field-kw)
-                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                                   :card_id            (u/the-id card)
-                                                   :parameter_mappings [{:card_id (u/the-id card)
-                                                                         :target  [:dimension
-                                                                                   [:field
-                                                                                    (mt/id table-kw field-kw) nil]]}]}]
-      (f dashboard card dashcard))))
-
-(defmacro ^:private with-embedding-enabled-and-temp-dashcard-referencing!
-  {:style/indent 3}
-  [table-kw field-kw [dash-binding card-binding dashcard-binding] & body]
-  `(do-with-embedding-enabled-and-temp-dashcard-referencing!
-    ~table-kw ~field-kw
-    (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-      ~@body)))
-
-;; should be able to use it when everything is g2g
-(deftest should-be-able-to-use-it-when-everything-is-g2g
-  (is (= {:values          [["20th Century Cafe"]
-                            ["25°"]
-                            ["33 Taps"]
-                            ["800 Degrees Neapolitan Pizzeria"]
-                            ["BCD Tofu House"]]
-          :field_id        (mt/id :venues :name)
-          :has_more_values false}
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
-               (update :values (partial take 5))))
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name) (:entity_id dashboard)))
-               (update :values (partial take 5)))))))
-
-;; shound NOT be able to use the endpoint with a Field not referenced by the Dashboard
-(deftest shound-not-be-able-to-use-the-endpoint-with-a-field-not-referenced-by-the-dashboard
-  (is (= "Not found."
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (client/client :get 400 (field-values-url dashboard (mt/id :venues :price)))))))
-
-;; Endpoint should fail if embedding is disabled
-(deftest field-values-endpoint-should-fail-if-embedding-is-disabled
-  (is (= "Embedding is not enabled."
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (mt/with-temporary-setting-values [enable-embedding-static false]
-             (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
-
-;; Endpoint should fail if embedding is disabled for the Dashboard
-(deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
-  (is (= "Embedding is not enabled for this object."
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
-           (client/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
-
-;;; --------------------------------------------- Field search endpoints ---------------------------------------------
-
-(defn- field-search-url [card-or-dashboard field-or-id search-field-or-id & [entity-id]]
-  (str "embed/"
-       (condp mi/instance-of? card-or-dashboard
-         :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
-         :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
-       "/field/" (u/the-id field-or-id)
-       "/search/" (u/the-id search-field-or-id)))
-
-(deftest field-search-test
-  (testing
-   (letfn [(tests [model object]
-             (is (= [[93 "33 Taps"]]
-                    (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
-                                   :value "33 T")))
-             (is (= [[93 "33 Taps"]]
-                    (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name) (:entity_id object))
-                                   :value "33 T")))
-
-             (testing "if search field isn't allowed to be used with the other Field endpoint should return exception"
-               (is (= "Invalid Request."
-                      (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :price))
-                                     :value "33 T"))))
-
-             (testing "Endpoint should fail if embedding is disabled"
-               (mt/with-temporary-setting-values [enable-embedding-static false]
-                 (is (= "Embedding is not enabled."
-                        (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
-                                       :value "33 T")))))
-
-             (testing "Endpoint should fail if embedding is disabled for the object"
-               (t2/update! model (u/the-id object) {:enable_embedding false})
-               (is (= "Embedding is not enabled for this object."
-                      (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
-                                     :value "33 T")))))]
-     (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
-       (testing "Search for Field values for a Card"
-         (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-           (tests :model/Card card))))
-     (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
-       (testing "Search for Field values for a Dashboard"
-         (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-           (tests :model/Dashboard dashboard)))))))
-
-;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
-
-(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id & [entity-id]]
-  (str "embed/"
-       (condp mi/instance-of? card-or-dashboard
-         :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
-         :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
-       "/field/" (u/the-id field-or-id)
-       "/remapping/" (u/the-id remapped-field-or-id)))
-
-(deftest field-remapping-test
-  (letfn [(tests [model object & [entity-id]]
-            (testing (str "we should be able to use the API endpoint and get the same results we get by calling the "
-                          "function above directly")
-              (is (= [10 "Fred 62"]
-                     (client/client :get 200 (field-remapping-url
-                                              object (mt/id :venues :id) (mt/id :venues :name) entity-id)
-                                    :value "10"))))
-
-            (testing " ...or if the remapping Field isn't allowed to be used with the other Field"
-              (is (= "Invalid Request."
-                     (client/client :get 400 (field-remapping-url
-                                              object (mt/id :venues :id) (mt/id :venues :price) entity-id)
-                                    :value "10"))))
-
-            (testing " ...or if embedding is disabled"
-              (mt/with-temporary-setting-values [enable-embedding-static false]
-                (is (= "Embedding is not enabled."
-                       (client/client :get 400 (field-remapping-url
-                                                object (mt/id :venues :id) (mt/id :venues :name) entity-id)
-                                      :value "10")))))
-
-            (testing " ...or if embedding is disabled for the Card/Dashboard"
-              (t2/update! model (u/the-id object) {:enable_embedding false})
-              (is (= "Embedding is not enabled for this object."
-                     (client/client :get 400 (field-remapping-url
-                                              object (mt/id :venues :id) (mt/id :venues :name) entity-id)
-                                    :value "10")))))]
-
-    (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
-      (testing "Get remapped Field values for a Card"
-        (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-          (tests :model/Card card)))
-      (testing "Get remapped Field values for a Card with entity-ids"
-        (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-          (tests :model/Card card (:entity_id card))))
-      (testing "Shouldn't work if Card doesn't reference the Field in question"
-        (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
-          (is (= "Not found."
-                 (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                                :value "10"))))))
-
-    (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
-      (testing "Get remapped Field values for a Dashboard"
-        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-          (tests :model/Dashboard dashboard)))
-      (testing "Get remapped Field values for a Dashboard with entity-ids"
-        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-          (tests :model/Dashboard dashboard (:entity_id dashboard))))
-      (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
-        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
-          (is (= "Not found."
-                 (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                                :value "10"))))))
-
-    (testing "with entity ids"
-      (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
-        (testing "Get remapped Field values for a Card"
-          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-            (tests :model/Card card (:entity_id card))))
-        (testing "Get remapped Field values for a Card with entity-ids"
-          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-            (tests :model/Card card (:entity_id card))))
-        (testing "Shouldn't work if Card doesn't reference the Field in question"
-          (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
-            (is (= "Not found."
-                   (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                                  :value "10"))))))
-
-      (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
-        (testing "Get remapped Field values for a Dashboard"
-          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-            (tests :model/Dashboard dashboard (:entity_id dashboard))))
-        (testing "Get remapped Field values for a Dashboard with entity-ids"
-          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-            (tests :model/Dashboard dashboard (:entity_id dashboard))))
-        (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
-          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
-            (is (= "Not found."
-                   (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                                  :value "10")))))))))
-
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
 (defn- do-with-chain-filter-fixtures! [f]
@@ -1451,7 +1137,7 @@
                 {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
     (testing "Should work if the param we're fetching values for is enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= {:values          [[2] [3] [4] [5] [6]]
+        (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                 :has_more_values false}
                (chain-filer-test/take-n-values 5 (client/client :get 200 (values-url))))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1461,7 +1147,7 @@
 
     (testing "If an ENABLED constraint param is present in the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= {:values          [[40] [67]]
+        (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
                 :has_more_values false}
                (client/client :get 200 (values-url {"price" 4})))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1471,7 +1157,7 @@
 
     (testing "If an ENABLED param is present in query params but *not* the JWT, that's ok"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-        (is (= {:values          [[40] [67]]
+        (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
                 :has_more_values false}
                (client/client :get 200 (str (values-url) "?_PRICE_=4")))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1495,7 +1181,7 @@
                       {:embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"}})
           (testing "Should work if the param we're fetching values for is enabled"
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-              (is (= {:values          [[2] [3] [4] [5] [6]]
+              (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                       :has_more_values false}
                      (chain-filer-test/take-n-values 5 (mt/user-http-request :rasta :get 200 (values-url))))))
             (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1525,7 +1211,7 @@
 
       (testing "if `:locked` param is supplied, request should succeed"
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
-          (is (= {:values          [[40] [67]]
+          (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
                   :has_more_values false}
                  (client/client :get 200 (values-url {"price" 4})))))
         (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
@@ -1975,6 +1661,162 @@
             (mt/with-temporary-setting-values [synchronous-batch-updates true]
               (client/client :get 202 (dashcard-url dashcard))
               (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
+
+(deftest dashboard-param-value-remapping-test
+  (mt/dataset test-data
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {orders-card-id :id} {:enable_embedding true
+                                                       :display          :table
+                                                       :dataset_query    (mt/mbql-query orders)}
+                     :model/Dashboard {dashboard-id :id} {:enable_embedding true
+                                                          :parameters
+                                                          [{:name      "Price"
+                                                            :slug      "price"
+                                                            :id        "price-param"
+                                                            :type      :number/=}
+                                                           {:name                "User ID"
+                                                            :slug                "user-id"
+                                                            :id                  "user-id-param"
+                                                            :type                :number/between
+                                                            :filteringParameters ["price-param"]}]
+                                                          :embedding_params {:price   "locked"
+                                                                             :user-id "enabled"}}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id
+                                             :card_id      orders-card-id
+                                             :parameter_mappings
+                                             [{:parameter_id "price-param"
+                                               :card_id      orders-card-id
+                                               :target       [:dimension [:field (mt/id :orders :total) {:base-type :type/Float}]]}
+                                              {:parameter_id "user-id-param"
+                                               :card_id      orders-card-id
+                                               :target       [:dimension [:field (mt/id :orders :user_id) {:base-type :type/Integer}]]}]}]
+        (doseq [{:keys [test-str params]}
+                [{:test-str "Locked filter is not set in the token, so requests should fail."
+                  :params   {}}
+                 {:test-str "Locked filter is set to `nil` in the token, so requests should fail."
+                  :params   {:price nil}}]]
+          (testing test-str
+            (let [token (dash-token dashboard-id {:params params})]
+              (is (= "Cannot get remapped value for parameter: \"price\" is not an enabled parameter."
+                     (mt/user-http-request :crowberto :get 400
+                                           (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "price-param" "15.69"))))
+              (is (= "You must specify a value for :price in the JWT."
+                     (mt/user-http-request :crowberto :get 400
+                                           (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" 437)))))))
+        (doseq [{:keys [test-str params expected]}
+                [{:test-str "Locked filter is set to a list of values in the token, value can be found."
+                  :params   {:price ["15.69" "32.14"]}
+                  :expected [437 "Danial Keeling"]}
+                 {:test-str "Locked filter is set to a single value in the token, value filtered out."
+                  :params   {:price "15.69"}
+                  :expected ["42"]}
+                 {:test-str "Locked filter is set to an empty list in the token, value can be found."
+                  :params   {:price []}
+                  :expected [42 "Reyes Strosin"]}]]
+          (testing test-str
+            (let [token (dash-token dashboard-id {:params params})
+                  value (first expected)
+                  url   (format "embed/dashboard/%s/params/%s/remapping?value=%s" token "user-id-param" value)]
+              (is (= expected (client/client :get 200 url))))))))))
+
+(deftest card-param-value-remapping-test
+  (let [param-static-list          "_STATIC_CATEGORY_"
+        param-static-list-label    "_STATIC_CATEGORY_LABEL_"
+        param-card                 "_CARD_"
+        param-field-values         "name_param_id"
+        param-labeled-field-values "id"
+        param-not-enabled          "not-enabled-id"]
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp
+        [:model/Card source-card {:database_id   (mt/id)
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (mt/mbql-query venues {:limit 5})}
+         :model/Card field-filter-card {:enable_embedding true
+                                        :dataset_query
+                                        {:database (mt/id)
+                                         :type     :native
+                                         :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}} and {{PRICE}}"
+                                                    :template-tags {"NAME" {:id           param-field-values
+                                                                            :name         "NAME"
+                                                                            :display_name "Name"
+                                                                            :type         :dimension
+                                                                            :dimension    [:field (mt/id :venues :name) nil]
+                                                                            :required     true}
+                                                                    "PRICE" {:id           param-not-enabled
+                                                                             :name         "PRICE"
+                                                                             :display_name "Price"
+                                                                             :type         :dimension
+                                                                             :dimension    [:field (mt/id :venues :price) nil]
+                                                                             :required     true}}}}
+                                        :name       "native card with field filter"
+                                        :parameters [{:id     param-field-values
+                                                      :type   :string/=
+                                                      :target [:dimension [:template-tag "NAME"]]
+                                                      :name   "Name"
+                                                      :slug   "name"}
+                                                     {:id     param-not-enabled
+                                                      :type   :number/>=
+                                                      :target [:dimension [:template-tag "PRICE"]]
+                                                      :name   "Price"
+                                                      :slug   "price"}]
+                                        :embedding_params {:name :enabled
+                                                           :price :locked}}
+         :model/Card name-mapped-card {:enable_embedding true
+                                       :dataset_query
+                                       {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                   :template-tags {"id" {:id           param-labeled-field-values
+                                                                         :name         "ID"
+                                                                         :display_name "Id"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :people :id) nil]
+                                                                         :required     true}}}}
+                                       :name       "native card with named field filter"
+                                       :parameters [{:id     param-labeled-field-values
+                                                     :type   :number/>=
+                                                     :target [:dimension [:template-tag "id"]]
+                                                     :name   "Id"
+                                                     :slug   "id"}]
+                                       :embedding_params {:id :enabled}}
+         :model/Card card {:enable_embedding true
+                           :database_id   (mt/id)
+                           :dataset_query (mt/mbql-query venues)
+                           :parameters    [{:name                 "Static Category"
+                                            :slug                 "static_category"
+                                            :id                   param-static-list
+                                            :type                 "category"
+                                            :values_source_type   "static-list"
+                                            :values_source_config {:values ["African" "American" "Asian"]}}
+                                           {:name                 "Static Category label"
+                                            :slug                 "static_category_label"
+                                            :id                   param-static-list-label
+                                            :type                 "category"
+                                            :values_source_type   "static-list"
+                                            :values_source_config {:values [["Af rican" "Af"] ["American" "Am"] ["Asian" "As"]]}}
+                                           {:name                 "Card as source"
+                                            :slug                 "card"
+                                            :id                   param-card
+                                            :type                 "category"
+                                            :values_source_type   "card"
+                                            :values_source_config {:card_id     (:id source-card)
+                                                                   :value_field (mt/$ids $venues.name)}}]
+                           :embedding_params (zipmap [:static_category :static_category_label :card] (repeat :enabled))
+                           :table_id      (mt/id :venues)}]
+        (let [url #(format "embed/card/%s/params/%s/remapping?value=%s" (card-token %1) %2 %3)
+              request #(client/client :get 200 (url %1 %2 %3))]
+          (are [card value-source value] (= [value] (request card value-source value))
+            field-filter-card param-field-values      "20th Century Cafe"
+            field-filter-card param-field-values      "Not a value in the DB"
+            card              param-card              "33 Taps"
+            card              param-card              "Not provided by the card"
+            card              param-static-list       "African"
+            card              param-static-list       "Whatever"
+            card              param-static-list-label "European")
+          (is (= ["Af rican" "Af"] (request card param-static-list-label "Af rican")))
+          (is (= [42 "Reyes Strosin"] (request name-mapped-card param-labeled-field-values "42")))
+          (is (= "Cannot get remapped value for parameter: \"price\" is not an enabled parameter."
+                 (client/client :get 400 (url field-filter-card param-not-enabled "3")))))))))
 
 ;;; ------------------------------------------ Tile endpoints ---------------------------------------------------------
 
