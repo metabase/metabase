@@ -15,6 +15,11 @@ import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
+import {
+  useDashboardFullscreen,
+  useDashboardRefreshPeriod,
+  useRefreshDashboard,
+} from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
   CancelledFetchDashboardResult,
@@ -42,16 +47,16 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
-};
+} & Partial<Pick<DashboardRefreshPeriodControls, "refreshPeriod">>;
 
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
   initialDashboardId: DashboardContextOwnProps["dashboardId"];
   dashboardId: DashboardId | null;
-};
+  refreshDashboard: () => Promise<void>;
+} & DashboardRefreshPeriodControls;
 
 export type DashboardControls = DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
   UseAutoScrollToDashcardResult &
   EmbedDisplayParams &
   EmbedThemeControls;
@@ -81,14 +86,10 @@ const DashboardContextProviderInner = ({
   children,
 
   // url params
-  isFullscreen = false,
-  onFullscreenChange = noop,
   hasNightModeToggle = false,
   onNightModeChange = noop,
   isNightMode = false,
-  refreshPeriod = null,
-  setRefreshElapsedHook = noop,
-  onRefreshPeriodChange = noop,
+  refreshPeriod: initRefreshPeriod = null,
   background = true,
   bordered = true,
   titled = true,
@@ -135,8 +136,6 @@ const DashboardContextProviderInner = ({
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
-
-  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {
@@ -269,6 +268,21 @@ const DashboardContextProviderInner = ({
     onLoad,
   ]);
 
+  const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
+
+  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
+
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId,
+    parameterQueryParams,
+  });
+
+  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
+    useDashboardRefreshPeriod({
+      initRefreshPeriod,
+      onRefresh: refreshDashboard,
+    });
+
   useEffect(() => {
     if (!isLoading && previousIsLoading && !error && dashboard) {
       onLoad?.(dashboard);
@@ -289,6 +303,7 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
+        refreshDashboard,
 
         navigateToNewCardFromDashboard,
         isLoading: isLoading && !error,

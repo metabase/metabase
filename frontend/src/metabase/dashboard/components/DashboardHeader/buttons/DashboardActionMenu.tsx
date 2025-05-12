@@ -48,7 +48,7 @@ const DashboardActionMenuInner = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard.id,
-    parameterQueryParams: location.query,
+    parameterQueryParams: location?.query,
     refetchData: false,
   });
 
@@ -64,7 +64,7 @@ const DashboardActionMenuInner = ({
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },
     ],
-    [location.pathname],
+    [location?.pathname],
   );
 
   return (

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 
 import type { DashboardRefreshPeriodControls } from "../types";
@@ -7,13 +7,17 @@ import { useInterval } from "./use-interval";
 
 const TICK_PERIOD = 1; // seconds
 export const useDashboardRefreshPeriod = ({
+  initRefreshPeriod = null,
   onRefresh,
 }: {
+  initRefreshPeriod?: number | null;
   onRefresh: () => void;
 }): DashboardRefreshPeriodControls => {
-  const [period, setPeriod] = useState<number | null>(null);
+  const [period, setPeriod] = useState<number | null>(initRefreshPeriod);
   const elapsedHook = useRef<((elapsed: number | null) => void) | null>(null);
   const elapsed = useRef<number | null>(0);
+
+  useEffect(() => setPeriod(initRefreshPeriod), [initRefreshPeriod]);
 
   const setRefreshElapsedHook = useCallback(
     (hook: (elapsed: number | null) => void) => {

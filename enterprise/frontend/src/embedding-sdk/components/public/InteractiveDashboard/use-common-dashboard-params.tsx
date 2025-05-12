@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { usePrevious, useUnmount } from "react-use";
+import { usePrevious } from "react-use";
 
 import { useSdkDispatch, useSdkStore } from "embedding-sdk/store";
 import {
@@ -25,10 +25,6 @@ export const useCommonDashboardParams = ({
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
 
   const previousDashboardId = usePrevious(dashboardId);
-
-  useUnmount(() => {
-    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
-  });
 
   useEffect(() => {
     if (previousDashboardId && dashboardId !== previousDashboardId) {

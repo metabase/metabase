@@ -54,7 +54,7 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && canEditQuestion(question)) {
+    if (withEditLink && onEditQuestion && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
