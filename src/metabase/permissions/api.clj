@@ -85,7 +85,7 @@
   :visibility :admin
   :export? false
   :default false
-  :feature :tenants
+  :feature :advanced-permissions ;; TODO revert to :tenants once feature is enabled for dev token
   :can-read-from-env? false
   :setter (fn [new-value]
             (when-not new-value

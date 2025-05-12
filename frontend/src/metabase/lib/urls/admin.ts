@@ -30,6 +30,10 @@ export function reactivateUser(userId: UserId) {
   return `/admin/people/${userId}/reactivate`;
 }
 
+export function editUserStrategy() {
+  return `/admin/people/user-strategy`;
+}
+
 export function newDatabase() {
   return `/admin/databases/create`;
 }
