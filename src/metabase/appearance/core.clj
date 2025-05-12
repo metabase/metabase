@@ -14,7 +14,6 @@
   application-font-files
   application-logo-url
   application-name
-  application-name-for-setting-descriptions
   custom-formatting
   custom-homepage
   custom-homepage-dashboard

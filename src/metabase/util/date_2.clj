@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [java-time.core :as t.core]
-   [metabase.settings.core :as setting]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -219,7 +218,7 @@
     :year})
 
 (defn- start-of-week []
-  (setting/get :start-of-week))
+  ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
 
 (let [m (u.date.common/static-instances DayOfWeek)]
   (defn- day-of-week*

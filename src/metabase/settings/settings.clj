@@ -1,15 +1,19 @@
 (ns metabase.settings.settings
   (:require
-   [metabase.config :as config]
-   [metabase.settings.models.setting :as setting]))
+   [metabase.config :as config]))
 
 (defn application-name-for-setting-descriptions
-  "Returns the value of the [[application-name]] setting so setting docstrings can be generated during the compilation stage.
-   Use this instead of `application-name` in descriptions, otherwise the `application-name` setting's `:enabled?`
-  function will be called during compilation, which will fail because it will attempt to perform i18n, which is not
-  allowed during compilation."
-  []
+  "Returns the value of the [[application-name]] setting so setting docstrings can be generated during the compilation
+  stage. Use this instead of `application-name` in descriptions, otherwise the `application-name` setting's
+  `:enabled?` function will be called during compilation, which will fail because it will attempt to perform i18n,
+  which is not allowed during compilation.
+
+  `getter` should always be [[metabase.appearance.core/application-name]], but is dependency-injected to avoid
+  circular dependencies between modules.
+
+    (setting/application-name-for-setting-descriptions appearance/application-name)"
+  [getter]
   (if *compile-files*
     "Metabase"
     (binding [config/*disable-setting-cache* true]
-      (setting/get :application-name))))
+      (getter))))

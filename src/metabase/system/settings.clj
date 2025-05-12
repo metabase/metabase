@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
@@ -72,7 +73,7 @@
   (deferred-tru
    (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
         "Users can individually override this default language from their own account settings.")
-   (setting/application-name-for-setting-descriptions))
+   (setting/application-name-for-setting-descriptions appearance/application-name))
   :default    "en"
   :visibility :public
   :export?    true

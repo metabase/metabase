@@ -4,9 +4,6 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events.core :as events]
    [metabase.login-history.core :as login-history]
    [metabase.request.core :as request]
@@ -107,12 +104,3 @@
   (when-not (session.settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
-
-(defn cleanup-sessions!
-  "Deletes sessions from the database which are no longer valid"
-  []
-  (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form (mdb/db-type)
-                                                                   :%now
-                                                                   (- (config/config-int :max-session-age))
-                                                                   :minute)]]
-    (t2/delete! :model/Session :created_at [:< oldest-allowed])))

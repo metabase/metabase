@@ -22,7 +22,7 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
-                (setting/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions application-name))
   :encryption :no
   :default    "Metabase"
   :audit      :getter

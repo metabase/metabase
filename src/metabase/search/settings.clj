@@ -1,11 +1,12 @@
 (ns metabase.search.settings
   (:require
+   [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
 
 (defsetting search-typeahead-enabled
   (i18n/deferred-tru "Enable typeahead search in the {0} navbar?"
-                     (setting/application-name-for-setting-descriptions))
+                     (setting/application-name-for-setting-descriptions appearance/application-name))
   :type       :boolean
   :default    true
   :visibility :authenticated

@@ -23,7 +23,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.session.core :as session]
+   [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
@@ -830,7 +830,7 @@
     :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)
-    :enabled   (not (session/enable-password-login))}
+    :enabled   (not (session.settings/enable-password-login))}
    {:name      :email-restrict-recipients
     :available (premium-features/enable-email-restrict-recipients?)
     :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}

@@ -633,6 +633,7 @@
           metabase.search.spec}
    :uses #{analytics
            api
+           appearance
            audit-app
            config
            db
@@ -700,7 +701,15 @@
   {:api  #{metabase.settings.api
            metabase.settings.core
            metabase.settings.init}
-   :uses #{api config db events models premium-features server util enterprise/advanced-permissions}}
+   :uses #{api
+           config
+           db
+           events
+           models
+           premium-features
+           server
+           util
+           enterprise/advanced-permissions}}
 
   setup
   {:api  #{metabase.setup.api metabase.setup.core}
@@ -741,7 +750,7 @@
   system
   {:api  #{metabase.system.core
            metabase.system.init}
-   :uses #{settings util}}
+   :uses #{appearance settings util}}
 
   task
   {:api #{metabase.task.bootstrap
@@ -998,8 +1007,7 @@
            enterprise/api}}
 
   enterprise/scim
-  {:api  #{metabase-enterprise.scim.api ; TODO -- we should not to expose both `.api` and `.routes`
-           metabase-enterprise.scim.core
+  {:api  #{metabase-enterprise.scim.core
            metabase-enterprise.scim.init
            metabase-enterprise.scim.routes}
    :uses #{analytics api api-keys models permissions settings server system util enterprise/serialization}}

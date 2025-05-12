@@ -4,7 +4,8 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
    [metabase-enterprise.scim.core :as scim]
-   [metabase.settings.core :as setting :refer [defsetting define-multi-setting-impl]]
+   [metabase.appearance.core :as appearance]
+   [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -107,7 +108,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting saml-keystore-alias
   (deferred-tru "Alias for the key that {0} should use for signing SAML requests"
-                (setting/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
   :default    "metabase"
   :feature    :sso-saml
@@ -151,7 +152,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting saml-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing SAML to {0} group mappings."
-                (setting/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
@@ -255,7 +256,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 (defsetting jwt-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing JWT to {0} group mappings."
-                (setting/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
