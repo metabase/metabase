@@ -47,6 +47,34 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest update-colvalmap-setting-test
+  (testing "update-colvalmap-setting function with regex matching"
+    (let [id->new-card {123 {:id 456}
+                        789 {:id 987}}
+          col->val-source {:COLUMN_1 [{:sourceId "card:123" :originalName "sum" :name "COLUMN_1"}]
+                           :COLUMN_2 [{:sourceId "card:789" :originalName "count" :name "COLUMN_2"}]
+                           :COLUMN_3 [{:sourceId "card:999" :originalName "avg" :name "COLUMN_3"}]
+                           :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
+                           :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
+                           :COLUMN_6 [{:name "No source ID"}]}
+          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
+
+      (testing "should update valid card IDs that exist in the map"
+        (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
+        (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
+
+      (testing "should not modify card IDs that don't exist in the map"
+        (is (= "card:999" (-> result :COLUMN_3 first :sourceId))))
+
+      (testing "should not modify non-card sourceIds"
+        (is (= "not-a-card" (-> result :COLUMN_4 first :sourceId))))
+
+      (testing "should not modify invalid card IDs (non-numeric)"
+        (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
+
+      (testing "should handle items without sourceId"
+        (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
+
 (use-fixtures
   :once
   (fixtures/initialize :test-users))
@@ -4240,6 +4268,45 @@
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403
                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))
+
+(deftest param-value-remapping-test
+  (let [id-param-id   "id-param-id"
+        list-param-id "static-labeled-list"]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name      "ID"
+                                                                      :id        id-param-id
+                                                                      :type      :id}
+                                                                     {:name                 "Static Category label"
+                                                                      :id                   list-param-id
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values [["A frican" "Af"]
+                                                                                                      ["American" "Am"]
+                                                                                                      ["A   sian" "As"]]}}]}
+                   :model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Card {people-card-id :id} {:dataset_query (mt/mbql-query people)}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            orders-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :orders :user_id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            people-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      people-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :people :id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}]
+      (let [url #(str "dashboard/" dashboard-id "/params/" %1 "/remapping?value=" %2)]
+        (is (= [1 "Hudson Borer"]
+               (mt/user-http-request :crowberto :get 200 (url id-param-id 1))))
+        (is (= [(str Integer/MAX_VALUE)]
+               (mt/user-http-request :crowberto :get 200 (url id-param-id Integer/MAX_VALUE))))
+        (is (= ["A   sian" "As"]
+               (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"

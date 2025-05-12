@@ -1,6 +1,7 @@
 import {
   type ColumnSizingState,
   type PaginationState,
+  type RowSelectionState,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -72,13 +73,16 @@ export const useDataGridInstance = <TData, TValue>({
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
   columnVisibility: controlledColumnVisibility,
+  columnPinning: controlledColumnPinning,
   sorting,
   defaultRowHeight = 36,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
+  columnRowSelectOptions,
   theme,
   pageSize,
+  enableRowSelection,
   enableSelection,
   onColumnResize,
   onColumnReorder,
@@ -180,15 +184,20 @@ export const useDataGridInstance = <TData, TValue>({
         handleExpandButtonClick,
       ),
     );
+    const columns = columnRowSelectOptions
+      ? [
+          columnRowSelectOptions,
+          rowIdColumnDefinition,
+          ...dataColumns,
+          rowActionsColumnDefinition,
+        ]
+      : [rowIdColumnDefinition, ...dataColumns, rowActionsColumnDefinition];
 
-    return [
-      rowIdColumnDefinition,
-      ...dataColumns,
-      rowActionsColumnDefinition,
-    ].filter(isNotNull);
+    return columns.filter(isNotNull);
   }, [
     rowId,
     columnsOptions,
+    columnRowSelectOptions,
     columnSizingMap,
     measuredColumnSizingMap,
     expandedColumnsMap,
@@ -221,16 +230,19 @@ export const useDataGridInstance = <TData, TValue>({
   const enablePagination =
     pagination?.pageSize !== DISABLED_PAGINATION_STATE.pageSize;
 
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
   const table = useReactTable({
     data,
     columns,
     state: {
       columnSizing: columnSizingMap,
       columnOrder,
-      columnPinning: { left: [ROW_ID_COLUMN_ID] },
+      columnPinning: controlledColumnPinning ?? { left: [ROW_ID_COLUMN_ID] },
       columnVisibility: controlledColumnVisibility,
       sorting,
       pagination,
+      rowSelection,
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -241,6 +253,8 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection,
   });
 
   const measureRowHeight = useCallback(

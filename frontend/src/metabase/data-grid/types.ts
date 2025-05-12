@@ -2,10 +2,12 @@ import type {
   Cell,
   CellContext,
   ColumnDefTemplate,
+  ColumnPinningState,
   ColumnSizingState,
   HeaderContext,
   Row,
   RowData,
+  RowSelectionOptions,
   SortingState,
   Table,
   VisibilityState,
@@ -178,6 +180,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Visibility state of columns */
   columnVisibility?: VisibilityState;
 
+  /** Pinning state of columns */
+  columnPinning?: ColumnPinningState;
+
   /** Array of column sorting options */
   sorting?: SortingState;
 
@@ -186,6 +191,12 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Configuration for columns */
   columnsOptions: ColumnOptions<TData, TValue>[];
+
+  /**
+   * Configuration row selection column. It's separated from `columnsOptions`
+   * since `columnsOptions` are memoized and row selection should not be memoized
+   * due to how checkboxes behave (props are not changed) */
+  columnRowSelectOptions?: ColumnOptions<TData, TValue>;
 
   /** Row ID accessor and display options */
   rowId?: RowIdColumnOptions;
@@ -198,6 +209,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
 
   /** Controlls whether cell selection is enabled */
   enableSelection?: boolean;
+
+  /** Controlls whether row selection is enabled */
+  enableRowSelection?: RowSelectionOptions<TData>["enableRowSelection"];
 
   /** Items per page. Undefined disables pagination. */
   pageSize?: number;

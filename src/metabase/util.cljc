@@ -1248,3 +1248,16 @@
        (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
+
+(defn find-first-map-indexed
+  "Finds the first map in `maps` that contains the value at the given key path,
+  and returns [index map]."
+  [maps ks value]
+  (first (keep-indexed
+          (fn [idx m] (when (= (get-in m ks) value) [idx m]))
+          maps)))
+
+(defn find-first-map
+  "Finds the first map in `maps` that contains the value at the given key path."
+  [maps ks value]
+  (second (find-first-map-indexed maps ks value)))

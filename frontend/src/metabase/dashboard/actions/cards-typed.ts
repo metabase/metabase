@@ -26,6 +26,7 @@ import type {
   TableId,
   VirtualCard,
   VirtualCardDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { GetState } from "metabase-types/store";
 
@@ -41,6 +42,7 @@ import {
   createDashCard,
   createVirtualCard,
   generateTemporaryDashcardId,
+  isQuestionDashCard,
   isVirtualDashCard,
 } from "../utils";
 
@@ -70,6 +72,7 @@ export type NewDashCardOpts = {
 export type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<NewDashboardCard> & {
     card: Card | VirtualCard;
+    series?: Card[];
   };
 };
 
@@ -298,6 +301,86 @@ export const replaceCard =
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);
+  };
+
+export const addCardWithVisualization =
+  ({
+    visualization,
+    tabId,
+    cards,
+  }: {
+    visualization: VisualizerVizDefinition;
+    tabId: number | null;
+    cards: Card[];
+  }) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const [mainCard, ...secondaryCards] = cards;
+
+    const dashcardId = generateTemporaryDashcardId();
+    const dashcard = dispatch(
+      addDashCardToDashboard({
+        dashId: getState().dashboard.dashboardId!,
+        tabId,
+        dashcardOverrides: {
+          id: dashcardId,
+          card: mainCard,
+          card_id: mainCard.id,
+          series: secondaryCards,
+          visualization_settings: {
+            visualization,
+          },
+        },
+      }),
+    ) as DashboardCard;
+
+    for (const card of cards) {
+      dispatch(
+        fetchCardData(card, dashcard, { reload: true, clearCache: true }),
+      );
+      await dispatch(loadMetadataForCard(card));
+    }
+  };
+
+export const replaceCardWithVisualization =
+  ({
+    dashcardId,
+    visualization,
+    cards,
+  }: {
+    dashcardId: DashCardId;
+    visualization: VisualizerVizDefinition;
+    cards: Card[];
+  }) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const [mainCard, ...secondaryCards] = cards;
+
+    const originalDashCard = getDashCardById(getState(), dashcardId);
+    const parameter_mappings = isQuestionDashCard(originalDashCard)
+      ? originalDashCard.parameter_mappings
+      : [];
+
+    await dispatch(
+      setDashCardAttributes({
+        id: dashcardId,
+        attributes: {
+          card_id: mainCard.id,
+          card: mainCard,
+          series: secondaryCards,
+          parameter_mappings,
+          visualization_settings: {
+            visualization,
+          },
+        },
+      }),
+    );
+    const dashcard = getDashCardById(getState(), dashcardId);
+
+    for (const card of cards) {
+      dispatch(
+        fetchCardData(card, dashcard, { reload: true, clearCache: true }),
+      );
+      await dispatch(loadMetadataForCard(card));
+    }
   };
 
 export const removeCardFromDashboard = createThunkAction(
