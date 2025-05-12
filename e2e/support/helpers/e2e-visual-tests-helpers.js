@@ -9,6 +9,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
+import { match } from "ts-pattern";
 
 export function ensureChartIsActive() {
   cy.findByTestId("debounced-frame-root").should(
@@ -254,4 +255,46 @@ export function assertEChartsTooltipNotContain(rows) {
       cy.findByText(row).should("not.exist");
     });
   });
+}
+
+/**
+ * @param {import("metabase-types/api").CardDisplayType} displayType
+ * @param {Object} options
+ * @param {string} [options.header]
+ * @param {string[]} [options.rows]
+ * @param {{ name: string, value: string, secondaryValue: string }} [options.footer]
+ * @param {boolean} [options.blurAfter]
+ */
+export function assertFirstEChartsTooltip(displayType, tooltipOptions) {
+  openFirstEChartsTooltip(displayType);
+  assertEChartsTooltip(tooltipOptions);
+}
+
+/*
+ * @param {import("metabase-types/api").CardDisplayType} displayType
+ */
+export function openFirstEChartsTooltip(displayType) {
+  match(displayType)
+    .with("bar", () => {
+      chartPathWithFillColor("#88BF4D").first().realHover();
+    })
+    .with("line", () => {
+      cartesianChartCircleWithColor("#509EE3").eq(3).realHover();
+    })
+    .with("pie", () => {
+      pieSliceWithColor("#88BF4D").first().trigger("mousemove");
+    })
+    .with("map", () => {
+      cy.wait("@geojson");
+      cy.get(".CardVisualization svg path").eq(22).as("texas");
+      cy.get("@texas").should("be.visible");
+      cy.get("@texas").trigger("mousemove");
+
+      // To check map tooltip content
+      // // check tooltip content
+      // // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // cy.findByText("State:"); // column name key
+      // // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // cy.findByText("Texas"); // feature name as value
+    });
 }
