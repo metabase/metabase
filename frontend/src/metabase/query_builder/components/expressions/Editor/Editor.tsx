@@ -49,6 +49,7 @@ type EditorProps = {
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
+  initialSource?: string;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -162,6 +163,14 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          selection={
+            props.initialSource
+              ? {
+                  anchor: props.initialSource.length,
+                  head: props.initialSource.length,
+                }
+              : undefined
+          }
         />
         <Errors error={error} />
 
@@ -229,11 +238,12 @@ function useExpression({
   expressionIndex,
   metadata,
   onChange,
+  ...props
 }: EditorProps & {
   metadata: Metadata;
 }) {
-  const [source, setSource] = useState("");
-  const [initialSource, setInitialSource] = useState("");
+  const [source, setSource] = useState(props.initialSource ?? "");
+  const [initialSource, setInitialSource] = useState(props.initialSource ?? "");
   const [isFormatting, setIsFormatting] = useState(true);
   const [isValidated, setIsValidated] = useState(false);
   const errorRef = useRef<ExpressionError | null>(null);
@@ -249,7 +259,7 @@ function useExpression({
       }
 
       if (clause == null) {
-        done("");
+        done(props.initialSource ?? "");
         return;
       }
 
@@ -262,7 +272,7 @@ function useExpression({
         .catch(() => "")
         .then(done);
     },
-    [clause, query, stageIndex, expressionIndex],
+    [clause, query, stageIndex, expressionIndex, props.initialSource],
   );
 
   const handleChange = useCallback<typeof onChange>(
