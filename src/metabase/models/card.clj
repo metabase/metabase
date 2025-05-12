@@ -103,11 +103,11 @@
                  ;; that introduced a new value in this enum.
                  :unknown     7}
         num->kw (set/map-invert kw->num)
-        inbound (merge kw->num                  ; Handle keywords
-                       (update-keys kw->num str)      ; or strings
+        inbound (merge kw->num                        ; Handle keywords
+                       (update-keys kw->num name)     ; or strings
                        {nil (kw->num :not-started)})] ; and treat nil as `:not-started`
     ;; If the value isn't recognized by this version of Metabase, treat it as `:unknown`, and it can be re-analyzed.
-    {:in  #(get inbound % :unknown)
+    {:in  #(get inbound % (kw->num :unknown))
      :out #(num->kw % :unknown)}))
 
 (t2/deftransforms :model/Card
