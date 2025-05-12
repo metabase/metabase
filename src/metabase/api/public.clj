@@ -38,7 +38,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -432,15 +431,15 @@
     (mw.session/as-admin
       (api.card/param-values card param-key query))))
 
-(api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
+(api/defendpoint "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
-  [{:keys [uuid param-key]} :- [:map
-                                [:uuid      ms/UUIDString]
-                                [:param-key ms/NonBlankString]]
-   {:keys [value]}          :- [:map [:value :any]]]
+  [uuid param-key value]
+  {uuid      ms/UUIDString
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
-    (request/as-admin
-      (api.card/param-remapped-value card param-key (codec/url-decode value)))))
+    (mw.session/as-admin
+      (api.card/param-remapped-value card param-key value))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
@@ -463,16 +462,16 @@
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
-(api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
+(api/defendpoint GET "/dashboard/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
-  [{:keys [uuid param-key]} :- [:map
-                                [:uuid      ms/UUIDString]
-                                [:param-key ms/NonBlankString]]
-   {:keys [value]}          :- [:map [:value :any]]]
+  [uuid param-key value]
+  {uuid      ms/UUIDString
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
-    (request/as-admin
+    (mw.session/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
+        (api.dashboard/dashboard-param-remapped-value dashboard param-key value)))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

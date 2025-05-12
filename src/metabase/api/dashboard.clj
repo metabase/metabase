@@ -53,7 +53,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays :as xrays]
-   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -1203,18 +1202,18 @@
                  first))))
        [value])))
 
-(api.macros/defendpoint :get "/:id/params/:param-key/remapping"
+(api/defendpoint GET "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
-  [{:keys [id param-key]} :- [:map
-                              [:id ms/PositiveInt]
-                              [:param-key :string]]
-   {:keys [value]}        :- [:map [:value :string]]]
+  [card-id param-key value]
+  {card-id   ms/PositiveInt
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
-      (dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
+      (dashboard-param-remapped-value dashboard param-key value))))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

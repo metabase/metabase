@@ -49,7 +49,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -915,17 +914,17 @@
                 first))))
       [value]))
 
-(api.macros/defendpoint :get "/:id/params/:param-key/remapping"
+(api/defendpoint GET "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/card/1/params/abc/remapping?value=100"
-  [{:keys [id param-key]} :- [:map
-                              [:id ms/PositiveInt]
-                              [:param-key :string]]
-   {:keys [value]}        :- [:map [:value :string]]]
+  [card-id param-key value]
+  {card-id   ms/PositiveInt
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
   (-> (api/read-check :model/Card id)
-      (param-remapped-value param-key (codec/url-decode value))))
+      (param-remapped-value param-key value)))
 
 (defn- from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."

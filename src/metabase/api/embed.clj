@@ -21,7 +21,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
    [metabase.api.public :as api.public]
-   [metabase.api.macros :as api.macros]
    [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -32,7 +31,6 @@
    [metabase.util.embed :as embed]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -180,7 +178,7 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
-(api.macros/defendpoint :get ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                               :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
@@ -221,11 +219,13 @@
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
 
-(api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
+(api/defendpoint GET "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
-  [{:keys [token param-key]}
-   {:keys [value]}]
-  (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
+  [token param-key value]
+  {token     ms/NonBlankString
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
+  (api.embed.common/dashboard-param-remapped-value token param-key value))
 
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
@@ -250,12 +250,12 @@
                                          :param-key      param-key
                                          :search-prefix  prefix})))
 
-(api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
+(api/defendpoint GET "/card/:token/params/:param-key/remapping"
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map
-                                 [:token     string?]
-                                 [:param-key string?]]
-   {:keys [value]}           :- [:map [:value :string]]]
+  [token param-key value]
+  {token     ms/NonBlankString
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]

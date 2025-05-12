@@ -249,12 +249,10 @@
             first))
       [value]))
 
-(api.macros/defendpoint :post "/parameter/remapping"
+(api/defendpoint POST "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  [_route-params
-   _query-params
-   {:keys [parameter value field_ids]} :- [:map
-                                           [:parameter ms/Parameter]
-                                           [:value :any]
-                                           [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  [query :as {{:keys [parameter field_ids]} :body}]
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/PositiveInt]]
+   value     ms/NonBlankString}
   (param-remapped-value field_ids parameter value))
