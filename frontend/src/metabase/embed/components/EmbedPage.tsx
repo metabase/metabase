@@ -18,7 +18,6 @@ import {
   Icon,
   Radio,
   Stack,
-  Switch,
   Text,
   TextInput,
   Tooltip,
@@ -539,31 +538,45 @@ export const EmbedPage = () => {
           </Card>
 
           <Card p="md">
-            <Group justify="space-between" mb="md">
-              <Text size="lg" fw="bold">
-                Parameters
+            <Text size="lg" fw="bold" mb="xs">
+              Parameters
+            </Text>
+            <Text size="sm" c="text-medium" mb="lg">
+              Set default values and control visibility
+            </Text>
+            <Group justify="space-between" mb="sm">
+              <Text size="sm" fw="bold" c="text-medium">
+                Name
               </Text>
-              <Text size="sm" fw="bold">
+              <Text size="sm" fw="bold" c="text-medium">
                 Visibility
               </Text>
             </Group>
             <Stack gap="md">
               {exampleParameters.map((param) => (
-                <Group key={param.id} justify="space-between" align="center">
+                <Group key={param.id} align="center">
                   <TextInput
                     label={param.name}
                     placeholder={param.placeholder}
                     style={{ flex: 1 }}
-                  />
-                  <Switch
-                    checked={parameterVisibility[param.id]}
-                    onChange={(e) =>
-                      setParameterVisibility({
-                        ...parameterVisibility,
-                        [param.id]: e.target.checked,
-                      })
+                    rightSection={
+                      <ActionIcon
+                        variant="subtle"
+                        onClick={() =>
+                          setParameterVisibility({
+                            ...parameterVisibility,
+                            [param.id]: !parameterVisibility[param.id],
+                          })
+                        }
+                        title={parameterVisibility[param.id] ? "Hide parameter" : "Show parameter"}
+                      >
+                        <Icon
+                          name={parameterVisibility[param.id] ? "eye" : "eye_crossed_out"}
+                          size={16}
+                          color={parameterVisibility[param.id] ? colors.brand : colors["text-light"]}
+                        />
+                      </ActionIcon>
                     }
-                    size="sm"
                   />
                 </Group>
               ))}
@@ -571,10 +584,10 @@ export const EmbedPage = () => {
           </Card>
 
           <Card p="md">
-            <Text size="lg" fw="bold" mb="md">
+            <Text size="lg" fw="bold" mb="lg">
               Appearance
             </Text>
-            <Group align="start" gap="xl">
+            <Group align="start" gap="xl" mb="lg">
               <Stack gap="xs" align="start">
                 <Text size="sm" fw="bold">
                   Brand Color
@@ -605,11 +618,11 @@ export const EmbedPage = () => {
                 />
               </Stack>
             </Group>
+            <Divider mb="lg" />
             <Checkbox
               label="Show dashboard title"
               checked={showTitle}
               onChange={(e) => setShowTitle(e.target.checked)}
-              mt="md"
             />
           </Card>
         </Stack>
