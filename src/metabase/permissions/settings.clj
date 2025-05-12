@@ -76,4 +76,4 @@
   :visibility :admin
   :export? false
   :default false
-  #_#_:feature :tenants)
+  :feature :advanced-permissions) ;; TODO revert to :tenants once feature is enabled for dev token

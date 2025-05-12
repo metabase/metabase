@@ -744,3 +744,8 @@ export const PLUGIN_API = {
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };
+
+export const PLUGIN_TENANTS = {
+  userStrategyRoute: null as React.ReactElement | null,
+  EditUserStrategySettingsButton: PluginPlaceholder,
+};
