@@ -90,5 +90,6 @@
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
 
 (defn filter-id-for-field
+  "Generate a parameter ID for the given field. In X-ray dashboards a parameter is mapped to a single field only."
   [field]
   (-> field ((juxt :id :name :unit)) hash str))

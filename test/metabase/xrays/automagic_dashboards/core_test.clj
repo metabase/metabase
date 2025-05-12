@@ -14,10 +14,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -26,7 +24,6 @@
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.test-util.automagic-dashboards
     :as automagic-dashboards.test]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
