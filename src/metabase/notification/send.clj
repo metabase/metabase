@@ -14,7 +14,6 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.time ZonedDateTime)
    (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
@@ -40,6 +39,8 @@
   :export?    false
   :type       :integer
   :visibility :internal)
+
+(def ^:private default-blocking-queue-size 1000)
 
 (def ^:private default-retry-config
   {:max-attempts            (if config/is-dev? 2 7)
@@ -340,7 +341,7 @@
 (defn- create-blocking-queue
   "Create a blocking queue for notifications."
   []
-  (BlockingQueue. (ArrayBlockingQueue. 1000)))
+  (BlockingQueue. (ArrayBlockingQueue. default-blocking-queue-size)))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
@@ -393,9 +394,9 @@
   (delay (create-notification-dispatcher (notification-thread-pool-size) (create-dedup-priority-queue))))
 
 (defonce ^:private simple-blocking-dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) (create-blocking-queue))))
+  (delay (create-notification-dispatcher (notification-system-event-thread-pool-size) (create-blocking-queue))))
 
-(defn- dispatcher
+(defn- dispatch!
   [notification]
   (let [the-dispatcher (case (:payload_type notification)
                          :notification/system-event
@@ -407,7 +408,7 @@
 (mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
   [notification :- ::notification.payload/Notification]
-  (dispatcher notification)
+  (dispatch! notification)
   nil)
 
 (def ^:private Options
