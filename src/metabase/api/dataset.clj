@@ -249,7 +249,7 @@
 
 (api/defendpoint POST "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  [value :as {{:keys [parameter field_ids]} :body}]
+  [:as {{:keys [parameter field_ids value]} :body}]
   {parameter ms/Parameter
    field_ids [:maybe [:sequential ms/PositiveInt]]
    value     ms/NonBlankString}
