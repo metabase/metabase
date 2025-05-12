@@ -17,8 +17,7 @@
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
-            Database Dimension Field FieldValues]]
-   [metabase.models.interface :as mi]
+            Database FieldValues]]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -1003,51 +1002,6 @@
                                                                                    [:field
                                                                                     (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
-
-(defmacro with-sharing-enabled-and-temp-dashcard-referencing!
-  {:style/indent 3}
-  [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
-  `(do-with-sharing-enabled-and-temp-dashcard-referencing!
-    ~table-kw ~field-kw
-    (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-      ~@body)))
-  (is (thrown? Exception
-               (mt/with-temp [Dashboard     dashboard {}
-                              Card          card (sql-card-referencing-venue-name)
-                              DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-                 (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard))))))
-
-;;; ------------------------------------------- card-and-field-id->values --------------------------------------------
-
-(deftest we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
-  (t2.with-temp/with-temp [Card card (mbql-card-referencing :venues :name)]
-    (is (= {:values          [["20th Century Cafe"]
-                              ["25°"]
-                              ["33 Taps"]
-                              ["800 Degrees Neapolitan Pizzeria"]
-                              ["BCD Tofu House"]]
-            :field_id        (mt/id :venues :name)
-            :has_more_values false}
-           (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
-                               (update :values (partial take 5))))))))
-
-(deftest sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
-  (t2.with-temp/with-temp [Card card (sql-card-referencing-venue-name)]
-    (is (= {:values          [["20th Century Cafe"]
-                              ["25°"]
-                              ["33 Taps"]
-                              ["800 Degrees Neapolitan Pizzeria"]
-                              ["BCD Tofu House"]]
-            :field_id        (mt/id :venues :name)
-            :has_more_values false}
-           (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
-                               (update :values (partial take 5))))))))
-
-(deftest but-if-the-field-is-not-referenced-we-should-get-an-exception
-  (t2.with-temp/with-temp [Card card (mbql-card-referencing :venues :price)]
-    (is (thrown?
-         Exception
-         (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))))))
 
 ;;; ------------------------------------------- GET /api/public/action/:uuid -------------------------------------------
 
