@@ -38,8 +38,6 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
-(declare redirect-all-requests-to-https!)
-
 ;;; This value is *guaranteed* to never have a trailing slash :D
 ;;;
 ;;; It will also prepend `http://` to the URL if there's no protocol when it comes in
@@ -62,7 +60,8 @@
                       https?    (some-> new-value (str/starts-with?  "https:"))]
                   ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
                   (when-not https?
-                    (redirect-all-requests-to-https! false))
+                    ;; prevent circular dependencies with [[metabase.server.settings]]
+                    (setting/set-value-of-type! :boolean :redirect-all-requests-to-https false))
                   (setting/set-value-of-type! :string :site-url new-value)))
   :doc "This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
