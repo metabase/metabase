@@ -871,7 +871,7 @@
   ;; watch and reload clojure namespaces
   :watch {:extra-deps
           {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
-           io.github.tonsky/clj-reload {:mvn/version "0.9.5"}} ;; reloader
+           io.github.tonsky/clj-reload {:mvn/version "0.9.6"}} ;; reloader
           :extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}
 
