@@ -15,7 +15,8 @@
    [metabase.api.embed.common :as api.embed.common]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util.embed :as embed]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
@@ -61,7 +62,7 @@
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
                                                  :card           card
                                                  :param-key      param-key
-                                                 :value          value})))
+                                                 :value          (codec/url-decode value)})))
 
 (api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
@@ -86,7 +87,7 @@
   {token     ms/NonBlankString
    param-key ms/NonBlankString
    value     ms/NonBlankString}
-  (api.embed.common/dashboard-param-remapped-value token param-key value {:preview true}))
+  (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
