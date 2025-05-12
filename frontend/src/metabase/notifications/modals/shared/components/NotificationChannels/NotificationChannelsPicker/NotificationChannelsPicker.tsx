@@ -219,7 +219,7 @@ const TemplateHelperTooltip = ({
         />
       </Popover.Target>
       <Popover.Dropdown p="sm" px="md" onClick={(e) => e.stopPropagation()}>
-        <Text>{jt`We support ${(
+        <Text>{jt`Alerts support ${(
           <a
             key="link"
             href="https://handlebarsjs.com/guide/"
@@ -232,8 +232,22 @@ const TemplateHelperTooltip = ({
           >
             Handlebars
           </a>
-        )} templates.`}</Text>
+        )} syntax.`}</Text>
         <Text>{jt`Use ${(<code key="brackets">{"{{ }}"}</code>)} to reference fields, ${(<code key="key">{"@key"}</code>)} and ${(<code key="value">{"@value"}</code>)} when iterating over objects, or ${(<code key="index">{"@index"}</code>)} for arrays.`}</Text>
+        <Text>{jt`For slack templates, follow ${(
+          <a
+            key="slack-syntax"
+            href="https://api.slack.com/reference/surfaces/formatting"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "var(--mb-color-brand)",
+              textDecoration: "underline",
+            }}
+          >
+            this formatting reference
+          </a>
+        )}.`}</Text>
         <Text>{t`Example payload for selected alert:`}</Text>
         <br />
         <div
