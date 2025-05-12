@@ -318,5 +318,5 @@
 
 #_:clj-kondo/ignore
 (comment
-  (open-api-spec (metabase.api.macros/ns-handler 'metabase.api.geojson) "/api/geojson")
+  (open-api-spec (metabase.api.macros/ns-handler 'metabase.geojson.api) "/api/geojson")
   (root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes)))
