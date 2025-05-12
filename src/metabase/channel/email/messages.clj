@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
    [metabase.db.query :as mdb.query]
    [metabase.lib.util :as lib.util]
@@ -270,7 +271,7 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+    (json/encode {:salt     (channel.settings/site-uuid-for-unsubscribing-url)
                   :email    email
                   :pulse-id pulse-id}))))
 
@@ -279,7 +280,7 @@
   [notification-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/encode {:salt            (public-settings/site-uuid-for-unsubscribing-url)
+    (json/encode {:salt            (channel.settings/site-uuid-for-unsubscribing-url)
                   :email           email
                   :notification-id notification-id}))))
 

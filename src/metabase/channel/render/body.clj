@@ -9,6 +9,7 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.settings :as channel.settings]
    [metabase.formatter :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -146,7 +147,7 @@
     card
     {:keys [cols rows viz-settings], :as _data}]
    (let [remapping-lookup (create-remapping-lookup cols)
-         row-limit        (min (public-settings/attachment-table-row-limit) 100)]
+         row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row remapping-lookup card cols)
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
@@ -233,7 +234,7 @@
                                       filtered-cols
                                       viz-settings
                                       minibar-cols)
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
+                                     (render-truncation-warning (channel.settings/attachment-table-row-limit) (count rows))]]
     {:content     table-body
      :attachments nil}))
 
