@@ -93,6 +93,13 @@ export function FilterPicker({
     [onSelect, onClose],
   );
 
+  const handleOpenExpressionEditor = (clause?: Lib.ExpressionClause) => {
+    if (clause) {
+      setFilter(clause);
+    }
+    openExpressionEditor();
+  };
+
   if (isEditingExpression) {
     return (
       <ExpressionWidget
@@ -116,7 +123,7 @@ export function FilterPicker({
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleSegmentSelect}
-        onExpressionSelect={openExpressionEditor}
+        onExpressionSelect={handleOpenExpressionEditor}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}
