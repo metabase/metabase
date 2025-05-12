@@ -3,7 +3,7 @@
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
-   [metabase.lib.parse :as lib.parse]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.malli :as mu])
@@ -22,12 +22,12 @@
 (defn- ->param [value]
   (match [value]
     [s :guard string?] s
-    [{:type ::lib.parse/param
+    [{:type :metabase.lib.parse/param
       :name name}] (params/->Param (str/trim name))
-    [{:type ::lib.parse/function-param
+    [{:type :metabase.lib.parse/function-param
       :name name
       :args args}] (params/->FunctionParam name (map ->param args))
-    [{:type ::lib.parse/optional
+    [{:type :metabase.lib.parse/optional
       :contents contents}] (params/->Optional (map ->param contents))))
 
 (mu/defn parse :- [:sequential ParsedToken]
@@ -40,7 +40,7 @@
 
   ([s                   :- :string
     handle-sql-comments :- :boolean]
-   (->> (lib.parse/parse {:parse-error-type qp.error-type/invalid-query}
-                         s
-                         handle-sql-comments)
+   (->> (lib/parse {:parse-error-type qp.error-type/invalid-query}
+                   s
+                   handle-sql-comments)
         (map ->param))))
