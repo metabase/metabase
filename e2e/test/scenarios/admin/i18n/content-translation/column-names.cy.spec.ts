@@ -8,8 +8,9 @@ import {
 } from "./helpers/e2e-content-translation-helpers";
 import { type CardDisplayType, cardDisplayTypes } from "metabase-types/api";
 import { P, match } from "ts-pattern";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -91,6 +92,8 @@ describe("scenarios > admin > localization > content translation of column names
             // the app, but it's not in the cardDisplayTypes array
 
             cardDisplayTypes.forEach((displayType: CardDisplayType) => {
+              // We use ts-pattern's Match.exhaustive() method to ensure that
+              // we cover each type of visualization in CardDisplayType
               match(displayType)
                 .with(
                   P.union(
@@ -113,6 +116,10 @@ describe("scenarios > admin > localization > content translation of column names
                     "combo",
                     "scatter",
                     "waterfall",
+                    "funnel",
+                    "pivot",
+                    "object",
+                    "sankey",
                   ),
                   () => {
                     it(`of type: ${displayType}`, () => {
@@ -134,34 +141,82 @@ describe("scenarios > admin > localization > content translation of column names
                       const columnsInChart = germanFieldNames.filter((row) =>
                         [columnX, columnY].includes(row.msgid),
                       );
-                      columnsInChart.forEach((row) => {
-                        cy.findByText(row.msgid).should("not.exist");
-                        cy.findByText(row.msgstr).should("be.visible");
-                      });
+                      /** These types of visualizations should show the names of both columns */
+                      const displayTypesThatShowBothColumns = [
+                        "bar",
+                        "line",
+                        "row",
+                        "area",
+                        "combo",
+                        "pivot",
+                        "funnel",
+                        "detail",
+                        "scatter",
+                        "waterfall",
+                      ];
+                      if (
+                        displayTypesThatShowBothColumns.includes(displayType)
+                      ) {
+                        columnsInChart.forEach((row) => {
+                          cy.findByText(row.msgid).should("be.visible");
+                          cy.findByText(row.msgstr).should("not.exist");
+                        });
+                      }
+                      const displayTypesWithTooltips: CardDisplayType[] = [
+                        "bar",
+                        "line",
+                        "pie",
+                        "row",
+                        "area",
+                        "funnel",
+                        "combo",
+                        "scatter",
+                        "waterfall",
+                        "map", // Map tooltips show all columns
+                      ];
+
+                      if (displayTypesWithTooltips.includes(displayType)) {
+                        H.assertFirstEChartsTooltip(displayType, {
+                          header: "Bewertung",
+                        });
+                      }
+
                       if (displayType === "bar") {
-                        H.chartPathWithFillColor("#88BF4D").first().realHover();
-                        H.assertEChartsTooltip({
-                          header: "Bewertung", // 'Rating' in German
-                          rows: undefined,
-                          footer: undefined,
-                          blurAfter: false,
+                        H.assertFirstEChartsTooltip(displayType, {
+                          header: "Bewertung",
                         });
                       } else if (displayType === "line") {
-                        H.cartesianChartCircleWithColor("#509EE3")
-                          .eq(3)
-                          .realHover();
-                        H.assertEChartsTooltip({
-                          header: "Bewertung", // 'Rating' in German
-                          rows: undefined,
-                          footer: undefined,
-                          blurAfter: false,
+                        columnsInChart.forEach((row) => {
+                          cy.findByText(row.msgid).should("not.exist");
+                          cy.findByText(row.msgstr).should("be.visible");
+                        });
+                        H.assertFirstEChartsTooltip(displayType, {
+                          header: "Bewertung",
                         });
                       } else if (displayType === "row") {
-                        // TODO
+                        columnsInChart.forEach((row) => {
+                          cy.findByText(row.msgid).should("not.exist");
+                          cy.findByText(row.msgstr).should("be.visible");
+                        });
+                        H.assertFirstEChartsTooltip(displayType, {
+                          header: "Bewertung",
+                        });
                       } else if (displayType === "area") {
-                        // TODO
+                        columnsInChart.forEach((row) => {
+                          cy.findByText(row.msgid).should("not.exist");
+                          cy.findByText(row.msgstr).should("be.visible");
+                        });
+                        H.assertFirstEChartsTooltip(displayType, {
+                          header: "Bewertung",
+                        });
                       } else if (displayType === "combo") {
-                        // TODO
+                        columnsInChart.forEach((row) => {
+                          cy.findByText(row.msgid).should("not.exist");
+                          cy.findByText(row.msgstr).should("be.visible");
+                        });
+                        H.assertFirstEChartsTooltip(displayType, {
+                          header: "Bewertung",
+                        });
                       } else if (displayType === "scatter") {
                         // TODO
                       } else if (displayType === "waterfall") {
@@ -170,6 +225,27 @@ describe("scenarios > admin > localization > content translation of column names
                     });
                   },
                 )
+                .with("map", () => {
+                  H.visitQuestionAdhoc({
+                    dataset_query: {
+                      database: SAMPLE_DB_ID,
+                      query: {
+                        "source-table": PEOPLE_ID,
+                        aggregation: [["count"]],
+                        breakout: [["field", PEOPLE.STATE, null]],
+                      },
+                      type: "query",
+                    },
+                    display: "map",
+                    visualization_settings: {
+                      "map.type": "region",
+                      "map.region": "us_states",
+                    },
+                  });
+                  H.assertFirstEChartsTooltip("map", {
+                    rows: [], // something here describing all the columns
+                  });
+                })
                 .with("pie", () => {
                   it.only(`of type: ${displayType}`, () => {
                     H.createQuestion(
@@ -183,41 +259,14 @@ describe("scenarios > admin > localization > content translation of column names
                       },
                       { visitQuestion: true },
                     );
-
-                    H.pieSliceWithColor("#88BF4D").first().trigger("mousemove");
-                    H.assertEChartsTooltip({
+                    H.assertFirstEChartsTooltip("pie", {
                       header: "Kategorie",
-                      rows: undefined,
-                      footer: undefined,
-                      blurAfter: false,
                     });
                   });
                 })
-                .with(
-                  P.union(
-                    "funnel",
-                    "pivot",
-                    "object",
-                    "map", // Here we just need to test the ECharts tooltip
-                    "sankey",
-                  ),
-                  () => {
-                    // not implemented yet
-                  },
-                )
                 .exhaustive();
             });
           });
-          // TODO: Need to update tooltip too
-          // doesn't work yet in this test:
-          // - pie
-          // - pivot
-          // - funnel
-          // - object
-          // - map
-          // - sankey
-          //
-          // shows column names in tooltips:
           // - pie
         });
       });
