@@ -117,11 +117,15 @@ const useNotificationTemplates = (
     | null,
   user: { id: UserId } | null,
 ) => {
-  const channelTypes = requestBody?.handlers
-    ? requestBody.handlers
-        .map((h) => h.channel_type)
-        .filter((type): type is NotificationChannelType => !!type)
-    : [];
+  const channelTypes = useMemo(
+    () =>
+      requestBody?.handlers
+        ? requestBody.handlers
+            .map((h) => h.channel_type)
+            .filter((type): type is NotificationChannelType => !!type)
+        : [],
+    [requestBody?.handlers],
+  );
 
   const { data: defaultTemplates } = useGetDefaultNotificationTemplateQuery(
     requestBody?.payload_type &&
@@ -147,9 +151,12 @@ const useNotificationTemplates = (
       user &&
       channelTypes.length > 0
       ? {
-          payload_type: requestBody.payload_type,
-          payload: requestBody.payload,
-          creator_id: user.id,
+          notification: {
+            payload_type: requestBody.payload_type,
+            payload: requestBody.payload,
+            creator_id: user.id,
+          },
+          channel_types: channelTypes,
         }
       : skipToken,
     {

@@ -73,7 +73,7 @@
 (defn table-url
   "Returns an appropriate URL to view a table.
 
-     (table-url 1 10) -> \"http://localhost:3000/question?db=1&table=10\""
+     (table-url 1 10) -> \"http://localhost:3000/databases/1/table/10"
   [^Integer db-id ^Integer table-id]
   (format "%s/databases/%d/table/%d" (site-url) db-id table-id))
 

@@ -7,6 +7,7 @@ import type {
   GetNotificationPayloadExampleResponse,
   ListNotificationsRequest,
   Notification,
+  NotificationChannelType,
   NotificationId,
   PreviewNotificationTemplateRequest,
   PreviewNotificationTemplateResponse,
@@ -96,7 +97,7 @@ export const notificationApi = Api.injectEndpoints({
       }),
     }),
     getNotificationPayloadExample: builder.query<
-      GetNotificationPayloadExampleResponse["payload"],
+      Record<NotificationChannelType, any>,
       GetNotificationPayloadExampleRequest
     >({
       query: (body) => ({
@@ -105,7 +106,14 @@ export const notificationApi = Api.injectEndpoints({
         body,
       }),
       transformResponse(response: GetNotificationPayloadExampleResponse) {
-        return response.payload;
+        return Object.keys(response).reduce(
+          (acc, key) => {
+            acc[key as NotificationChannelType] =
+              response[key as NotificationChannelType].payload;
+            return acc;
+          },
+          {} as Record<NotificationChannelType, any>,
+        );
       },
     }),
     getDefaultNotificationTemplate: builder.query<
