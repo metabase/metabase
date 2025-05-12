@@ -236,7 +236,7 @@ describe("TablePicker", () => {
       });
     });
 
-    // the schems is expanded and renders its children tables
+    // the schema is expanded and renders its children tables
     expect(await screen.findByText(SINGLE_SCHEMA.name)).toBeInTheDocument();
     expect(await screen.findByText(QUU.name)).toBeInTheDocument();
     expect(await screen.findByText(QUX.name)).toBeInTheDocument();
