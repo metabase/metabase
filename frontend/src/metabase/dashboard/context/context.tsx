@@ -10,6 +10,8 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
+import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -44,6 +46,8 @@ export type DashboardContextOwnProps = {
 
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
+  initialDashboardId: DashboardContextOwnProps["dashboardId"];
+  dashboardId: DashboardId | null;
 };
 
 export type DashboardControls = DashboardFullscreenControls &
@@ -58,7 +62,7 @@ export type DashboardContextProps = DashboardContextOwnProps &
 type ContextProps = DashboardContextProps & ReduxProps;
 
 type ContextReturned = DashboardContextOwnResult &
-  DashboardContextOwnProps &
+  Omit<DashboardContextOwnProps, "dashboardId"> &
   ReduxProps &
   Required<DashboardControls> &
   DashboardContextErrorState;
@@ -68,7 +72,7 @@ export const DashboardContext = createContext<ContextReturned | undefined>(
 );
 
 const DashboardContextProviderInner = ({
-  dashboardId,
+  dashboardId: initialDashboardId,
   parameterQueryParams = {},
   onLoad,
   onLoadWithoutCards,
@@ -121,10 +125,12 @@ const DashboardContextProviderInner = ({
   navigateToNewCardFromDashboard,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
+  const dispatch = useDispatch();
   const [error, setError] = useState<Error | null>(null);
   const previousIsLoading = usePrevious(isLoading);
   const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
 
+  const [dashboardId, setDashboardId] = useState<DashboardId | null>(null);
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
@@ -163,56 +169,81 @@ const DashboardContextProviderInner = ({
     [onError],
   );
 
-  useEffect(() => {
-    const hasDashboardChanged = dashboardId !== previousDashboardId;
-    if (hasDashboardChanged) {
-      setError(null);
-      handleLoadDashboard(dashboardId)
-        .then((result) => {
-          if (isFailedFetchDashboardResult(result)) {
-            handleError(result.payload as Error);
-          }
-        })
-        .catch((err) => {
-          handleError(err);
-        });
-      return;
-    }
-
-    if (!dashboard) {
-      return;
-    }
-
-    const hasDashboardLoaded = !previousDashboard;
-    const hasTabChanged = selectedTabId !== previousTabId;
-    const hasParameterValueChanged = !isEqual(
-      parameterValues,
-      previousParameterValues,
-    );
-
-    try {
-      if (hasDashboardLoaded) {
-        fetchDashboardCardData({ reload: false, clearCache: true });
-      } else if (hasTabChanged || hasParameterValueChanged) {
-        fetchDashboardCardData();
+  const fetchData = useCallback(
+    async (dashboardId: DashboardId) => {
+      const hasDashboardChanged = dashboardId !== previousDashboardId;
+      if (hasDashboardChanged) {
+        setError(null);
+        handleLoadDashboard(dashboardId)
+          .then((result) => {
+            if (isFailedFetchDashboardResult(result)) {
+              handleError(result.payload as Error);
+            }
+          })
+          .catch((err) => {
+            handleError(err);
+          });
+        return;
       }
-    } catch (e) {
-      handleError?.(e as Error);
+
+      if (!dashboard) {
+        return;
+      }
+
+      const hasDashboardLoaded = !previousDashboard;
+      const hasTabChanged = selectedTabId !== previousTabId;
+      const hasParameterValueChanged = !isEqual(
+        parameterValues,
+        previousParameterValues,
+      );
+
+      try {
+        if (hasDashboardLoaded) {
+          fetchDashboardCardData({ reload: false, clearCache: true });
+        } else if (hasTabChanged || hasParameterValueChanged) {
+          fetchDashboardCardData();
+        }
+      } catch (e) {
+        console.error("HELLO", e);
+        handleError?.(e as Error);
+      }
+    },
+    [
+      dashboard,
+      fetchDashboardCardData,
+      handleError,
+      handleLoadDashboard,
+      parameterValues,
+      previousDashboard,
+      previousDashboardId,
+      previousParameterValues,
+      previousTabId,
+      selectedTabId,
+    ],
+  );
+
+  useEffect(() => {
+    setDashboardId(null);
+
+    dispatch(fetchEntityId({ type: "dashboard", id: initialDashboardId }))
+      .then(({ id, isError }) => {
+        if (isError || id === null) {
+          handleError({
+            status: 404,
+            message: "Not found",
+            name: "Not found",
+          } as Error);
+        }
+        setDashboardId(id);
+      })
+      .catch((e) => handleError(e));
+  }, [dispatch, handleError, initialDashboardId]);
+
+  useEffect(() => {
+    if (dashboardId) {
+      fetchData(dashboardId);
     }
-  }, [
-    dashboard,
-    dashboardId,
-    fetchDashboardCardData,
-    handleError,
-    handleLoadDashboard,
-    onError,
-    parameterValues,
-    previousDashboard,
-    previousDashboardId,
-    previousParameterValues,
-    previousTabId,
-    selectedTabId,
-  ]);
+  }, [dashboardId, fetchData]);
 
   useEffect(() => {
     if (
@@ -253,14 +284,15 @@ const DashboardContextProviderInner = ({
   return (
     <DashboardContext.Provider
       value={{
+        initialDashboardId,
         dashboardId,
         parameterQueryParams,
         onLoad,
         onError,
 
         navigateToNewCardFromDashboard,
-        isLoading,
-        isLoadingWithoutCards,
+        isLoading: isLoading && !error,
+        isLoadingWithoutCards: isLoadingWithoutCards && !error,
         error,
 
         isFullscreen,
