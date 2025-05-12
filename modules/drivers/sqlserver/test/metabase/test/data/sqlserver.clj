@@ -26,37 +26,56 @@
                      [(format "CREATE DATABASE %s;" db-name)]
                      {:transaction? false}))))
 
+(defn drop-if-exists-and-create-role!
+  [driver details roles]
+  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[user-name _] roles]
+      (let [role-login (str user-name "_login")
+            role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+            user-name (sql.tx/qualify-and-quote driver user-name)]
+        (doseq [statement [(format (str "IF NOT EXISTS ("
+                                        "SELECT name FROM master.sys.server_principals WHERE name = '%s')"
+                                        "BEGIN CREATE LOGIN %s WITH PASSWORD = N'%s' END")
+                                   role-login
+                                   (sql.tx/qualify-and-quote driver role-login)
+                                   (:password details))
+                           (format "DROP USER IF EXISTS %s;" user-name)
+                           (format "CREATE USER %s FOR LOGIN %s;" user-name role-login)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)
+                           (format "CREATE ROLE %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
 (defn grant-role-to-user!
-  [driver details roles user-name]
-  (let [user-name (sql.tx/qualify-and-quote driver user-name)
+  [driver details roles db-user]
+  (let [db-user (sql.tx/qualify-and-quote driver db-user)
         spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name role-perms] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)
-            role-user (sql.tx/qualify-and-quote driver (:role-user role-perms))]
+    (doseq [[user-name _] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+            user-name (sql.tx/qualify-and-quote driver user-name)]
         (jdbc/execute! spec
-                       [(format "EXEC sp_addrolemember %s, %s" role-name role-user)]
+                       [(format "EXEC sp_addrolemember %s, %s" role-name user-name)]
                        {:transaction? false})
         (jdbc/execute! spec
-                       [(format "GRANT IMPERSONATE ON USER::%s TO %s" role-user user-name)]
+                       [(format "GRANT IMPERSONATE ON USER::%s TO %s" user-name db-user)]
                        {:transaction? false})))))
 
 (defmethod tx/create-and-grant-roles! :sqlserver
   [driver details roles user-name]
-  (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
+  (drop-if-exists-and-create-role! driver details roles)
   (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
   (grant-role-to-user! driver details roles user-name))
 
 (defmethod tx/drop-roles! :sqlserver
-  [driver details roles user-name]
+  [driver details roles db-user]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name role-perms] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)
-            role-user (sql.tx/qualify-and-quote driver (:role-user role-perms))]
+    (doseq [[user-name _] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+            user-name (sql.tx/qualify-and-quote driver user-name)]
         (jdbc/execute! spec
-                       [(format "EXEC sp_droprolemember %s, %s" role-name role-user)]
+                       [(format "EXEC sp_droprolemember %s, %s" role-name user-name)]
                        {:transaction? false})
         (jdbc/execute! spec
-                       [(format "REVOKE IMPERSONATE ON USER::%s TO %s" role-user user-name)]
+                       [(format "REVOKE IMPERSONATE ON USER::%s TO %s" user-name db-user)]
                        {:transaction? false})
         (jdbc/execute! spec
                        [(format "DROP ROLE IF EXISTS %s;" role-name)]

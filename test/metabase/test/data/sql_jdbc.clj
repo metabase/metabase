@@ -52,9 +52,9 @@
 (defn grant-select-table-to-role!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name role-perms] roles]
+    (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (doseq [[table-name _columns] (:tables role-perms)]
+        (doseq [[table-name _columns] table-perms]
           (let [table-name (sql.tx/qualify-and-quote driver table-name)
                 #_columns #_(str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))]
             (jdbc/execute! spec

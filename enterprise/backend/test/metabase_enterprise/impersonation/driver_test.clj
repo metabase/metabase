@@ -107,7 +107,7 @@
             (jdbc/execute! spec [statement]))
           (tx/with-temp-roles! :postgres
             details
-            {"impersonation.role" {:tables {"table_with_access" []}}}
+            {"impersonation.role" {"table_with_access" []}}
             (:user details)
             (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
               (mt/with-db database (sync/sync-database! database)
@@ -129,7 +129,7 @@
   (mt/test-driver :mysql
     (mt/with-premium-features #{:advanced-permissions}
       (let [db-name "conn_impersonation_test"
-            details (mt/dbdef->connection-details :mysql :db {:database-name db-name :user "default_role_user"})
+            details (mt/dbdef->connection-details :mysql :db {:database-name db-name})
             spec (sql-jdbc.conn/connection-details->spec :mysql details)]
         (tx/with-temp-database! :mysql db-name
           (doseq [statement ["drop table if exists table_a;"
@@ -143,10 +143,9 @@
             (jdbc/execute! spec [statement]))
           (tx/with-temp-roles! :mysql
             details
-            {"role_a" {:tables {"table_a" []}}
-             "role_b" {:tables {"table_b" []}}
-             "full_access_role" {:tables {"table_a" []
-                                          "table_b" []}}}
+            {"role_a" {"table_a" []}
+             "role_b" {"table_b" []}
+             "full_access_role" {"table_a" [] "table_b" []}}
             "default_role_user"
             (jdbc/execute! spec [(format "set default role full_access_role %s default_role_user;" (if (mysql/mariadb? (mt/db)) "for" "to"))])
             (mt/with-temp [:model/Database database {:engine :mysql :details (assoc details :user "default_role_user")}]
@@ -185,7 +184,7 @@
   (mt/test-driver :sqlserver
     (mt/with-premium-features #{:advanced-permissions}
       (let [db-name "conn_impersonation_test"
-            details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name :user "default_role_user"})
+            details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name})
             spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
         (tx/with-temp-database! :sqlserver db-name
           (doseq [statement ["drop table if exists [table_a];"
@@ -199,26 +198,11 @@
                                           "BEGIN CREATE LOGIN [default_role_user] WITH PASSWORD = N'%s' END")
                                      (tx/db-test-env-var :sqlserver :password))
                              "drop user if exists [default_role_user];"
-                             "create user default_role_user for login default_role_user;"
-                             (format (str "IF NOT EXISTS ("
-                                          "SELECT name FROM master.sys.server_principals WHERE name = 'user_a')"
-                                          "BEGIN CREATE LOGIN [user_a] WITH PASSWORD = N'%s' END")
-                                     (tx/db-test-env-var :sqlserver :password))
-                             "drop user if exists [user_a];"
-                             "create user user_a for login user_a;"
-                             (format (str "IF NOT EXISTS ("
-                                          "SELECT name FROM master.sys.server_principals WHERE name = 'user_b')"
-                                          "BEGIN CREATE LOGIN [user_b] WITH PASSWORD = N'%s' END")
-                                     (tx/db-test-env-var :sqlserver :password))
-                             "drop user if exists [user_b];"
-                             "create user user_b for login user_b;"]]
+                             "create user default_role_user for login default_role_user;"]]
             (jdbc/execute! spec [statement]))
           (tx/with-temp-roles! :sqlserver
             details
-            {"role_a" {:role-user "user_a"
-                       :tables {"table_a" []}}
-             "role_b" {:role-user "user_b"
-                       :tables {"table_b" []}}}
+            {"user_a" {"table_a" []} "user_b" {"table_b" []}}
             "default_role_user"
             (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
               (mt/with-db database
