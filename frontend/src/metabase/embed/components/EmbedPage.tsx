@@ -7,11 +7,13 @@ import { ColorPill } from "metabase/core/components/ColorPill";
 import { colors } from "metabase/lib/colors";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   Card,
   Checkbox,
   Code,
+  Divider,
   Group,
   Icon,
   Radio,
@@ -19,10 +21,12 @@ import {
   Switch,
   Text,
   TextInput,
+  Tooltip,
 } from "metabase/ui";
 
 type EmbedType = "dashboard" | "chart" | "exploration";
 type Step = "select-type" | "select-entity" | "configure" | "get-code";
+type ContentScenario = "self-made" | "no-content";
 
 const embedTypes = [
   {
@@ -42,37 +46,66 @@ const embedTypes = [
   },
 ];
 
-const exampleDashboards = [
+const exampleDashboard = {
+  id: 5,
+  name: "Example Dashboard",
+  description: "A sample dashboard showing various chart types and features",
+  updatedAt: "2 weeks ago",
+};
+
+const exampleXRayDashboards = [
   {
-    id: 1,
-    name: "Sales Overview",
-    description: "Key metrics and trends for sales performance",
+    id: 101,
+    name: "A look at your Orders",
+    description: "Automatic insights about your order data",
+    updatedAt: "Generated just now",
+  },
+  {
+    id: 102,
+    name: "A look at your Products",
+    description: "Automatic insights about your product catalog",
+    updatedAt: "Generated just now",
+  },
+  {
+    id: 103,
+    name: "A look at your Customers",
+    description: "Automatic insights about your customer base",
+    updatedAt: "Generated just now",
+  },
+];
+
+const recentDashboards = [
+  {
+    id: 201,
+    name: "Sales Performance 2024",
+    description: "Tracking our quarterly sales targets and performance",
+    updatedAt: "10 minutes ago",
+  },
+  {
+    id: 202,
+    name: "Customer Retention",
+    description: "Monitoring customer churn and retention metrics",
     updatedAt: "2 hours ago",
   },
   {
-    id: 2,
-    name: "Customer Analytics",
-    description: "Customer behavior and segmentation analysis",
-    updatedAt: "1 day ago",
+    id: 203,
+    name: "Marketing ROI",
+    description: "Campaign performance and marketing spend analysis",
+    updatedAt: "Yesterday",
   },
   {
-    id: 3,
-    name: "Product Performance",
-    description: "Product sales, inventory, and profitability metrics",
+    id: 204,
+    name: "Product Analytics",
+    description: "Usage patterns and feature adoption metrics",
+    updatedAt: "2 days ago",
+  },
+  {
+    id: 205,
+    name: "Support Overview",
+    description: "Customer support tickets and resolution times",
     updatedAt: "3 days ago",
   },
-  {
-    id: 4,
-    name: "Marketing Campaigns",
-    description: "Campaign performance and ROI tracking",
-    updatedAt: "1 week ago",
-  },
-  {
-    id: 5,
-    name: "Example Dashboard",
-    description: "A sample dashboard showing various chart types and features",
-    updatedAt: "2 weeks ago",
-  },
+  exampleDashboard,
 ];
 
 const exampleParameters = [
@@ -218,7 +251,9 @@ const deserializeState = (encoded: string) => {
 export const EmbedPage = () => {
   const [currentStep, setCurrentStep] = useState<Step>("select-type");
   const [selectedType, setSelectedType] = useState<EmbedType>("dashboard");
-  const [selectedDashboard, setSelectedDashboard] = useState<number | null>(1);
+  const [selectedDashboard, setSelectedDashboard] = useState<number | null>(201);
+  const [contentScenario, setContentScenario] = useState<ContentScenario>("self-made");
+  const [isCalloutExpanded, setIsCalloutExpanded] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [allowDrillThrough, setAllowDrillThrough] = useState(false);
   const [allowDownloads, setAllowDownloads] = useState(false);
@@ -341,40 +376,113 @@ export const EmbedPage = () => {
               <Icon name="search" size={16} />
             </ActionIcon>
           </Group>
+          <Text size="sm" c="text-medium" mb="md">
+            {contentScenario === "self-made"
+              ? "Your recent dashboards"
+              : "Start quickly with automatic insights"
+            }
+          </Text>
           <Stack gap="md">
-            {exampleDashboards.map((dashboard) => (
-              <Card
-                key={dashboard.id}
-                p="md"
-                withBorder
-                style={{
-                  cursor: "pointer",
-                  backgroundColor:
-                    selectedDashboard === dashboard.id
-                      ? "var(--mb-color-bg-light)"
-                      : undefined,
-                  borderColor:
-                    selectedDashboard === dashboard.id
-                      ? "var(--mb-color-brand)"
-                      : undefined,
-                  borderWidth:
-                    selectedDashboard === dashboard.id
-                      ? "2px"
-                      : undefined,
-                }}
-                onClick={() => setSelectedDashboard(dashboard.id)}
-              >
-                <Text fw="bold" mb="xs">
-                  {dashboard.name}
-                </Text>
-                <Text size="sm" c="text-medium" mb="xs">
-                  {dashboard.description}
-                </Text>
-                <Text size="xs" c="text-light">
-                  Updated {dashboard.updatedAt}
-                </Text>
-              </Card>
-            ))}
+            {contentScenario === "self-made"
+              ? recentDashboards.slice(0, -1).map((dashboard) => (
+                <Card
+                  key={dashboard.id}
+                  p="md"
+                  withBorder
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor:
+                      selectedDashboard === dashboard.id
+                        ? "var(--mb-color-bg-light)"
+                        : undefined,
+                    borderColor:
+                      selectedDashboard === dashboard.id
+                        ? "var(--mb-color-brand)"
+                        : undefined,
+                    borderWidth:
+                      selectedDashboard === dashboard.id
+                        ? "2px"
+                        : undefined,
+                  }}
+                  onClick={() => setSelectedDashboard(dashboard.id)}
+                >
+                  <Text fw="bold" mb="xs">
+                    {dashboard.name}
+                  </Text>
+                  <Text size="sm" c="text-medium" mb="xs">
+                    {dashboard.description}
+                  </Text>
+                  <Text size="xs" c="text-light">
+                    Updated {dashboard.updatedAt}
+                  </Text>
+                </Card>
+              ))
+              : exampleXRayDashboards.map((dashboard) => (
+                <Card
+                  key={dashboard.id}
+                  p="md"
+                  withBorder
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor:
+                      selectedDashboard === dashboard.id
+                        ? "var(--mb-color-bg-light)"
+                        : undefined,
+                    borderColor:
+                      selectedDashboard === dashboard.id
+                        ? "var(--mb-color-brand)"
+                        : undefined,
+                    borderWidth:
+                      selectedDashboard === dashboard.id
+                        ? "2px"
+                        : undefined,
+                  }}
+                  onClick={() => setSelectedDashboard(dashboard.id)}
+                >
+                  <Text fw="bold" mb="xs">
+                    {dashboard.name}
+                  </Text>
+                  <Text size="sm" c="text-medium" mb="xs">
+                    {dashboard.description}
+                  </Text>
+                  <Text size="xs" c="text-light">
+                    Updated {dashboard.updatedAt}
+                  </Text>
+                </Card>
+              ))
+            }
+            <Divider label="Or try" labelPosition="center" />
+            <Card
+              key={exampleDashboard.id}
+              p="md"
+              withBorder
+              style={{
+                cursor: "pointer",
+                backgroundColor:
+                  selectedDashboard === exampleDashboard.id
+                    ? "var(--mb-color-bg-light)"
+                    : undefined,
+                borderColor:
+                  selectedDashboard === exampleDashboard.id
+                    ? "var(--mb-color-brand)"
+                    : undefined,
+                borderWidth:
+                  selectedDashboard === exampleDashboard.id
+                    ? "2px"
+                    : undefined,
+              }}
+              onClick={() => setSelectedDashboard(exampleDashboard.id)}
+            >
+              <Text fw="bold" mb="xs">
+                {exampleDashboard.name}
+              </Text>
+              <Text size="sm" c="text-medium" mb="xs">
+                {exampleDashboard.description}
+              </Text>
+              <Text size="xs" c="text-light">
+                Updated {exampleDashboard.updatedAt}
+              </Text>
+            </Card>
           </Stack>
           {isPickerOpen && (
             <DashboardPickerModal
@@ -663,6 +771,91 @@ export const EmbedPage = () => {
           </Stack>
         </Card>
       </Box>
+      {isCalloutExpanded ? (
+        <Card
+          p="md"
+          style={{
+            position: "fixed",
+            bottom: "2rem",
+            right: "2rem",
+            width: "300px",
+            zIndex: 1,
+          }}
+        >
+          <Group justify="space-between" mb="md">
+            <Text size="sm" fw="bold">
+              Content Scenario
+            </Text>
+            <ActionIcon
+              variant="subtle"
+              onClick={() => setIsCalloutExpanded(false)}
+              title="Minimize"
+            >
+              <Icon name="close" size={16} />
+            </ActionIcon>
+          </Group>
+          <Radio.Group
+            value={contentScenario}
+            onChange={(value) => setContentScenario(value as ContentScenario)}
+          >
+            <Stack gap="xs">
+              <Radio
+                value="self-made"
+                label="User has dashboards"
+                description="Shows recent dashboards + example"
+              />
+              <Radio
+                value="no-content"
+                label="User has no content"
+                description="Shows x-ray insights + example"
+              />
+            </Stack>
+          </Radio.Group>
+        </Card>
+      ) : (
+        <Tooltip
+          label="Design callout"
+          position="top"
+          withArrow
+        >
+          <Box style={{ position: "fixed", bottom: "2rem", right: "2rem", zIndex: 1 }}>
+            <Badge
+              size="sm"
+              variant="filled"
+              style={{
+                position: "absolute",
+                top: "-8px",
+                right: "-8px",
+                zIndex: 2,
+                backgroundColor: colors["text-dark"],
+                color: colors.white
+              }}
+            >
+              1
+            </Badge>
+            <ActionIcon
+              variant="filled"
+              size="xl"
+              radius="xl"
+              style={{
+                boxShadow: `0 4px 14px ${colors.shadow}`
+              }}
+              onClick={() => setIsCalloutExpanded(true)}
+            >
+              <img
+                src="/app/assets/img/kyle.png"
+                alt="Content scenarios"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  display: "block"
+                }}
+              />
+            </ActionIcon>
+          </Box>
+        </Tooltip>
+      )}
     </Box>
   );
 };
