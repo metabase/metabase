@@ -5,7 +5,6 @@
    [honey.sql :as sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
@@ -13,18 +12,6 @@
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
-
-(defmethod tx/drop-if-exists-and-create-db! :sqlserver
-  [driver db-name & [just-drop]]
-  (let [db-name (sql.tx/qualify-and-quote driver db-name)
-        spec (sql-jdbc.conn/connection-details->spec driver (mt/dbdef->connection-details driver :server nil))]
-    (jdbc/execute! spec
-                   [(format "DROP DATABASE IF EXISTS %s" db-name)]
-                   {:transaction? false})
-    (when (not= just-drop :just-drop)
-      (jdbc/execute! spec
-                     [(format "CREATE DATABASE %s;" db-name)]
-                     {:transaction? false}))))
 
 (defn drop-if-exists-and-create-role!
   [driver details roles]

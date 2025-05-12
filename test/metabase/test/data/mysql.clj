@@ -13,18 +13,6 @@
 
 (sql-jdbc.tx/add-test-extensions! :mysql)
 
-(defmethod tx/drop-if-exists-and-create-db! :mysql
-  [driver db-name & [just-drop]]
-  (let [db-name (sql.tx/qualify-and-quote driver db-name)
-        spec (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server nil))]
-    (jdbc/execute! spec
-                   [(format "DROP DATABASE IF EXISTS %s;" db-name)]
-                   {:transaction? false})
-    (when (not= just-drop :just-drop)
-      (jdbc/execute! spec
-                     [(format "CREATE DATABASE %s;" db-name)]
-                     {:transaction? false}))))
-
 (defn grant-select-table-to-role!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
