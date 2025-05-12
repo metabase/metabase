@@ -26,6 +26,42 @@
                      [(format "CREATE DATABASE %s;" db-name)]
                      {:transaction? false}))))
 
+(defn grant-role-to-user!
+  [driver details roles user-name]
+  (let [user-name (sql.tx/qualify-and-quote driver user-name)
+        spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name role-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)
+            role-user (sql.tx/qualify-and-quote driver (:role-user role-perms))]
+        (jdbc/execute! spec
+                       [(format "EXEC sp_addrolemember %s, %s" role-name role-user)]
+                       {:transaction? false})
+        (jdbc/execute! spec
+                       [(format "GRANT IMPERSONATE ON USER::%s TO %s" role-user user-name)]
+                       {:transaction? false})))))
+
+(defmethod tx/create-and-grant-roles! :sqlserver
+  [driver details roles user-name]
+  (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
+  (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
+  (grant-role-to-user! driver details roles user-name))
+
+(defmethod tx/drop-roles! :sqlserver
+  [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name role-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)
+            role-user (sql.tx/qualify-and-quote driver (:role-user role-perms))]
+        (jdbc/execute! spec
+                       [(format "EXEC sp_droprolemember %s, %s" role-name role-user)]
+                       {:transaction? false})
+        (jdbc/execute! spec
+                       [(format "REVOKE IMPERSONATE ON USER::%s TO %s" role-user user-name)]
+                       {:transaction? false})
+        (jdbc/execute! spec
+                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
+                       {:transaction? false})))))
+
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BIT"
                                    :type/Date           "DATE"

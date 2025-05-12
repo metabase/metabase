@@ -384,6 +384,45 @@
      ~db-name
      (fn [] ~@body)))
 
+(defmulti create-and-grant-roles!
+  "Creates the given roles and permissions for the database user"
+  {:added "0.55.0" :arglists '([driver details roles user-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-and-grant-roles! ::test-extensions
+  [_driver _details _roles _user-name]
+  nil)
+
+(defmulti drop-roles!
+  "Drops the given roles"
+  {:added "0.55.0" :arglists '([driver details roles user-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-roles! ::test-extensions
+  [_driver _details _roles _user-name]
+  nil)
+
+(defn with-temp-roles-fn!
+  "Creates the given roles and permissions for the database user, and drops them after execution"
+  [driver details roles user-name f]
+  (try
+    (create-and-grant-roles! driver details roles user-name)
+    (f)
+    (finally
+      (drop-roles! driver details roles user-name))))
+
+(defmacro with-temp-roles!
+  "Creates the given roles and permissions for the database user, and drops them after execution"
+  [driver details roles user-name & body]
+  `(with-temp-roles-fn!
+     ~driver
+     ~details
+     ~roles
+     ~user-name
+     (fn [] ~@body)))
+
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.

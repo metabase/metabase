@@ -103,27 +103,27 @@
           (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
                              "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
                              "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
-                             "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
-                             "DROP ROLE IF EXISTS \"impersonation.role\";"
-                             "CREATE ROLE \"impersonation.role\";"
-                             "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
-                             "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
+                             "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"]]
             (jdbc/execute! spec [statement]))
-          (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-            (mt/with-db database (sync/sync-database! database)
-              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" "impersonation.role"}}
-                (is (= []
-                       (-> {:query "SELECT * FROM \"table_with_access\";"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"permission denied"
-                                      (-> {:query "SELECT * FROM \"table_without_access\";"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows)))))))))))
+          (tx/with-temp-roles! :postgres
+            details
+            {"impersonation.role" {:tables {"table_with_access" []}}}
+            (:user details)
+            (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+              (mt/with-db database (sync/sync-database! database)
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" "impersonation.role"}}
+                  (is (= []
+                         (-> {:query "SELECT * FROM \"table_with_access\";"}
+                             mt/native-query
+                             mt/process-query
+                             mt/rows)))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"permission denied"
+                                        (-> {:query "SELECT * FROM \"table_without_access\";"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows))))))))))))
 
 (deftest conn-impersonation-test-mysql
   (mt/test-driver :mysql
@@ -133,58 +133,53 @@
             spec (sql-jdbc.conn/connection-details->spec :mysql details)]
         (tx/with-temp-database! :mysql db-name
           (doseq [statement ["drop table if exists table_a;"
-                             "drop table if exists table_b;"
                              "create table table_a ( id integer primary key );"
                              "insert into table_a values (1), (2);"
+                             "drop table if exists table_b;"
                              "create table table_b (id integer primary key );"
                              "insert into table_b values (11), (22);"
                              "drop user if exists 'default_role_user'@'%';"
-                             "create user 'default_role_user'@'%' identified by '';"
-                             "drop role if exists role_a;"
-                             "create role 'role_a';"
-                             "grant select on conn_impersonation_test.table_a to 'role_a';"
-                             "drop role if exists role_b;"
-                             "create role 'role_b';"
-                             "grant select on conn_impersonation_test.table_b to 'role_b';"
-                             "drop role if exists full_access_role;"
-                             "create role 'full_access_role';"
-                             "grant all privileges on conn_impersonation_test.* to 'full_access_role';"
-                             "grant full_access_role to 'default_role_user'@'%';"
-                             "grant role_a to 'default_role_user'@'%';"
-                             "grant role_b to 'default_role_user'@'%';"
-                             (format "set default role full_access_role %s default_role_user;" (if (mysql/mariadb? (mt/db)) "for" "to"))]]
+                             "create user 'default_role_user'@'%' identified by '';"]]
             (jdbc/execute! spec [statement]))
-          (mt/with-temp [:model/Database database {:engine :mysql :details (assoc details :user "default_role_user")}]
-            (mt/with-db database
-              (sync/sync-database! database)
-              ;; Update the test database with a default role that has full permissions
-              (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "full_access_role"))
-              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" "role_a"}}
-                (is (= [[1] [2]]
-                       (-> {:query "select * from table_a;"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"SELECT command denied to user"
-                                      (-> {:query "select * from table_b;"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows))))
-              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" "role_b"}}
-                (is (= [[11] [22]]
-                       (-> {:query "select * from table_b;"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"SELECT command denied to user"
-                                      (-> {:query "select * from table_a;"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows)))))))))))
+          (tx/with-temp-roles! :mysql
+            details
+            {"role_a" {:tables {"table_a" []}}
+             "role_b" {:tables {"table_b" []}}
+             "full_access_role" {:tables {"table_a" []
+                                          "table_b" []}}}
+            "default_role_user"
+            (jdbc/execute! spec [(format "set default role full_access_role %s default_role_user;" (if (mysql/mariadb? (mt/db)) "for" "to"))])
+            (mt/with-temp [:model/Database database {:engine :mysql :details (assoc details :user "default_role_user")}]
+              (mt/with-db database
+                (sync/sync-database! database)
+                ;; Update the test database with a default role that has full permissions
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "full_access_role"))
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" "role_a"}}
+                  (is (= [[1] [2]]
+                         (-> {:query "select * from table_a;"}
+                             mt/native-query
+                             mt/process-query
+                             mt/rows)))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"SELECT command denied to user"
+                                        (-> {:query "select * from table_b;"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows))))
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" "role_b"}}
+                  (is (= [[11] [22]]
+                         (-> {:query "select * from table_b;"}
+                             mt/native-query
+                             mt/process-query
+                             mt/rows)))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"SELECT command denied to user"
+                                        (-> {:query "select * from table_a;"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows))))))))))))
 
 (deftest conn-impersonation-test-sqlserver
   (mt/test-driver :sqlserver
@@ -193,78 +188,67 @@
             details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name :user "default_role_user"})
             spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
         (tx/with-temp-database! :sqlserver db-name
-          (doseq [statement ["use [conn_impersonation_test];"
-
-                             "drop table if exists [table_a];"
+          (doseq [statement ["drop table if exists [table_a];"
                              "create table table_a ( id int primary key );"
                              "insert into table_a values (1), (2);"
-
                              "drop table if exists [table_b];"
                              "create table table_b (id int primary key );"
                              "insert into table_b values (11), (22);"
-
                              (format (str "IF NOT EXISTS ("
                                           "SELECT name FROM master.sys.server_principals WHERE name = 'default_role_user')"
                                           "BEGIN CREATE LOGIN [default_role_user] WITH PASSWORD = N'%s' END")
                                      (tx/db-test-env-var :sqlserver :password))
                              "drop user if exists [default_role_user];"
                              "create user default_role_user for login default_role_user;"
-                             "exec sp_addrolemember 'db_datareader', 'default_role_user';"
-
                              (format (str "IF NOT EXISTS ("
                                           "SELECT name FROM master.sys.server_principals WHERE name = 'user_a')"
                                           "BEGIN CREATE LOGIN [user_a] WITH PASSWORD = N'%s' END")
                                      (tx/db-test-env-var :sqlserver :password))
                              "drop user if exists [user_a];"
                              "create user user_a for login user_a;"
-                             "drop role if exists [role_a];"
-                             "create role role_a;"
-                             "grant select on table_a to role_a;"
-                             "exec sp_addrolemember 'role_a', 'user_a';"
-
                              (format (str "IF NOT EXISTS ("
                                           "SELECT name FROM master.sys.server_principals WHERE name = 'user_b')"
                                           "BEGIN CREATE LOGIN [user_b] WITH PASSWORD = N'%s' END")
                                      (tx/db-test-env-var :sqlserver :password))
                              "drop user if exists [user_b];"
-                             "create user user_b for login user_b;"
-                             "drop role if exists [role_b];"
-                             "create role role_b;"
-                             "grant select on table_b to role_b;"
-                             "exec sp_addrolemember 'role_b', 'user_b';"
-
-                             "grant impersonate on user::[user_a] to [default_role_user];"
-                             "grant impersonate on user::[user_b] to [default_role_user];"]]
+                             "create user user_b for login user_b;"]]
             (jdbc/execute! spec [statement]))
-          (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
-            (mt/with-db database
-              (sync/sync-database! database)
-              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" "user_a"}}
-                (is (= [[1] [2]]
-                       (-> {:query "select * from table_a;"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"The SELECT permission was denied on the object"
-                                      (-> {:query "select * from table_b;"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows))))
-              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" "user_b"}}
-                (is (= [[11] [22]]
-                       (-> {:query "select * from table_b;"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"The SELECT permission was denied on the object"
-                                      (-> {:query "select * from table_a;"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows)))))))))))
+          (tx/with-temp-roles! :sqlserver
+            details
+            {"role_a" {:role-user "user_a"
+                       :tables {"table_a" []}}
+             "role_b" {:role-user "user_b"
+                       :tables {"table_b" []}}}
+            "default_role_user"
+            (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
+              (mt/with-db database
+                (sync/sync-database! database)
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" "user_a"}}
+                  (is (= [[1] [2]]
+                         (-> {:query "select * from table_a;"}
+                             mt/native-query
+                             mt/process-query
+                             mt/rows)))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"The SELECT permission was denied on the object"
+                                        (-> {:query "select * from table_b;"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows))))
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" "user_b"}}
+                  (is (= [[11] [22]]
+                         (-> {:query "select * from table_b;"}
+                             mt/native-query
+                             mt/process-query
+                             mt/rows)))
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"The SELECT permission was denied on the object"
+                                        (-> {:query "select * from table_a;"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows))))))))))))
 
 (deftest conn-impersonation-with-db-routing
   (mt/test-driver :postgres
