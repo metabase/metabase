@@ -66,7 +66,7 @@
       :xlsx (read-xlsx results)
       :json (tabulate-maps results))))
 
-(defn- card-download
+(defn card-download
   "Provides the result of the card download via the card api in `export-format`,
   formatting rows if `format-rows` is true, and pivoting the results if `pivot` is true."
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
