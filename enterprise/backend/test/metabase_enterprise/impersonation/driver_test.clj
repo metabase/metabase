@@ -188,11 +188,11 @@
             spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
         (tx/with-temp-database! :sqlserver db-name
           (doseq [statement ["drop table if exists [table_a];"
-                             "create table table_a ( id int primary key );"
-                             "insert into table_a values (1), (2);"
+                             "create table table_a ( id int primary key, foo int, bar int );"
+                             "insert into table_a values (1, 2, 3), (2, 4, 6);"
                              "drop table if exists [table_b];"
-                             "create table table_b (id int primary key );"
-                             "insert into table_b values (11), (22);"
+                             "create table table_b (id int primary key, foo int, bar int );"
+                             "insert into table_b values (11, 22, 33), (22, 44, 66);"
                              (format (str "IF NOT EXISTS ("
                                           "SELECT name FROM master.sys.server_principals WHERE name = 'default_role_user')"
                                           "BEGIN CREATE LOGIN [default_role_user] WITH PASSWORD = N'%s' END")
@@ -202,15 +202,15 @@
             (jdbc/execute! spec [statement]))
           (tx/with-temp-roles! :sqlserver
             details
-            {"user_a" {"table_a" []} "user_b" {"table_b" []}}
+            {"user_a" {"table_a" ["id" "foo"]} "user_b" {"table_b" ["id" "bar"]}}
             "default_role_user"
             (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
               (mt/with-db database
                 (sync/sync-database! database)
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "user_a"}}
-                  (is (= [[1] [2]]
-                         (-> {:query "select * from table_a;"}
+                  (is (= [[1 2] [2 4]]
+                         (-> {:query "select id, foo from table_a;"}
                              mt/native-query
                              mt/process-query
                              mt/rows)))
@@ -222,8 +222,8 @@
                                             mt/rows))))
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "user_b"}}
-                  (is (= [[11] [22]]
-                         (-> {:query "select * from table_b;"}
+                  (is (= [[11 33] [22 66]]
+                         (-> {:query "select id, bar from table_b;"}
                              mt/native-query
                              mt/process-query
                              mt/rows)))

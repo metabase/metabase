@@ -25,6 +25,23 @@
                      [(format "CREATE DATABASE %s;" db-name)]
                      {:transaction? false}))))
 
+(defn grant-select-table-to-role!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name _columns] table-perms]
+          (let [table-name (sql.tx/qualify-and-quote driver table-name)]
+            (jdbc/execute! spec
+                           [(format "GRANT SELECT ON %s TO %s" table-name role-name)]
+                           {:transaction? false})))))))
+
+(defmethod tx/create-and-grant-roles! :mysql
+  [driver details roles user-name]
+  (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
+  (grant-select-table-to-role! driver details roles)
+  (sql-jdbc.tx/grant-role-to-user! driver details roles user-name))
+
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
                                    :type/Date           "DATE"

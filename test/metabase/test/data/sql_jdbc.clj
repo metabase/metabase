@@ -54,12 +54,11 @@
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (doseq [[table-name _columns] table-perms]
+        (doseq [[table-name columns] table-perms]
           (let [table-name (sql.tx/qualify-and-quote driver table-name)
-                #_columns #_(str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))]
+                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))]
             (jdbc/execute! spec
-                           [(format "GRANT SELECT ON %s TO %s" table-name role-name)]
-                           #_[(format "GRANT SELECT (%s) ON %s TO %s" columns table-name role-name)]
+                           [(format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)]
                            {:transaction? false})))))))
 
 (defn grant-role-to-user!
