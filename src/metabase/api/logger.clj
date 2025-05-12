@@ -163,9 +163,9 @@
          :hours        (* 3600 value)
          :minutes      (* 60 value)
          :seconds      value
-         :milliseconds (long (/ value 1e3))
-         :microseconds (long (/ value 1e6))
-         :nanoeconds   (long (/ value 1e9)))))
+         :milliseconds (quot value (long 1e3))
+         :microseconds (quot value (long 1e6))
+         :nanoeconds   (quot value (long 1e9)))))
 
 (api.macros/defendpoint :post "/adjustment"
   "Temporarily adjust the log levels."
