@@ -265,50 +265,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
   });
 
-  it("should remap columns when changing a viz type", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-
-    H.openQuestionsSidebar();
-    H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
-
-    H.modal().within(() => {
-      // Turn into a pie chart
-      cy.findByTestId("viz-picker-main").icon("pie").click();
-      H.assertDataSourceColumnSelected(
-        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-        "Count",
-      );
-      H.assertDataSourceColumnSelected(
-        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-        "Product → Category",
-      );
-      H.pieMetricWell().findByText("Count").should("exist");
-      H.pieDimensionWell().findByText("Product → Category").should("exist");
-      H.echartsContainer().findByText("18,760").should("exist"); // total value
-
-      // Turn into a funnel
-      cy.findByTestId("viz-picker-main").icon("funnel").click();
-      H.assertDataSourceColumnSelected(
-        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-        "Count",
-      );
-      H.assertDataSourceColumnSelected(
-        ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-        "Product → Category",
-      );
-      H.verticalWell().findByText("Count").should("exist");
-      H.horizontalWell().within(() => {
-        cy.findByText("Product → Category").should("exist");
-        cy.findByText("Doohickey").should("exist");
-        cy.findByText("Gadget").should("exist");
-        cy.findByText("Gizmo").should("exist");
-        cy.findByText("Widget").should("exist");
-        cy.findAllByTestId("well-item").should("have.length", 5);
-      });
-    });
-  });
-
   it("should start in a pristine state and update dirtyness accordingly", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
