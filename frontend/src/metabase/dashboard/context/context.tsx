@@ -140,7 +140,6 @@ const DashboardContextProviderInner = ({
   const handleLoadDashboard = useCallback(
     async (dashboardId: DashboardId) => {
       initialize({ clearCache: !isNavigatingBackToDashboard });
-
       const result = await fetchDashboard({
         dashId: dashboardId,
         queryParams: parameterQueryParams,
@@ -168,6 +167,33 @@ const DashboardContextProviderInner = ({
     [onError],
   );
 
+  useEffect(() => {
+    const fetchId = async () => {
+      try {
+        const { id, isError } = await dispatch(
+          fetchEntityId({ type: "dashboard", id: initialDashboardId }),
+        );
+        if (isError || id === null) {
+          handleError({
+            status: 404,
+            message: "Not found",
+            name: "Not found",
+          } as Error);
+          setDashboardId(id);
+        }
+        setDashboardId(id);
+      } catch (e) {
+        handleError(e as Error);
+      }
+
+      return;
+    };
+
+    if (initialDashboardId && !dashboardId) {
+      fetchId();
+    }
+  }, [dashboardId, dispatch, handleError, initialDashboardId]);
+
   const fetchData = useCallback(
     async (dashboardId: DashboardId) => {
       const hasDashboardChanged = dashboardId !== previousDashboardId;
@@ -179,70 +205,53 @@ const DashboardContextProviderInner = ({
               handleError(result.payload as Error);
             }
           })
-          .catch((err) => {
-            handleError(err);
-          });
-        return;
-      }
-
-      if (!dashboard) {
-        return;
-      }
-
-      const hasDashboardLoaded = !previousDashboard;
-      const hasTabChanged = selectedTabId !== previousTabId;
-      const hasParameterValueChanged = !isEqual(
-        parameterValues,
-        previousParameterValues,
-      );
-
-      try {
-        if (hasDashboardLoaded) {
-          fetchDashboardCardData({ reload: false, clearCache: true });
-        } else if (hasTabChanged || hasParameterValueChanged) {
-          fetchDashboardCardData();
-        }
-      } catch (e) {
-        console.error("HELLO", e);
-        handleError?.(e as Error);
+          .catch((err) => handleError(err as Error));
       }
     },
-    [
-      dashboard,
-      fetchDashboardCardData,
-      handleError,
-      handleLoadDashboard,
-      parameterValues,
-      previousDashboard,
-      previousDashboardId,
-      previousParameterValues,
-      previousTabId,
-      selectedTabId,
-    ],
+    [handleError, handleLoadDashboard, previousDashboardId],
   );
 
   useEffect(() => {
-    setDashboardId(null);
+    if (!dashboard) {
+      return;
+    }
 
-    dispatch(fetchEntityId({ type: "dashboard", id: initialDashboardId }))
-      .then(({ id, isError }) => {
-        if (isError || id === null) {
-          handleError({
-            status: 404,
-            message: "Not found",
-            name: "Not found",
-          } as Error);
-        }
-        setDashboardId(id);
-      })
-      .catch((e) => handleError(e));
-  }, [dispatch, handleError, initialDashboardId]);
+    const hasDashboardLoaded = !previousDashboard;
+    const hasTabChanged = selectedTabId !== previousTabId;
+    const hasParameterValueChanged = !isEqual(
+      parameterValues,
+      previousParameterValues,
+    );
+
+    try {
+      if (hasDashboardLoaded) {
+        fetchDashboardCardData({ reload: false, clearCache: true });
+      } else if (hasTabChanged || hasParameterValueChanged) {
+        fetchDashboardCardData();
+      }
+    } catch (e) {
+      handleError?.(e as Error);
+    }
+  }, [
+    dashboard,
+    fetchDashboardCardData,
+    handleError,
+    parameterValues,
+    previousDashboard,
+    previousParameterValues,
+    previousTabId,
+    selectedTabId,
+  ]);
 
   useEffect(() => {
-    if (dashboardId) {
-      fetchData(dashboardId);
+    if (
+      initialDashboardId &&
+      dashboardId &&
+      dashboardId !== previousDashboardId
+    ) {
+      fetchData(initialDashboardId);
     }
-  }, [dashboardId, fetchData]);
+  }, [dashboardId, fetchData, initialDashboardId, previousDashboardId]);
 
   useEffect(() => {
     if (
