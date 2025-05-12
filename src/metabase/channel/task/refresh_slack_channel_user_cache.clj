@@ -6,7 +6,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

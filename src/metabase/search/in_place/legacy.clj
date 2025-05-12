@@ -107,6 +107,8 @@
    ;; returned for indexed-entity
    :pk_ref              :text
    :model_index_id      :integer
+   ;; returned for Card
+   :entity_id           :text
    ;; returned for Card and Action
    :dataset_query       :text))
 
@@ -355,7 +357,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id :entity_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]

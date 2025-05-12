@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.audit :as audit]
+   [metabase.audit-app.impl :as audit]
    [metabase.config :as config]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]

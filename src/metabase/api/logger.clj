@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.logger :as logger]
@@ -166,6 +167,17 @@
 (mr/def ::log-levels
   [:map-of :string (into [:enum] (map name) (reverse logger/levels))])
 
+(defn- ->seconds-str
+  [unit value]
+  (str (case unit
+         :days         (* 86400 value)
+         :hours        (* 3600 value)
+         :minutes      (* 60 value)
+         :seconds      value
+         :milliseconds (quot value (long 1e3))
+         :microseconds (quot value (long 1e6))
+         :nanoeconds   (quot value (long 1e9)))))
+
 (api.macros/defendpoint :post "/adjustment"
   "Temporarily adjust the log levels."
   [_route-params
@@ -196,7 +208,12 @@
                                                        "\n}"))}}))
     (when-let [task @log-adjustment]
       (cancel-undo-task! task))
-    (let [plan (set-log-levels! (update-vals log-levels keyword))]
+    (let [plan (do (if (empty? log-levels)
+                     (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})
+                     (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_set"
+                                                                    :event_detail (->seconds-str duration_unit
+                                                                                                 duration)}))
+                   (set-log-levels! (update-vals log-levels keyword)))]
       (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})))
   nil)
 
@@ -205,6 +222,7 @@
   []
   (api/check-superuser)
   (when-let [task @log-adjustment]
+    (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})
     (cancel-undo-task! task)
     (reset! log-adjustment nil))
   nil)
