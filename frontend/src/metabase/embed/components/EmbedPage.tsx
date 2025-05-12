@@ -761,7 +761,10 @@ export const EmbedPage = () => {
         <Card p="md" h="100%">
           <Stack h="100%">
             <Text size="lg" fw="bold" mb="md">
-              Preview
+              {selectedDashboard ?
+                [...recentDashboards, ...exampleXRayDashboards].find(d => d.id === selectedDashboard)?.name || "Preview"
+                : "Preview"
+              }
             </Text>
             <PreviewSkeleton
               type={selectedType}
