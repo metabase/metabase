@@ -6,9 +6,33 @@
    [metabase-enterprise.gsheets.settings :refer [gsheets]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.string :as u.string]))
 
 (set! *warn-on-reflection* true)
+
+(deftest normalize-gdrive-conn-test
+  (is (= {} (#'gsheets.api/normalize-gdrive-conn {})))
+  (is (= {:updated_at                  (u.date/parse "2025-01-27T18:43:42Z"),
+          :hosted_instance_resource_id 7,
+          :last_sync_at                (u.date/parse "2025-01-27T18:43:42Z"),
+          :error_detail                nil,
+          :type                        "gdrive",
+          :hosted_instance_id          "f390ec19-bd44-48ae-991c-66817182a376",
+          :last_sync_started_at        (u.date/parse "2025-01-27T18:43:04Z"),
+          :status                      "active",
+          :id                          "049f3007-2146-4083-be38-f160c526aca7",
+          :created_at                  (u.date/parse "2025-01-27T18:43:02Z")}
+         (#'gsheets.api/normalize-gdrive-conn {:updated-at                  "2025-01-27T18:43:42Z",
+                                               :hosted-instance-resource-id 7,
+                                               :last-sync-at                "2025-01-27T18:43:42Z",
+                                               :error-detail                nil,
+                                               :type                        "gdrive",
+                                               :hosted-instance-id          "f390ec19-bd44-48ae-991c-66817182a376",
+                                               :last-sync-started-at        "2025-01-27T18:43:04Z",
+                                               :status                      "active",
+                                               :id                          "049f3007-2146-4083-be38-f160c526aca7",
+                                               :created-at                  "2025-01-27T18:43:02Z"}))))
 
 (deftest gsheets-calls-fail-when-missing-etl-connections
   (mt/with-temporary-setting-values [api-key "some"]
@@ -49,16 +73,16 @@
          {:method :get, :url "/api/v2/mb/connections", :body nil}
          [:ok
           {:status 200,
-           :body   [{:updated-at                  "2025-01-27T18:43:04Z",
-                     :hosted-instance-resource-id 7,
-                     :last-sync-at                nil,
-                     :error-detail                nil,
+           :body   [{:updated_at                  "2025-01-27T18:43:04Z",
+                     :hosted_instance_resource_id 7,
+                     :last_sync_at                nil,
+                     :error_detail                nil,
                      :type                        "gdrive",
-                     :hosted-instance-id          "f390ec19-bd44-48ae-991c-66817182a376",
-                     :last-sync-started-at        "2025-01-27T18:43:04Z",
+                     :hosted_instance_id          "f390ec19-bd44-48ae-991c-66817182a376",
+                     :last_sync_started_at        "2025-01-27T18:43:04Z",
                      :status                      "syncing",
                      :id                          "049f3007-2146-4083-be38-f160c526aca7",
-                     :created-at                  "2025-01-27T18:43:02Z"}]}]))
+                     :created_at                  "2025-01-27T18:43:02Z"}]}]))
 
 (defn mock-make-request
   ([responses method url] (mock-make-request responses method url nil))
@@ -136,6 +160,22 @@
   (let [db-sym (gensym "db-")]
     `(mt/with-temp [:model/Database ~db-sym {:is_attached_dwh true}]
        ~@body)))
+
+(defn +hyphened-response [responses]
+  (assoc responses
+         {:method :get, :url (str "/api/v2/mb/connections/" gdrive-active-link), :body nil}
+         [:ok
+          {:status 200,
+           :body {:updated-at "2025-01-27T18:43:42Z",
+                  :hosted-instance-resource-id 7,
+                  :last-sync-at "2025-01-27T18:43:42Z",
+                  :error-detail nil,
+                  :type "gdrive",
+                  :hosted-instance-id "f390ec19-bd44-48ae-991c-66817182a376",
+                  :last-sync-started-at "2025-01-27T18:43:04Z",
+                  :status "active",
+                  :id "049f3007-2146-4083-be38-f160c526aca7",
+                  :created-at "2025-01-27T18:43:02Z"}}]))
 
 (deftest post-folder-test
   (with-sample-db-as-dwh
@@ -264,6 +304,29 @@
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
                 (is (partial= {:status "error", :url "test-url" :created_by_id 2} response))
                 (is (pos-int? (:db_id response)))))))))))
+
+(deftest get-folder-with-hyphened-responses-test
+  (with-sample-db-as-dwh
+    (mt/with-temporary-setting-values [gsheets {:created-by-id  2
+                                                :url            "test-url",
+                                                :created-at     15
+                                                :db-id          1
+                                                :gdrive/conn-id gdrive-active-link}]
+      (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
+        ()
+        (testing "still get the right response when we get hyphenated response keys"
+          (with-redefs [hm.client/make-request (partial mock-make-request (+hyphened-response happy-responses))]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+              (is (partial= {:status "active", :url "test-url" :created_by_id 2}
+                            response))
+              (is (pos-int? (:db_id response)))
+              (is (nil? (:sync_started_at response)))
+              (is (pos-int? (:last_sync_at response)))
+              (is (pos-int? (:next_sync_at response)))
+              (testing "current state info doesn't get persisted"
+                (is (nil? (:sync_started_at (gsheets))))
+                (is (nil? (:last_sync_at (gsheets))))
+                (is (nil? (:last_sync_at (gsheets))))))))))))
 
 (deftest get-folder-test-invalid-connections
   (with-sample-db-as-dwh

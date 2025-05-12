@@ -1,5 +1,6 @@
 (ns metabase-enterprise.gsheets.api
   (:require
+   [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.gsheets.constants :as gsheets.constants]
@@ -121,10 +122,10 @@
    [:id :string]
    [:type [:enum "gdrive" "google_spreadsheet"]]
    [:status [:enum "initializing" "syncing" "active" "error"]]
-   [:last-sync-at [:maybe :time/zoned-date-time]]
-   [:last-sync-started-at [:maybe :time/zoned-date-time]]
-   [:created-at :time/zoned-date-time]
-   [:updated-at :time/zoned-date-time]])
+   [:last_sync_at [:maybe :time/zoned-date-time]]
+   [:last_sync_started_at [:maybe :time/zoned-date-time]]
+   [:created_at :time/zoned-date-time]
+   [:updated_at :time/zoned-date-time]])
 
 (defn- is-gdrive?
   "Is this connection a gdrive connection?"
@@ -134,11 +135,19 @@
   "Normalize the gdrive connection shape from harbormaster, mostly parsing times."
   [gdc]
   (-> gdc
-      (dissoc :hosted-instance-resource)
-      (m/update-existing :last-sync-at u.date/parse)
-      (m/update-existing :last-sync-started-at u.date/parse)
-      (m/update-existing :created-at u.date/parse)
-      (m/update-existing :updated-at u.date/parse)))
+      (dissoc :hosted_instance_resource)
+      (set/rename-keys {:hosted-instance-resource-id :hosted_instance_resource_id
+                        :hosted-instance-id          :hosted_instance_id
+                        :last-sync-at                :last_sync_at
+                        :last-sync-started-at        :last_sync_started_at
+                        :error-detail                :error_detail
+                        :created-at                  :created_at
+                        :updated-at                  :updated_at})
+      (m/update-existing :id str)
+      (m/update-existing :last_sync_at u.date/parse)
+      (m/update-existing :last_sync_started_at u.date/parse)
+      (m/update-existing :created_at u.date/parse)
+      (m/update-existing :updated_at u.date/parse)))
 
 (mu/defn- hm-get-gdrive-conns :- [:sequential :gdrive/connection]
   "Get the harbormaster gdrive type connection.
@@ -279,32 +288,32 @@
                                  :hm/exception e})))))
         [hm-status {hm-status-code :status hm-body :body hm-err-body :ex-data}] hm-response]
     (if (= :ok hm-status)
-      (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
+      (let [{:keys [status status_reason error last_sync_at last_sync_started_at]
              :as   _} (normalize-gdrive-conn hm-body)]
         (cond
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
-                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
-                 :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))))
+                 :last_sync_at (.getEpochSecond ^Instant (t/instant last_sync_at))
+                 :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last_sync_at) (t/minutes 15))))
 
           (or (= "syncing" status) (= "initializing" status))
           (assoc (setting->response saved-setting)
                  :status "syncing"
-                 :last_sync_at (if (nil? last-sync-at) nil (.getEpochSecond ^Instant (t/instant last-sync-at)))
-                 :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
+                 :last_sync_at (if (nil? last_sync_at) nil (.getEpochSecond ^Instant (t/instant last_sync_at)))
+                 :sync_started_at (.getEpochSecond ^Instant (t/instant (or last_sync_started_at (t/instant)))))
 
           ;; other statuses are listed as "errors" to the frontend
           :else
           (u/prog1 (assoc (setting->response saved-setting)
                           :status "error"
-                          :error_message (or status-reason
+                          :error_message (or status_reason
                                              (when (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
                                              cannot-check-message)
-                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                          :last_sync_at (.getEpochSecond ^Instant (t/instant last_sync_at))
                           :hm/response (loggable-response hm-response))
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-            (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
+            (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status_reason hm-body) (:error_detail hm-body)))))
       (cond
         (empty? saved-setting)
         {:status "not-connected"}
@@ -327,7 +336,7 @@
                         :error_message cannot-check-message
                         :hm/response (loggable-response hm-response))
           (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
-          (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))))
+          (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status_reason hm-body) (:error_detail hm-body)))))))
 
 (api.macros/defendpoint :get "/connection" :- :gsheets/response
   "Check the status of a connection. This endpoint gets polled by FE to determine when to
