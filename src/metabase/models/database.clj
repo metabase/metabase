@@ -89,14 +89,6 @@
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
   ([_model database-id]
-   ;; this is temporary debugging for test failures I can't seem to figure out >:(
-   (println "database-id:" database-id)
-   (println "audit/audit-db-id:" audit/audit-db-id)
-   (println (pr-str (list 'db-id->router-db-id database-id))
-            (db-id->router-db-id database-id))
-   (println "api/*is-superuser?*:" api/*is-superuser?*) ; NOCOMMIT
-   (println (pr-str (list 'perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/create-queries database-id))
-            (perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/create-queries database-id))
    (cond
      (should-read-audit-db? database-id) false
      (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))

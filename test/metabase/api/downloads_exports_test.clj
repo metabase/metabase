@@ -18,16 +18,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.formatter :as formatter]
-   [metabase.models.interface :as mi]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
-   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
@@ -83,13 +79,6 @@
 
 (defn- unsaved-card-download
   [card {:keys [export-format format-rows pivot]}]
-  (testing "Sanity check"
-    (mt/with-test-user :crowberto
-      (assert (mi/can-read? (mt/db)))
-      (when-not api/*is-superuser?*
-        (log/fatal "FATAL: Crowberto is no longer a superuser.")
-        (when config/is-test?
-          (System/exit -1)))))
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
                              {:visualization_settings (:visualization_settings card)
@@ -1186,7 +1175,8 @@
 
 (deftest format-rows-value-affects-xlsx-exports
   (testing "Format-rows true/false is respected for xlsx exports."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [enable-pivoted-exports true
+                                       custom-formatting      {}]
       (mt/with-temp [:model/Card card
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
