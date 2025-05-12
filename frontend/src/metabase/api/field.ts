@@ -5,6 +5,7 @@ import type {
   FieldValue,
   GetFieldRequest,
   GetFieldValuesResponse,
+  GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
   UpdateFieldRequest,
   UpdateFieldValuesRequest,
@@ -17,6 +18,7 @@ import {
   listTag,
   provideFieldTags,
   provideFieldValuesTags,
+  provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
 
