@@ -3,7 +3,6 @@
    [clojure.data.csv]
    [medley.core :as m]
    [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
@@ -92,7 +91,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
-        (let [col-names            (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+        (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
               pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
