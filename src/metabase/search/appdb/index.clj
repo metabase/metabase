@@ -264,10 +264,7 @@
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
         (log/trace "indexed documents for " <>)
-        (analytics/set! :metabase-search/appdb-index-size
-                        (:count (t2/query-one {:select [[:%count.* :count]]
-                                               :from   [(active-table)]
-                                               :limit  1})))))))
+        (analytics/set! :metabase-search/appdb-index-size (t2/count (active-table)))))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
