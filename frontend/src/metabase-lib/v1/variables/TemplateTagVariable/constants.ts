@@ -5,6 +5,7 @@ export const VARIABLE_ICONS: Record<TemplateTagType, string | null> = {
   number: "int",
   date: "calendar",
   dimension: null,
+  "temporal-unit": "string", // ?
   card: null,
   snippet: null,
 };

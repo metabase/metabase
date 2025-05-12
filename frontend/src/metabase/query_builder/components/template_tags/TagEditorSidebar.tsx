@@ -171,9 +171,10 @@ const SettingsPane = ({
   setTemplateTagConfig,
   setParameterValue,
   getEmbeddedParameterVisibility,
-}: SettingsPaneProps) => (
-  <div>
-    {tags.map((tag) => (
+}: SettingsPaneProps) => {
+  return (
+    // <div>
+    tags.map((tag) => (
       <div key={tag.id}>
         <TagEditorParam
           tag={tag}
@@ -191,6 +192,7 @@ const SettingsPane = ({
           setParameterValue={setParameterValue}
         />
       </div>
-    ))}
-  </div>
-);
+    ))
+    // </div>
+  );
+};

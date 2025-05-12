@@ -275,6 +275,7 @@ class TagEditorParamInner extends Component<Props> {
     }
 
     const isDimension = tag.type === "dimension";
+    const isTemporalUnit = tag.type === "temporal-unit";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions.length > 0;
@@ -289,7 +290,21 @@ class TagEditorParamInner extends Component<Props> {
           {tag.name}
         </Box>
 
-        <VariableTypeSelect value={tag.type} onChange={this.setType} />
+        {isTemporalUnit && (
+          <>
+            <ContainerLabel paddingTop>{t`Variable type`}</ContainerLabel>
+            <Box component="h3">{t`time_grouping`}</Box>
+
+            <ContainerLabel
+              paddingTop
+            >{t`Time grouping options`}</ContainerLabel>
+            <Box component="h3">{t`time_grouping`}</Box>
+          </>
+        )}
+
+        {!isTemporalUnit && (
+          <VariableTypeSelect value={tag.type} onChange={this.setType} />
+        )}
 
         {tag.type === "dimension" && (
           <FieldMappingSelect
