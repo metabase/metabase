@@ -38,7 +38,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [pangloss.transducers :as transducers]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
