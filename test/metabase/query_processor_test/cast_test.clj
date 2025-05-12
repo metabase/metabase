@@ -624,7 +624,9 @@
               (is (string? casted-value)))))))))
 
 (deftest ^:parallel text-cast-nested-native-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/text)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions/text)
+                         :mongo ;; because this requires a native query
+                         )
     (let [mp (mt/metadata-provider)]
       (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
                                               {:expression "''" :db-type "TEXT"}
