@@ -1,12 +1,11 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/components/EmptyState";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { Box, Icon, Input, Stack } from "metabase/ui";
+import { Box, Flex, Icon, Input, Stack } from "metabase/ui";
 
 import { Results } from "./Results";
+import S from "./TablePicker.module.css";
 import type { TreePath } from "./types";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
@@ -52,6 +51,7 @@ function Tree({
   const { tree } = useTableLoader(value);
 
   const items = flatten(tree, { isExpanded, addLoadingNodes: true });
+  const isEmpty = items.length === 0;
 
   useEffect(() => {
     // When we detect a database with just one schema, we automatically
@@ -72,6 +72,10 @@ function Tree({
       }
     }
   }, [databaseId, schemaId, tree, toggle, isExpanded, onChange]);
+
+  if (isEmpty) {
+    return <EmptyState title={t`No data to show.`} />;
+  }
 
   return (
     <Results
@@ -99,15 +103,19 @@ function Search({
   const isEmpty = !isLoading && items.length === 0;
 
   if (isEmpty) {
-    return (
-      <Box p="md">
-        <EmptyState
-          title={t`No results`}
-          illustrationElement={<img src={NoResults} />}
-        />
-      </Box>
-    );
+    return <EmptyState title={t`No results.`} />;
   }
 
   return <Results items={items} path={path} onItemClick={onChange} />;
+}
+
+function EmptyState({ title }: { title: string }) {
+  return (
+    <Stack pt="lg" align="center" className={S.emptyState} gap="md">
+      <Flex className={S.empyIcon} p="lg" align="center" justify="center">
+        <Icon name="table2" />
+      </Flex>
+      <Box>{title}</Box>
+    </Stack>
+  );
 }
