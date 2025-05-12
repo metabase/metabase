@@ -60,7 +60,6 @@ import type {
   GroupsPermissions,
   ModelCacheRefreshStatus,
   ParameterId,
-  Pulse,
   Revision,
   User,
 } from "metabase-types/api";
