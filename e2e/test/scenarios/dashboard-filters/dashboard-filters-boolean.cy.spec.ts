@@ -26,33 +26,37 @@ describe(
       H.resyncDatabase({ tableName: TABLE_NAME });
     });
 
-    it("should allow to map a boolean parameter to a boolean column of an MBQL query", () => {
-      createQuestionAndDashboard();
-      mapParameter({ columnName: "Boolean" });
-      testParameterWidget({
-        allRowCountText: "200 rows",
-        trueRowCountText: "1 row",
-        falseRowCountText: "199 rows",
-      });
-      testDrillThru({
-        columnName: "Boolean",
-        trueRowCount: 1,
-        isNative: false,
+    describe("mbql queries", () => {
+      it("should allow to map a boolean parameter to a boolean column of an MBQL query", () => {
+        createQuestionAndDashboard();
+        mapParameter({ columnName: "Boolean" });
+        testParameterWidget({
+          allRowCountText: "200 rows",
+          trueRowCountText: "1 row",
+          falseRowCountText: "199 rows",
+        });
+        testDrillThru({
+          columnName: "Boolean",
+          trueRowCount: 1,
+          isNative: false,
+        });
       });
     });
 
-    it("should allow to map a boolean parameter to a boolean field filter of a SQL query", () => {
-      createNativeQuestionAndDashboard();
-      mapParameter({ columnName: "Boolean" });
-      testParameterWidget({
-        allRowCountText: "2 rows",
-        trueRowCountText: "1 row",
-        falseRowCountText: "1 row",
-      });
-      testDrillThru({
-        columnName: "Boolean",
-        trueRowCount: 1,
-        isNative: true,
+    describe("native queries", () => {
+      it("should allow to map a boolean parameter to a boolean field filter of a SQL query", () => {
+        createNativeQuestionAndDashboard();
+        mapParameter({ columnName: "Boolean" });
+        testParameterWidget({
+          allRowCountText: "2 rows",
+          trueRowCountText: "1 row",
+          falseRowCountText: "1 row",
+        });
+        testDrillThru({
+          columnName: "Boolean",
+          trueRowCount: 1,
+          isNative: true,
+        });
       });
     });
   },
