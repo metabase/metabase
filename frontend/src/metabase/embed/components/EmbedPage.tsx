@@ -406,15 +406,20 @@ export const EmbedPage = () => {
                   }}
                   onClick={() => setSelectedDashboard(dashboard.id)}
                 >
-                  <Text fw="bold" mb="xs">
-                    {dashboard.name}
-                  </Text>
-                  <Text size="sm" c="text-medium" mb="xs">
-                    {dashboard.description}
-                  </Text>
-                  <Text size="xs" c="text-light">
-                    Updated {dashboard.updatedAt}
-                  </Text>
+                  <Group align="start" gap="sm">
+                    <Icon name="dashboard" size={20} color={colors.brand} />
+                    <Stack gap="xs" style={{ flex: 1 }}>
+                      <Text fw="bold">
+                        {dashboard.name}
+                      </Text>
+                      <Text size="sm" c="text-medium">
+                        {dashboard.description}
+                      </Text>
+                      <Text size="xs" c="text-light">
+                        Updated {dashboard.updatedAt}
+                      </Text>
+                    </Stack>
+                  </Group>
                 </Card>
               ))
               : exampleXRayDashboards.map((dashboard) => (
@@ -439,15 +444,20 @@ export const EmbedPage = () => {
                   }}
                   onClick={() => setSelectedDashboard(dashboard.id)}
                 >
-                  <Text fw="bold" mb="xs">
-                    {dashboard.name}
-                  </Text>
-                  <Text size="sm" c="text-medium" mb="xs">
-                    {dashboard.description}
-                  </Text>
-                  <Text size="xs" c="text-light">
-                    Updated {dashboard.updatedAt}
-                  </Text>
+                  <Group align="start" gap="sm">
+                    <Icon name="bolt" size={20} color={colors.accent7} />
+                    <Stack gap="xs" style={{ flex: 1 }}>
+                      <Text fw="bold">
+                        {dashboard.name}
+                      </Text>
+                      <Text size="sm" c="text-medium">
+                        {dashboard.description}
+                      </Text>
+                      <Text size="xs" c="text-light">
+                        Updated {dashboard.updatedAt}
+                      </Text>
+                    </Stack>
+                  </Group>
                 </Card>
               ))
             }
@@ -473,15 +483,20 @@ export const EmbedPage = () => {
               }}
               onClick={() => setSelectedDashboard(exampleDashboard.id)}
             >
-              <Text fw="bold" mb="xs">
-                {exampleDashboard.name}
-              </Text>
-              <Text size="sm" c="text-medium" mb="xs">
-                {exampleDashboard.description}
-              </Text>
-              <Text size="xs" c="text-light">
-                Updated {exampleDashboard.updatedAt}
-              </Text>
+              <Group align="start" gap="sm">
+                <Icon name="dashboard" size={20} color={colors.brand} />
+                <Stack gap="xs" style={{ flex: 1 }}>
+                  <Text fw="bold">
+                    {exampleDashboard.name}
+                  </Text>
+                  <Text size="sm" c="text-medium">
+                    {exampleDashboard.description}
+                  </Text>
+                  <Text size="xs" c="text-light">
+                    Updated {exampleDashboard.updatedAt}
+                  </Text>
+                </Stack>
+              </Group>
             </Card>
           </Stack>
           {isPickerOpen && (
@@ -774,90 +789,92 @@ export const EmbedPage = () => {
           </Stack>
         </Card>
       </Box>
-      {isCalloutExpanded ? (
-        <Card
-          p="md"
-          style={{
-            position: "fixed",
-            bottom: "2rem",
-            right: "2rem",
-            width: "300px",
-            zIndex: 1,
-          }}
-        >
-          <Group justify="space-between" mb="md">
-            <Text size="sm" fw="bold">
-              Content Scenario
-            </Text>
-            <ActionIcon
-              variant="subtle"
-              onClick={() => setIsCalloutExpanded(false)}
-              title="Minimize"
-            >
-              <Icon name="close" size={16} />
-            </ActionIcon>
-          </Group>
-          <Radio.Group
-            value={contentScenario}
-            onChange={(value) => setContentScenario(value as ContentScenario)}
+      {currentStep === "select-entity" && (
+        isCalloutExpanded ? (
+          <Card
+            p="md"
+            style={{
+              position: "fixed",
+              bottom: "2rem",
+              right: "2rem",
+              width: "300px",
+              zIndex: 1,
+            }}
           >
-            <Stack gap="xs">
-              <Radio
-                value="self-made"
-                label="User has dashboards"
-                description="Shows recent dashboards + example"
-              />
-              <Radio
-                value="no-content"
-                label="User has no content"
-                description="Shows x-ray insights + example"
-              />
-            </Stack>
-          </Radio.Group>
-        </Card>
-      ) : (
-        <Tooltip
-          label="Design callout"
-          position="top"
-          withArrow
-        >
-          <Box style={{ position: "fixed", bottom: "2rem", right: "2rem", zIndex: 1 }}>
-            <Badge
-              size="sm"
-              variant="filled"
-              style={{
-                position: "absolute",
-                top: "-8px",
-                right: "-8px",
-                zIndex: 2,
-                backgroundColor: colors["text-dark"],
-                color: colors.white
-              }}
+            <Group justify="space-between" mb="md">
+              <Text size="sm" fw="bold">
+                Content Scenario
+              </Text>
+              <ActionIcon
+                variant="subtle"
+                onClick={() => setIsCalloutExpanded(false)}
+                title="Minimize"
+              >
+                <Icon name="close" size={16} />
+              </ActionIcon>
+            </Group>
+            <Radio.Group
+              value={contentScenario}
+              onChange={(value) => setContentScenario(value as ContentScenario)}
             >
-              1
-            </Badge>
-            <ActionIcon
-              variant="filled"
-              size="xl"
-              radius="xl"
-              style={{
-                boxShadow: `0 4px 14px ${colors.shadow}`
-              }}
-              onClick={() => setIsCalloutExpanded(true)}
-            >
-              <img
-                src="/app/assets/img/kyle.png"
-                alt="Content scenarios"
+              <Stack gap="xs">
+                <Radio
+                  value="self-made"
+                  label="User has dashboards"
+                  description="Shows recent dashboards + example"
+                />
+                <Radio
+                  value="no-content"
+                  label="User has no content"
+                  description="Shows x-ray insights + example"
+                />
+              </Stack>
+            </Radio.Group>
+          </Card>
+        ) : (
+          <Tooltip
+            label="Design callout"
+            position="top"
+            withArrow
+          >
+            <Box style={{ position: "fixed", bottom: "2rem", right: "2rem", zIndex: 1 }}>
+              <Badge
+                size="sm"
+                variant="filled"
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "50%",
-                  display: "block"
+                  position: "absolute",
+                  top: "-8px",
+                  right: "-8px",
+                  zIndex: 2,
+                  backgroundColor: colors["text-dark"],
+                  color: colors.white
                 }}
-              />
-            </ActionIcon>
-          </Box>
-        </Tooltip>
+              >
+                1
+              </Badge>
+              <ActionIcon
+                variant="filled"
+                size="xl"
+                radius="xl"
+                style={{
+                  boxShadow: `0 4px 14px ${colors.shadow}`
+                }}
+                onClick={() => setIsCalloutExpanded(true)}
+              >
+                <img
+                  src="/app/assets/img/kyle.png"
+                  alt="Content scenarios"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "50%",
+                    display: "block"
+                  }}
+                />
+              </ActionIcon>
+            </Box>
+          </Tooltip>
+        )
       )}
     </Box>
   );
