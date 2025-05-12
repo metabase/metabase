@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
+   [clojure.set :as set]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [metabase.channel.email.messages :as messages]
@@ -250,10 +251,12 @@
             :record   (normalized-record-map (or ?after ?before) ordered-fields false) ;; for insert and update we want the after, for delete we want the before
             :settings (notification.payload/default-settings)}
            (when (= ?event_name :event/row.updated)
-             {:changes (let [row-columns (into #{} (concat (keys ?before) (keys ?after)))]
+             {:changes (let [changed-columns (->> (set/union (set (keys ?before)) (set (keys ?after)))
+                                                  (filter #(not= (get ?before %) (get ?after %)))
+                                                  (into #{}))]
                          (normalized-record-map
                           (into {}
-                                (for [k row-columns]
+                                (for [k changed-columns]
                                   [k {:before (get ?before k)
                                       :after  (get ?after k)}]))
                           ordered-fields

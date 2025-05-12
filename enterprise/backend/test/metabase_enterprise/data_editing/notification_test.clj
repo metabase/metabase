@@ -88,7 +88,7 @@
                      (is (= 1 (count msgs)))
                      (is (=? {:blocks [{:type "section"
                                         :text {:type "mrkdwn"
-                                               :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• ID : 1\n• NAME : Updated Category\n"}}]
+                                               :text "*Crowberto Corv has updated a row from CATEGORIES*\n*Update:*\n• NAME : Updated Category\n"}}]
                               :channel  "#test-pulse"}
                              message)))
     :channel/email (fn [[email :as emails]]
@@ -154,7 +154,7 @@
           {:rows [{:ID 1 :NAME "Ngoc Khuat" :CITY "Ha Noi" :EMAIL "ngoc@metabase.com"}]})))
      {:channel/email (fn [[email :as _emails]]
                        (is (=? {:body    [{:content (str "Row: ID,ADDRESS,EMAIL,PASSWORD,NAME,CITY,LONGITUDE,STATE,SOURCE,BIRTH_DATE,ZIP,LATITUDE,CREATED_AT,\n"
-                                                         "Changes: ID,ADDRESS,EMAIL,PASSWORD,NAME,CITY,LONGITUDE,STATE,SOURCE,BIRTH_DATE,ZIP,LATITUDE,CREATED_AT,")
+                                                         "Changes: EMAIL,NAME,CITY,")
                                            :type "text/html; charset=utf-8"}]}
                                email)))})
 
@@ -178,7 +178,7 @@
             {:rows [{:ID 1 :NAME "Ngoc Khuat" :CITY "Ha Noi" :EMAIL "ngoc@metabase.com"}]})))
        {:channel/email (fn [[email :as _emails]]
                          (is (=? {:body    [{:content (str "Row: ADDRESS,BIRTH_DATE,CITY,CREATED_AT,EMAIL,ID,LATITUDE,LONGITUDE,NAME,PASSWORD,SOURCE,STATE,ZIP,\n"
-                                                           "Changes: ADDRESS,BIRTH_DATE,CITY,CREATED_AT,EMAIL,ID,LATITUDE,LONGITUDE,NAME,PASSWORD,SOURCE,STATE,ZIP,")
+                                                           "Changes: CITY,EMAIL,NAME,")
                                              :type "text/html; charset=utf-8"}]}
                                  email)))}))))
 

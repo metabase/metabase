@@ -188,13 +188,14 @@
   "Return the payload of a notification"
   [_route _query {:keys [notification channel_types]} :- [:map {:closed true}
                                                           [:notification ::models.notification/NotificationWithPayload]
-                                                          [:channel_types [:sequential :keyword]]]]
+                                                          [:channel_types [:sequential :string]]]]
   (api/create-check :model/Notification notification)
-  (zipmap channel_types
-          (map (fn [channel-type]
-                 {:payload (sample-payload notification channel-type)
-                  :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
-               channel_types)))
+  (let [channel_types (map keyword channel_types)]
+    (zipmap channel_types
+            (map (fn [channel-type]
+                   {:payload (sample-payload notification channel-type)
+                    :schema  (api.macros/schema->json-schema (notification/notification-payload-schema notification))})
+                 channel_types))))
 
 (defn- sample-recipient
   [channel-type]
