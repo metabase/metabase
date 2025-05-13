@@ -17,7 +17,7 @@
       {:table-id 1, :database-id 4}                                                                 :table
       {:webhook-id 1, :table-id 2}                                                                  :webhook)))
 
-(deftest hydrate-scope-test
+(deftest hydrate-test
   (mt/with-premium-features #{:table-data-editing}
     (data-editing.tu/with-temp-test-db!
       (with-open [table-ref (data-editing.tu/open-test-table!)]
@@ -53,7 +53,7 @@
                                                                       :col          4
                                                                       :size_x       4
                                                                       :size_y       4}]
-              (testing "hydrate-scope for dashcard with MBQL card"
+              (testing "hydrate for dashcard with MBQL card"
                 (is (= {:dashcard-id   dashcard-id-1
                         :dashboard-id  dashboard-id
                         :collection-id collection-id
@@ -62,81 +62,65 @@
                         :database-id   db-id}
                        (scope/hydrate {:dashcard-id dashcard-id-1}))))
 
-              (testing "hydrate-scope for dashcard with native card"
-                (let [scope    {:dashcard-id dashcard-id-2}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:dashcard-id :dashboard-id :collection-id :card-id}
-                         (set (keys hydrated))))
-                  (is (= dashcard-id-2 (:dashcard-id hydrated)))
-                  (is (= dashboard-id (:dashboard-id hydrated)))
-                  (is (= collection-id (:collection-id hydrated)))
-                  (is (= native-card-id (:card-id hydrated)))
-                  (is (nil? (:table-id hydrated)))))
+              (testing "hydrate for dashcard with native card"
+                (is (= {:dashcard-id   dashcard-id-2
+                        :dashboard-id  dashboard-id
+                        :collection-id collection-id
+                        :card-id       native-card-id}
+                       (scope/hydrate {:dashcard-id dashcard-id-2}))))
 
-              (testing "hydrate-scope for dashboard"
-                (let [scope    {:dashboard-id dashboard-id}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:dashboard-id :collection-id}
-                         (set (keys hydrated))))
-                  (is (= dashboard-id (:dashboard-id hydrated)))
-                  (is (= collection-id (:collection-id hydrated)))))
+              (testing "hydrate for dashboard"
+                (is (= {:dashboard-id  dashboard-id
+                        :collection-id collection-id}
+                       (scope/hydrate {:dashboard-id dashboard-id}))))
 
-              (testing "hydrate-scope for MBQL card"
-                (let [scope    {:card-id mbql-card-id}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:card-id :collection-id :table-id :database-id}
-                         (set (keys hydrated))))
-                  (is (= mbql-card-id (:card-id hydrated)))
-                  (is (= collection-id (:collection-id hydrated)))
-                  (is (= table-id (:table-id hydrated)))
-                  (is (= db-id (:database-id hydrated)))))
+              (testing "hydrate for MBQL card"
+                (is (= {:card-id       mbql-card-id
+                        :collection-id collection-id
+                        :table-id      table-id
+                        :database-id   db-id}
+                       (scope/hydrate {:card-id mbql-card-id}))))
 
-              (testing "hydrate-scope for native card"
-                (let [scope    {:card-id native-card-id}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:card-id :collection-id}
-                         (set (keys hydrated))))
-                  (is (= native-card-id (:card-id hydrated)))
-                  (is (= collection-id (:collection-id hydrated)))
-                  (is (nil? (:table-id hydrated)))))
+              (testing "hydrate for native card"
+                (is (= {:card-id       native-card-id
+                        :collection-id collection-id}
+                       (scope/hydrate {:card-id native-card-id}))))
 
-              (testing "hydrate-scope for table"
-                (let [scope    {:table-id table-id}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:table-id :database-id}
-                         (set (keys hydrated))))
-                  (is (= table-id (:table-id hydrated)))
-                  (is (= db-id (:database-id hydrated)))))
+              (testing "hydrate for table"
+                (is (= {:table-id    table-id
+                        :database-id db-id}
+                       (scope/hydrate {:table-id table-id}))))
 
-              (testing "hydrate-scope for webhook"
-                (let [scope    {:webhook-id webhook-id}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:webhook-id :table-id :database-id}
-                         (set (keys hydrated))))
-                  (is (= webhook-id (:webhook-id hydrated)))
-                  (is (= table-id (:table-id hydrated)))
-                  (is (= db-id (:database-id hydrated))))))
+              (testing "hydrate for webhook"
+                (is (= {:webhook-id  webhook-id
+                        :table-id    table-id
+                        :database-id db-id}
+                       (scope/hydrate {:webhook-id webhook-id})))))
 
             (finally
               (t2/delete! :table_webhook_token webhook-id))))))))
 
-(deftest normalize-scope-test
+(deftest normalize-test
   (mt/with-premium-features #{:table-data-editing}
-    (let [dashcard-scope {:dashboard-id  1
-                          :dashcard-id   2
-                          :card-id       3
-                          :table-id      4
-                          :collection-id 5
-                          :database-id   6}]
+    (testing "normalize with various scopes"
+      (is (= {:dashcard-id 2}
+             (scope/normalize {:dashboard-id  1
+                               :dashcard-id   2
+                               :card-id       3
+                               :table-id      4
+                               :collection-id 5
+                               :database-id   6})))
 
-      (testing "normalize-scope with dashcard scope"
-        (is (= {:dashcard-id 2} (scope/normalize dashcard-scope))))
+      (is (= {:dashboard-id 1}
+             (scope/normalize {:dashboard-id 1
+                               :collection-id 5})))
 
-      (testing "normalize-scope with dashboard scope"
-        (is (= {:dashboard-id 1} (scope/normalize {:dashboard-id 1 :collection-id 5}))))
+      (is (= {:card-id 3}
+             (scope/normalize {:card-id 3
+                               :table-id 4
+                               :collection-id 5
+                               :database-id 6})))
 
-      (testing "normalize-scope with card scope"
-        (is (= {:card-id 3} (scope/normalize {:card-id 3 :table-id 4 :collection-id 5 :database-id 6}))))
-
-      (testing "normalize-scope with table scope"
-        (is (= {:table-id 4} (scope/normalize {:table-id 4 :database-id 6})))))))
+      (is (= {:table-id 4}
+             (scope/normalize {:table-id 4
+                               :database-id 6}))))))
