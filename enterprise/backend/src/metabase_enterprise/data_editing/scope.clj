@@ -59,11 +59,11 @@
   [scope :- ::types/scope.raw] :- ::types/scope.normalized
   (cond-> scope
     (:table-id scope)     (dissoc :database-id)
-    (:card-id scope)      (dissoc :table-id)
+    (:card-id scope)      (-> (dissoc :table-id)
+                              (dissoc :collection-id))
     (:dashcard-id scope)  (-> (dissoc :card-id)
                               (dissoc :dashboard-id))
-    (:dashboard_id scope) (dissoc :collection-id)
-    (:card-id scope)      (dissoc :collection-id)))
+    (:dashboard_id scope) (dissoc :collection-id)))
 
 (comment
   (hydrate-scope {:dashcard-id 1})
