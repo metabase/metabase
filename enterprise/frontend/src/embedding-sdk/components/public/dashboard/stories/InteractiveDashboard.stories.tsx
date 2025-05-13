@@ -11,7 +11,7 @@ import { Stack } from "metabase/ui";
 import {
   InteractiveDashboard,
   type InteractiveDashboardProps,
-} from "./InteractiveDashboard";
+} from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 

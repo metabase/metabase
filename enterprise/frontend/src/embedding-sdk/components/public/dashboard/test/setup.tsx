@@ -43,7 +43,7 @@ import { createMockDashboardState } from "metabase-types/store/mocks";
 import type { MetabaseProviderProps } from "../../MetabaseProvider";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
-const TEST_DASHBOARD_ID = 1;
+export const TEST_DASHBOARD_ID = 1;
 const TEST_DB = createMockDatabase({ id: 1 });
 const TEST_COLLECTION = createMockCollection();
 

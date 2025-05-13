@@ -1,14 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
-import { TEST_DASHBOARD_ID, setup } from "./setup";
+import { setup } from "./setup";
 
-describe("EditableDashboard", () => {
+const TEST_DASHBOARD_ID = 1;
+
+describe("InteractiveDashboard", () => {
   it("should render dashboard cards", async () => {
     await setup();
-
     expect(screen.getByText("Here is a card title")).toBeInTheDocument();
     expect(screen.getByText("Some card text")).toBeInTheDocument();
   });
@@ -110,25 +111,33 @@ describe("EditableDashboard", () => {
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
   });
 
-  it("should support dashboard editing", async () => {
-    await setup();
+  describe("withFooter", () => {
+    it("should hide the footer when withFooter=true", async () => {
+      await setup({
+        props: {
+          withFooter: true,
+        },
+      });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+      expect(screen.getByTestId("embed-frame-footer")).toBeInTheDocument();
+      expect(
+        screen.getAllByTestId("dashboard-header-row-button").length,
+      ).toBeGreaterThan(0);
     });
 
-    const editButton = within(
-      screen.getByTestId("dashboard-header"),
-    ).getByLabelText(`pencil icon`);
+    it("should hide the footer when withFooter=false", async () => {
+      await setup({
+        props: {
+          withFooter: false,
+        },
+      });
 
-    expect(editButton).toBeInTheDocument();
-
-    await userEvent.click(editButton);
-
-    expect(
-      screen.getByText("You're editing this dashboard."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Cancel")).toBeInTheDocument();
-    expect(screen.getByText("Save")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("embed-frame-footer"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryAllByTestId("dashboard-header-row-button").length,
+      ).toBe(0);
+    });
   });
 });

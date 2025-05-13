@@ -5,7 +5,7 @@ import { isValidElement, useState } from "react";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import type { MetabasePluginsConfig } from "embedding-sdk";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
+import { useInteractiveDashboardContext } from "embedding-sdk/components/public/dashboard/context";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import CS from "metabase/css/core/index.css";
