@@ -84,23 +84,26 @@ function setup({
 }
 
 describe("DataSourceSelector", () => {
+  it("should close the picker when clicking outside", async () => {
+    setup({
+      availableModels: "tables-only",
+    });
+
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(screen.getByText("Sample Database")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByText("Click me to open or close data picker"),
+    );
+
+    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+  });
+
   describe("only tables are available", () => {
     const setupOpts: SetupOpts = {
       availableModels: "tables-only",
     };
-
-    it("should close the picker when clicking outside", async () => {
-      setup(setupOpts);
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.getByText("Sample Database")).toBeInTheDocument();
-
-      await userEvent.click(
-        screen.getByText("Click me to open or close data picker"),
-      );
-
-      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
-      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
-    });
 
     it("should show search input when there are 10 and more tables", async () => {
       const sampleDatabase = createSampleDatabase();
@@ -161,20 +164,6 @@ describe("DataSourceSelector", () => {
     const setupOpts: SetupOpts = {
       availableModels: "tables-and-models",
     };
-
-    it("should close the picker when clicking outside", async () => {
-      setup(setupOpts);
-
-      expect(await screen.findByText("Models")).toBeInTheDocument();
-      expect(screen.getByText("Raw Data")).toBeInTheDocument();
-
-      await userEvent.click(
-        screen.getByText("Click me to open or close data picker"),
-      );
-
-      expect(screen.queryByText("Models")).not.toBeInTheDocument();
-      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
-    });
 
     it("should only show data from the selected database when joining data", async () => {
       const sampleDatabase = createSampleDatabase();
