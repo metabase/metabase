@@ -1,19 +1,19 @@
-(ns metabase.api.collection-test
+(ns metabase.collections.api-test
   "Tests for /api/collection endpoints."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
-   [metabase.api.collection :as api.collection]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection-test :as collection-test]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.collection-test :as collection-test]
-   [metabase.models.collection.graph :as graph]
-   [metabase.models.collection.graph-test :as graph.test]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.collection.graph :as graph]
+   [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.models.revision :as revision]
@@ -31,7 +31,7 @@
 
 (defmacro ^:private with-collection-hierarchy!
   "Totally-rad macro that creates a Collection hierarchy and grants the All Users group perms for all the Collections
-  you've bound. See docs for [[metabase.models.collection-test/with-collection-hierarchy]] for more details."
+  you've bound. See docs for [[metabase.collections.models.collection-test/with-collection-hierarchy]] for more details."
   {:style/indent 1}
   [collection-bindings & body]
   {:pre [(vector? collection-bindings)
@@ -1119,7 +1119,7 @@
                     :data
                     (map #(select-keys % [:here :id])))))))))
 
-(deftest children-sort-clause-test
+(deftest ^:parallel children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
@@ -1128,8 +1128,11 @@
                  [:= :collection_type nil] 0
                  [:= :collection_type collection/trash-collection-type] 1
                  :else 2]] :asc]
-              [:%lower.name :asc]]
-             (api.collection/children-sort-clause {:official-collections-first? true} app-db)))))
+              [:%lower.name :asc]
+              [:id :asc]]
+             (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
+
+(deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1138,10 +1141,14 @@
                :else 2]] :asc]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))
+                                                 :official-collections-first? true} :mysql)))))
+
+(deftest ^:parallel children-sort-clause-test-2b
+  (testing "Sorting by last-edited-at"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1149,10 +1156,13 @@
                :else 2]] :asc]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-at
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :postgres))))
+                                                 :official-collections-first? true} :postgres)))))
+
+(deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1163,10 +1173,14 @@
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))
+                                                 :official-collections-first? true} :postgres)))))
+
+(deftest ^:parallel children-sort-clause-test-2d
+  (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
@@ -1176,10 +1190,13 @@
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :last-edited-by
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :mysql))))
+                                                 :official-collections-first? true} :mysql)))))
+
+(deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
@@ -1187,58 +1204,49 @@
                [:= :collection_type collection/trash-collection-type] 1
                :else 2]] :asc]
             [:model_ranking :asc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))
+                                                 :official-collections-first? true} :postgres)))))
+
+(deftest ^:parallel children-sort-clause-test-3b
+  (testing "Sorting by model"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
                [:= :collection_type nil] 0
                [:= :collection_type collection/trash-collection-type] 1
                :else 2]] :asc]
             [:model_ranking :desc]
-            [:%lower.name :asc]]
+            [:%lower.name :asc]
+            [:id :asc]]
            (api.collection/children-sort-clause {:sort-column :model
                                                  :sort-direction :desc
                                                  :official-collections-first? true} :mysql)))))
 
-(deftest snippet-collection-items-test
+(deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
+    ;; EE behavior is tested
+    ;; by [[metabase-enterprise.snippet-collections.api.native-query-snippet-test/snippet-collection-items-test]]
     (testing "Native query snippets should come back when fetching the items in a Collection in the `:snippets` namespace"
-      (mt/with-temp [:model/Collection         collection {:namespace "snippets", :name "My Snippet Collection"}
-                     :model/NativeQuerySnippet snippet    {:collection_id (:id collection), :name "My Snippet"}
-                     :model/NativeQuerySnippet archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]
-        (is (partial= [{:id        (:id snippet)
-                        :name      "My Snippet"
-                        :entity_id (:entity_id snippet)
-                        :model     "snippet"}]
-                      (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
-
-        (testing "\nShould be able to fetch archived Snippets"
-          (is (partial= [{:id        (:id archived)
-                          :name      "Archived Snippet"
-                          :entity_id (:entity_id archived)
-                          :model     "snippet"}]
-                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
-
-        (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-          (is (partial= [{:id        (:id snippet)
-                          :name      "My Snippet"
-                          :entity_id (:entity_id snippet)
-                          :model     "snippet"}]
-                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
-
-        (testing "Snippets in nested collections should be returned as a flat list on OSS"
-          (mt/with-premium-features #{}
-            (mt/with-temp [:model/Collection  sub-collection {:namespace "snippets"
-                                                              :name      "Nested Snippet Collection"
-                                                              :location  (collection/location-path collection)}
-                           :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
-                                                                  :name          "Nested Snippet"}]
-              (is (=?
-                   [{:id (:id snippet), :name "My Snippet"}
-                    {:id (:id sub-snippet), :name "Nested Snippet"}]
-                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
+      (testing "Snippets in nested collections should be returned as a flat list on OSS. In OSS Snippet collections are ignored"
+        (mt/with-premium-features #{}
+          (mt/with-temp [:model/Collection         collection     {:namespace "snippets", :name "My Snippet Collection"}
+                         :model/NativeQuerySnippet snippet        {:collection_id (:id collection), :name "My Snippet"}
+                         :model/NativeQuerySnippet _archived      {:collection_id (:id collection)
+                                                                   :name "Archived Snippet"
+                                                                   :archived true}
+                         :model/Collection         sub-collection {:namespace "snippets"
+                                                                   :name      "Nested Snippet Collection"
+                                                                   :location  (collection/location-path collection)}
+                         :model/NativeQuerySnippet sub-snippet    {:collection_id (:id sub-collection)
+                                                                   :name          "Nested Snippet"}]
+            ;; The response may contain snippets from other collections but should at least contain these two.
+            (is (set/subset? #{{:id (:id snippet), :name "My Snippet"}
+                               {:id (:id sub-snippet), :name "Nested Snippet"}}
+                             (into #{}
+                                   (map #(select-keys % [:id :name]))
+                                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
@@ -1251,7 +1259,7 @@
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
-    :effective_ancestors [{:metabase.models.collection.root/is-root? true
+    :effective_ancestors [{:metabase.collections.models.collection.root/is-root? true
                            :name                                     "Our analytics"
                            :id                                       "root"
                            :authority_level                          nil
@@ -1443,7 +1451,7 @@
           root-collection (t2/select-one :model/Collection :personal_owner_id root-owner-id)]
       (mt/with-temp [:model/Collection collection {:name     "Som Test Child Collection"
                                                    :location (collection/location-path root-collection)}]
-        (is (= [{:metabase.models.collection.root/is-root? true,
+        (is (= [{:metabase.collections.models.collection.root/is-root? true,
                  :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
@@ -1808,11 +1816,11 @@
       (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
                     (let [resp (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :limit limit :offset offset)]
-                      (is (= 3 (:total resp)))
+                      (is (>= (:total resp) 3))
                       (->> resp :data (map :id))))]
         (testing "Selecting everything"
-          (is (= [card-3-id card-2-id card-1-id]
-                 (fetch))))
+          (is (set/subset? #{card-3-id card-2-id card-1-id}
+                           (set (fetch)))))
         (testing "Selecting the first one"
           (is (= [card-3-id]
                  (fetch :limit 1))))
@@ -1830,8 +1838,8 @@
         (testing "Only offset, no limit"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
                                                      :offset 1)]
-            (is (= [card-2-id card-1-id]
-                   (map :id data)))))
+            (is (set/subset? #{card-2-id card-1-id}
+                             (into #{} (map :id) data)))))
         (testing "Zero limit"
           (is (= [] (fetch :limit 0))))))))
 
@@ -1964,7 +1972,7 @@
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id))))))
 
-(deftest fetch-root-items-limit-and-offset-test
+(deftest ^:synchronized fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
     (with-some-children-of-collection! nil
       (letfn [(items [limit offset]
@@ -1992,7 +2000,8 @@
   (testing "GET /api/collection/root/items"
     (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (is (= []
-             ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
+             ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no
+             ;; collection_id
              (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
@@ -2005,7 +2014,7 @@
         (with-some-children-of-collection! nil
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
                                 :collection_preview false,           :display     "table"}
                                default-item
@@ -2362,7 +2371,7 @@
                         :slug            "my_beautiful_collection"
                         :entity_id       (:entity_id collection)
                         :location        "/"
-                        :effective_ancestors [{:metabase.models.collection.root/is-root? true
+                        :effective_ancestors [{:metabase.collections.models.collection.root/is-root? true
                                                :name                                     "Our analytics"
                                                :id                                       "root"
                                                :authority_level                          nil
