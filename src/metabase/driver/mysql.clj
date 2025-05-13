@@ -1051,8 +1051,4 @@
 
 (defmethod driver.sql/set-role-statement :mysql
   [_driver role]
-  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
-        needs-quote           (re-find special-chars-pattern role)]
-    (if needs-quote
-      (format "SET ROLE \"%s\";" role)
-      (format "SET ROLE %s;" role))))
+  (format "SET ROLE '%s';" role))

@@ -19,18 +19,6 @@
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
-(defmethod tx/drop-roles! :postgres
-  [driver details roles _user-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (jdbc/execute! spec
-                       [(format "DROP OWNED BY %s;" role-name)]
-                       {:transaction? false})
-        (jdbc/execute! spec
-                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
-                       {:transaction? false})))))
-
 (defmethod tx/sorts-nil-first? :postgres [_ _] false)
 
 (defmethod sql.tx/pk-sql-type :postgres [_] "SERIAL")
@@ -160,3 +148,15 @@
     (when (not= just-drop :just-drop)
       (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
                      {:transaction? false}))))
+
+(defmethod tx/drop-roles! :postgres
+  [driver details roles _user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (jdbc/execute! spec
+                       [(format "DROP OWNED BY %s;" role-name)]
+                       {:transaction? false})
+        (jdbc/execute! spec
+                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
+                       {:transaction? false})))))

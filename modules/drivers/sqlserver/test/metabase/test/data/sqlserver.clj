@@ -58,15 +58,10 @@
     (doseq [[user-name _] roles]
       (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
             user-name (sql.tx/qualify-and-quote driver user-name)]
-        (jdbc/execute! spec
-                       [(format "EXEC sp_droprolemember %s, %s" role-name user-name)]
-                       {:transaction? false})
-        (jdbc/execute! spec
-                       [(format "REVOKE IMPERSONATE ON USER::%s TO %s" user-name db-user)]
-                       {:transaction? false})
-        (jdbc/execute! spec
-                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
-                       {:transaction? false})))))
+        (doseq [statement [(format "EXEC sp_droprolemember %s, %s" role-name user-name)
+                           (format "REVOKE IMPERSONATE ON USER::%s TO %s" user-name db-user)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BIT"
