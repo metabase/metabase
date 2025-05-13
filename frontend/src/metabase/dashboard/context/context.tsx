@@ -138,28 +138,6 @@ const DashboardContextProviderInner = ({
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
-  const handleLoadDashboard = useCallback(
-    async (dashboardId: DashboardId) => {
-      initialize({ clearCache: !isNavigatingBackToDashboard });
-      const result = await fetchDashboard({
-        dashId: dashboardId,
-        queryParams: parameterQueryParams,
-        options: {
-          clearCache: !isNavigatingBackToDashboard,
-          preserveParameters: isNavigatingBackToDashboard,
-        },
-      });
-
-      return result;
-    },
-    [
-      fetchDashboard,
-      initialize,
-      isNavigatingBackToDashboard,
-      parameterQueryParams,
-    ],
-  );
-
   const handleError = useCallback(
     (error: Error) => {
       onError?.(error);
@@ -168,39 +146,42 @@ const DashboardContextProviderInner = ({
     [onError],
   );
 
-  useEffect(() => {
-    const fetchId = async () => {
-      try {
-        const { id, isError } = await dispatch(
-          fetchEntityId({ type: "dashboard", id: initialDashboardId }),
-        );
-        if (isError || id === null) {
-          handleError({
-            status: 404,
-            message: "Not found",
-            name: "Not found",
-          } as Error);
-          setDashboardId(id);
-        }
+  const fetchId = useCallback(async () => {
+    try {
+      const { id, isError } = await dispatch(
+        fetchEntityId({ type: "dashboard", id: initialDashboardId }),
+      );
+      if (isError || id === null) {
+        handleError({
+          status: 404,
+          message: "Not found",
+          name: "Not found",
+        } as Error);
         setDashboardId(id);
-      } catch (e) {
-        handleError(e as Error);
       }
-
-      return;
-    };
-
-    if (initialDashboardId && !dashboardId) {
-      fetchId();
+      setDashboardId(id);
+    } catch (e) {
+      handleError(e as Error);
     }
-  }, [dashboardId, dispatch, handleError, initialDashboardId]);
+
+    return;
+  }, [dispatch, handleError, initialDashboardId]);
 
   const fetchData = useCallback(
     async (dashboardId: DashboardId) => {
       const hasDashboardChanged = dashboardId !== previousDashboardId;
       if (hasDashboardChanged) {
         setError(null);
-        handleLoadDashboard(dashboardId)
+
+        initialize({ clearCache: !isNavigatingBackToDashboard });
+        fetchDashboard({
+          dashId: dashboardId,
+          queryParams: parameterQueryParams,
+          options: {
+            clearCache: !isNavigatingBackToDashboard,
+            preserveParameters: isNavigatingBackToDashboard,
+          },
+        })
           .then((result) => {
             if (isFailedFetchDashboardResult(result)) {
               handleError(result.payload as Error);
@@ -209,14 +190,17 @@ const DashboardContextProviderInner = ({
           .catch((err) => handleError(err as Error));
       }
     },
-    [handleError, handleLoadDashboard, previousDashboardId],
+    [
+      fetchDashboard,
+      handleError,
+      initialize,
+      isNavigatingBackToDashboard,
+      parameterQueryParams,
+      previousDashboardId,
+    ],
   );
 
-  useEffect(() => {
-    if (!dashboard) {
-      return;
-    }
-
+  const fetchCards = useCallback(() => {
     const hasDashboardLoaded = !previousDashboard;
     const hasTabChanged = selectedTabId !== previousTabId;
     const hasParameterValueChanged = !isEqual(
@@ -234,7 +218,6 @@ const DashboardContextProviderInner = ({
       handleError?.(e as Error);
     }
   }, [
-    dashboard,
     fetchDashboardCardData,
     handleError,
     parameterValues,
@@ -245,6 +228,12 @@ const DashboardContextProviderInner = ({
   ]);
 
   useEffect(() => {
+    if (initialDashboardId !== dashboardId) {
+      fetchId();
+    }
+  }, [dashboardId, dispatch, fetchId, handleError, initialDashboardId]);
+
+  useEffect(() => {
     if (
       initialDashboardId &&
       dashboardId &&
@@ -253,6 +242,12 @@ const DashboardContextProviderInner = ({
       fetchData(initialDashboardId);
     }
   }, [dashboardId, fetchData, initialDashboardId, previousDashboardId]);
+
+  useEffect(() => {
+    if (dashboard) {
+      fetchCards();
+    }
+  }, [dashboard, fetchCards]);
 
   useEffect(() => {
     if (
