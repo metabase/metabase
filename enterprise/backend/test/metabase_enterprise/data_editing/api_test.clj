@@ -720,21 +720,21 @@
                                                                  {:primary-key [:id]})]
           (let [{:keys [status body]}
                 (list-req {})
-                all-actions  (:actions body)
-                crud-actions (filter #(= @test-table (:table_id %)) all-actions)]
+                all-actions   (:actions body)
+                table-actions (filter #(= @test-table (:table_id %)) all-actions)]
             (is (= 200 status))
             (testing "table actions have neg ids"
-              (is (every? neg? (map :id crud-actions))))
+              (is (every? neg? (map :id table-actions))))
             (testing "one action for each crud op"
               (is (= {"table.row/create" 1
                       "table.row/update" 1
                       "table.row/delete" 1}
-                     (frequencies (map :kind crud-actions)))))
+                     (frequencies (map :kind table-actions)))))
             (mt/with-temp [:model/Dashboard dash {}]
               (let [{create-action "table.row/create"
                      update-action "table.row/update"
                      delete-action "table.row/delete"}
-                    (u/index-by :kind crud-actions)
+                    (u/index-by :kind table-actions)
                     dashboard-url (str "dashboard/" (:id dash))
                     card-counter (atom 0)
                     card-input (fn [action]
