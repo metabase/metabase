@@ -2,15 +2,13 @@
   (:require
    [metabase.util.malli.registry :as mr]))
 
-;; Maybe we want to add an origin? e.g., CRUD API versus action execute API.
+;; Maybe we want to add an origin? e.g., CRUD API versus action execute API. YAGNI for now.
 
 (def ^:private raw-scope-types
   [[:map [:dashboard-id pos-int?]]
    [:map [:dashcard-id pos-int?]]
    [:map [:card-id pos-int?]]
    [:map [:table-id pos-int?]]
-   ;[:map [:rest-api [:enum :table]]]
-   ;[:map [:action-api [:execute]]]
    [:map [:webhook-id pos-int?]]])
 
 ;; Relaxed, as we support it being

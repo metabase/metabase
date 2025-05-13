@@ -11,11 +11,11 @@
   "Classify the scope, useful for switching on in logic and templates."
   [scope :- ::types/scope.raw] :- :keyword
   (condp #(contains? %2 %1) scope
-    :dashcard-id :dashcard
+    :dashcard-id   :dashcard
     :dashboard-id :dashboard
-    :card-id :card
-    :webhook-id :webhook
-    :table-id :table))
+    :card-id      :card
+    :webhook-id   :webhook
+    :table-id     :table))
 
 (defn- hydrate-from-dashcard-id* [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
@@ -38,13 +38,10 @@
     (:dashcard-id scope) hydrate-from-dashcard-id*
 
     (:dashboard-id scope)
-    (update :collection-id #(or % (t2/select-one-fn :collection_id
-                                                    [:model/Dashboard :collection_id]
-                                                    (:dashboard-id scope))))
+    (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope))))
 
-    (:webhook-id scope) (update :table-id #(or % (t2/select-one-fn :table_id
-                                                                   [:table_webhook_token :table_id]
-                                                                   (:webhook-id scope))))
+    (:webhook-id scope)
+    (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope))))
 
     (:card-id scope) hydrate-from-card-id*
 
