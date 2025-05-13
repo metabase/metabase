@@ -18,6 +18,13 @@
   #?(:cljs (js->clj (js/JSON.parse x))
      :clj (json/decode x)))
 
+(defn- json-roundtrip
+  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+  Does nothing in CLJS."
+  [x]
+  #?(:cljs x
+     :clj (json/decode (json/encode x))))
+
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
   [col]
@@ -79,7 +86,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (mapv #(nth row %) column-indexes)
+                  (let [grouping-key (json-roundtrip (mapv #(nth row %) column-indexes))
                         values (mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -115,7 +122,9 @@
          (sequential? collapsed-subtotal)
          (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
                               :isCollapsed)]
-           (assoc-in tree key-path true))))
+           (if-not (nil? (get-in tree key-path))
+             (assoc-in tree key-path true)
+             tree))))
      tree
      parsed-collapsed-subtotals)))
 
@@ -125,7 +134,10 @@
   {:children (ordered-map/ordered-map)}."
   [path tree]
   (if (seq path)
-    (let [v       (first path)
+    ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
+    ;; the path of values to collapse. So we have to roundtrip values from the QP
+    ;; to JSON and back to make sure their types match.
+    (let [v       (json-roundtrip (first path))
           subtree (or (get-in tree [v :children]) (ordered-map/ordered-map))]
       (-> tree
           (assoc-in [v :children] (add-path-to-tree (rest path) subtree))
@@ -144,7 +156,7 @@
   (let [col-and-row-indexes (concat col-indexes row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (select-indexes row col-and-row-indexes)
+       (let [value-key  (json-roundtrip (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (map-indexed
                          (fn [index value]
@@ -484,7 +496,8 @@
 (defn- get-normal-cell-values
   "Processes and formats values for normal data cells (non-subtotal)."
   [values-by-key index-values value-formatters color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values) formatted-values (format-values values value-formatters)]
+  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
+        formatted-values (format-values values value-formatters)]
     (if-not data
       formatted-values
       (map-indexed
