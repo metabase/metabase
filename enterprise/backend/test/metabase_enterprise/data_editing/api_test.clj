@@ -736,9 +736,8 @@
                      delete-action "table.row/delete"}
                     (u/index-by :kind table-actions)
                     dashboard-url (str "dashboard/" (:id dash))
-                    card-counter (atom 0)
-                    card-input (fn [action]
-                                 {:id (swap! card-counter dec)
+                    card-input (fn [id action]
+                                 {:id id
                                   :size_x 1
                                   :size_y 1
                                   :row 0
@@ -749,9 +748,9 @@
                      :crowberto
                      :put
                      dashboard-url
-                     {:dashcards [(card-input create-action)
-                                  (card-input update-action)
-                                  (card-input delete-action)]})
+                     {:dashcards [(card-input -1 create-action)
+                                  (card-input -2 update-action)
+                                  (card-input -3 delete-action)]})
 
                     exec-url #(str dashboard-url "/dashcard/" (:id %) "/execute")
 
