@@ -132,18 +132,6 @@ describe("scenarios > admin > localization > content translation of column names
                   .should("not.contain", row.msgid);
               });
 
-            const assertColumnNamesAreTranslated = () =>
-              columnsInChart.forEach((row) => {
-                console.log(
-                  "Expecting to see translated string row.msgstr",
-                  row.msgstr,
-                );
-                H.echartsContainer()
-                  .get("text")
-                  .should("contain", row.msgstr)
-                  .should("not.contain", row.msgid);
-              });
-
             const columnsInChart = germanFieldNames.filter((row) =>
               [columnX, columnY].includes(row.msgid),
             );
