@@ -282,6 +282,7 @@ await build({
   sourcemap: isDevMode,
   minify: !isDevMode,
   clean: true,
+  watch: isDevMode,
   metafile: true,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
