@@ -10,7 +10,8 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
-  getDashboardUiParameters,
+  getSavedDashboardUiParameters,
+  getUnsavedDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -397,18 +398,25 @@ export const getQuestions = createSelector(
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestions],
-  (dashboard, metadata, questions) => {
+  [getDashboardComplete, getMetadata, getQuestions, getIsEditing],
+  (dashboard, metadata, questions, isEditing) => {
     if (!dashboard || !metadata) {
       return [];
     }
 
-    return getDashboardUiParameters(
-      dashboard.dashcards,
-      dashboard.parameters,
-      metadata,
-      questions,
-    );
+    return isEditing
+      ? getUnsavedDashboardUiParameters(
+          dashboard.dashcards,
+          dashboard.parameters,
+          metadata,
+          questions,
+        )
+      : getSavedDashboardUiParameters(
+          dashboard.dashcards,
+          dashboard.parameters,
+          dashboard.param_fields,
+          metadata,
+        );
   },
 );
 
