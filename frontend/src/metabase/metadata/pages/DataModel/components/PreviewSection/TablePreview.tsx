@@ -5,6 +5,7 @@ import type {
   DatabaseId,
   DatasetColumn,
   DatasetQuery,
+  Field,
   FieldFilter,
   FieldId,
   FieldReference,
@@ -18,15 +19,18 @@ export function TablePreview({
   databaseId,
   tableId,
   fieldId,
+  field,
 }: {
   tableId: TableId;
   databaseId: DatabaseId;
   fieldId: FieldId;
+  field: Field;
 }) {
   const { rawSeries } = useDataSample({
     databaseId,
     tableId,
     fieldId,
+    field,
   });
 
   return (
@@ -43,22 +47,33 @@ function useDataSample({
   databaseId,
   tableId,
   fieldId,
+  field,
 }: {
   databaseId: DatabaseId;
   tableId: TableId;
   fieldId: FieldId;
+  field: Field;
 }) {
-  const reference: FieldReference = ["field", fieldId, null];
+  let options = null;
+  if (field.base_type === "type/DateTime") {
+    options = {
+      "base-type": "type/DateTime",
+      "temporal-unit": "minute" as const,
+    };
+  }
+
+  const reference: FieldReference = ["field", fieldId, options];
   const filter: FieldFilter = ["not-null", reference];
+  const breakout = [reference];
+
   const datasetQuery: DatasetQuery = {
     type: "query" as const,
     database: databaseId,
     query: {
       "source-table": tableId,
-      fields: [reference],
       filter,
+      breakout,
       limit: PREVIEW_ROW_COUNT,
-      breakout: [reference],
     },
   };
 
@@ -79,6 +94,10 @@ function useDataSample({
   }
 
   const { cols, rows } = data.data;
+
+  if (cols.length === 0) {
+    return { ...rest, rawSeries: undefined };
+  }
 
   const stub: DatasetColumn = {
     name: "__metabase_generated",
