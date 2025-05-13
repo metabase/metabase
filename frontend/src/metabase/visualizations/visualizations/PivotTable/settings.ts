@@ -307,13 +307,19 @@ export const settings = {
 };
 
 export const _columnSettings = {
+  column_title: {
+    get title() {
+      return t`Column title`;
+    },
+    widget: "input",
+    getDefault: displayNameForColumn,
+  },
   [COLUMN_SORT_ORDER]: {
     get title() {
       return t`Sort order`;
     },
     widget: ChartSettingIconRadio,
     inline: true,
-    borderBottom: true,
     props: {
       options: [
         {
@@ -337,7 +343,7 @@ export const _columnSettings = {
     inline: true,
     getDefault: (
       column: DatasetColumn,
-      columnSettings: DatasetColumn,
+      _columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
       // Default to showing totals if appropriate
@@ -356,7 +362,7 @@ export const _columnSettings = {
     },
     getHidden: (
       column: DatasetColumn,
-      columnSettings: DatasetColumn,
+      _columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
       const rows = settings[PREAGG_COLUMN_SPLIT_SETTING]?.rows || [];
@@ -365,12 +371,5 @@ export const _columnSettings = {
       //  - not the last column
       return !rows.slice(0, -1).some((row) => _.isEqual(row, column.name));
     },
-  },
-  column_title: {
-    get title() {
-      return t`Column title`;
-    },
-    widget: "input",
-    getDefault: displayNameForColumn,
   },
 };

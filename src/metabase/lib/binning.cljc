@@ -140,7 +140,8 @@
   (let [field-metadata ((:metadata-fn binning-value) query stage-number)]
     (merge {:display-name (binning-display-name binning-value field-metadata)}
            (when (= :default (:strategy binning-value))
-             {:default true}))))
+             {:default true})
+           (select-keys  binning-value [:num-bins :strategy]))))
 
 (mu/defn binning= :- boolean?
   "Given binning values (as returned by [[binning]]), check if they match."
