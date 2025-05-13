@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.driver.druid.client :as druid.client]
-   [metabase.models.secret :as secret]
+   [metabase.secrets.core :as secret]
    [metabase.util.ssh :as ssh]))
 
 (defn- do-segment-metadata-query [details datasource]

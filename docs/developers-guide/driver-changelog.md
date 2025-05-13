@@ -31,6 +31,9 @@ title: Driver interface changelog
   `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
   `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
 
+- The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
+  update your usages.
+
 - The namespace `metabase.public-settings` has been removed, and settings have been moved to appropriate modules, e.g.
   `site-uuid` now lives in `metabase.system.core`. If you were using this namespace, please update your code
   accordingly. You should be able to find the correct one by looking at how those settings are used in our first-party
