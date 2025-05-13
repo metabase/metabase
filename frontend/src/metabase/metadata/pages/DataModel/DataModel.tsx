@@ -120,12 +120,15 @@ export const DataModel = ({ params }: Props) => {
           </Box>
 
           <Box flex="1" p="xl" pl={0}>
-            <PreviewSection
-              key={tableId}
-              databaseId={databaseId}
-              tableId={tableId}
-              fieldId={fieldId}
-            />
+            {field && (
+              <PreviewSection
+                key={tableId}
+                databaseId={databaseId}
+                tableId={tableId}
+                fieldId={fieldId}
+                field={field}
+              />
+            )}
           </Box>
         </Flex>
       )}

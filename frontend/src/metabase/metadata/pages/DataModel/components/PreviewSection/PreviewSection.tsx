@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
-import type { DatabaseId, FieldId, TableId } from "metabase-types/api";
+import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
 
 import { TablePreview } from "./TablePreview";
 
@@ -10,6 +10,7 @@ interface Props {
   databaseId: DatabaseId;
   tableId: TableId;
   fieldId: FieldId;
+  field: Field;
 }
 
 type PreviewType = ReturnType<typeof getTypeSelectorData>[number]["value"];
