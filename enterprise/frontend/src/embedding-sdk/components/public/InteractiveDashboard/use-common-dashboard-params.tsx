@@ -8,7 +8,7 @@ import {
 } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { question as URL_question } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -78,7 +78,7 @@ export const useCommonDashboardParams = ({
   const onEditQuestion = useCallback(
     (question: Question) => {
       dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-      setAdhocQuestionUrl(URL_question(question.card()));
+      setAdhocQuestionUrl(Urls.question(question.card()));
     },
     [dashboardId, dispatch],
   );

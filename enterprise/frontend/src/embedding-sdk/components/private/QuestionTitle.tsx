@@ -7,7 +7,7 @@ import {
   getAdHocQuestionDescription,
   shouldRenderAdhocDescription,
 } from "metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
-import { queryDisplayInfo } from "metabase-lib/metadata";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 type GetQuestionTitleProps = {
@@ -29,7 +29,7 @@ export const getQuestionTitle = ({
   }
 
   const query = question.query();
-  const { isNative } = queryDisplayInfo(query);
+  const { isNative } = Lib.queryDisplayInfo(query);
   const adhocDescription = getAdHocQuestionDescription({ question });
   if (
     !isNative &&
