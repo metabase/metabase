@@ -107,15 +107,17 @@ function useDataSample({
   }
 
   if (data.status === "failed") {
-    const error: string =
-      typeof data.error === "string"
-        ? data.error
-        : (data.error?.data ?? t`Something went wrong`);
+    let error = typeof data.error === "string" ? data.error : data.error?.data;
+
+    if (data.error_type === "invalid-query") {
+      error = t`Something went wrong fetching the data for this field. This could mean something is wrong with the field settings, like a cast that is not supported for the underlying data type. Please check your settings and try again.`;
+    }
+
     return {
       ...rest,
       rawSeries: undefined,
       isError: true,
-      error,
+      error: error ?? t`Something went wrong`,
     };
   }
 
