@@ -35,11 +35,11 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api metabase.actions.core}
-   :uses #{analytics api driver legacy-mbql lib model-persistence models query-processor search settings util}}
+   :uses #{analytics api collections driver legacy-mbql lib model-persistence models query-processor search settings util}}
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
-   :uses #{api config db events models util}}
+   :uses #{api collections config db events models util}}
 
   analytics
   {:api  #{metabase.analytics.api
@@ -69,7 +69,6 @@
   {:api #{metabase.api.auth
           metabase.api.card
           metabase.api.cards
-          metabase.api.collection
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dashboard
@@ -91,6 +90,7 @@
            analyze
            api-routes
            channel
+           collections
            config
            database-routing
            db
@@ -169,6 +169,7 @@
            metabase.channel.template.core}
    :uses #{analytics
            api
+           collections
            config
            db
            driver
@@ -202,6 +203,27 @@
            metabase.cmd.copy
            metabase.cmd.dump-to-h2}
    :uses #{api api-routes config db legacy-mbql models plugins query-processor search settings util}}
+
+  collections
+  {:api  #{metabase.collections.api
+           metabase.collections.models.collection
+           metabase.collections.models.collection.root}
+   :uses #{api
+           api-keys
+           audit-app
+           config
+           db
+           driver
+           events
+           legacy-mbql
+           models
+           permissions
+           premium-features
+           request
+           revisions
+           search
+           upload
+           util}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
@@ -389,10 +411,6 @@
   {:api #{metabase.models.application-permissions-revision
           metabase.models.card
           metabase.models.card.metadata
-          metabase.models.collection
-          metabase.models.collection-permission-graph-revision
-          metabase.models.collection.graph
-          metabase.models.collection.root
           metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
@@ -422,10 +440,10 @@
    :uses #{analytics
            analyze
            api
-           api-keys
            audit-app
            cache
            channel
+           collections
            config
            content-verification
            db
@@ -452,7 +470,7 @@
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
-   :uses #{api models permissions premium-features util}}
+   :uses #{api collections models permissions premium-features util}}
 
   notification
   {:api  #{metabase.notification.api
@@ -479,11 +497,13 @@
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
+           metabase.permissions.models.collection-permission-graph-revision
+           metabase.permissions.models.collection.graph
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.util}
-   :uses #{api audit-app config db models plugins premium-features request server settings util}}
+   :uses #{api audit-app collections config db models premium-features request server settings util}}
 
   pivot
   {:api #{metabase.pivot.core}
@@ -515,7 +535,7 @@
            metabase.pulse.core
            metabase.pulse.init
            metabase.pulse.task.send-pulses}
-   :uses #{api channel config db driver events models notification permissions plugins premium-features
+   :uses #{api channel collections config db driver events models notification permissions plugins premium-features
            query-processor request task task-history util
            enterprise/advanced-permissions enterprise/sandbox}}
 
@@ -601,7 +621,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit-app config db driver models permissions premium-features settings request startup task util}}
+   :uses #{analytics api audit-app collections config db driver models permissions premium-features settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
@@ -698,7 +718,7 @@
 
   timeline
   {:api  #{metabase.timeline.api metabase.timeline.core}
-   :uses #{analytics api models util}}
+   :uses #{analytics api collections models util}}
 
   types
   {:api  #{metabase.types}
@@ -708,7 +728,7 @@
   {:api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.init}
-   :uses #{analytics api driver events legacy-mbql lib model-persistence models permissions settings sync util}}
+   :uses #{analytics api collections driver events legacy-mbql lib model-persistence models permissions settings sync util}}
 
   user-key-value
   {:api  #{metabase.user-key-value.api metabase.user-key-value.init}
@@ -733,7 +753,7 @@
   {:api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
-   :uses #{analyze api driver legacy-mbql lib models settings query-processor util}}
+   :uses #{analyze api collections driver legacy-mbql lib models settings query-processor util}}
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
@@ -845,7 +865,7 @@
   enterprise/metabot-v3
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
-   :uses #{api config db legacy-mbql lib models premium-features settings pulse query-processor request util}}
+   :uses #{api collections config db legacy-mbql lib models premium-features settings pulse query-processor request util}}
 
   enterprise/premium-features
   {:api  #{}
@@ -853,7 +873,7 @@
 
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}
-   :uses #{api models query-analysis request util}}
+   :uses #{api collections query-analysis request util}}
 
   enterprise/sandbox
   {:api #{metabase-enterprise.sandbox.api.routes
@@ -885,7 +905,7 @@
   {:api #{metabase-enterprise.serialization.api
           metabase-enterprise.serialization.cmd
           metabase-enterprise.serialization.v2.backfill-ids}
-   :uses #{analytics api config db legacy-mbql lib logger models plugins premium-features settings setup util}}
+   :uses #{analytics api collections config db legacy-mbql lib logger models plugins premium-features settings setup util}}
 
   enterprise/snippet-collections
   {:api  #{}
@@ -900,7 +920,7 @@
   enterprise/stale
   {:api  #{metabase-enterprise.stale.api
            metabase-enterprise.stale.init}
-   :uses #{analytics api embedding models premium-features request settings util}}
+   :uses #{analytics api collections embedding models premium-features request settings util}}
 
   enterprise/upload-management
   {:api  #{metabase-enterprise.upload-management.api}

@@ -6,10 +6,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.core :as analytics]
+   [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.collection :as collection]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -488,7 +488,7 @@
         (mt/with-full-data-perms-for-all-users!
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (mt/ordered-subset? (->> (default-search-results)
                                          (remove (comp #{"collection"} :model))
                                          (map #(cond-> %
@@ -526,7 +526,7 @@
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
-              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
               (perms/grant-collection-read-permissions! group collection)
               (is (mt/ordered-subset? (->> (default-results-with-collection)
                                            (concat (->> (default-search-results)

@@ -1,4 +1,4 @@
-(ns metabase.api.collection
+(ns metabase.collections.api
   "`/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
   the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
@@ -11,6 +11,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -18,12 +20,10 @@
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.collection.graph :as graph]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.collection.graph :as graph]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.request.core :as request]
@@ -149,7 +149,7 @@
           (mi/can-read? root)
           (cons root))))
     (t2/hydrate collections :can_write :is_personal :can_delete)
-    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+    ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (collection/personal-collections-with-ui-details  (for [collection collections]
                                                         (dissoc collection ::collection.root/is-root?)))))
@@ -360,13 +360,13 @@
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
-  [_ {:keys [archived?]}]
+  [_collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
    :where  [:= :archived (boolean archived?)]})
 
 (defmethod collection-children-query :snippet
-  [_ collection options]
+  [_model collection options]
   (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
@@ -847,47 +847,51 @@
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
   [sort-info db-type]
-  (->> (into [(official-collections-first-sort-clause sort-info)
-              normal-collections-first-sort-clause]
-             (case ((juxt :sort-column :sort-direction) sort-info)
-               [nil nil]               [[:%lower.name :asc]]
-               [:name :asc]            [[:%lower.name :asc]]
-               [:name :desc]           [[:%lower.name :desc]]
-               [:last-edited-at :asc]  [(if (= db-type :mysql)
-                                          [:%isnull.last_edit_timestamp]
-                                          [:last_edit_timestamp :nulls-last])
-                                        [:last_edit_timestamp :asc]
-                                        [:%lower.name :asc]]
-               [:last-edited-at :desc] [(case db-type
-                                          :mysql    [:%isnull.last_edit_timestamp]
-                                          :postgres [:last_edit_timestamp :desc-nulls-last]
-                                          :h2       nil)
-                                        [:last_edit_timestamp :desc]
-                                        [:%lower.name :asc]]
-               [:last-edited-by :asc]  [(if (= db-type :mysql)
-                                          [:%isnull.last_edit_last_name]
-                                          [:last_edit_last_name :nulls-last])
-                                        [:last_edit_last_name :asc]
-                                        (if (= db-type :mysql)
-                                          [:%isnull.last_edit_first_name]
-                                          [:last_edit_first_name :nulls-last])
-                                        [:last_edit_first_name :asc]
-                                        [:%lower.name :asc]]
-               [:last-edited-by :desc] [(case db-type
-                                          :mysql    [:%isnull.last_edit_last_name]
-                                          :postgres [:last_edit_last_name :desc-nulls-last]
-                                          :h2       nil)
-                                        [:last_edit_last_name :desc]
-                                        (case db-type
-                                          :mysql    [:%isnull.last_edit_first_name]
-                                          :postgres [:last_edit_last_name :desc-nulls-last]
-                                          :h2       nil)
-                                        [:last_edit_first_name :desc]
-                                        [:%lower.name :asc]]
-               [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-               [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
-       (remove nil?)
-       (into [])))
+  (into []
+        (comp cat
+              (remove nil?))
+        [[(official-collections-first-sort-clause sort-info)]
+         [normal-collections-first-sort-clause]
+         (case ((juxt :sort-column :sort-direction) sort-info)
+           [nil nil]               [[:%lower.name :asc]]
+           [:name :asc]            [[:%lower.name :asc]]
+           [:name :desc]           [[:%lower.name :desc]]
+           [:last-edited-at :asc]  [(if (= db-type :mysql)
+                                      [:%isnull.last_edit_timestamp]
+                                      [:last_edit_timestamp :nulls-last])
+                                    [:last_edit_timestamp :asc]
+                                    [:%lower.name :asc]]
+           [:last-edited-at :desc] [(case db-type
+                                      :mysql    [:%isnull.last_edit_timestamp]
+                                      :postgres [:last_edit_timestamp :desc-nulls-last]
+                                      :h2       nil)
+                                    [:last_edit_timestamp :desc]
+                                    [:%lower.name :asc]]
+           [:last-edited-by :asc]  [(if (= db-type :mysql)
+                                      [:%isnull.last_edit_last_name]
+                                      [:last_edit_last_name :nulls-last])
+                                    [:last_edit_last_name :asc]
+                                    (if (= db-type :mysql)
+                                      [:%isnull.last_edit_first_name]
+                                      [:last_edit_first_name :nulls-last])
+                                    [:last_edit_first_name :asc]
+                                    [:%lower.name :asc]]
+           [:last-edited-by :desc] [(case db-type
+                                      :mysql    [:%isnull.last_edit_last_name]
+                                      :postgres [:last_edit_last_name :desc-nulls-last]
+                                      :h2       nil)
+                                    [:last_edit_last_name :desc]
+                                    (case db-type
+                                      :mysql    [:%isnull.last_edit_first_name]
+                                      :postgres [:last_edit_last_name :desc-nulls-last]
+                                      :h2       nil)
+                                    [:last_edit_first_name :desc]
+                                    [:%lower.name :asc]]
+           [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+           [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])
+         ;; add a fallback sort order so paging is still deterministic even if collection have the same name or
+         ;; whatever
+         [[:id :asc]]]))
 
 (defn- collection-children*
   [collection models {:keys [sort-info archived?] :as options}]
