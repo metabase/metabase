@@ -3,6 +3,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   Card,
   DatabaseId,
+  DatasetQuery,
   FieldFilter,
   FieldId,
   FieldReference,
@@ -10,7 +11,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-const NO_HEADER = () => "";
+const PREVIEW_ROW_COUNT = 5;
 
 export function TablePreview({
   databaseId,
@@ -32,7 +33,6 @@ export function TablePreview({
       // To hide the details column
       queryBuilderMode="dataset"
       // To hide the column headers
-      renderTableHeader={NO_HEADER}
       rawSeries={rawSeries}
     />
   );
@@ -49,14 +49,14 @@ function useDataSample({
 }) {
   const reference: FieldReference = ["field", fieldId, null];
   const filter: FieldFilter = ["not-null", reference];
-  const datasetQuery = {
+  const datasetQuery: DatasetQuery = {
     type: "query" as const,
     database: databaseId,
     query: {
       "source-table": tableId,
       fields: [reference],
       filter,
-      limit: 10,
+      limit: PREVIEW_ROW_COUNT,
     },
   };
 
