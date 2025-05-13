@@ -52,7 +52,6 @@ describe(
         colors: {
           background: "rgb(22, 26, 29)",
           "background-hover": "rgb(14, 17, 20)",
-          "background-disabled": "rgb(45, 45, 48)",
           "text-primary": "rgb(255, 255, 255)",
           brand: "rgb(253, 121, 168)",
         },
@@ -63,7 +62,7 @@ describe(
           <Box bg={theme.colors?.background} h="100vh">
             <InteractiveQuestion questionId={questionId} />
           </Box>,
-          { theme },
+          { sdkProviderProps: { theme } },
         );
       });
 
@@ -100,6 +99,10 @@ describe(
           .should(($el) =>
             haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
           );
+
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          haveBackgroundColor($el, lighten(theme.colors?.background, 0.5)),
+        );
       });
     });
 
@@ -108,7 +111,6 @@ describe(
         colors: {
           background: "rgb(255, 255, 255)",
           "background-hover": "rgb(245, 245, 245)",
-          "background-disabled": "rgb(230, 230, 230)",
           "text-primary": "rgb(51, 51, 51)",
           brand: "rgb(253, 121, 168)",
         },
@@ -119,7 +121,7 @@ describe(
           <Box bg={theme.colors?.background} h="100vh">
             <InteractiveQuestion questionId={questionId} />
           </Box>,
-          { theme },
+          { sdkProviderProps: { theme } },
         );
       });
 
@@ -142,6 +144,42 @@ describe(
           .should(($el) =>
             haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
           );
+
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          haveBackgroundColor($el, darken(theme.colors?.background, 0.04)),
+        );
+      });
+    });
+
+    it("overrides the question toolbar's default background color", () => {
+      const theme: MetabaseTheme = {
+        colors: {
+          background: "rgb(255, 255, 255)",
+          "text-primary": "rgb(51, 51, 51)",
+          brand: "rgb(253, 121, 168)",
+        },
+        components: {
+          question: {
+            toolbar: { backgroundColor: "rgb(100, 150, 200)" },
+          },
+        },
+      };
+
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <Box bg={theme.colors?.background} h="100vh">
+            <InteractiveQuestion questionId={questionId} />
+          </Box>,
+          { sdkProviderProps: { theme } },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        // Should use the toolbar backgroundColor override, not the default background
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          haveBackgroundColor($el, "rgb(100, 150, 200)"),
+        );
       });
     });
   },
