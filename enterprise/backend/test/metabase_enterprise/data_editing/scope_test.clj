@@ -54,16 +54,13 @@
                                                                       :size_x       4
                                                                       :size_y       4}]
               (testing "hydrate-scope for dashcard with MBQL card"
-                (let [scope    {:dashcard-id dashcard-id-1}
-                      hydrated (scope/hydrate scope)]
-                  (is (= #{:dashcard-id :dashboard-id :collection-id :card-id :table-id :database-id}
-                         (set (keys hydrated))))
-                  (is (= dashcard-id-1 (:dashcard-id hydrated)))
-                  (is (= dashboard-id (:dashboard-id hydrated)))
-                  (is (= collection-id (:collection-id hydrated)))
-                  (is (= mbql-card-id (:card-id hydrated)))
-                  (is (= table-id (:table-id hydrated)))
-                  (is (= db-id (:database-id hydrated)))))
+                (is (= {:dashcard-id   dashcard-id-1
+                        :dashboard-id  dashboard-id
+                        :collection-id collection-id
+                        :card-id       mbql-card-id
+                        :table-id      table-id
+                        :database-id   db-id}
+                       (scope/hydrate {:dashcard-id dashcard-id-1}))))
 
               (testing "hydrate-scope for dashcard with native card"
                 (let [scope    {:dashcard-id dashcard-id-2}
