@@ -530,7 +530,6 @@
                          :effective_type  "type/Integer"
                          :name            "pivot-grouping"
                          :display_name    "pivot-grouping"
-                         :expression_name "pivot-grouping"
                          :field_ref       ["expression" "pivot-grouping"]
                          :source          "breakout"}
                         (nth cols 3))))
