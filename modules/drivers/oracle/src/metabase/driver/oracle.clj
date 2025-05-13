@@ -296,10 +296,6 @@
   [_]
   "NUMBER(19)")
 
-(defmethod sql.qp/text-dbtype :oracle
-  [_]
-  "VARCHAR2(100)")
-
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)
@@ -519,9 +515,9 @@
   [_ bool]
   [:inline (if bool 1 0)])
 
-(defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
+(defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
   [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]

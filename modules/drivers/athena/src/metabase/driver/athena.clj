@@ -138,10 +138,6 @@
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
-(defmethod sql.qp/text-dbtype :athena
-  [_]
-  :VARCHAR)
-
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

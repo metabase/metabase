@@ -255,6 +255,6 @@
   [driver value]
   (sql.qp/->integer-with-round driver value))
 
-(defmethod sql.qp/text-dbtype :sparksql
-  [_]
-  :STRING)
+(defmethod sql.qp/->honeysql [:sparksql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))

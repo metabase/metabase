@@ -140,16 +140,6 @@
 
 ;; this is the primary way to override behavior for a specific clause or object class.
 
-(defmulti text-dbtype
-  "Return the name of the text type we convert to in this database."
-  {:added "0.55.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod text-dbtype :sql
-  [_driver]
-  :TEXT)
-
 (defmulti integer-dbtype
   "Return the name of the integer type we convert to in this database."
   {:added "0.55.0" :arglists '([driver])}
@@ -1299,7 +1289,7 @@
 
 (defmethod ->honeysql [:sql :text]
   [driver [_ value]]
-  (h2x/maybe-cast (text-dbtype driver) (->honeysql driver value)))
+  (->honeysql driver [::cast-to-text value]))
 
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]

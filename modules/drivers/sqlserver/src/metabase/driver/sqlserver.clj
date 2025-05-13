@@ -876,7 +876,3 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
   (= (sql-jdbc/get-sql-state e) "HY008"))
-
-(defmethod sql.qp/text-dbtype :sqlserver
-  [_]
-  :VARCHAR)
