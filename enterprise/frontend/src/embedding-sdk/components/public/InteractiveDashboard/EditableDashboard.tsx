@@ -60,7 +60,8 @@ const EditableDashboardInner = ({
   onEditQuestion,
 }: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
   Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
-  const { dashboardId, isEditing, isLoading, error } = useDashboardContext();
+  const { initialDashboardId, isEditing, isLoading, error } =
+    useDashboardContext();
 
   const dashboardActions = isEditing
     ? DASHBOARD_EDITING_ACTIONS
@@ -71,7 +72,7 @@ const EditableDashboardInner = ({
   }
 
   if (error) {
-    return <DashboardNotFoundError id={dashboardId} />;
+    return <DashboardNotFoundError id={initialDashboardId} />;
   }
 
   return (
