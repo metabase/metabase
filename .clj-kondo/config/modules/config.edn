@@ -1023,8 +1023,7 @@
   task
   {:api #{metabase.task.bootstrap
           metabase.task.core}
-   :uses #{analytics
-           db
+   :uses #{db
            plugins
            util}}
 
