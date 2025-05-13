@@ -324,7 +324,7 @@
    _]
   (api/check-superuser)
   (let [databases          (t2/select [:model/Database :id :settings])
-        editable-database? #(-> % :settings :database-enable-table-editing boolean)
+        editable-database? (comp boolean :database-enable-table-editing :settings)
         editable-databases (filter editable-database? databases)
 
         editable-tables
