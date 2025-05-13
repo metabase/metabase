@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.types :as types]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -79,7 +80,7 @@
    {:keys [rows scope]} :- [:map
                             [:rows [:sequential {:min 1} :map]]
                             ;; TODO make this non-optional in the future
-                            [:scope {:optional true} :map]]]
+                            [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
   (let [rows' (data-editing/apply-coercions table-id rows)
         scope (or scope {:table-id table-id})
@@ -97,12 +98,12 @@
        [:mixed-updates [:map
                         [:rows [:sequential {:min 1} :map]]
                         ;; TODO make :scope required
-                        [:scope {:optional true} :map]]]
+                        [:scope {:optional true} ::types/scope.raw]]]
        [:uniform-updates [:map
                           [:pks [:sequential {:min 1} :map]]
                           [:updates :map]
                           ;; TODO make :scope required
-                          [:scope {:optional true} :map]]]]]
+                          [:scope {:optional true} ::types/scope.raw]]]]]
   (check-permissions)
   (if (empty? (or rows pks))
     {:updated []}
@@ -124,7 +125,7 @@
    {:keys [rows scope]} :- [:map
                             [:rows [:sequential {:min 1} :map]]
                             ;; make this non-optional in the future
-                            [:scope {:optional true} :map]]]
+                            [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
   (let [user-id api/*current-user-id*
         scope   (or scope {:table-id table-id})]
@@ -213,8 +214,7 @@
    {:keys [table-id scope no-op]}] :- [:map
                                        ;; deprecated, this will be replaced by scope
                                        [:table-id ms/PositiveInt]
-                                       ;; TODO make this non-optional in the future
-                                       [:scope {:optional true} :map]
+                                       [:scope ::types/scope.raw]
                                        [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
   (let [user-id api/*current-user-id*
@@ -238,8 +238,7 @@
    {:keys [table-id scope no-op]}] :- [:map
                                          ;; deprecated, this will be replaced by scope
                                        [:table-id ms/PositiveInt]
-                                       ;; TODO: make this non-optional in the future
-                                       [:scope {:optional true} :map]
+                                       [:scope ::types/scope.raw]
                                        [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
   (let [user-id api/*current-user-id*
@@ -318,6 +317,19 @@
         param-id    (u/index-by (some-fn :slug :id) :id (:parameters action))
         provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
     (actions/execute-action! action (merge row-params provided))))
+
+;; These don't belong under /data-editing, but for now we have them nested here to avoid adding a new premium feature.
+
+(api.macros/defendpoint :post "/actions/v2/:action-id/describe" :- [:map
+                                                                    ;;
+                                                                    ]
+  "Can optionally take arguments, in order to partially apply them."
+  [{:keys [action-id]} :- [:map [:action-id :string]]
+   {:keys []}
+   {:keys [scope input]} :- [:map
+                             [:scope ::types/scope.raw]
+                            ;; this spec is going to come from the action (and depend on mapping)
+                             [:input :map]]])
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
