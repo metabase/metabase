@@ -59,7 +59,7 @@ describe("scenarios > admin > localization > content translation of column names
             cy.signInAsNormalUser();
           });
 
-          it.only("column headers", () => {
+          it("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
               germanFieldNames.forEach((row) => {
@@ -86,7 +86,7 @@ describe("scenarios > admin > localization > content translation of column names
             });
           });
 
-          describe.only("column headers in viz", () => {
+          describe("column headers in viz", () => {
             const columnX = "PRICE";
             const columnY = "RATING";
             // NOTE: What about the 'trend' visualization? This is an option in
@@ -126,6 +126,18 @@ describe("scenarios > admin > localization > content translation of column names
 
             const assertColumnNamesAreTranslated = () =>
               columnsInChart.forEach((row) => {
+                H.echartsContainer()
+                  .get("text")
+                  .should("contain", row.msgstr)
+                  .should("not.contain", row.msgid);
+              });
+
+            const assertColumnNamesAreTranslated = () =>
+              columnsInChart.forEach((row) => {
+                console.log(
+                  "Expecting to see translated string row.msgstr",
+                  row.msgstr,
+                );
                 H.echartsContainer()
                   .get("text")
                   .should("contain", row.msgstr)
@@ -257,6 +269,21 @@ describe("scenarios > admin > localization > content translation of column names
                       },
                     });
                     H.assertFirstEChartsTooltip("map", {
+                      rows: [], // something here describing all the columns
+                    });
+                  });
+                })
+                .with("pie", () => {
+                  it(`of type: ${displayType}`, () => {
+                    H.createQuestion({
+                      display: "pie",
+                      query: {
+                        "source-table": PEOPLE_ID,
+                        aggregation: [["count"]],
+                        breakout: [["field", PEOPLE.STATE, null]],
+                      },
+                    });
+                    H.assertFirstEChartsTooltip("pie", {
                       rows: [], // something here describing all the columns
                     });
                   });
