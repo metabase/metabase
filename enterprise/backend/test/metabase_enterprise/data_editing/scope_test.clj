@@ -30,33 +30,33 @@
                                                                         :creator_id (mt/user->id :rasta)})]
           (try
             (mt/with-temp [:model/Collection   {collection-id :id}   {:name "Test Collection"}
-                           :model/Card         {mbql-card-id :id}    {:dataset_query {:database db-id
+                           :model/Card         {mbql-card-id :id}    {:name          "Test MBQL Card"
+                                                                      :database_id   db-id
+                                                                      :dataset_query {:database db-id
                                                                                       :type     :query
                                                                                       :query    {:source-table table-id}}
-                                                                      :database_id   db-id
-                                                                      :name          "Test MBQL Card"
                                                                       :collection_id collection-id}
-                           :model/Card         {mbql-model-id :id}   {:dataset_query {:database db-id
+                           :model/Card         {mbql-model-id :id}   {:name          "Test MBQL Model"
+                                                                      :database_id   db-id
+                                                                      :dataset_query {:database db-id
                                                                                       :type     :query
                                                                                       :query    {:source-table table-id}}
-                                                                      :database_id   db-id
-                                                                      :name          "Test MBQL Model"
                                                                       :collection_id collection-id
                                                                       :dataset       true}
-                           :model/Card          {native-model-id :id} {:dataset_query {:database db-id
+                           :model/Card          {native-model-id :id} {:name          "Test Native Model"
+                                                                       :database_id   db-id
+                                                                       :dataset_query {:database db-id
                                                                                        :type     :native
                                                                                        :native   {:query "SELECT * FROM venues"}}
-                                                                       :database_id   db-id
-                                                                       :name          "Test Native Model"
                                                                        :collection_id collection-id
                                                                        :dataset       true}
                            :model/Dashboard     {dashboard-id :id}   {:name          "Test Dashboard"
                                                                       :collection_id collection-id}
-                           :model/Card          {native-card-id :id} {:dataset_query {:database db-id
+                           :model/Card          {native-card-id :id} {:name          "Test Native Card"
+                                                                      :database_id   db-id
+                                                                      :dataset_query {:database db-id
                                                                                       :type     :native
                                                                                       :native   {:query "SELECT * FROM venues"}}
-                                                                      :database_id   db-id
-                                                                      :name          "Test Native Card"
                                                                       :dashboard_id  dashboard-id}
                            :model/DashboardCard {dashcard-id-1 :id}  {:dashboard_id dashboard-id
                                                                       :card_id      mbql-card-id
