@@ -932,6 +932,7 @@
            events
            models
            permissions
+           premium-features
            settings
            request
            session

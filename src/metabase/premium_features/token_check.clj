@@ -134,6 +134,8 @@
   "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
   (u/hours->ms 12))
 
+(defonce ^:private server-id (str (random-uuid)))
+
 (def ^{:arglists '([token base-url site-uuid])} ^:private fetch-token-and-parse-body*
   "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
   cached, but may trigger the *store-circuit-breaker*."
@@ -148,7 +150,10 @@
                                                                                        :mb-version (:tag config/mb-version-info)})
                                                              :throw-exceptions false}))]
        (cond
-         (http/success? resp) (some-> body json/decode+kw)
+         (http/success? resp) (assoc (some-> body json/decode+kw)
+                                     :fetched-at (System/currentTimeMillis)
+                                     :token (str "****" (subs token (- (count token) 4)))
+                                     :server-id server-id)
 
          (<= 400 status 499) (some-> body json/decode+kw)
 
@@ -157,6 +162,13 @@
                                                                                    :body body})))))
 
    :ttl/threshold token-status-cache-ttl))
+
+(defn clear-token-check-cache
+  "Clears the token check cache. This is used when the features in the token may have changed in the store."
+  []
+  (when config/ee-available?
+    (log/info "Clearing token check cache.")
+    (memoize/memo-clear! fetch-token-and-parse-body*)))
 
 (def ^:private store-circuit-breaker-config
   {;; if 10 requests within 10 seconds fail, open the circuit breaker.

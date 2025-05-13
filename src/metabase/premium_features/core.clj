@@ -22,6 +22,7 @@
   airgap-check-user-count
   assert-has-feature
   assert-has-any-features
+  clear-token-check-cache
   ee-feature-error
   has-any-features?
   has-feature?
