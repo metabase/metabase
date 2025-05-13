@@ -387,3 +387,19 @@
                (param-val-or-default {:default "my default value"}))))
     (t/testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
       (t/is (nil? (param-val-or-default {:value nil :default "my default value"}))))))
+
+(t/deftest ^:parallel value-string-contains-test
+  (t/testing "string/contains parameters are correctly formatted"
+    (let [format-param (fn [default] (params/value-string {:name "State",
+                                                           :slug "state",
+                                                           :id "63e719d0",
+                                                           :default default,
+                                                           :type "string/contains",
+                                                           :sectionId "location"}
+                                                          "en"))]
+      (t/is (= "contains CA"
+               (format-param ["CA"])))
+      (t/is (= "contains CA or NY"
+               (format-param ["CA" "NY"])))
+      (t/is (= "contains CA, NY, or NJ"
+               (format-param ["CA" "NY" "NJ"]))))))

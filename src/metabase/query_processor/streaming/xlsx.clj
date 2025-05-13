@@ -610,12 +610,12 @@
 
 (defn- init-workbook
   "Initializes the provided workbook, and returns the created sheet"
-  [{:keys [workbook ordered-cols col-count col-settings format-rows? pivot?]}]
+  [{:keys [workbook ordered-cols col-count viz-settings format-rows? pivot?]}]
   (let [sheet (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
     (when (not pivot?)
       (setup-header-row! sheet (count ordered-cols))
-      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or col-settings []) format-rows?)))
+      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?)))
     sheet))
 
 (defn get-formatter
@@ -663,7 +663,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
-               {col-settings ::mb.viz/column-settings :as viz-settings}]
+               viz-settings]
         (let [pivot-spec       (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
@@ -683,7 +683,7 @@
                       :pivot-export-options pivot-export-options})
             (let [sheet (init-workbook {:workbook     workbook
                                         :ordered-cols non-pivot-cols
-                                        :col-settings col-settings
+                                        :viz-settings viz-settings
                                         :format-rows? true})]
               (set-no-style-custom-helper! sheet)
               (vreset! styles (generate-styles workbook viz-settings non-pivot-cols format-rows?))

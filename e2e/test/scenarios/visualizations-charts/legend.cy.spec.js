@@ -388,24 +388,11 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     }
 
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Show visualization options").click();
+    H.showDashcardVisualizerModal(0);
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
-      cy.button("Cancel").click();
-    });
-
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Add series").click();
-
-    H.modal().within(() => {
-      ensureCanNotToggleSeriesVisibility();
-      cy.button("Cancel").click();
-    });
-
-    H.getDashboardCard(0).within(() => {
-      ensureCanNotToggleSeriesVisibility();
+      cy.realPress("Escape");
     });
   });
 

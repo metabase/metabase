@@ -9,9 +9,11 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
+   [metabase.content-verification.core :as moderation]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -21,18 +23,14 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.serialization :as serdes]
-   [metabase.moderation :as moderation]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -369,9 +367,6 @@
                               {:order-by [[:name :asc]]})
                    (filter mi/can-read?)))
    :id))
-
-;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
-(comment moderation/keep-me)
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -1256,11 +1251,11 @@
                (changed? card-compare-keys card-before-update card-updates))
       ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
       ;; to remove it regardless if enterprise edition is present at the moment.
-      (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
-                                         :moderated_item_type "card"
-                                         :moderator_id        (:id actor)
-                                         :status              nil
-                                         :text                (tru "Unverified due to edit")}))
+      (moderation/create-review! {:moderated_item_id   (:id card-before-update)
+                                  :moderated_item_type "card"
+                                  :moderator_id        (:id actor)
+                                  :status              nil
+                                  :text                (tru "Unverified due to edit")}))
     ;; Invalidate the cache for card
     (cache/invalidate-config! {:questions [(:id card-before-update)]
                                :with-overrides? true})
@@ -1408,14 +1403,6 @@
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
-;;; ------------------------------------------------ Audit Log --------------------------------------------------------
-
-(defmethod audit-log/model-details :model/Card
-  [{card-type :type, :as card} _event-type]
-  (merge (select-keys card [:name :description :database_id :table_id])
-          ;; Use `model` instead of `dataset` to mirror product terminology
-         {:model? (= (keyword card-type) :model)}))
-
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (def ^:private base-search-spec
@@ -1428,6 +1415,7 @@
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
+                  :entity-id           true
                   :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]

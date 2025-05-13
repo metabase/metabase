@@ -13,7 +13,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.task.send :as task.notification]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -63,12 +63,13 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
-  (with-send-notification-sync
-    (let [channel-messages (atom {})]
-      (with-redefs [channel/send! (fn [channel message]
-                                    (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+  (with-javascript-visualization-stub
+    (with-send-notification-sync
+      (let [channel-messages (atom {})]
+        (with-redefs [channel/send! (fn [channel message]
+                                      (swap! channel-messages update (:type channel) u/conjv message))]
+          (thunk)
+          @channel-messages)))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.

@@ -5,13 +5,12 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
@@ -89,15 +88,15 @@
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
-  ([_model pk]
+  ([_model database-id]
    (cond
-     (should-read-audit-db? pk) false
-     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     (should-read-audit-db? database-id) false
+     (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (contains? #{:query-builder :query-builder-and-native}
                       (perms/most-permissive-database-permission-for-user
                        api/*current-user-id*
                        :perms/create-queries
-                       pk)))))
+                       database-id)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -516,10 +515,6 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
-
-(defmethod audit-log/model-details :model/Database
-  [database _event-type]
-  (select-keys database [:id :name :engine]))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

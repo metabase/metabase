@@ -13,6 +13,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
@@ -22,7 +23,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -2996,22 +2996,38 @@
      [:model/Card source-card {:database_id   (mt/id)
                                :table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues {:limit 5})}
-      :model/Card field-filter-card  {:dataset_query
-                                      {:database (mt/id)
-                                       :type     :native
-                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
-                                                  :template-tags {"NAME" {:id           "name_param_id"
-                                                                          :name         "NAME"
-                                                                          :display_name "Name"
-                                                                          :type         :dimension
-                                                                          :dimension    [:field (mt/id :venues :name) nil]
-                                                                          :required     true}}}}
-                                      :name       "native card with field filter"
-                                      :parameters [{:id     "name_param_id"
-                                                    :type   :string/=
-                                                    :target [:dimension [:template-tag "NAME"]]
-                                                    :name   "Name"
-                                                    :slug   "NAME"}]}
+      :model/Card field-filter-card {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                 :template-tags {"NAME" {:id           "name_param_id"
+                                                                         :name         "NAME"
+                                                                         :display_name "Name"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :required     true}}}}
+                                     :name       "native card with field filter"
+                                     :parameters [{:id     "name_param_id"
+                                                   :type   :string/=
+                                                   :target [:dimension [:template-tag "NAME"]]
+                                                   :name   "Name"
+                                                   :slug   "NAME"}]}
+      :model/Card name-mapped-card  {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                 :template-tags {"id" {:id           "id"
+                                                                       :name         "ID"
+                                                                       :display_name "Id"
+                                                                       :type         :dimension
+                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :required     true}}}}
+                                     :name       "native card with named field filter"
+                                     :parameters [{:id     "id"
+                                                   :type   :number/>=
+                                                   :target [:dimension [:template-tag "id"]]
+                                                   :name   "Id"
+                                                   :slug   "id"}]}
       :model/Card card        (merge
                                {:database_id   (mt/id)
                                 :dataset_query (mt/mbql-query venues)
@@ -3039,15 +3055,33 @@
      (f {:source-card       source-card
          :card              card
          :field-filter-card field-filter-card
-         :param-keys        {:static-list       "_STATIC_CATEGORY_"
-                             :static-list-label "_STATIC_CATEGORY_LABEL_"
-                             :card              "_CARD_"
-                             :field-values      "name_param_id"}}))))
+         :name-mapped-card  name-mapped-card
+         :param-keys        {:static-list          "_STATIC_CATEGORY_"
+                             :static-list-label    "_STATIC_CATEGORY_LABEL_"
+                             :card                 "_CARD_"
+                             :field-values         "name_param_id"
+                             :labeled-field-values "id"}}))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
+
+(deftest parameter-remapping-test
+  (with-card-param-values-fixtures [{:keys [card field-filter-card name-mapped-card param-keys]}]
+    (letfn [(request [{:keys [id] :as _card} value-source value]
+              (mt/user-http-request :crowberto :get 200
+                                    (format "card/%d/params/%s/remapping?value=%s" id (param-keys value-source) value)))]
+      (are [card value-source value] (= [value] (request card value-source value))
+        field-filter-card :field-values      "20th Century Cafe"
+        field-filter-card :field-values      "Not a value in the DB"
+        card              :card              "33 Taps"
+        card              :card              "Not provided by the card"
+        card              :static-list       "African"
+        card              :static-list       "Whatever"
+        card              :static-list-label "European")
+      (is (= ["African" "Af"] (request card :static-list-label "African")))
+      (is (= [42 "Reyes Strosin"] (request name-mapped-card :labeled-field-values "42"))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "getting values"
@@ -3514,41 +3548,48 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
+(defn- native-card-with-template-tags []
+  {:dataset_query
+   {:type     :native
+    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+               :template-tags
+               {"id"      {:name         "id"
+                           :display-name "Id"
+                           :id           "_id_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :people :id) nil]
+                           :widget-type  :id
+                           :default      nil}
+                "name"    {:name         "name"
+                           :display-name "Name"
+                           :id           "_name_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :people :name) nil]
+                           :widget-type  :category
+                           :default      nil}
+                "source"  {:name         "source"
+                           :display-name "Source"
+                           :id           "_soure_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :people :source) nil]
+                           :widget-type  :category
+                           :default      nil}
+                "user_id" {:name         "user_id"
+                           :display-name "User"
+                           :id           "_user_id_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :orders :user_id) nil]
+                           :widget-type  :id
+                           :default      nil}}}
+    :database (mt/id)}
+   :query_type :native
+   :database_id (mt/id)})
+
 (deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
-     :model/Card {card-id-2 :id} {:dataset_query
-                                  {:type     :native
-                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-                                              :template-tags
-                                              {"id"      {:name         "id"
-                                                          :display-name "Id"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}
-                                               "name"    {:name         "name"
-                                                          :display-name "Name"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :name) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "source"  {:name         "source"
-                                                          :display-name "Source"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :source) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "user_id" {:name         "user_id"
-                                                          :display-name "User"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :orders :user_id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}}}
-                                   :database (mt/id)}
-                                  :query_type :native
-                                  :database_id (mt/id)}]
+     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
     (testing "Simple card"
       (is (=?
            {:fields empty?
@@ -3573,37 +3614,7 @@
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
-     :model/Card {card-id-2 :id} {:dataset_query
-                                  {:type     :native
-                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-                                              :template-tags
-                                              {"id"      {:name         "id"
-                                                          :display-name "Id"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}
-                                               "name"    {:name         "name"
-                                                          :display-name "Name"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :name) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "source"  {:name         "source"
-                                                          :display-name "Source"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :source) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "user_id" {:name         "user_id"
-                                                          :display-name "User"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :orders :user_id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}}}
-                                   :database (mt/id)}
-                                  :query_type :native
-                                  :database_id (mt/id)}]
+     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
     (testing "Simple card"
       (is (=? {:fields api.test-util/all-have-entity-ids?
                :tables api.test-util/all-have-entity-ids?
