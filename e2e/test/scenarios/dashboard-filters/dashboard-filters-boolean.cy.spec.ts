@@ -50,6 +50,8 @@ describe(
         createQuestionAndDashboard().then(({ dashboardId }) =>
           H.visitDashboard(dashboardId),
         );
+
+        cy.log("set up click behavior");
         H.editDashboard();
         createAndMapParameter({ columnName: "Boolean" });
         H.showDashboardCardActions();
@@ -61,6 +63,14 @@ describe(
         });
         H.popover().findByText("Boolean").click();
         H.saveDashboard();
+
+        cy.log("assert click behavior");
+        H.getDashboardCard().findAllByText("true").first().click();
+        H.filterWidget().findByText("true").should("be.visible");
+        H.getDashboardCard().findByText("1 row").should("be.visible");
+        H.getDashboardCard().findAllByText("true").first().click();
+        H.filterWidget().findByText("true").should("not.exist");
+        H.getDashboardCard().findByText("200 rows").should("be.visible");
       });
     });
 
@@ -94,6 +104,10 @@ function createQuestionAndDashboard({
   const questionDetails: StructuredQuestionDetails = {
     name: questionName,
     query: {
+      fields: [
+        ["field", PRODUCTS.ID, null],
+        ["expression", "Boolean"],
+      ],
       "source-table": PRODUCTS_ID,
       expressions: {
         Boolean: ["=", ["field", PRODUCTS.ID, null], 1],
