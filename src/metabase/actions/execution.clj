@@ -229,6 +229,7 @@
     (api/check-404 (or action-id table-action))
     (if table-action
       (let [{:keys [kind table_id]} table-action]
+        ;; avoiding snowplow for now, to avoid adding new actions into schema
         (execute-table-action! (keyword kind) table_id request-parameters))
       (let [action (api/check-404 (action/select-action :id action-id))]
         (analytics/track-event! :snowplow/action
