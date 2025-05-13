@@ -1,6 +1,6 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]

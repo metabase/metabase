@@ -38,6 +38,7 @@
            metabase.actions.core}
    :uses #{analytics
            api
+           collections
            driver
            legacy-mbql
            lib
@@ -49,14 +50,8 @@
            util}}
 
   activity-feed
-  {:api  #{metabase.activity-feed.api
-           metabase.activity-feed.init}
-   :uses #{api
-           config
-           db
-           events
-           models
-           util}}
+  {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
+   :uses #{api collections config db events models util}}
 
   analytics
   {:api  #{metabase.analytics.api
@@ -93,7 +88,6 @@
   {:api #{metabase.api.auth
           metabase.api.card
           metabase.api.cards
-          metabase.api.collection
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dashboard
@@ -115,6 +109,7 @@
            analyze
            api-routes
            channel
+           collections
            config
            database-routing
            db
@@ -223,6 +218,7 @@
            metabase.channel.template.core}
    :uses #{analytics
            api
+           collections
            config
            db
            driver
@@ -275,6 +271,27 @@
            query-processor
            search
            settings
+           util}}
+
+  collections
+  {:api  #{metabase.collections.api
+           metabase.collections.models.collection
+           metabase.collections.models.collection.root}
+   :uses #{api
+           api-keys
+           audit-app
+           config
+           db
+           driver
+           events
+           legacy-mbql
+           models
+           permissions
+           premium-features
+           request
+           revisions
+           search
+           upload
            util}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
@@ -529,10 +546,6 @@
   {:api #{metabase.models.application-permissions-revision
           metabase.models.card
           metabase.models.card.metadata
-          metabase.models.collection
-          metabase.models.collection-permission-graph-revision
-          metabase.models.collection.graph
-          metabase.models.collection.root
           metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
@@ -562,10 +575,10 @@
    :uses #{analytics
            analyze
            api
-           api-keys
            audit-app
            cache
            channel
+           collections
            config
            content-verification
            db
@@ -593,6 +606,7 @@
   {:api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
    :uses #{api
+           collections
            models
            permissions
            premium-features
@@ -623,16 +637,18 @@
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
+           metabase.permissions.models.collection-permission-graph-revision
+           metabase.permissions.models.collection.graph
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.util}
    :uses #{api
            audit-app
+           collections
            config
            db
            models
-           plugins
            premium-features
            request
            server
@@ -700,6 +716,7 @@
            metabase.pulse.task.send-pulses}
    :uses #{api
            channel
+           collections
            config
            db
            driver
@@ -824,6 +841,7 @@
    :uses #{analytics
            api
            audit-app
+           collections
            config
            db
            driver
@@ -1005,6 +1023,7 @@
            metabase.timeline.core}
    :uses #{analytics
            api
+           collections
            models
            util}}
 
@@ -1018,6 +1037,7 @@
            metabase.upload.init}
    :uses #{analytics
            api
+           collections
            driver
            events
            legacy-mbql
@@ -1073,6 +1093,7 @@
            metabase.xrays.init}
    :uses #{analyze
            api
+           collections
            driver
            legacy-mbql
            lib
@@ -1269,6 +1290,7 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
+           collections
            config
            db
            legacy-mbql
@@ -1289,7 +1311,7 @@
   enterprise/query-reference-validation
   {:api  #{metabase-enterprise.query-reference-validation.api}
    :uses #{api
-           models
+           collections
            query-analysis
            request
            util}}
@@ -1336,6 +1358,7 @@
           metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
+           collections
            config
            db
            legacy-mbql
@@ -1378,6 +1401,7 @@
            metabase-enterprise.stale.init}
    :uses #{analytics
            api
+           collections
            embedding
            models
            premium-features

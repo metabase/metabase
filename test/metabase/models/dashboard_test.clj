@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
