@@ -8,9 +8,9 @@
 
 ;; TODO Perhaps we will prefer the FE just sending this explicitly instead?
 ;; For now, it is not doing this, so we infer it.
-(mu/defn scope-type
+(mu/defn scope-type :- :keyword
   "Classify the scope, useful for switching on in logic and templates."
-  [scope :- ::types/scope.raw] :- :keyword
+  [scope :- ::types/scope.raw]
   (condp #(contains? %2 %1) scope
     :dashcard-id  :dashcard
     :dashboard-id :dashboard
@@ -38,7 +38,7 @@
               :database-id (:database_id card)}
              scope))))
 
-(defn hydrate-scope* [scope]
+(defn- hydrate-scope* [scope]
   (cond-> scope
     (:dashcard-id scope) hydrate-from-dashcard
 
@@ -55,16 +55,16 @@
     (:table-id scope)
     (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))
 
-(mu/defn hydrate
+(mu/defn hydrate :- ::types/scope.hydrated
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
-  [scope :- ::types/scope.raw] :- ::types/scope.hydrated
+  [scope :- ::types/scope.raw]
   (u/strip-nils
    ;; Rerun until it converges.
    (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope))))))
 
-(mu/defn normalize
+(mu/defn normalize :- ::types/scope.normalized
   "Remove all the implicit keys that can be derived from others. Useful to form stable keys. Idempotent."
-  [scope :- ::types/scope.raw] :- ::types/scope.normalized
+  [scope :- ::types/scope.raw]
   (cond-> scope
     (:table-id scope)     (dissoc :database-id)
     (:card-id scope)      (-> (dissoc :table-id)
