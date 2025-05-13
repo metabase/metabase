@@ -25,20 +25,21 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { isNotNull } from "metabase/lib/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { Flex } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
-import type { DrillThroughQuestionProps } from "../../InteractiveQuestion";
-import type { EmbedDisplayParams } from "../../StaticDashboard";
-import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
+import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
+import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
+
 import {
   type InteractiveDashboardContextType,
   InteractiveDashboardProvider,
-} from "../context";
-import { useCommonDashboardParams } from "../use-common-dashboard-params";
+} from "./context";
+import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 export type SdkDashboardProps = {
   /**
@@ -234,7 +235,7 @@ export const SdkDashboard = withPublicComponentWrapper(
  * @param props
  */
 
-export const EditableDashboard = (props: SdkDashboardProps) => (
+export const EditableDashboard = (props: Omit<SdkDashboardProps, "mode">) => (
   <SdkDashboard mode="editable" {...props} />
 );
 
@@ -244,9 +245,9 @@ export const EditableDashboard = (props: SdkDashboardProps) => (
  * @function
  * @category InteractiveDashboard
  */
-export const InteractiveDashboard = (props: SdkDashboardProps) => (
-  <SdkDashboard mode="interactive" {...props} />
-);
+export const InteractiveDashboard = (
+  props: Omit<SdkDashboardProps, "mode">,
+) => <SdkDashboard mode="interactive" {...props} />;
 
 /**
  * A lightweight dashboard component.
@@ -254,6 +255,6 @@ export const InteractiveDashboard = (props: SdkDashboardProps) => (
  * @function
  * @category StaticDashboard
  */
-export const StaticDashboard = (props: SdkDashboardProps) => (
+export const StaticDashboard = (props: Omit<SdkDashboardProps, "mode">) => (
   <SdkDashboard mode="static" {...props} />
 );

@@ -13,7 +13,7 @@ const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 const darkTheme = storybookThemes.dark;
 
 export default {
-  title: "EmbeddingSDK/SdkDashboard/Editable",
+  title: "EmbeddingSDK/Dashboard/Editable",
   component: SdkDashboard,
   parameters: {
     layout: "fullscreen",
@@ -27,7 +27,7 @@ export const Default = {
   render(args: SdkDashboardProps) {
     return (
       <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-        <SdkDashboard {...args} />
+        <SdkDashboard mode="editable" {...args} />
       </MetabaseProvider>
     );
   },

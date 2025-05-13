@@ -100,13 +100,15 @@ const textDashcard2 = createMockTextDashboardCard({
 
 const dashcards = [tableDashcard, textDashcard, textDashcard2];
 
+export type SetupSdkDashboardProps = {
+  props?: Partial<SdkDashboardProps>;
+  providerProps?: Partial<MetabaseProviderProps>;
+};
+
 export const setupSdkDashboard = async ({
   props,
   providerProps,
-}: {
-  props?: Partial<SdkDashboardProps>;
-  providerProps?: Partial<MetabaseProviderProps>;
-} = {}) => {
+}: SetupSdkDashboardProps = {}) => {
   const database = createSampleDatabase();
 
   const dashboardId = props?.dashboardId || TEST_DASHBOARD_ID;

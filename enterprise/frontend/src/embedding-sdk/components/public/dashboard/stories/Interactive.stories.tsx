@@ -1,6 +1,5 @@
 import type { StoryFn } from "@storybook/react";
 
-import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
@@ -8,12 +7,13 @@ import {
 } from "embedding-sdk/test/storybook-id-args";
 import { Stack } from "metabase/ui";
 
-import { InteractiveDashboard } from "../SdkDashboard";
+import { InteractiveQuestion } from "../../InteractiveQuestion";
+import { InteractiveDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
-  title: "EmbeddingSDK/InteractiveDashboard",
+  title: "EmbeddingSDK/Dashboard/Interactive",
   component: InteractiveDashboard,
   parameters: {
     layout: "fullscreen",
@@ -24,7 +24,7 @@ export default {
   },
 };
 
-const Template: StoryFn = (args) => {
+const Template: StoryFn<SdkDashboardProps> = (args) => {
   return <InteractiveDashboard {...args} />;
 };
 

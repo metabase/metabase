@@ -3,16 +3,20 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-import { TEST_DASHBOARD_ID, setupSdkDashboard } from "./setup";
-const setup = async ({ props, providerProps } = {}) => {
-  return await setupSdkDashboard({
+import {
+  type SetupSdkDashboardProps,
+  TEST_DASHBOARD_ID,
+  setupSdkDashboard,
+} from "./setup";
+
+const setup = async ({ props, providerProps }: SetupSdkDashboardProps = {}) =>
+  setupSdkDashboard({
     props: {
       mode: "editable",
       ...props,
     },
     providerProps,
   });
-};
 
 describe("EditableDashboard", () => {
   it("should render dashboard cards", async () => {

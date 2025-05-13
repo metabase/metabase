@@ -1,18 +1,17 @@
 import type { StoryFn } from "@storybook/react";
 
-import { StaticDashboard } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 
-import type { StaticDashboardProps } from "../../StaticDashboard/StaticDashboard";
+import { type SdkDashboardProps, StaticDashboard } from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
-  title: "EmbeddingSDK/StaticDashboard",
+  title: "EmbeddingSDK/Dashboard/Static",
   component: StaticDashboard,
   parameters: {
     layout: "fullscreen",
@@ -23,7 +22,7 @@ export default {
   },
 };
 
-const Template: StoryFn<StaticDashboardProps> = (args) => {
+const Template: StoryFn<SdkDashboardProps> = (args) => {
   return <StaticDashboard {...args} />;
 };
 
