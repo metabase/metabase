@@ -2,7 +2,6 @@
   "Tests for /api/util"
   (:require
    [clojure.test :refer :all]
-   [metabase.eid-translation.util :as eid-translation.util]
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
@@ -49,19 +48,6 @@
              (mt/user-http-request :rasta :get 403 "util/diagnostic_info/connection_pool_info"))))
     (testing "Call successful for superusers"
       (is (map? (mt/user-http-request :crowberto :get 200 "util/diagnostic_info/connection_pool_info"))))))
-
-(deftest ^:parallel entity-id-translation-test
-  (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
-    (is (= {card-eid {:id card-id :type "card" :status "ok"}}
-           (-> (mt/user-http-request :crowberto :post 200
-                                     "util/entity_id"
-                                     {:entity_ids {"card" [card-eid]}})
-               :entity_ids
-               (update-keys name))))
-
-    (testing "error message contains allowed models"
-      (is (= (set (map name (keys @#'eid-translation.util/api-name->model)))
-             (set (:allowed-models (mt/user-http-request :crowberto :post 400 "util/entity_id" {:entity_ids {"Card" [card-eid]}}))))))))
 
 (deftest ^:parallel openapi-test
   (testing "GET /api/util/openapi"

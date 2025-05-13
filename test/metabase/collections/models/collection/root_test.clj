@@ -1,8 +1,8 @@
-(ns metabase.models.collection.root-test
+(ns metabase.collections.models.collection.root-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models.collection.root :as collection.root]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]))
 

@@ -1,14 +1,14 @@
-(ns metabase.moderation-test
+(ns metabase.content-verification.impl-test
   (:require
    [clojure.test :refer :all]
-   [metabase.moderation]
+   [metabase.content-verification.impl]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(comment metabase.moderation/keep-me)
+(comment metabase.content-verification.impl/keep-me)
 
-(deftest hydrate-test
+(deftest ^:parallel hydrate-test
   (mt/with-temp [:model/Card card {}]
     (is (=? [nil
              {:id (u/the-id card)}]

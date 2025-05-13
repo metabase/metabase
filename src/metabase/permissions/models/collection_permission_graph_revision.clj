@@ -1,4 +1,4 @@
-(ns metabase.models.collection-permission-graph-revision
+(ns metabase.permissions.models.collection-permission-graph-revision
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

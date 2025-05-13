@@ -17,9 +17,9 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
-   [metabase.models.collection :as collection]
-   [metabase.models.moderation-review :as moderation-review]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1036,7 +1036,7 @@
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
     ;; rewriting a few tests.
     (finally
-      (when (and (:metabase.models.collection.root/is-root? collection)
+      (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
         (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
