@@ -43,29 +43,13 @@
        :middleware {:disable-remaps? true}}
       rff))))
 
-(def HumanReadableRemappingMap
-  "Schema for the map of actual value -> human-readable value. Cannot be empty."
-  [:map-of {:min 1} :any [:maybe :string]])
-
-(mu/defn human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
-  "Get the human readable (internally mapped) values of the field specified by `field-id`."
-  [field-id :- ms/PositiveInt]
-  (let [{orig :values, remapped :human_readable_values}
-        (t2/select-one [:model/FieldValues :values :human_readable_values]
-                       {:where [:and
-                                [:= :type "full"]
-                                [:= :field_id field-id]
-                                [:not= :human_readable_values nil]
-                                [:not= :human_readable_values "{}"]]})]
-    (some->> (seq remapped) (zipmap orig))))
-
 (defn search-values-query
   "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query
   generated differs slightly based on whether the two Fields are the same Field.
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
   [field search-field value limit]
-  (if-let [value->human-readable-value (human-readable-remapping-map (u/the-id field))]
+  (if-let [value->human-readable-value (schema.metadata-queries/human-readable-remapping-map (u/the-id field))]
     (let [query (some-> value u/lower-case-en)]
       (cond->> value->human-readable-value
         value (filter #(str/includes? (-> % val u/lower-case-en) query))

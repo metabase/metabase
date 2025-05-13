@@ -660,7 +660,8 @@
 
   parameters
   {:api  #{metabase.parameters.dashboard
-           metabase.parameters.field}
+           metabase.parameters.field
+           metabase.parameters.init}
    :uses #{api
            db
            legacy-mbql
@@ -911,7 +912,7 @@
 
   schema
   {:api  #{metabase.schema.metadata-queries}
-   :uses #{}}
+   :uses #{util}}
 
   search
   {:api #{metabase.search.api

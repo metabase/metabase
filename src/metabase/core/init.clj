@@ -27,6 +27,7 @@
    [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.parameters.init]
    [metabase.premium-features.init]
    [metabase.product-feedback.init]
    [metabase.public-sharing.init]
