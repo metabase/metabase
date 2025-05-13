@@ -2,7 +2,6 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
@@ -197,7 +196,6 @@ export function findColumnSlotForCartesianChart(
     "display" | "columns" | "settings"
   >,
   column: DatasetColumn,
-  dataset: Dataset,
 ) {
   if (display === "scatter") {
     const metrics = settings["graph.metrics"] ?? [];
@@ -216,29 +214,25 @@ export function findColumnSlotForCartesianChart(
     }
   } else {
     const ownDimensions = settings["graph.dimensions"] ?? [];
-    if (
-      ownDimensions.length === 0 ||
-      isCompatibleWithCartesianChart({ settings, columns }, dataset)
-    ) {
-      if (isDimension(column) && !isMetric(column)) {
-        if (ownDimensions.length === 0) {
-          return "graph.dimensions";
-        } else {
-          const dimensionColumns = ownDimensions
-            .map((name) => columns.find((col) => col.name === name))
-            .filter(isNotNull);
-          const isCompatible = dimensionColumns.some((col) => {
-            if (isDate(col)) {
-              return isDate(column);
-            } else {
-              return col.id === column.id;
-            }
-          });
-          return isCompatible ? "graph.dimensions" : undefined;
-        }
-      } else if (isMetric(column)) {
-        return "graph.metrics";
+
+    if (isDimension(column) && !isMetric(column)) {
+      if (ownDimensions.length === 0) {
+        return "graph.dimensions";
+      } else {
+        const dimensionColumns = ownDimensions
+          .map((name) => columns.find((col) => col.name === name))
+          .filter(isNotNull);
+        const isCompatible = dimensionColumns.some((col) => {
+          if (isDate(col)) {
+            return isDate(column);
+          } else {
+            return col.id === column.id;
+          }
+        });
+        return isCompatible ? "graph.dimensions" : undefined;
       }
+    } else if (isMetric(column)) {
+      return "graph.metrics";
     }
   }
 }
@@ -254,10 +248,9 @@ export function addColumnToCartesianChart(
     | VisualizerVizDefinitionWithColumns,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
-  dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForCartesianChart(state, column, dataset);
+  const slot = findColumnSlotForCartesianChart(state, column);
   if (slot === "graph.dimensions") {
     addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
   } else if (slot === "graph.metrics") {
@@ -413,43 +406,6 @@ export function maybeImportDimensionsFromOtherDataSources(
   });
 }
 
-export function isCompatibleWithCartesianChart(
-  {
-    settings,
-    columns,
-  }: Pick<VisualizerVizDefinitionWithColumns, "settings" | "columns">,
-  { data }: Dataset,
-) {
-  const ownDimensions = settings["graph.dimensions"] ?? [];
-  const ownDimensionColumns = columns.filter((col) =>
-    ownDimensions.includes(col.name),
-  );
-  const [ownTimeDimensions, ownOtherDimensions] = _.partition(
-    ownDimensionColumns.filter((col) => !isPivotGroupColumn(col)),
-    (col) => isDate(col),
-  );
-
-  const dimensionColumns = data.cols.filter(
-    (col) => isDimension(col) && !isMetric(col),
-  );
-  const [timeDimensions, otherDimensions] = _.partition(
-    dimensionColumns.filter((col) => !isPivotGroupColumn(col)),
-    (col) => isDate(col),
-  );
-
-  let isCompatible = false;
-  if (ownTimeDimensions.length > 0) {
-    isCompatible = timeDimensions.some((col) => isDate(col));
-  }
-  if (ownOtherDimensions.length > 0) {
-    isCompatible = otherDimensions.every((col) =>
-      ownOtherDimensions.some((ownCol) => ownCol.id === col.id),
-    );
-  }
-
-  return isCompatible;
-}
-
 export function combineWithCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
   dataset: Dataset,
@@ -463,11 +419,7 @@ export function combineWithCartesianChart(
   );
 
   metrics.forEach((column) => {
-    const isCompatible = !!findColumnSlotForCartesianChart(
-      state,
-      column,
-      dataset,
-    );
+    const isCompatible = !!findColumnSlotForCartesianChart(state, column);
     if (isCompatible) {
       const columnRef = createVisualizerColumnReference(
         dataSource,
@@ -479,11 +431,7 @@ export function combineWithCartesianChart(
   });
 
   dimensions.forEach((column) => {
-    const isCompatible = !!findColumnSlotForCartesianChart(
-      state,
-      column,
-      dataset,
-    );
+    const isCompatible = !!findColumnSlotForCartesianChart(state, column);
     if (isCompatible) {
       const columnRef = createVisualizerColumnReference(
         dataSource,

@@ -55,12 +55,6 @@ describe("cartesian", () => {
       column2Ref,
     ]);
 
-    const dataset = createMockDataset({
-      data: {
-        cols: [column1, column2, column3],
-      },
-    });
-
     it("should add a metric column", () => {
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
@@ -69,13 +63,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(
-        state,
-        column2,
-        column2Ref,
-        dataset,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, column2, column2Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
@@ -98,13 +86,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(
-        state,
-        column1,
-        column1Ref,
-        dataset,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, column1, column1Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -137,13 +119,7 @@ describe("cartesian", () => {
         },
       };
 
-      addColumnToCartesianChart(
-        state,
-        column1,
-        column1Ref,
-        dataset,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, column1, column1Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -168,13 +144,7 @@ describe("cartesian", () => {
         display: "bar",
       };
 
-      addColumnToCartesianChart(
-        state,
-        column4,
-        column4Ref,
-        dataset,
-        dataSource,
-      );
+      addColumnToCartesianChart(state, column4, column4Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual([]);
       expect(state.columnValuesMapping).toEqual({});
@@ -195,7 +165,6 @@ describe("cartesian", () => {
           state,
           copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
-          dataset,
           dataSource,
         );
         expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -207,7 +176,6 @@ describe("cartesian", () => {
           state,
           copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
-          dataset,
           dataSource,
         );
         expect(state.columns.map((c) => c.name)).toEqual([
@@ -228,7 +196,6 @@ describe("cartesian", () => {
           state,
           copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
-          dataset,
           dataSource,
         );
         expect(state.columns.map((c) => c.name)).toEqual([

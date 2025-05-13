@@ -47,7 +47,6 @@ import {
   addColumnToCartesianChart,
   cartesianDropHandler,
   combineWithCartesianChart,
-  isCompatibleWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
   removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
@@ -354,14 +353,7 @@ const visualizerSlice = createSlice({
       }
 
       if (isCartesianChart(state.display)) {
-        addColumnToCartesianChart(
-          state,
-          column,
-          columnRef,
-          // Prevents "Type instantiation is excessively deep" error
-          dataset as Dataset,
-          dataSource,
-        );
+        addColumnToCartesianChart(state, column, columnRef, dataSource);
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
@@ -577,10 +569,7 @@ function maybeCombineDataset(
     return;
   }
 
-  if (
-    isCartesianChart(state.display) &&
-    isCompatibleWithCartesianChart(state, dataset)
-  ) {
+  if (isCartesianChart(state.display)) {
     combineWithCartesianChart(state, dataset, dataSource);
   }
 

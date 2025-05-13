@@ -303,11 +303,10 @@ export const getColumnCompatibilityCheckFn = createSelector(
       return () => true;
     }
     if (isCartesianChart(display)) {
-      return (column: DatasetColumn, dataset: Dataset) =>
+      return (column: DatasetColumn) =>
         !!findColumnSlotForCartesianChart(
           { display, columns, settings },
           column,
-          dataset,
         );
     }
     if (display === "pie") {
