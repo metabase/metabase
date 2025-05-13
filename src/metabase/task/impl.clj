@@ -25,14 +25,14 @@
    [metabase.classloader.core :as classloader]
    [metabase.db :as mdb]
    [metabase.task.bootstrap]
-   [metabase.task.prometheus :as task.prometheus]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobPersistenceException
-               ObjectAlreadyExistsException Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobListener
+               JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey
+               TriggerListener)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,11 +125,7 @@
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         ;; Register Prometheus listeners
-        (let [listener-manager (.getListenerManager new-scheduler)]
-          (.addJobListener listener-manager
-                           (task.prometheus/create-job-execution-listener))
-          (.addTriggerListener listener-manager
-                               (task.prometheus/create-trigger-listener new-scheduler)))
+
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
@@ -359,3 +355,21 @@
   `(jobs/defjob ~jtype ~args
      (log/with-context {:quartz-job-type (quote ~jtype)}
        ~@body)))
+
+(defn add-job-listener!
+  "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will
+  be called turing Job activation."
+  [^JobListener job-listener]
+  (when-let [scheduler (scheduler)]
+    (.. scheduler
+        getListenerManager
+        (addJobListener job-listener))))
+
+(defn add-trigger-listener!
+  "Add a [Quartz Trigger listener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will
+  be called turing trigger activation."
+  [^TriggerListener trigger-listener]
+  (when-let [scheduler (scheduler)]
+    (.. scheduler
+        getListenerManager
+        (addTriggerListener trigger-listener))))

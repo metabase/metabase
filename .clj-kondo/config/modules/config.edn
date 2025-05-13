@@ -142,6 +142,7 @@
            revisions
            sample-data
            search
+           secrets
            server
            session
            settings
@@ -391,6 +392,7 @@
            premium-features
            pulse
            query-processor
+           secrets
            settings
            sync
            system
@@ -592,7 +594,6 @@
           metabase.models.query
           metabase.models.query.permissions
           metabase.models.resolution
-          metabase.models.secret
           metabase.models.serialization
           metabase.models.table
           metabase.models.user
@@ -617,6 +618,7 @@
            notification
            permissions
            premium-features
+           secrets
            settings
            public-sharing
            pulse
@@ -893,6 +895,10 @@
            task
            util}}
 
+  secrets
+  {:api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}}
+
   segments
   {:api  #{metabase.segments.api}
    :uses #{api
@@ -1026,8 +1032,7 @@
   task
   {:api #{metabase.task.bootstrap
           metabase.task.core}
-   :uses #{analytics
-           classloader
+   :uses #{classloader
            db
            util}}
 
@@ -1192,9 +1197,9 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api
-           enterprise/metabot-v3
-           premium-features}}
+  :uses #{api
+          premium-features
+          enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}

@@ -8,7 +8,9 @@
 (p/import-vars
  [metabase.task.impl
   add-job!
+  add-job-listener!
   add-trigger!
+  add-trigger-listener!
   defjob
   delete-all-triggers-of-job!
   delete-task!
