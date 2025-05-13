@@ -104,6 +104,8 @@ describe("scenarios > admin > localization > content translation of column names
                   "graph.dimensions": [columnX],
                   "graph.metrics": [columnY],
                 },
+                // TODO: So the visualization has fewer data points, let's
+                // restrict the range somehow
               }).then(({ body: { id } }) => {
                 cy.request("PUT", `/api/card/${id}`, {
                   enable_embedding: true,
@@ -122,6 +124,7 @@ describe("scenarios > admin > localization > content translation of column names
 
             const assertColumnNamesAreTranslated = () =>
               columnsInChart.forEach((row) => {
+                // TODO: Somehow the column names are not getting translated anymore
                 console.log(
                   "Expecting to see translated string row.msgstr",
                   row.msgstr,
