@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.scope
   (:require
+   [macaw.util :as u]
    [metabase-enterprise.data-editing.types :as types]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -9,12 +10,19 @@
 (mu/defn scope-type
   "Classify the scope, useful for switching on in logic and templates."
   [scope :- ::types/scope.raw] :- :keyword
-  (condp contains? scope
+  (condp #(contains? %2 %1) scope
     :dashcard-id :dashcard
     :dashboard-id :dashboard
     :card-id :card
-    :table-id :table
-    :webhook-id :webhook))
+    :webhook-id :webhook
+    :table-id :table))
+
+(defn- hydrate-from-dashcard-id* [scope]
+  (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
+    scope
+    (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
+                                                        (:dashcard-id scope))]
+      (merge {:card-id card_id, :dashboard-id dashboard_id} scope))))
 
 (defn- hydrate-from-card-id* [scope]
   (if (and (contains? scope :collection-id) (contains? scope :table-id))
@@ -23,16 +31,11 @@
           source-table (-> card :dataset_query :query :source-table)
           table-id     (when (pos-int? source-table)
                          source-table)]
-      (-> scope
-          (update :table-id #(or % table-id))
-          (update :collection-id #(or % (:collection_id card)))))))
+      (merge {:table-id table-id, :collection-id (:collection_id card)} scope))))
 
 (defn hydrate-scope* [scope]
   (cond-> scope
-    (:dashcard-id scope)
-    (update :dashboard-id #(or % (t2/select-one-fn :dashboard_id
-                                                   [:model/DashboardCard :dashboard_id]
-                                                   (:dashcard-id scope))))
+    (:dashcard-id scope) hydrate-from-dashcard-id*
 
     (:dashboard-id scope)
     (update :collection-id #(or % (t2/select-one-fn :collection_id
@@ -48,30 +51,20 @@
     (:table-id scope)
     (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))
 
-(mu/defn hydrate-scope
+(mu/defn hydrate
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
   [scope :- ::types/scope.raw] :- ::types/scope.hydrated
-  ;; Rerun until it converges.
-  (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope)))))
+  (u/strip-nils
+   ;; Rerun until it converges.
+   (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope))))))
 
-(mu/defn normalize-scope
+(mu/defn normalize
   "Remove all the implicit keys that can be derived from others. Useful to form stable keys. Idempotent."
   [scope :- ::types/scope.raw] :- ::types/scope.normalized
   (cond-> scope
     (:table-id scope)     (dissoc :database-id)
     (:card-id scope)      (-> (dissoc :table-id)
                               (dissoc :collection-id))
+    (:dashboard-id scope) (dissoc :collection-id)
     (:dashcard-id scope)  (-> (dissoc :card-id)
-                              (dissoc :dashboard-id))
-    (:dashboard_id scope) (dissoc :collection-id)))
-
-(comment
-  (hydrate-scope {:dashcard-id 1})
-  (hydrate-scope {:card-id 1})
-
-  (normalize-scope (hydrate-scope {:dashcard-id 1}))
-
-  (normalize-scope {:dashboard-id 1})
-  (normalize-scope {:dashboard-id 1 :dashcard-id 2 :card-id 3 :table-id 4 :database-id 5})
-  (normalize-scope {:card-id 3 :table-id 4 :database-id 5})
-  (normalize-scope {:table-id 4 :database-id 5}))
+                              (dissoc :dashboard-id))))

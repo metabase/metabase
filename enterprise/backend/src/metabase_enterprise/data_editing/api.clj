@@ -318,19 +318,6 @@
         provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
     (actions/execute-action! action (merge row-params provided))))
 
-;; These don't belong under /data-editing, but for now we have them nested here to avoid adding a new premium feature.
-
-(api.macros/defendpoint :post "/actions/v2/:action-id/describe" :- [:map
-                                                                    ;;
-                                                                    ]
-  "Can optionally take arguments, in order to partially apply them."
-  [{:keys [action-id]} :- [:map [:action-id :string]]
-   {:keys []}
-   {:keys [scope input]} :- [:map
-                             [:scope ::types/scope.raw]
-                            ;; this spec is going to come from the action (and depend on mapping)
-                             [:input :map]]])
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
