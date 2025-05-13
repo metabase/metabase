@@ -44,7 +44,7 @@ registerVisualization(Table);
 registerVisualization(BarChart);
 
 export default {
-  title: "App/Embed/PublicOrEmbeddedDashboard",
+  title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
   decorators: [
     ReduxDecorator,
