@@ -125,14 +125,10 @@ export function findColumnSlotForFunnel(
     "display" | "columns" | "settings"
   >,
   column: DatasetColumn,
-  dataset: Dataset,
 ) {
   const isEmpty = columns.length === 0;
 
-  if (
-    (isEmpty || isScalarFunnel({ display, settings })) &&
-    canCombineCardWithFunnel(dataset)
-  ) {
+  if ((isEmpty || isScalarFunnel({ display, settings })) && isNumeric(column)) {
     // HACK: not really sure about this
     return "scalar_funnel";
   } else {
@@ -192,7 +188,7 @@ export function addColumnToFunnel(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForFunnel(state, column, dataset);
+  const slot = findColumnSlotForFunnel(state, column);
   if (!slot) {
     return;
   }
