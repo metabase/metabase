@@ -7,7 +7,8 @@ import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
   getVisualizationType,
-  getVisualizerPrimaryColumn,
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import type { VisualizerCardDataSource } from "metabase-types/api";
 
@@ -30,7 +31,8 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { setSwapAffordanceVisible } = useVisualizerUi();
 
   const currentDisplay = useSelector(getVisualizationType);
-  const primaryColumn = useSelector(getVisualizerPrimaryColumn);
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
 
   const { data } = useGetCardQuery({ id: item.cardId });
 
@@ -47,15 +49,16 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
 
     return getIsCompatible({
       currentDataset: {
-        display: currentDisplay,
-        dimensions: primaryColumn ? [primaryColumn] : [],
+        display: currentDisplay ?? null,
+        columns,
+        settings,
       },
       targetDataset: {
         display,
         fields,
       },
     });
-  }, [metadata, primaryColumn, currentDisplay]);
+  }, [columns, currentDisplay, metadata, settings]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

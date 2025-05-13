@@ -1,5 +1,7 @@
+import _ from "underscore";
+
 import { isCartesianChart } from "metabase/visualizations";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, Field } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { findColumnSlotForCartesianChart } from "./cartesian";
@@ -39,5 +41,37 @@ export function findSlotForColumn(
     return compatFn(state, column);
   } else {
     return undefined;
+  }
+}
+
+export function groupColumnsBySuitableVizSettings(
+  state: Pick<
+    VisualizerVizDefinitionWithColumns,
+    "display" | "columns" | "settings"
+  >,
+  columns: DatasetColumn[] | Field[],
+) {
+  const { display } = state;
+  if (!display) {
+    return { "*": columns };
+  }
+
+  const compatFn =
+    vizMappingFn[isCartesianChart(display) ? "cartesian" : display];
+
+  if (compatFn) {
+    const mapping = columns
+      .map((column) => ({
+        column,
+        // TODO Fix type casting
+        slot: compatFn(state, column as DatasetColumn),
+      }))
+      .filter((mapping) => !!mapping.slot);
+    const groupedMappings = _.groupBy(mapping, (m) => m.slot as string);
+    return _.mapObject(groupedMappings, (mappings) =>
+      mappings.map((m) => m.column),
+    );
+  } else {
+    return {};
   }
 }

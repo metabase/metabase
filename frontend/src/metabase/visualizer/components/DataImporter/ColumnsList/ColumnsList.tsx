@@ -39,9 +39,7 @@ export const ColumnsList = (props: ColumnListProps) => {
   const { collapsedDataSources, toggleDataSource } = props;
 
   const display = useSelector(getVisualizationType) ?? null;
-  const columns = useSelector(getVisualizerDatasetColumns).filter(
-    (col) => !isPivotGroupColumn(col),
-  );
+  const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
