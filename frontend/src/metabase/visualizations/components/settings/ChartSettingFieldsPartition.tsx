@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { splice } from "icepick";
 import { useMemo } from "react";
 import {
   Draggable,
@@ -20,8 +19,10 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
-  ColumnNameColumnSplitSetting,
+  ColumnNameAndBinning,
   DatasetColumn,
+  FieldReference,
+  PivotTableColumnSplitSetting,
 } from "metabase-types/api";
 
 import { ColumnItem } from "./ColumnItem";
@@ -64,7 +65,7 @@ const AddBreakoutPopover = ({
           breakout={undefined}
           breakoutIndex={undefined}
           onAddBreakout={onAddBreakout}
-          onUpdateBreakoutColumn={() => {}}
+          onUpdateBreakoutColumn={() => { }}
           onClose={close}
         />
       </Popover.Dropdown>
@@ -114,30 +115,33 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
           onClose={close}
           allowCustomExpressions={false}
           allowMetrics={false}
-          onQueryChange={() => {}}
+          onQueryChange={() => { }}
         />
       </Popover.Dropdown>
     </Popover>
   );
 };
 
-const columnMove = (columns: string[], from: number, to: number) => {
-  const columnCopy = [...columns];
-  columnCopy.splice(to, 0, columnCopy.splice(from, 1)[0]);
-  return columnCopy;
+type PartitionedColumn = string | ColumnNameAndBinning | (FieldReference | null);
+
+const columnMove = (columns: PartitionedColumn[], from: number, to: number): PartitionedColumn[] => {
+  const copy = [...columns];
+  const [moved] = copy.splice(from, 1);
+  copy.splice(to, 0, moved);
+  return copy;
 };
 
-const columnRemove = (columns: string[], from: number) => {
-  return splice(columns, from, 1);
+const columnRemove = (columns: PartitionedColumn[], from: number): PartitionedColumn[] => {
+  return [...columns.slice(0, from), ...columns.slice(from + 1)];
 };
 
-const columnAdd = (columns: string[], to: number, column: string) => {
-  return splice(columns, to, 0, column);
+const columnAdd = (columns: PartitionedColumn[], to: number, column: PartitionedColumn): PartitionedColumn[] => {
+  return [...columns.slice(0, to), column, ...columns.slice(to)];
 };
 
 type ChartSettingFieldPartitionProps = {
-  value: ColumnNameColumnSplitSetting;
-  onChange: (value: ColumnNameColumnSplitSetting) => void;
+  value: PivotTableColumnSplitSetting;
+  onChange: (value: PivotTableColumnSplitSetting) => void;
   onShowWidget: (
     widget: {
       id: string;
@@ -164,6 +168,12 @@ export const ChartSettingFieldsPartition = ({
   columns,
   canEditColumns,
 }: ChartSettingFieldPartitionProps) => {
+  const breakoutableColumns = useMemo(() => {
+    Lib.breakoutableColumns(question.query(), -1);
+  },
+    [question]
+  );
+
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -182,7 +192,7 @@ export const ChartSettingFieldsPartition = ({
   };
 
   const getPartitionType = (
-    partitionName: keyof ColumnNameColumnSplitSetting,
+    partitionName: keyof PivotTableColumnSplitSetting,
   ) => {
     switch (partitionName) {
       case "rows":
@@ -207,25 +217,25 @@ export const ChartSettingFieldsPartition = ({
       onChange({
         ...value,
         [sourcePartition]: columnMove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
+          value[sourcePartition as keyof PivotTableColumnSplitSetting],
           sourceIndex,
           destinationIndex,
         ),
       });
     } else if (sourcePartition !== destinationPartition) {
       const column =
-        value[sourcePartition as keyof ColumnNameColumnSplitSetting][
-          sourceIndex
+        value[sourcePartition as keyof PivotTableColumnSplitSetting][
+        sourceIndex
         ];
 
       onChange({
         ...value,
         [sourcePartition]: columnRemove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
+          value[sourcePartition as keyof PivotTableColumnSplitSetting],
           sourceIndex,
         ),
         [destinationPartition]: columnAdd(
-          value[destinationPartition as keyof ColumnNameColumnSplitSetting],
+          value[destinationPartition as keyof PivotTableColumnSplitSetting],
           destinationIndex,
           column,
         ),
@@ -234,31 +244,40 @@ export const ChartSettingFieldsPartition = ({
   };
 
   const updatedValue = useMemo(
-    () =>
-      _.mapObject(value || {}, (columnNames) =>
-        columnNames
+    () => {
+      return _.mapObject(value || {}, (columnNames: string[] | ColumnNameAndBinning[]) => {
+        return columnNames
           .map((columnName) => columns.find((col) => col.name === columnName))
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
-      ),
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null);
+      }
+      );
+    },
     [columns, value],
   );
 
   const onAddBreakout = (
-    partition: keyof ColumnNameColumnSplitSetting,
+    partition: keyof PivotTableColumnSplitSetting,
     column: Lib.ColumnMetadata,
   ) => {
+    const binning = Lib.binning(column);
+    const binningInfo = binning ? Lib.displayInfo(query, 0, binning) : null;
+    const bucket = Lib.temporalBucket(column);
+    const bucketName = bucket ? Lib.displayInfo(query, 0, bucket).shortName : null;
     onChange({
       ...value,
       [partition]: columnAdd(
         value[partition],
         -1,
-        Lib.displayInfo(question.query(), -1, column).name,
+        {
+          name: Lib.displayInfo(question.query(), -1, column).name,
+          binning: binningInfo || bucketName,
+        }
       ),
     });
   };
 
   const onRemoveBreakout = (
-    partition: keyof ColumnNameColumnSplitSetting,
+    partition: keyof PivotTableColumnSplitSetting,
     index: number,
   ) => {
     onChange({
@@ -305,7 +324,6 @@ export const ChartSettingFieldsPartition = ({
                 >
                   <Column
                     onEditFormatting={handleEditFormatting}
-                    //onRemove={(col) => onRemoveBreakout(partitionName, col)}
                     column={updatedColumns[rubric.source.index]}
                     title={getColumnTitle(updatedColumns[rubric.source.index])}
                   />
@@ -338,7 +356,7 @@ export const ChartSettingFieldsPartition = ({
                   ) : (
                     updatedColumns.map((col, index) => (
                       <Draggable
-                        key={`draggable-${col.name}`}
+                        key={`draggable-${col.name}-${index}`}
                         draggableId={`draggable-${col.name}`}
                         index={index}
                       >
