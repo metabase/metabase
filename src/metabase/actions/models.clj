@@ -433,8 +433,7 @@
              distinct)
         table-by-id
         (when (seq table-ids)
-          (->> (t2/select :model/Table :id [:in table-ids])
-               (u/index-by :id)))
+          (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
         fields-by-id
         (when (seq table-ids)
           (->> (t2/select :model/Field :table_id [:in table-ids])
