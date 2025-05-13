@@ -13,7 +13,9 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const DIALECT = "postgres";
 const TABLE_NAME = "many_data_types";
 const QUESTION_NAME = "Test question";
+const QUESTION_2_NAME = "Test question 2";
 const DASHBOARD_NAME = "Test dashboard";
+const DASHBOARD_2_NAME = "Test dashboard 2";
 const PARAMETER_NAME = "Boolean parameter";
 const COLUMN_NAME = "Boolean";
 const FIELD_NAME = "boolean";
@@ -110,6 +112,35 @@ describe(
           .findByText(`${COLUMN_NAME} is true`)
           .should("be.visible");
         H.assertTableRowsCount(1);
+      });
+
+      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior", () => {
+        createQuestionAndDashboard({
+          dashboardName: DASHBOARD_NAME,
+          questionName: QUESTION_NAME,
+        }).then(({ dashboardId }) => {
+          createQuestionAndDashboard({
+            dashboardName: DASHBOARD_2_NAME,
+            questionName: QUESTION_2_NAME,
+          }).then(() => {
+            H.visitDashboard(dashboardId);
+          });
+        });
+
+        cy.log("set up click behavior");
+        H.editDashboard();
+        createAndMapParameter();
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+        H.sidebar().within(() => {
+          cy.findByText(COLUMN_NAME).click();
+          cy.findByText("Go to a custom destination").click();
+          cy.findByText("Dashboard").click();
+        });
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Dashboards").click();
+          cy.findByText(DASHBOARD_2_NAME).click();
+        });
       });
     });
 
