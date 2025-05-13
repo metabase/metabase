@@ -1,7 +1,8 @@
 (ns metabase-enterprise.tenants.api-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [metabase.test :as mt]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer [deftest testing is use-fixtures]]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn with-premium-feature-fixture [f]
   (mt/with-premium-features #{:tenants}
