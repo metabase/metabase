@@ -144,7 +144,10 @@ interface NotificationChannelsPickerProps {
   channels: ChannelApiResponse["channels"] | undefined;
   onChange: (newHandlers: NotificationHandler[]) => void;
   getInvalidRecipientText?: (domains: string) => string;
-  enableTemplates?: boolean;
+  enableTemplates?: {
+    email?: boolean;
+    slack?: boolean;
+  };
   templateContext?: Record<string, any>;
   onPreviewClick?: (channelType: NotificationChannelType) => void;
   isPreviewOpen?: boolean;
@@ -289,7 +292,7 @@ export const NotificationChannelsPicker = ({
   channels: nullableChannels,
   onChange,
   getInvalidRecipientText = defaultGetInvalidRecipientText,
-  enableTemplates = false,
+  enableTemplates,
   templateContext = {},
   onPreviewClick,
   isPreviewOpen,
@@ -640,7 +643,7 @@ export const NotificationChannelsPicker = ({
             invalidRecipientText={getInvalidRecipientText}
             onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
           />
-          {enableTemplates && (
+          {enableTemplates?.email && (
             <Stack
               mt="sm"
               className={cx({ [S.defaultTemplate]: !emailHandler.template })}
@@ -738,7 +741,7 @@ export const NotificationChannelsPicker = ({
             channelSpec={channels.slack as SlackChannelSpec}
             onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
           />
-          {enableTemplates && (
+          {enableTemplates?.slack && (
             <Stack
               mt="sm"
               className={cx({ [S.defaultTemplate]: !slackHandler.template })}
@@ -772,10 +775,12 @@ export const NotificationChannelsPicker = ({
                   placeholder={t`Your custom Markdown template`}
                   templateContext={templateContext["channel/slack"]}
                   defaultValue={getTemplateValue("slack", "body")}
+                  onChange={(value) => {
+                    handleTemplateBlur("slack", "body", value);
+                  }}
                   onBlur={(newValue) => {
                     handleTemplateBlur("slack", "body", newValue);
                   }}
-                  language="markdown"
                 />
               </Stack>
             </Stack>
