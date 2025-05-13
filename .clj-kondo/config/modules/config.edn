@@ -1799,6 +1799,10 @@
            settings
            util}}
 
+  enterprise/tenants
+  {:api #{}
+   :uses #{api util}}
+
   enterprise/upload-management
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.upload-management.api}

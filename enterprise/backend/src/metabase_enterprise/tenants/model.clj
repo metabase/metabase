@@ -6,10 +6,9 @@
 
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
 
-(defn name->slug [n]
-  (u/slugify n))
-
-(defn name-exists? [n]
+(defn name-exists?
+  "Given a tenant name, returns truthy if the name (or its slugified version) is already reserved."
+  [n]
   (t2/exists? :model/Tenant {:where [:or
                                      [:= :slug (u/slugify n)]
                                      [:= :name n]]}))
