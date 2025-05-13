@@ -308,6 +308,9 @@
   ;; 1. Runs (dev) (start!) for you
   ;; 2. This starts the repl too: just like the :nrepl alias below. (see [[user/-main]])
   ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
+  ;;
+  ;; To start it with hot code reloading, use:
+  ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev --watch
   :dev-start {:main-opts ["-m" "user"]
               :jvm-opts ["-Dmb.run.mode=dev"
                          "-Dmacaw.run.mode=dev"
@@ -869,13 +872,6 @@
   ;;    clj -X:dev:test:test/kondo
   :test/kondo
   {:exec-args {:only [".clj-kondo/test"]}}
-
-  ;; Watch and Reload clojure code. Will not start a repl.
-  ;; Reccomended way to use this:
-  ;;   1) start the server with `clojure -M:dev:dev-start`
-  ;;   2) ./bin/mage start-watcher
-  :watch {:extra-paths "dev/src/watch"
-          :main-opts ["-m" "watch.watcher"]}
 
   ;; DB configs -- start DBs with:
 
