@@ -2,9 +2,16 @@
   (:require
    [metabase.config :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
+
+(defsetting version
+  "Metabase's version info"
+  :visibility :public
+  :setter     :none
+  :getter     (constantly config/mb-version-info)
+  :doc        false)
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
@@ -39,7 +46,7 @@
   :getter     (fn []
                 ;; site-uuid is stable, current-major lets the threshold randomize during each major revision. So they
                 ;; might be early one release, and then later the next.
-                (-> (public-settings/site-uuid) (str "-" (config/current-major-version)) hash (mod 100))))
+                (-> (system/site-uuid) (str "-" (config/current-major-version)) hash (mod 100))))
 
 (defn- prevent-upgrade?
   "On a major upgrade, we check the rollout threshold to indicate whether we should remove the latest release from the

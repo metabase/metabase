@@ -8,6 +8,7 @@
   (:require
    [metabase.activity-feed.init]
    [metabase.analytics.init]
+   [metabase.appearance.init]
    [metabase.audit-app.init]
    [metabase.bug-reporting.init]
    [metabase.cache.init]
@@ -32,6 +33,8 @@
    [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.query-analysis.init]
+   [metabase.query-processor.init]
+   [metabase.request.init]
    [metabase.revisions.init]
    [metabase.sample-data.init]
    [metabase.search.init]
@@ -40,6 +43,7 @@
    [metabase.settings.init]
    [metabase.sso.init]
    [metabase.sync.init]
+   [metabase.system.init]
    [metabase.task-history.init]
    [metabase.testing-api.init]
    [metabase.tiles.init]
@@ -47,6 +51,7 @@
    [metabase.user-key-value.init]
    [metabase.version.init]
    [metabase.view-log.init]
+   [metabase.warehouses.init]
    [metabase.xrays.init]))
 
 ;; load EE init code on system launch if it exists.

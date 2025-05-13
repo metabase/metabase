@@ -5,11 +5,12 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
    [metabase.config :as config]
+   [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.json :as json])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
@@ -209,9 +210,9 @@
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
-                                                         (json/encode {:applicationColors (public-settings/application-colors)
-                                                                       :startOfWeek (public-settings/start-of-week)
-                                                                       :customFormatting (public-settings/custom-formatting)
+                                                         (json/encode {:applicationColors (appearance/application-colors)
+                                                                       :startOfWeek (lib-be/start-of-week)
+                                                                       :customFormatting (appearance/custom-formatting)
                                                                        :tokenFeatures (premium-features/token-features)}))))]
     (-> response
         json/decode+kw
@@ -224,7 +225,7 @@
                      (.asString (js.engine/execute-fn-name context "row_chart"
                                                            (json/encode settings)
                                                            (json/encode data)
-                                                           (json/encode (public-settings/application-colors))
+                                                           (json/encode (appearance/application-colors))
                                                            (json/encode (premium-features/token-features)))))]
     (svg-string->bytes svg-string)))
 
@@ -246,7 +247,7 @@
     (let [js-res (js.engine/execute-fn-name context "progress"
                                             (json/encode {:value value :goal goal})
                                             (json/encode settings)
-                                            (json/encode (public-settings/application-colors))
+                                            (json/encode (appearance/application-colors))
                                             (json/encode (premium-features/token-features)))
           svg-string (.asString js-res)]
       (svg-string->bytes svg-string))))
