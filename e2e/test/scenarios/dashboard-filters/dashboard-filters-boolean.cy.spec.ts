@@ -51,7 +51,9 @@ describe(
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
         H.assertQueryBuilderRowCount(1);
-        H.filterWidget().findByText("true").should("be.visible");
+        H.queryBuilderFiltersPanel()
+          .findByText(`${COLUMN_NAME} is true`)
+          .should("be.visible");
       });
 
       it("should allow to use a 'Update dashboard filter' click behavior", () => {
@@ -115,42 +117,24 @@ describe(
       });
 
       it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a column", () => {
-        cy.log("setup target dashboard");
-        createQuestionAndDashboard({
-          dashboardName: DASHBOARD_NAME,
-          questionName: QUESTION_NAME,
-        }).then(({ dashboardId }) => {
-          H.visitDashboard(dashboardId);
-          H.editDashboard();
-          createAndMapParameter();
-          H.saveDashboard();
-        });
-
-        cy.log("set up click behavior");
-        createQuestionAndDashboard({
-          dashboardName: DASHBOARD_2_NAME,
-          questionName: QUESTION_2_NAME,
-        }).then(({ dashboardId }) => {
-          H.visitDashboard(dashboardId);
-          H.editDashboard();
-          createAndMapParameter();
-          H.showDashboardCardActions();
-          cy.findByLabelText("Click behavior").click();
-          H.sidebar().within(() => {
-            cy.findByText(COLUMN_NAME).click();
-            cy.findByText("Go to a custom destination").click();
-            cy.findByText("Dashboard").click();
-          });
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Dashboards").click();
-            cy.findByText(DASHBOARD_NAME).click();
-          });
-          H.sidebar().findByText(PARAMETER_NAME).click();
-          H.popover().findByText(COLUMN_NAME).click();
-          H.saveDashboard();
+        setupDashboardClickBehavior({
+          targetName: COLUMN_NAME,
         });
 
         cy.log("assert click behavior");
+        H.getDashboardCard().findAllByText("true").first().click();
+        H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
+        H.filterWidget().findByText("true").should("be.visible");
+      });
+
+      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a parameter", () => {
+        setupDashboardClickBehavior({
+          targetName: PARAMETER_NAME,
+        });
+
+        cy.log("assert click behavior");
+        H.filterWidget().click();
+        H.popover().button("Add filter").click();
         H.getDashboardCard().findAllByText("true").first().click();
         H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
         H.filterWidget().findByText("true").should("be.visible");
@@ -321,6 +305,43 @@ function createAndMapParameter({
   H.setFilter("Boolean", undefined, parameterName);
   H.selectDashboardFilter(H.getDashboardCard(), columnName);
   H.dashboardParametersDoneButton().click();
+}
+
+function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
+  cy.log("setup target dashboard");
+  createQuestionAndDashboard({
+    dashboardName: DASHBOARD_NAME,
+    questionName: QUESTION_NAME,
+  }).then(({ dashboardId }) => {
+    H.visitDashboard(dashboardId);
+    H.editDashboard();
+    createAndMapParameter();
+    H.saveDashboard();
+  });
+
+  cy.log("set up click behavior");
+  createQuestionAndDashboard({
+    dashboardName: DASHBOARD_2_NAME,
+    questionName: QUESTION_2_NAME,
+  }).then(({ dashboardId }) => {
+    H.visitDashboard(dashboardId);
+    H.editDashboard();
+    createAndMapParameter();
+    H.showDashboardCardActions();
+    cy.findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText(COLUMN_NAME).click();
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Dashboard").click();
+    });
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Dashboards").click();
+      cy.findByText(DASHBOARD_NAME).click();
+    });
+    H.sidebar().findByText(PARAMETER_NAME).click();
+    H.popover().findByText(targetName).click();
+    H.saveDashboard();
+  });
 }
 
 function testParameterWidget({
