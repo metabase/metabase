@@ -516,11 +516,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByTestId("dashboard-parameters-and-cards")
           .next("aside")
           .as("subscriptionBar")
-          .findByText("Text is Corbin Mertz");
+          .findByText("Text -> Corbin Mertz");
         clickButton("Done");
 
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Corbin Mertz")
+          .findByText("Text -> Corbin Mertz")
           .click();
 
         H.sendEmailAndVisitIt();
@@ -551,7 +551,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify existing subscription shows new default in UI
         openDashboardSubscriptions();
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Sallie Flatley")
+          .findByText("Text -> Sallie Flatley")
           .click();
 
         // verify existing subscription show new default in email
@@ -634,7 +634,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         // verify defaults are listed correctly in UI
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Corbin Mertz")
+          .findByText("Text -> Corbin Mertz")
           .click();
 
         // verify defaults are listed correctly in email
@@ -669,7 +669,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // verify existing subscription shows new default in UI
         openDashboardSubscriptions();
         cy.get("[aria-label='Pulse Card']")
-          .findByText("Text is Sallie Flatley")
+          .findByText("Text -> Sallie Flatley")
           .click();
 
         // verify existing subscription show new default in email
@@ -706,7 +706,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.wait("@pulsePut");
         cy.findByTestId("dashboard-parameters-and-cards")
           .next("aside")
-          .findByText("Text is 2 selections and 1 more filter")
+          .findByText("Text -> 2 selections and 1 more filter")
           .click();
 
         H.sendEmailAndVisitIt();
