@@ -6,6 +6,7 @@ import type {
   ActionFormInitialValues,
   DashCardVisualizationSettings,
   DatasetData,
+  EditableTableRowActionDisplaySettings,
   EditableTableRowActionId,
   RowValues,
   VisualizationSettings,
@@ -76,23 +77,34 @@ export const useTableActions = ({
 
   const { hasCreateAction, hasDeleteAction, enabledRowActions } =
     useMemo(() => {
-      const enabledActionsSet =
-        visualizationSettings?.["editableTable.enabledActions"]?.reduce(
-          (result, item) => {
-            if (item.enabled) {
-              result.add(item.id);
-            }
+      const enabledActionsSet = new Map<
+        EditableTableRowActionId,
+        EditableTableRowActionDisplaySettings
+      >();
 
-            return result;
-          },
-          new Set<EditableTableRowActionId>(),
-        ) || new Set<EditableTableRowActionId>();
+      visualizationSettings?.["editableTable.enabledActions"]?.forEach(
+        (action) => {
+          if (action.enabled) {
+            enabledActionsSet.set(action.id, action);
+          }
+        },
+      );
 
       const hasCreateAction = enabledActionsSet.has("row/create");
       const hasDeleteAction = enabledActionsSet.has("row/delete");
 
       const enabledRowActions =
-        actions?.filter(({ id }) => enabledActionsSet.has(id)) || [];
+        actions
+          ?.filter(({ id }) => enabledActionsSet.has(id))
+          .map((action) => {
+            const actionSettings = enabledActionsSet.get(action.id);
+
+            // remap to user defined custom action name
+            return {
+              ...action,
+              name: actionSettings?.name || action.name,
+            };
+          }) || [];
 
       return {
         hasCreateAction,

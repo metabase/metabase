@@ -9,44 +9,37 @@ import {
   ModalActions,
   ParameterMapperContainer,
 } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
-import {
-  ActionParameterMappingForm,
-  getTargetKey,
-} from "metabase/actions/components/ActionViz/ActionParameterMapping";
 import { ExplainerText } from "metabase/actions/components/ActionViz/ExplainerText";
-import {
-  getParameterDefaultValue,
-  isParameterHidden,
-  isParameterRequired,
-} from "metabase/actions/components/ActionViz/utils";
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import EmptyState from "metabase/components/EmptyState";
-import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
+import { Box, Button, TextInput } from "metabase/ui";
 import type {
-  ActionParametersMapping,
-  Dashboard,
-  DashboardCard,
+  EditableTableRowActionDisplaySettings,
+  Field,
+  RowActionFieldFieldSettingsMap,
+  RowActionFieldSettings,
   WritebackAction,
 } from "metabase-types/api";
 
+import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
+
 interface Props {
-  dashboard: Dashboard;
-  dashcard: DashboardCard;
-  action?: WritebackAction | null;
-  parameterMappings?: ActionParametersMapping[] | null;
+  action: WritebackAction | null | undefined;
+  rowActionSettings: EditableTableRowActionDisplaySettings | undefined;
+  tableColumns: Field[];
   onClose: () => void;
-  onSubmit: (
-    action: WritebackAction,
-    parameterMappings: ActionParametersMapping[],
-  ) => void;
+  onSubmit: (actionParams: {
+    action: WritebackAction;
+    name: string | undefined;
+    parameterMappings: RowActionFieldSettings[];
+  }) => void;
 }
 
 export function RowActionSettingsModalContent({
-  dashboard,
-  dashcard,
   action: editedAction,
-  parameterMappings,
+  rowActionSettings,
+  tableColumns,
   onClose,
   onSubmit,
 }: Props) {
@@ -54,41 +47,61 @@ export function RowActionSettingsModalContent({
     editedAction || null,
   );
 
+  const [actionName, setActionName] = useState<string | undefined>(
+    rowActionSettings?.name,
+  );
+
+  const [parameterMappings, setParameterMappings] = useState(
+    rowActionSettings?.parameterMappings,
+  );
+
   const hasParameters = !!selectedAction?.parameters?.length;
-  const currentMappings = useMemo(
+
+  const currentMappingsMap = useMemo(
     () =>
       Object.fromEntries(
-        parameterMappings?.map((mapping) => [
-          getTargetKey(mapping),
-          mapping.parameter_id,
-        ]) ?? [],
+        parameterMappings?.map((mapping) => [mapping.parameterId, mapping]) ??
+          [],
       ),
     [parameterMappings],
   );
 
-  const isFormInvalid =
-    selectedAction != null &&
-    selectedAction.parameters?.some((actionParameter) => {
-      const isHidden = isParameterHidden(selectedAction, actionParameter);
-      const isRequired = isParameterRequired(selectedAction, actionParameter);
-      const isParameterMapped =
-        currentMappings[getTargetKey(actionParameter)] != null;
-      const defaultValue = getParameterDefaultValue(
-        selectedAction,
-        actionParameter,
-      );
-      const hasDefaultValue = defaultValue != null;
+  // TODO: add validation rules
+  // const isFormInvalid =
+  //   selectedAction != null &&
+  //   selectedAction.parameters?.some((actionParameter) => {
+  //     const isHidden = isParameterHidden(selectedAction, actionParameter);
+  //     const isRequired = isParameterRequired(selectedAction, actionParameter);
+  //
+  //     const isParameterMapped =
+  //       currentMappingsMap[actionParameter.id] != null;
+  //
+  //     const defaultValue = getParameterDefaultValue(
+  //       selectedAction,
+  //       actionParameter,
+  //     );
+  //     const hasDefaultValue = defaultValue != null;
+  //
+  //     return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
+  //   });
 
-      return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
-    });
+  const handleMappingsChange = (
+    mappingsMap: RowActionFieldFieldSettingsMap,
+  ) => {
+    setParameterMappings(Object.values(mappingsMap));
+  };
 
   const handleSubmit = useCallback(() => {
     if (selectedAction) {
-      onSubmit(selectedAction, []); // TODO: add real remapping settings
+      onSubmit({
+        action: selectedAction,
+        name: actionName,
+        parameterMappings: parameterMappings || [],
+      });
     }
 
     onClose();
-  }, [selectedAction, onClose, onSubmit]);
+  }, [selectedAction, onClose, onSubmit, actionName, parameterMappings]);
 
   return (
     <ActionSettingsWrapper
@@ -108,21 +121,29 @@ export function RowActionSettingsModalContent({
       <ActionSettingsRight>
         {selectedAction ? (
           <>
+            <Box p="md">
+              <TextInput
+                label={t`Row action name`}
+                value={actionName ?? ""}
+                placeholder={selectedAction.name}
+                onChange={(e) => setActionName(e.target.value)}
+              />
+            </Box>
+
             {hasParameters && (
               <>
                 <ActionSettingsHeader>
-                  {t`Where should the values for '${selectedAction.name}' come from?`}
+                  {t`Where should the values for '${selectedAction.name}' row action come from?`}
                 </ActionSettingsHeader>
                 <ExplainerText />
               </>
             )}
             <ParameterMapperContainer>
-              <ActionParameterMappingForm
-                // @ts-expect-error -- create a copy of ActionParameterMappingForm for Row Actions, it should work with our dashcard type
-                dashcard={dashcard}
-                dashboard={dashboard}
+              <RowActionParameterMappingForm
                 action={selectedAction}
-                currentMappings={currentMappings}
+                currentMappingsMap={currentMappingsMap}
+                tableColumns={tableColumns}
+                onMappingsChange={handleMappingsChange}
               />
             </ParameterMapperContainer>
           </>
@@ -132,7 +153,7 @@ export function RowActionSettingsModalContent({
           </ParameterMapperContainer>
         )}
         <ModalActions>
-          <Button primary onClick={handleSubmit} disabled={isFormInvalid}>
+          <Button variant="filled" onClick={handleSubmit}>
             {t`Done`}
           </Button>
         </ModalActions>
