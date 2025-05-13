@@ -539,10 +539,11 @@ export const NotificationChannelsPicker = ({
     }
   };
 
-  const handleTemplateBlur = (
+  const handleTemplateChange = (
     channel: "email" | "slack",
     field: "subject" | "body",
     value: string,
+    isFocused = false,
   ) => {
     const updateAction: TemplateAction = {
       type: "UPDATE_TEMPLATE",
@@ -573,7 +574,7 @@ export const NotificationChannelsPicker = ({
       }));
 
       if (bothEmpty) {
-        shouldRemove = !isCurrentTemplateNull;
+        shouldRemove = !isCurrentTemplateNull && !isFocused;
       } else if (bothFilled) {
         shouldUpdate = true;
       }
@@ -581,7 +582,7 @@ export const NotificationChannelsPicker = ({
       // Slack
       // No validation, since it's always valid (either empty of filled)
       if (!hasBody) {
-        shouldRemove = !isCurrentTemplateNull;
+        shouldRemove = !isCurrentTemplateNull && !isFocused;
       } else {
         shouldUpdate = true;
       }
@@ -688,10 +689,15 @@ export const NotificationChannelsPicker = ({
                     templateContext={templateContext["channel/email"]}
                     defaultValue={getTemplateValue("email", "subject")}
                     onChange={(value) => {
-                      handleTemplateBlur("email", "subject", value);
+                      handleTemplateChange("email", "subject", value, true);
                     }}
                     onFocus={(initialValue) => {
-                      handleTemplateBlur("email", "subject", initialValue);
+                      handleTemplateChange(
+                        "email",
+                        "subject",
+                        initialValue,
+                        true,
+                      );
                     }}
                     error={
                       validationErrors.email.subject
@@ -711,10 +717,13 @@ export const NotificationChannelsPicker = ({
                     height="10rem"
                     defaultValue={getTemplateValue("email", "body")}
                     onFocus={(initialValue) => {
-                      handleTemplateBlur("email", "body", initialValue);
+                      handleTemplateChange("email", "body", initialValue, true);
                     }}
                     onChange={(value) => {
-                      handleTemplateBlur("email", "body", value);
+                      handleTemplateChange("email", "body", value, true);
+                    }}
+                    onBlur={(value) => {
+                      handleTemplateChange("email", "body", value);
                     }}
                     error={
                       validationErrors.email.body
@@ -777,10 +786,10 @@ export const NotificationChannelsPicker = ({
                   templateContext={templateContext["channel/slack"]}
                   defaultValue={getTemplateValue("slack", "body")}
                   onChange={(value) => {
-                    handleTemplateBlur("slack", "body", value);
+                    handleTemplateChange("slack", "body", value, true);
                   }}
                   onBlur={(newValue) => {
-                    handleTemplateBlur("slack", "body", newValue);
+                    handleTemplateChange("slack", "body", newValue);
                   }}
                 />
               </Stack>
