@@ -1,13 +1,12 @@
 import type { StoryFn } from "@storybook/react";
 
-import { StaticDashboard } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 
-import type { StaticDashboardProps } from "./StaticDashboard";
+import { StaticDashboard, type StaticDashboardProps } from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 

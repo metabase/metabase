@@ -100,13 +100,16 @@ const textDashcard2 = createMockTextDashboardCard({
 
 const dashcards = [tableDashcard, textDashcard, textDashcard2];
 
-export const setup = async ({
-  props,
-  providerProps,
-}: {
+export type SetupSdkDashboardProps = {
   props?: Partial<SdkDashboardProps>;
   providerProps?: Partial<MetabaseProviderProps>;
-} = {}) => {
+};
+
+export const setup = async ({
+  mode,
+  props,
+  providerProps,
+}: Pick<SdkDashboardProps, "mode"> & SetupSdkDashboardProps = {}) => {
   const database = createSampleDatabase();
 
   const dashboardId = props?.dashboardId || TEST_DASHBOARD_ID;
@@ -169,7 +172,7 @@ export const setup = async ({
 
   renderWithSDKProviders(
     <Box h="500px">
-      <SdkDashboard dashboardId={dashboardId} {...props} />
+      <SdkDashboard dashboardId={dashboardId} {...props} mode={mode} />
     </Box>,
     {
       sdkProviderProps: {

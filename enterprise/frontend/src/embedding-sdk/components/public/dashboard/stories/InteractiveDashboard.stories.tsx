@@ -1,6 +1,5 @@
 import type { StoryFn } from "@storybook/react";
 
-import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
@@ -8,6 +7,7 @@ import {
 } from "embedding-sdk/test/storybook-id-args";
 import { Stack } from "metabase/ui";
 
+import { InteractiveQuestion } from "../../InteractiveQuestion";
 import {
   InteractiveDashboard,
   type InteractiveDashboardProps,

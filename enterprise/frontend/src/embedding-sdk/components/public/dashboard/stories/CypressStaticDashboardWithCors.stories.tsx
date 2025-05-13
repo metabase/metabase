@@ -1,7 +1,8 @@
 import type { StoryFn } from "@storybook/react";
 
-import { StaticDashboard } from "embedding-sdk";
 import { CommonSdkStoryCorsWrapper } from "embedding-sdk/test/CommonSdkCorsStoryWrapper";
+
+import { StaticDashboard } from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
 

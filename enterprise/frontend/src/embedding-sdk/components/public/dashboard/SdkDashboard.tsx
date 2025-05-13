@@ -53,7 +53,7 @@ export type SdkDashboardProps = {
    * - `editable`: Allows editing and drill-throughs
    * - `interactive`: Allows drill-throughs only
    */
-  mode?: "editable" | "interactive";
+  mode?: "editable" | "interactive" | "static";
 
   // @todo pass the question context to the question view component,
   //       once we have a public-facing question context.
@@ -250,6 +250,11 @@ export const SdkDashboard = ({
   );
 };
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveDashboard
+ */
 export type EditableDashboardProps = Omit<SdkDashboardProps, "mode">;
 /**
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
@@ -262,7 +267,13 @@ export const EditableDashboard = (props: EditableDashboardProps) => {
   return <SdkDashboard mode="editable" {...props} />;
 };
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveDashboard
+ */
 export type InteractiveDashboardProps = Omit<SdkDashboardProps, "mode">;
+
 /**
  * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
  *
@@ -273,4 +284,27 @@ export const InteractiveDashboard = renderOnlyInSdkProvider(
   (props: InteractiveDashboardProps) => (
     <SdkDashboard {...props} mode="interactive" />
   ),
+);
+
+/**
+ * @interface
+ * @expand
+ * @category StaticDashboard
+ */
+export type StaticDashboardProps = Omit<
+  SdkDashboardProps,
+  | "mode"
+  | "drillThroughQuestionProps"
+  | "drillThroughQuestionHeight"
+  | "plugins"
+>;
+
+/**
+ * A lightweight dashboard component.
+ *
+ * @function
+ * @category StaticDashboard
+ */
+export const StaticDashboard = (props: StaticDashboardProps) => (
+  <SdkDashboard mode="static" {...props} />
 );
