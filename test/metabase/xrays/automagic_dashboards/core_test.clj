@@ -10,7 +10,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -20,11 +19,9 @@
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [metabase.xrays.automagic-dashboards.dashboard-templates
-    :as dashboard-templates]
+   [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
-   [metabase.xrays.test-util.automagic-dashboards
-    :as automagic-dashboards.test]
+   [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
