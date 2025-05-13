@@ -4,8 +4,7 @@ import {
   AggregationPicker,
   type AggregationPickerProps,
 } from "metabase/common/components/AggregationPicker";
-import { availableAggregationOperators } from "metabase-lib/aggregation";
-import type { Query } from "metabase-lib/types";
+import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../../context";
 import { BadgeList, type BadgeListProps } from "../../util/BadgeList";
@@ -29,7 +28,7 @@ export const SummarizePicker = ({
 
   const query = question.query();
   const stageIndex = -1;
-  const onQueryChange = (newQuery: Query) => {
+  const onQueryChange = (newQuery: Lib.Query) => {
     updateQuestion(question.setQuery(newQuery), { run: true });
   };
 
@@ -42,7 +41,7 @@ export const SummarizePicker = ({
       clauseIndex={aggregation?.aggregationIndex}
       operators={
         aggregation?.operators ??
-        availableAggregationOperators(query, stageIndex)
+        Lib.availableAggregationOperators(query, stageIndex)
       }
       onQueryChange={onQueryChange}
       onBack={aggregationPickerProps.onBack}

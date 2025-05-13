@@ -4,14 +4,13 @@ import {
   type AggregationItem,
   getAggregationItems,
 } from "metabase/query_builder/utils/get-aggregation-items";
-import { removeClause, replaceClause } from "metabase-lib/query";
-import type { Aggregable, Query } from "metabase-lib/types";
+import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";
 
 export interface SDKAggregationItem extends AggregationItem {
   onRemoveAggregation: () => void;
-  onUpdateAggregation: (nextClause: Aggregable) => void;
+  onUpdateAggregation: (nextClause: Lib.Aggregable) => void;
 }
 
 export const useSummarizeData = () => {
@@ -21,7 +20,7 @@ export const useSummarizeData = () => {
   const stageIndex = -1;
 
   const onQueryChange = useCallback(
-    (newQuery: Query) => {
+    (newQuery: Lib.Query) => {
       if (question) {
         updateQuestion(question.setQuery(newQuery), { run: true });
       }
@@ -35,7 +34,7 @@ export const useSummarizeData = () => {
         ? getAggregationItems({ query, stageIndex }).map((aggregationItem) => {
             const onRemoveAggregation = () => {
               if (query) {
-                const nextQuery = removeClause(
+                const nextQuery = Lib.removeClause(
                   query,
                   stageIndex,
                   aggregationItem.aggregation,
@@ -44,8 +43,8 @@ export const useSummarizeData = () => {
               }
             };
 
-            const onUpdateAggregation = (nextClause: Aggregable) => {
-              const nextQuery = replaceClause(
+            const onUpdateAggregation = (nextClause: Lib.Aggregable) => {
+              const nextQuery = Lib.replaceClause(
                 query,
                 stageIndex,
                 aggregationItem.aggregation,

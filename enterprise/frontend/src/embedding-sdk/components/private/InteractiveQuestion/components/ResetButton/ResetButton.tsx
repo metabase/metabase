@@ -3,7 +3,7 @@ import type { MouseEvent } from "react";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import type { ButtonProps } from "embedding-sdk/types/ui";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
-import { canSave as ML_canSave } from "metabase-lib/query";
+import * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../context";
 
@@ -37,7 +37,7 @@ export const QuestionResetButton = ({
     ? isSavedQuestionChanged(question, originalQuestion)
     : true;
 
-  const canSave = question && ML_canSave(question.query(), question.type());
+  const canSave = question && Lib.canSave(question.query(), question.type());
 
   if (!canSave || !isQuestionChanged) {
     return null;

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
-import { extractEntityId } from "metabase/lib/urls/utils";
+import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import {
@@ -46,7 +46,7 @@ export const InteractiveAdHocQuestion = ({
   );
 
   // If we cannot extract an entity ID from the slug, assume we are creating a new question.
-  const questionId = extractEntityId(params.slug) ?? null;
+  const questionId = Urls.extractEntityId(params.slug) ?? null;
 
   const { options, deserializedCard } = useMemo(() => {
     const { options, serializedCard } = parseHash(location.hash);
