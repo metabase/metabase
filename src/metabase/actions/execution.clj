@@ -208,10 +208,7 @@
 (defn- execute-table-action!
   [kind table-id request-parameters]
   (let [args
-        {:type     :query
-         :query    {:source-table table-id}
-         :database (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
-         :table-id table-id
+        {:table-id table-id
          :arg      [request-parameters]}
 
         opts
