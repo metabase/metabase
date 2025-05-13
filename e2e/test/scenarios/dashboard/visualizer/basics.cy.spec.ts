@@ -486,6 +486,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.modal().within(() => {
         H.switchToAddMoreData();
         H.addDataset("Products by Created At (Month)");
+        H.assertWellItems({
+          vertical: ["Count", "Count (Products by Created At (Month))"],
+        });
       });
       H.saveDashcardVisualizerModal("create");
       H.saveDashboard();

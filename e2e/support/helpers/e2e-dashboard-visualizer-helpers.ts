@@ -122,6 +122,7 @@ export function assertWellItems(items: {
 
   if (horizontal) {
     horizontalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", horizontal.length);
       horizontal.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -130,6 +131,7 @@ export function assertWellItems(items: {
 
   if (vertical) {
     verticalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", vertical.length);
       vertical.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -138,6 +140,7 @@ export function assertWellItems(items: {
 
   if (pieMetric) {
     pieMetricWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", pieMetric.length);
       pieMetric.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -146,6 +149,10 @@ export function assertWellItems(items: {
 
   if (pieDimensions) {
     pieDimensionWell().within(() => {
+      cy.findAllByTestId("well-item").should(
+        "have.length",
+        pieDimensions.length,
+      );
       pieDimensions.forEach((item) => {
         cy.findByText(item).should("exist");
       });
