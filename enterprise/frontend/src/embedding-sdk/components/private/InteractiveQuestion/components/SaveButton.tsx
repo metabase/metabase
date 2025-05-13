@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { ButtonProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -31,7 +33,7 @@ export const SaveButton = (buttonProps: ButtonProps = {}) => {
 
   return (
     <ToolbarButton
-      label="Save"
+      label={t`Save`}
       disabled={!isSaveButtonEnabled}
       {...buttonProps}
     />
