@@ -56,7 +56,9 @@
                  (when-let [user (tx/db-test-env-var :mongo :user)]
                    {:user user})
                  (when-let [password (tx/db-test-env-var :mongo :password)]
-                   {:pass password}))))
+                   {:pass password})
+                 (when-let [use-srv (tx/db-test-env-var :mongo :use-srv)]
+                   {:use-srv use-srv}))))
 
 (defn- destroy-db! [driver dbdef]
   (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :server dbdef)]
