@@ -14,6 +14,8 @@ const DIALECT = "postgres";
 const TABLE_NAME = "many_data_types";
 const QUESTION_NAME = "Test question";
 const DASHBOARD_NAME = "Test dashboard";
+const COLUMN_NAME = "Boolean";
+const PARAMETER_NAME = "Boolean parameter";
 
 describe(
   "scenarios > dashboard > filters > number",
@@ -32,7 +34,7 @@ describe(
           H.visitDashboard(dashboardId),
         );
         H.editDashboard();
-        createAndMapParameter({ columnName: "Boolean" });
+        createAndMapParameter();
         H.saveDashboard();
         testParameterWidget({
           allRowCountText: "200 rows",
@@ -40,7 +42,6 @@ describe(
           falseRowCountText: "199 rows",
         });
         testDrillThru({
-          columnName: "Boolean",
           trueRowCount: 1,
           isNative: false,
         });
@@ -53,15 +54,17 @@ describe(
 
         cy.log("set up click behavior");
         H.editDashboard();
-        createAndMapParameter({ columnName: "Boolean" });
+        createAndMapParameter();
         H.showDashboardCardActions();
         cy.findByLabelText("Click behavior").click();
         H.sidebar().within(() => {
-          cy.findByText("Boolean").click();
+          cy.findByText(COLUMN_NAME).click();
           cy.findByText("Update a dashboard filter").click();
-          cy.findByTestId("unset-click-mappings").findByText("Boolean").click();
+          cy.findByTestId("unset-click-mappings")
+            .findByText(PARAMETER_NAME)
+            .click();
         });
-        H.popover().findByText("Boolean").click();
+        H.popover().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -72,6 +75,28 @@ describe(
         H.filterWidget().findByText("true").should("not.exist");
         H.getDashboardCard().findByText("200 rows").should("be.visible");
       });
+
+      it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
+        createQuestionAndDashboard().then(({ dashboardId }) =>
+          H.visitDashboard(dashboardId),
+        );
+
+        cy.log("set up click behavior");
+        H.editDashboard();
+        createAndMapParameter();
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+        H.sidebar().within(() => {
+          cy.findByText(COLUMN_NAME).click();
+          cy.findByText("Go to a custom destination").click();
+          cy.findByText("Saved question").click();
+        });
+        H.entityPickerModal().findByText(QUESTION_NAME).click();
+        H.sidebar()
+          .findByTestId("unset-click-mappings")
+          .findByText(COLUMN_NAME)
+          .click();
+      });
     });
 
     describe("native queries", () => {
@@ -80,7 +105,7 @@ describe(
           H.visitDashboard(dashboardId),
         );
         H.editDashboard();
-        createAndMapParameter({ columnName: "Boolean" });
+        createAndMapParameter();
         H.saveDashboard();
         testParameterWidget({
           allRowCountText: "2 rows",
@@ -88,7 +113,6 @@ describe(
           falseRowCountText: "1 row",
         });
         testDrillThru({
-          columnName: "Boolean",
           trueRowCount: 1,
           isNative: true,
         });
@@ -164,9 +188,12 @@ function createNativeQuestionAndDashboard({
   });
 }
 
-function createAndMapParameter({ columnName }: { columnName: string }) {
+function createAndMapParameter({
+  columnName = COLUMN_NAME,
+  parameterName = PARAMETER_NAME,
+} = {}) {
   cy.log("parameter mapping");
-  H.setFilter("Boolean");
+  H.setFilter("Boolean", undefined, parameterName);
   H.selectDashboardFilter(H.getDashboardCard(), columnName);
   H.dashboardParametersDoneButton().click();
 }
@@ -203,11 +230,11 @@ function testParameterWidget({
 }
 
 function testDrillThru({
-  columnName,
+  columnName = COLUMN_NAME,
   trueRowCount,
   isNative,
 }: {
-  columnName: string;
+  columnName?: string;
   trueRowCount: number;
   isNative: boolean;
 }) {
