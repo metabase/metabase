@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
@@ -8,6 +10,7 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
@@ -21,6 +24,8 @@ import {
 } from "metabase/dashboard/context";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
+import { setErrorPage } from "metabase/redux/app";
+import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
@@ -60,20 +65,11 @@ const EditableDashboardInner = ({
   onEditQuestion,
 }: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
   Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
-  const { initialDashboardId, isEditing, isLoading, error } =
-    useDashboardContext();
+  const { isEditing } = useDashboardContext();
 
   const dashboardActions = isEditing
     ? DASHBOARD_EDITING_ACTIONS
     : SDK_DASHBOARD_VIEW_ACTIONS;
-
-  if (isLoading) {
-    return <SdkLoader />;
-  }
-
-  if (error) {
-    return <DashboardNotFoundError id={initialDashboardId} />;
-  }
 
   return (
     <InteractiveDashboardProvider
@@ -141,12 +137,28 @@ export const EditableDashboard = ({
     dashboardId,
   });
 
+  const errorPage = useSdkSelector(getErrorPage);
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(setErrorPage(null));
+    }
+  }, [dispatch, dashboardId]);
+
   if (isLoading) {
-    return <SdkLoader />;
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <SdkLoader />
+      </StyledPublicComponentWrapper>
+    );
   }
 
-  if (!dashboardId) {
-    return <DashboardNotFoundError id={initialDashboardId} />;
+  if (!dashboardId || errorPage?.status === 404) {
+    return (
+      <StyledPublicComponentWrapper className={className} style={style}>
+        <DashboardNotFoundError id={initialDashboardId} />
+      </StyledPublicComponentWrapper>
+    );
   }
 
   return (
@@ -169,6 +181,7 @@ export const EditableDashboard = ({
         theme={displayOptions.theme}
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
         getClickActionMode={({ question }) =>
           getEmbeddingMode({
             question,
