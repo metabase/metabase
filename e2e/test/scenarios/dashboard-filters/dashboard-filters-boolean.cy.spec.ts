@@ -27,9 +27,13 @@ describe(
     });
 
     describe("mbql queries", () => {
-      it("should allow to map a boolean parameter to a boolean column of an MBQL query", () => {
-        createQuestionAndDashboard();
-        mapParameter({ columnName: "Boolean" });
+      it("should allow to map a boolean parameter to a boolean column of an MBQL query and drill-thru", () => {
+        createQuestionAndDashboard().then(({ dashboardId }) =>
+          H.visitDashboard(dashboardId),
+        );
+        H.editDashboard();
+        createAndMapParameter({ columnName: "Boolean" });
+        H.saveDashboard();
         testParameterWidget({
           allRowCountText: "200 rows",
           trueRowCountText: "1 row",
@@ -41,12 +45,33 @@ describe(
           isNative: false,
         });
       });
+
+      it("should allow to use a 'Update dashboard filter' click behavior", () => {
+        createQuestionAndDashboard().then(({ dashboardId }) =>
+          H.visitDashboard(dashboardId),
+        );
+        H.editDashboard();
+        createAndMapParameter({ columnName: "Boolean" });
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+        H.sidebar().within(() => {
+          cy.findByText("Boolean").click();
+          cy.findByText("Update a dashboard filter").click();
+          cy.findByTestId("unset-click-mappings").findByText("Boolean").click();
+        });
+        H.popover().findByText("Boolean").click();
+        H.saveDashboard();
+      });
     });
 
     describe("native queries", () => {
-      it("should allow to map a boolean parameter to a boolean field filter of a SQL query", () => {
-        createNativeQuestionAndDashboard();
-        mapParameter({ columnName: "Boolean" });
+      it("should allow to map a boolean parameter to a boolean field filter of a SQL query and drill-thru", () => {
+        createNativeQuestionAndDashboard().then(({ dashboardId }) =>
+          H.visitDashboard(dashboardId),
+        );
+        H.editDashboard();
+        createAndMapParameter({ columnName: "Boolean" });
+        H.saveDashboard();
         testParameterWidget({
           allRowCountText: "2 rows",
           trueRowCountText: "1 row",
@@ -62,9 +87,12 @@ describe(
   },
 );
 
-function createQuestionAndDashboard() {
+function createQuestionAndDashboard({
+  questionName = QUESTION_NAME,
+  dashboardName = DASHBOARD_NAME,
+} = {}) {
   const questionDetails: StructuredQuestionDetails = {
-    name: QUESTION_NAME,
+    name: questionName,
     query: {
       "source-table": PRODUCTS_ID,
       expressions: {
@@ -73,22 +101,26 @@ function createQuestionAndDashboard() {
     },
   };
   const dashboardDetails: DashboardDetails = {
-    name: DASHBOARD_NAME,
+    name: dashboardName,
   };
-  H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-    ({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
-    },
-  );
+  return H.createQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails,
+  }).then(({ body: { dashboard_id }, questionId }) => {
+    return { dashboardId: dashboard_id, questionId };
+  });
 }
 
-function createNativeQuestionAndDashboard() {
+function createNativeQuestionAndDashboard({
+  questionName = QUESTION_NAME,
+  dashboardName = DASHBOARD_NAME,
+} = {}) {
   cy.log("create dashboard");
 
-  H.getTableId({ name: TABLE_NAME }).then((tableId) => {
-    H.getFieldId({ tableId, name: "boolean" }).then((fieldId) => {
+  return H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    return H.getFieldId({ tableId, name: "boolean" }).then((fieldId) => {
       const questionDetails: NativeQuestionDetails = {
-        name: QUESTION_NAME,
+        name: questionName,
         database: WRITABLE_DB_ID,
         native: {
           query: `select * from ${TABLE_NAME} where {{boolean}}`,
@@ -106,24 +138,23 @@ function createNativeQuestionAndDashboard() {
         },
       };
       const dashboardDetails: DashboardDetails = {
-        name: DASHBOARD_NAME,
+        name: dashboardName,
       };
-      H.createNativeQuestionAndDashboard({
+      return H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+      }).then(({ body: { dashboard_id }, questionId }) => {
+        return { dashboardId: dashboard_id, questionId };
       });
     });
   });
 }
 
-function mapParameter({ columnName }: { columnName: string }) {
+function createAndMapParameter({ columnName }: { columnName: string }) {
   cy.log("parameter mapping");
-  H.editDashboard();
   H.setFilter("Boolean");
   H.selectDashboardFilter(H.getDashboardCard(), columnName);
-  H.saveDashboard();
+  H.dashboardParametersDoneButton().click();
 }
 
 function testParameterWidget({
