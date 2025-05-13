@@ -1,4 +1,4 @@
-(ns metabase.api.query-metadata
+(ns metabase.queries.metadata
   (:require
    [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]

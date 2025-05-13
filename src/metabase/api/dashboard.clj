@@ -11,7 +11,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.queries.metadata :as api.query-metadata]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]

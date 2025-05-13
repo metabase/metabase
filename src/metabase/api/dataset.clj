@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.queries.metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]

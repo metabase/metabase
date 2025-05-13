@@ -8,7 +8,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.queries.metadata :as api.query-metadata]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]

@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           queries
            query-processor
            search
            settings
@@ -106,7 +107,6 @@
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
-          metabase.api.query-metadata
           metabase.api.routes.common
           metabase.api.table
           metabase.api.user

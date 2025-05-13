@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.queries.metadata :as api.query-metadata]
    [metabase.queries.models.query :as query]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
