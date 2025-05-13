@@ -18,8 +18,8 @@ export {
   InteractiveDashboard,
   SdkDashboard,
   StaticDashboard,
+  type SdkDashboardProps,
 } from "./dashboard";
-export type { SdkDashboardProps } from "./dashboard";
 export {
   InteractiveQuestion,
   type BaseInteractiveQuestionProps,
