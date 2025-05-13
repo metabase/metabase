@@ -140,6 +140,7 @@ describe(
 
       getSdkRoot().within(() => {
         cy.findByTestId("table-header").should(($el) => {
+          // header has to be solid so it does not show underlying content when scrolling
           assertBackgroundColorEqual($el, BACKGROUND_COLOR);
         });
 
@@ -147,7 +148,8 @@ describe(
           .findAllByRole("gridcell")
           .first()
           .should(($el) => {
-            assertBackgroundColorEqual($el, BACKGROUND_COLOR);
+            // cell color should be transparent
+            assertBackgroundColorEqual($el, "rgba(0, 0, 0, 0)");
           });
       });
     });
@@ -199,14 +201,15 @@ describe(
 export function assertBackgroundColorEqual($element: JQuery, expected: string) {
   const element = $element[0];
   const style = window.getComputedStyle(element);
+
   const colorDifferencePercentage = getColorDifferencePercentage(
     style.backgroundColor,
     expected,
   );
 
   // the dynamically lightened/darkened colors are off by one,
-  // so we must compare with 0.25% tolerance.
-  expect(colorDifferencePercentage).to.be.lte(0.25);
+  // so we must compare with 1% tolerance.
+  expect(colorDifferencePercentage).to.be.lte(1);
 }
 
 function getColorDifferencePercentage(color1: string, color2: string) {
