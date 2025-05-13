@@ -14,6 +14,7 @@
       {:dashcard-id 1, :dashboard-id 2, :collection-id 3, :card-id 4, :table-id 5, :database-id 6}  :dashcard
       {:dashboard-id 1, :collection-id 2}                                                           :dashboard
       {:card-id 1, :table-id 2, :database-id 3}                                                     :card
+      {:model-id 1, :table-id 2, :database-id 3}                                                    :model
       {:table-id 1, :database-id 4}                                                                 :table
       {:webhook-id 1, :table-id 2}                                                                  :webhook)))
 
@@ -32,13 +33,29 @@
                            :model/Card         {mbql-card-id :id}    {:dataset_query {:database db-id
                                                                                       :type     :query
                                                                                       :query    {:source-table table-id}}
+                                                                      :database_id   db-id
                                                                       :name          "Test MBQL Card"
                                                                       :collection_id collection-id}
+                           :model/Card         {mbql-model-id :id}   {:dataset_query {:database db-id
+                                                                                      :type     :query
+                                                                                      :query    {:source-table table-id}}
+                                                                      :database_id   db-id
+                                                                      :name          "Test MBQL Model"
+                                                                      :collection_id collection-id
+                                                                      :dataset       true}
+                           :model/Card          {native-model-id :id} {:dataset_query {:database db-id
+                                                                                       :type     :native
+                                                                                       :native   {:query "SELECT * FROM venues"}}
+                                                                       :database_id   db-id
+                                                                       :name          "Test Native Model"
+                                                                       :collection_id collection-id
+                                                                       :dataset       true}
                            :model/Dashboard     {dashboard-id :id}   {:name          "Test Dashboard"
                                                                       :collection_id collection-id}
                            :model/Card          {native-card-id :id} {:dataset_query {:database db-id
                                                                                       :type     :native
                                                                                       :native   {:query "SELECT * FROM venues"}}
+                                                                      :database_id   db-id
                                                                       :name          "Test Native Card"
                                                                       :dashboard_id  dashboard-id}
                            :model/DashboardCard {dashcard-id-1 :id}  {:dashboard_id dashboard-id
@@ -86,6 +103,18 @@
                         :collection-id collection-id}
                        (scope/hydrate {:card-id native-card-id}))))
 
+              (testing "hydrate for MBQL model"
+                (is (= {:model-id      mbql-model-id
+                        :collection-id collection-id
+                        :table-id      table-id
+                        :database-id   db-id}
+                       (scope/hydrate {:model-id mbql-model-id}))))
+
+              (testing "hydrate for native model"
+                (is (= {:model-id      native-model-id
+                        :collection-id collection-id}
+                       (scope/hydrate {:model-id native-model-id}))))
+
               (testing "hydrate for table"
                 (is (= {:table-id    table-id
                         :database-id db-id}
@@ -117,6 +146,12 @@
 
       (is (= {:card-id 3}
              (scope/normalize {:card-id 3
+                               :table-id 4
+                               :collection-id 5
+                               :database-id 6})))
+
+      (is (= {:model-id 7}
+             (scope/normalize {:model-id 7
                                :table-id 4
                                :collection-id 5
                                :database-id 6})))

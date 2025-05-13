@@ -8,6 +8,8 @@
   [[:map [:dashboard-id pos-int?]]
    [:map [:dashcard-id pos-int?]]
    [:map [:card-id pos-int?]]
+   ;; We treat legacy-actions, which get called against a model, distinctly. Treated the same as card-id, mostly.
+   [:map [:model-id pos-int?]]
    [:map [:table-id pos-int?]]
    [:map [:webhook-id pos-int?]]])
 
@@ -39,9 +41,22 @@
     [:collection-id pos-int?]
     [:table-id pos-int?]
     [:database-id pos-int?]]
-   ;; card without table (e.g., native or join)
+   ;; card without table (e.g., native)
    [:map {:closed true}
-    [:card-id pos-int?]]
+    [:card-id pos-int?]
+    [:collection-id pos-int?]
+    [:database-id pos-int?]]
+   ;; model with a table (e.g., mbql) - if there are joins we take the initial source table.
+   [:map {:closed true}
+    [:model-id pos-int?]
+    [:collection-id pos-int?]
+    [:table-id pos-int?]
+    [:database-id pos-int?]]
+   ;; model without a table
+   [:map {:closed true}
+    [:model-id pos-int?]
+    [:collection-id pos-int?]
+    [:database-id pos-int?]]
    ;; dashcard with both card and table
    [:map {:closed true}
     [:dashcard-id pos-int?]
@@ -55,7 +70,8 @@
     [:dashcard-id pos-int?]
     [:dashboard-id pos-int?]
     [:collection-id pos-int?]
-    [:card-id pos-int?]]
+    [:card-id pos-int?]
+    [:database-id pos-int?]]
    ;; non-card dashcard
    [:map {:closed true}
     [:dashcard-id pos-int?]
@@ -69,4 +85,5 @@
    ;; for now, webhooks can only point at tables, not editables
    [:map {:closed false}
     [:webhook-id pos-int?]
-    [:table-id pos-int?]]])
+    [:table-id pos-int?]
+    [:database-id pos-int?]]])
