@@ -9,7 +9,7 @@ import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 import {
   EditableDashboard,
   type EditableDashboardProps,
-} from "./EditableDashboard";
+} from "../SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
