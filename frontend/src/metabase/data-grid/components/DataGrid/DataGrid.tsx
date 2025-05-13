@@ -219,6 +219,7 @@ export const DataGrid = function DataGrid<TData>({
                         <Box
                           className={cx(S.headerCell, classNames?.headerCell)}
                           style={styles?.headerCell}
+                          data-column-id={header.column.id}
                         >
                           {headerCell}
                         </Box>
@@ -234,6 +235,7 @@ export const DataGrid = function DataGrid<TData>({
                           }
                           header={header}
                           onClick={onHeaderCellClick}
+                          data-column-id={header.column.id}
                         >
                           {headerCell}
                         </SortableHeader>

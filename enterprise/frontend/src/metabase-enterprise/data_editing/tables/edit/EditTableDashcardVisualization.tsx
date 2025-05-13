@@ -38,6 +38,7 @@ import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-m
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
+import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
@@ -160,6 +161,9 @@ export const EditTableDashcardVisualization = ({
     datasetData: data,
   });
 
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
+
   const isActionExecuteModalOpen = !!activeActionState;
 
   const { getColumnSortDirection } = useTableSorting({
@@ -180,6 +184,35 @@ export const EditTableDashcardVisualization = ({
         <Text fw="bold">{title}</Text>
 
         <Group gap="sm" align="center">
+          <ActionIcon
+            size="md"
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >
+            <Icon
+              name="pencil"
+              tooltip={
+                selectedRowIndices.length ? t`Edit` : t`Select rows for editing`
+              }
+            />
+          </ActionIcon>
+          <ActionIcon
+            size="md"
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >
+            <Icon
+              name="trash"
+              tooltip={
+                selectedRowIndices.length
+                  ? t`Delete`
+                  : t`Select rows for deletion`
+              }
+            />
+          </ActionIcon>
+          <Box h={rem(16)}>
+            <Divider orientation="vertical" h="100%" />
+          </Box>
           <ActionIcon
             size="md"
             onClick={undo}
@@ -245,6 +278,8 @@ export const EditTableDashcardVisualization = ({
               getColumnSortDirection={getColumnSortDirection}
               rowActions={enabledRowActions}
               onActionRun={handleRowActionRun}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
             />
           </Box>
 

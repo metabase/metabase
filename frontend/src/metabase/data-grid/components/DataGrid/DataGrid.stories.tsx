@@ -289,6 +289,8 @@ export const CombinedFeatures: Story = () => {
 };
 
 export const SelectableRows: Story = () => {
+  const [rowSelection, setRowSelection] = useState<Record<number, boolean>>({});
+
   const columns: ColumnOptions<SampleDataType>[] = useMemo(
     () => [
       {
@@ -333,6 +335,8 @@ export const SelectableRows: Story = () => {
     columnsOptions: columns,
     columnPinning: { left: ["row_selection"] },
     enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange: setRowSelection,
     columnRowSelectOptions: {
       id: "row_selection",
       name: "Row Selection",
