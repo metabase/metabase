@@ -36,15 +36,19 @@ describe(
         H.editDashboard();
         createAndMapParameter();
         H.saveDashboard();
+
         testParameterWidget({
           allRowCountText: "200 rows",
           trueRowCountText: "1 row",
           falseRowCountText: "199 rows",
         });
-        testDrillThru({
-          trueRowCount: 1,
-          isNative: false,
-        });
+
+        cy.log("drill-thru");
+        H.filterWidget().click();
+        H.popover().button("Add filter").click();
+        H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.assertQueryBuilderRowCount(1);
+        H.filterWidget().findByText("true").should("be.visible");
       });
 
       it("should allow to use a 'Update dashboard filter' click behavior", () => {
@@ -96,6 +100,15 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
+        H.popover().findByText(COLUMN_NAME).click();
+        H.saveDashboard();
+
+        cy.log("assert click behavior");
+        H.getDashboardCard().findAllByText("true").first().click();
+        H.queryBuilderFiltersPanel()
+          .findByText(`${COLUMN_NAME} is true`)
+          .should("be.visible");
+        H.assertTableRowsCount(1);
       });
     });
 
@@ -107,15 +120,21 @@ describe(
         H.editDashboard();
         createAndMapParameter();
         H.saveDashboard();
+
         testParameterWidget({
           allRowCountText: "2 rows",
           trueRowCountText: "1 row",
           falseRowCountText: "1 row",
         });
-        testDrillThru({
-          trueRowCount: 1,
-          isNative: true,
-        });
+
+        cy.log("drill-thru");
+        H.filterWidget().click();
+        H.popover().button("Add filter").click();
+        H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.assertQueryBuilderRowCount(1);
+        H.queryBuilderFiltersPanel()
+          .findByText(`${COLUMN_NAME} is true`)
+          .should("be.visible");
       });
     });
   },
@@ -227,28 +246,4 @@ function testParameterWidget({
   });
   H.getDashboardCard().findByText(trueRowCountText).should("be.visible");
   H.filterWidget().icon("close").click();
-}
-
-function testDrillThru({
-  columnName = COLUMN_NAME,
-  trueRowCount,
-  isNative,
-}: {
-  columnName?: string;
-  trueRowCount: number;
-  isNative: boolean;
-}) {
-  cy.log("drill-thru");
-  H.filterWidget().click();
-  H.popover().button("Add filter").click();
-  H.getDashboardCard().findByText(QUESTION_NAME).click();
-  H.assertQueryBuilderRowCount(trueRowCount);
-
-  if (isNative) {
-    H.filterWidget().findByText("true").should("be.visible");
-  } else {
-    H.queryBuilderFiltersPanel()
-      .findByText(`${columnName} is true`)
-      .should("be.visible");
-  }
 }
