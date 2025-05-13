@@ -1,7 +1,6 @@
-(ns metabase.models.collection
+(ns metabase.collections.models.collection
   "Collections are used to organize Cards, Dashboards, and Pulses; as of v0.30, they are the primary way we determine
-  permissions for these objects.
-  `metabase.models.collection.graph`. `metabase.models.collection.graph`"
+  permissions for these objects."
   (:refer-clojure :exclude [ancestors descendants])
   (:require
    [clojure.core.memoize :as memoize]
@@ -12,10 +11,10 @@
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.config :as config :refer [*request-id*]]
    [metabase.db :as mdb]
    [metabase.events.core :as events]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -41,7 +40,7 @@
 (p/import-vars [collection.root root-collection root-collection-with-ui-details])
 
 (def ^:private RootCollection
-  "Schema for things that are instances of [[metabase.models.collection.root.RootCollection]]."
+  "Schema for things that are instances of [[metabase.collections.models.collection.root.RootCollection]]."
   [:fn
    {:error/message "an instance of the root Collection"}
    #'collection.root/is-root-collection?])
@@ -390,8 +389,8 @@
 
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
-  Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
-  needed."
+  Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
+  create it if needed."
   [user-or-id]
   (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
 
@@ -964,7 +963,8 @@
 (mi/define-simple-hydration-method effective-children
   :effective_children
   "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
-  this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
+  this Collection. See documentation for [[metabase.collections.models.collection/effective-children-query]] for more
+  details."
   [collection & additional-honeysql-where-clauses]
   (apply effective-children* collection additional-honeysql-where-clauses))
 
