@@ -3,7 +3,7 @@
    [clojurewerkz.quartzite.matchers :as qm]
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
    [org.quartz JobListener Scheduler TriggerListener Trigger$TriggerState]))
@@ -91,5 +91,5 @@
   "Add triggers to the quartz scheduler, must be initialized before adding."
   []
   (when-let [scheduler (task/scheduler)]
-    (task/add-trigger-listener (create-trigger-listener scheduler))
-    (task/add-job-listener (create-job-execution-listener))))
+    (task/add-trigger-listener! (create-trigger-listener scheduler))
+    (task/add-job-listener! (create-job-execution-listener))))

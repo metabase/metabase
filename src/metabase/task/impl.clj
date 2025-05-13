@@ -356,14 +356,14 @@
      (log/with-context {:quartz-job-type (quote ~jtype)}
        ~@body)))
 
-(defn add-job-listener
+(defn add-job-listener!
   [^JobListener job-listener]
   (when-let [scheduler (scheduler)]
     (.. scheduler
         getListenerManager
         (addJobListener job-listener))))
 
-(defn add-trigger-listener
+(defn add-trigger-listener!
   [^TriggerListener trigger-listener]
   (when-let [scheduler (scheduler)]
     (.. scheduler
