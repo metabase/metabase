@@ -1136,10 +1136,12 @@
 
 (mu/defn- param->fields
   [param :- mbql.s/Parameter]
-  (for [field-id (params/dashboard-param->field-ids param)]
-    {:field-id field-id
-     :op       (param-type->op (:type param))
-     :options  (or (:options param) (param-type->default-options (:type param)))}))
+  (let [op      (param-type->op (:type param))
+        options (or (:options param) (param-type->default-options (:type param)))]
+    (for [field-id (params/dashboard-param->field-ids param)]
+      {:field-id field-id
+       :op       op
+       :options  options})))
 
 (mu/defn- chain-filter-constraints :- chain-filter/Constraints
   [dashboard                   :- :map
