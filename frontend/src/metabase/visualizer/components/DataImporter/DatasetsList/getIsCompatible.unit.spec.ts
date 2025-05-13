@@ -1,4 +1,5 @@
 import {
+  BooleanColumn,
   DateTimeColumn,
   NumberColumn,
   StringColumn,
@@ -269,7 +270,7 @@ describe("getIsCompatible", () => {
           fields: [anotherFieldWithSameType, anotherField],
         },
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("should accept a target with an assignable type to the primary column, regardless of the semantic type (VIZ-638)", () => {
@@ -307,13 +308,7 @@ describe("getIsCompatible", () => {
   });
 
   it("should only accept columns with same id and same type", () => {
-    const dimensions = [
-      createMockColumn(
-        NumberColumn({
-          id: 1,
-        }),
-      ),
-    ];
+    const dimensions = [createMockColumn(StringColumn({ id: 1 }))];
 
     const dateField = createMockField(
       DateTimeColumn({
@@ -322,29 +317,13 @@ describe("getIsCompatible", () => {
       }),
     );
 
-    const sameIdAndType = createMockField(
-      NumberColumn({
-        id: 1,
-      }),
-    );
+    const sameIdAndType = createMockField(StringColumn({ id: 1 }));
 
-    const differentIdAndType = createMockField(
-      StringColumn({
-        id: 2,
-      }),
-    );
+    const differentIdAndType = createMockField(BooleanColumn({ id: 2 }));
 
-    const differentIdSameType = createMockField(
-      StringColumn({
-        id: 3,
-      }),
-    );
+    const differentIdSameType = createMockField(StringColumn({ id: 3 }));
 
-    const allDifferent = createMockField(
-      StringColumn({
-        id: 4,
-      }),
-    );
+    const allDifferent = createMockField(BooleanColumn({ id: 4 }));
 
     const isCompatible = (fields: Field[]) =>
       getIsCompatible({
