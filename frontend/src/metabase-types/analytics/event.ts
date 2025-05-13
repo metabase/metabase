@@ -112,6 +112,11 @@ export type NewButtonItemClickedEvent = ValidateEvent<{
   triggered_from: "question" | "native-query" | "dashboard";
 }>;
 
+export type VisualizeAnotherWayClickedEvent = ValidateEvent<{
+  event: "visualize_another_way_clicked";
+  triggered_from: "question-list";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -128,4 +133,5 @@ export type SimpleEvent =
   | KeyboardShortcutPerformEvent
   | NewEntityInitiatedEvent
   | NewButtonClickedEvent
-  | NewButtonItemClickedEvent;
+  | NewButtonItemClickedEvent
+  | VisualizeAnotherWayClickedEvent;

@@ -17,6 +17,7 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
 import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -158,7 +159,13 @@ export function QuestionList({
                 className={S.VisualizerButton}
                 size="41px"
                 aria-label={t`Visualize another way`}
-                onClick={() => setVisualizerModalCardId(Number(item.id))}
+                onClick={() => {
+                  trackSimpleEvent({
+                    event: "visualize_another_way_clicked",
+                    triggered_from: "question-list",
+                  });
+                  setVisualizerModalCardId(Number(item.id));
+                }}
               >
                 <Icon name="add_data" />
               </ActionIcon>
