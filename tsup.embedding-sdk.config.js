@@ -6,6 +6,7 @@ import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
 import { transform } from "@svgr/core";
 import babel from "esbuild-plugin-babel";
 import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
+import { minimatch } from "minimatch";
 import path from "path";
 import postcss from "postcss";
 import postCssModulesPlugin from "postcss-modules";
@@ -70,6 +71,34 @@ const LICENSE_BANNER = `/*
  * file 'LICENSE.txt', which is part of this source code package.
  */\n`;
 
+const aliases = {
+  assets: ASSETS_PATH,
+  "~assets": ASSETS_PATH,
+  fonts: FONTS_PATH,
+  metabase: SRC_PATH,
+  "metabase-lib": LIB_SRC_PATH,
+  "metabase-enterprise": ENTERPRISE_SRC_PATH,
+  "metabase-types": TYPES_SRC_PATH,
+  "metabase-dev": path.join(SRC_PATH, `dev${isDevMode ? "" : "-noop"}.js`),
+  cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+  __support__: TEST_SUPPORT_PATH,
+  e2e: E2E_PATH,
+  style: path.join(SRC_PATH, "css/core/index"),
+  icepick: path.resolve(
+    import.meta.dirname,
+    "node_modules/icepick/icepick.min",
+  ),
+  "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
+  "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
+  "embedding-sdk": SDK_SRC_PATH,
+  "moment-timezone":
+    "moment-timezone/builds/moment-timezone-with-data-10-year-range.js",
+  "moment-timezone/data/packed/latest.json": path.join(
+    import.meta.dirname,
+    "dev/null",
+  ),
+};
+
 const processPolyfillPlugin = () => ({
   name: "process-polyfill",
   setup(build) {
@@ -118,7 +147,6 @@ const generateScopedName = (selector, fileName) => {
 };
 
 const cssModulesPlugin = ({
-  srcPath,
   aliases = [],
   additionalCssModuleRegexp,
   resolve,
@@ -128,28 +156,43 @@ const cssModulesPlugin = ({
     `(${additionalCssModuleRegexp.source}$|\\.module\\.css$)`,
   );
 
+  const getFullPathFromResolvePath = ({ resolveDir, resolvePath, aliases }) => {
+    let fullPath;
+
+    if (resolvePath.startsWith(".")) {
+      fullPath = path.resolve(resolveDir, resolvePath);
+    } else {
+      const alias = Object.keys(aliases).find((alias) =>
+        resolvePath.startsWith(`${alias}/`),
+      );
+
+      if (alias) {
+        fullPath = path.resolve(
+          path.join(aliases[alias], resolvePath.replace(alias, "")),
+        );
+      } else {
+        fullPath = path.resolve(
+          path.join(import.meta.dirname, "node_modules", resolvePath),
+        );
+      }
+    }
+
+    return fullPath;
+  };
+
   return {
     name: "css-modules",
     setup(build) {
       build.onResolve({ filter, namespace: "file" }, (args) => {
-        const importPath = args.path;
-        let fullPath;
+        const resolveDir = args.resolveDir;
+        const resolvePath = args.path;
 
-        if (importPath.startsWith(".")) {
-          fullPath = path.resolve(args.resolveDir, importPath);
-        } else {
-          const alias = aliases.find((a) => importPath.startsWith(a));
+        const fullPath = getFullPathFromResolvePath({
+          resolveDir,
+          resolvePath,
+          aliases,
+        });
 
-          if (alias) {
-            fullPath = path.resolve(
-              path.join(srcPath, importPath.replace(alias, "")),
-            );
-          } else {
-            fullPath = path.resolve(
-              path.join(import.meta.dirname, "node_modules", importPath),
-            );
-          }
-        }
         return {
           path: `${fullPath}#css-module`,
           namespace: "css-module",
@@ -268,6 +311,34 @@ const svgrPlugin = () => ({
   },
 });
 
+const sideEffectsPlugin = ({ sideEffects }) => ({
+  name: "no-side-effects",
+  setup(build) {
+    build.onResolve({ filter: /.*/ }, async (args) => {
+      const importer = args.importer;
+      const relativeImporter = "./" + path.relative(process.cwd(), importer);
+
+      if (args.pluginData) {
+        return; // Ignore this if we called ourselves
+      }
+
+      const { path: argsPath, ...rest } = args;
+
+      rest.pluginData = true; // Avoid infinite recursion
+
+      const result = await build.resolve(argsPath, rest);
+
+      const isSideEffectPath = sideEffects.some((sideEffectPath) =>
+        minimatch(relativeImporter, sideEffectPath),
+      );
+
+      result.sideEffects = isSideEffectPath;
+
+      return result;
+    });
+  },
+});
+
 await build({
   entry: [path.join(SDK_SRC_PATH, "index.ts")],
   outDir: BUILD_PATH,
@@ -307,8 +378,7 @@ await build({
   },
   esbuildPlugins: [
     cssModulesPlugin({
-      srcPath: SRC_PATH,
-      aliases: ["metabase"],
+      aliases,
       additionalCssModuleRegexp: /css\/core\/index\.css/,
       resolve: (filePath) => {
         if (filePath === "style") {
@@ -329,6 +399,18 @@ await build({
     NodeModulesPolyfillPlugin(),
     processPolyfillPlugin(),
     svgrPlugin(),
+    sideEffectsPlugin({
+      sideEffects: [
+        "**/*.css",
+        "./enterprise/frontend/src/metabase-enterprise/**",
+        "./enterprise/frontend/src/embedding-sdk/index.ts",
+        // eslint-disable-next-line no-literal-metabase-strings -- build config
+        "./enterprise/frontend/src/embedding-sdk/components/public/MetabaseProvider.tsx",
+        "./frontend/src/metabase/visualizations/components/LeafletHeatMap.jsx",
+        "./frontend/src/metabase/visualizations/components/LeafletMap.jsx",
+        "./e2e/**/**",
+      ],
+    }),
   ],
   loader: {
     ".css": "css",
@@ -342,33 +424,7 @@ await build({
   esbuildOptions: (options) => {
     options.outbase = SDK_SRC_PATH;
 
-    options.alias = {
-      assets: ASSETS_PATH,
-      "~assets": ASSETS_PATH,
-      fonts: FONTS_PATH,
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
-      "metabase-enterprise": ENTERPRISE_SRC_PATH,
-      "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": path.join(SRC_PATH, `dev${isDevMode ? "" : "-noop"}.js`),
-      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-      __support__: TEST_SUPPORT_PATH,
-      e2e: E2E_PATH,
-      style: path.join(SRC_PATH, "css/core/index"),
-      icepick: path.resolve(
-        import.meta.dirname,
-        "node_modules/icepick/icepick.min",
-      ),
-      "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
-      "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
-      "embedding-sdk": SDK_SRC_PATH,
-      "moment-timezone":
-        "moment-timezone/builds/moment-timezone-with-data-10-year-range.js",
-      "moment-timezone/data/packed/latest.json": path.join(
-        import.meta.dirname,
-        "dev/null",
-      ),
-    };
+    options.alias = aliases;
 
     options.resolveExtensions = [
       ".tsx",

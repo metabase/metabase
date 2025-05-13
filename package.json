@@ -9,17 +9,6 @@
     "node": ">=22",
     "yarn": "^1.12.3"
   },
-  "sideEffects": [
-    "**/*.css",
-    "./enterprise/frontend/src/metabase-enterprise/**",
-    "./enterprise/frontend/src/embedding-sdk/lib/polyfill/use-sync-external-store.ts",
-    "./enterprise/frontend/src/embedding-sdk/index.ts",
-    "./frontend/src/metabase/lib/dayjs.ts",
-    "./frontend/src/metabase/components/AppBanner/utils.ts",
-    "./frontend/src/metabase/common/components/EntityPicker/components/RecentsTab/utils.ts",
-    "./frontend/src/metabase/query_builder/components/view/QuestionLastUpdated/utils.tsx",
-    "./e2e/**/**"
-  ],
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.3",
     "@codemirror/lang-html": "^6.4.9",
@@ -312,6 +301,7 @@
     "lint-staged": "^13.1.2",
     "loki": "^0.35.1",
     "mini-css-extract-plugin": "2.7.2",
+    "minimatch": "^10.0.1",
     "mocha": "^10.8.1",
     "mocha-junit-reporter": "^2.2.1",
     "mochawesome": "^7.1.3",
