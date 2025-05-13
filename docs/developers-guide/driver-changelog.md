@@ -34,6 +34,11 @@ title: Driver interface changelog
 - The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
   update your usages.
 
+- The namespace `metabase.public-settings` has been removed, and settings have been moved to appropriate modules, e.g.
+  `site-uuid` now lives in `metabase.system.core`. If you were using this namespace, please update your code
+  accordingly. You should be able to find the correct one by looking at how those settings are used in our first-party
+  drivers.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.

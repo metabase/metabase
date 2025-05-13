@@ -16,6 +16,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
@@ -28,9 +29,7 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
-   [metabase.server.streaming-response]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -192,7 +191,7 @@
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::card/type
    & {:keys [include-tables? include-fields?]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
@@ -1182,7 +1181,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
@@ -1192,7 +1191,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
@@ -1254,7 +1253,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [{:keys [schema]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
@@ -1276,7 +1275,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [{:keys [schema]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))

@@ -42,7 +42,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
