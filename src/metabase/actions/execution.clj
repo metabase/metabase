@@ -162,19 +162,21 @@
 
 (defn- execute-implicit-action!
   [action request-parameters]
-  (let [implicit-action (parse-implicit-action action)
+  (let [model-id        (:model_id action)
+        implicit-action (parse-implicit-action action)
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
-        _ (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
-                     400
-                     (tru "Implicit parameters must be provided."))
-        arg-map (cond-> query
-                  (= implicit-action :model.row/create)
-                  (assoc :create-row row-parameters)
+        _               (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
+                                   400
+                                   (tru "Implicit parameters must be provided."))
+        arg-map         (cond-> query
+                          (= implicit-action :model.row/create)
+                          (assoc :create-row row-parameters)
 
-                  (= implicit-action :model.row/update)
-                  (assoc :update-row row-parameters))]
-    (binding [qp.perms/*card-id* (:model_id action)]
-      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:policy :model-action}))))
+                          (= implicit-action :model.row/update)
+                          (assoc :update-row row-parameters))]
+    (binding [qp.perms/*card-id* model-id]
+      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:scope  {:model-id model-id}
+                                                                                    :policy :model-action}))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."

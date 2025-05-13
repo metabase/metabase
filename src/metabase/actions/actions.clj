@@ -227,10 +227,10 @@
   [action
    scope
    arg-map-or-maps
-   & {:keys [policy existing-context]
-      :or   {policy :ad-hoc-action-invocation}}]
+   & {:keys [policy existing-context]}]
   (let [action-kw (keyword action)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
+        policy    (or policy (when (:model-id scope) :model-action) :ad-hoc-invocation)
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
@@ -259,6 +259,7 @@
         (check-actions-enabled-for-database! db)
         :data-editing
         (check-data-editing-enabled-for-database! db)))
+
     (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
       (when (= :model-action policy)
         (doseq [arg-map arg-maps]
@@ -289,9 +290,9 @@
 
 (mu/defn perform-action-with-single-input-and-output
   "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
-  [action arg-map & {:as opts}]
-  (try (let [scope             {:non-undoable-scope :execute-implicit-action}
-             {:keys [outputs]} (perform-action! action scope [arg-map] opts)]
+  [action arg-map & {:keys [scope] :as opts}]
+  (try (let [scope             (or scope {:unknown :legacy-action})
+             {:keys [outputs]} (perform-action! action scope [arg-map] (dissoc opts :scope))]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
          (first outputs))
        (catch ExceptionInfo e
