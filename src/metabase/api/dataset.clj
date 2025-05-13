@@ -15,6 +15,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :refer [Table]]
@@ -231,5 +232,27 @@
    field_ids [:maybe [:sequential ms/PositiveInt]]
    query     ms/NonBlankString}
   (parameter-values parameter field_ids query))
+
+(defn param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
+  [[field-id :as field-ids] param value]
+  (or (custom-values/parameter-remapped-value
+       param
+       value
+       #(-> (if (= (count field-ids) 1)
+              (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
+              (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+            :values
+            first))
+      [value]))
+
+(api/defendpoint POST "/parameter/remapping"
+  "Return the remapped parameter values for cards or dashboards that are being edited."
+  [:as {{:keys [parameter field_ids value]} :body}]
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/PositiveInt]]
+   value     :any}
+  (param-remapped-value field_ids parameter value))
 
 (api/define-routes)

@@ -671,6 +671,35 @@
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))))))
 
+(deftest ^:parallel parameter-remapping-test
+  (testing "field values"
+    (let [parameter {:values_query_type    "list"
+                     :values_source_type   nil
+                     :values_source_config {}
+                     :name                 "ID 2"
+                     :slug                 "id_2"
+                     :id                   "707f4bbf"
+                     :type                 "id"
+                     :sectionId            "string"}
+          body      {:parameter parameter
+                     :field_ids [(mt/id :people :id)]
+                     :value     1}]
+      (is (= [1 "Hudson Borer"]
+             (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body)))))
+  (testing "static list"
+    (let [parameter {:name                 "Static Category label"
+                     :id                   "list-param-id"
+                     :type                 "category"
+                     :values_source_type   "static-list"
+                     :values_source_config {:values [["A frican" "Af"]
+                                                     ["American" "Am"]
+                                                     ["A   sian" "As"]]}}
+          body      {:parameter parameter
+                     :field_ids [(mt/id :people :name)]
+                     :value     "A   sian"}]
+      (is (= ["A   sian" "As"]
+             (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
+
 (deftest ^:parallel adhoc-mlv2-query-test
   (testing "POST /api/dataset"
     (testing "Should be able to run an ad-hoc MLv2 query (#39024)"

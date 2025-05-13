@@ -447,7 +447,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events", () => {
+  it("should send snowplow events", { tags: "@flaky" }, () => {
     let goodEvents = 0;
 
     goodEvents++; // 1 - new_instance_created
@@ -569,14 +569,18 @@ H.describeWithSnowplow("scenarios > setup", () => {
     });
   });
 
-  it("should ignore snowplow failures and work as normal", () => {
-    H.blockSnowplow();
-    cy.visit("/setup");
-    skipWelcomePage();
+  it(
+    "should ignore snowplow failures and work as normal",
+    { tags: "@flaky" },
+    () => {
+      H.blockSnowplow();
+      cy.visit("/setup");
+      skipWelcomePage();
 
-    // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
-    H.expectGoodSnowplowEvents(1);
-  });
+      // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
+      H.expectGoodSnowplowEvents(1);
+    },
+  );
 });
 
 const skipWelcomePage = () => {

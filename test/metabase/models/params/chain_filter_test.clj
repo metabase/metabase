@@ -385,6 +385,10 @@
   (is (= (mt/id :venues :name)
          (#'chain-filter/remapped-field-id (mt/id :venues :id)))))
 
+(deftest fk-field-to-pk-field-to-name-field-remapped-field-id-test
+  (is (= (mt/id :people :name)
+         (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
+
 (deftest field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"

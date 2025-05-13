@@ -20,7 +20,6 @@
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.api.public :as api.public]
    [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -31,6 +30,7 @@
    [metabase.util.embed :as embed]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -176,82 +176,7 @@
                                                          (api.embed.common/parse-query-params query-params))
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        FieldValues, Search, Remappings                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; -------------------------------------------------- Field Values --------------------------------------------------
-
-(api/defendpoint GET "/card/:token/field/:field-id/values"
-  "Fetch FieldValues for a Field that is referenced by an embedded Card."
-  [token field-id]
-  {field-id ms/PositiveInt}
-  (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/card-and-field-id->values card-id field-id)))
-
-(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
-  "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
-  [token field-id]
-  {field-id ms/PositiveInt}
-  (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
-    (api.public/dashboard-and-field-id->values dashboard-id field-id)))
-
-;;; --------------------------------------------------- Searching ----------------------------------------------------
-
-(api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
-  "Search for values of a Field that is referenced by an embedded Card."
-  [token field-id search-field-id value limit]
-  {field-id        ms/PositiveInt
-   search-field-id ms/PositiveInt
-   value           ms/NonBlankString
-   limit           [:maybe ms/PositiveInt]}
-  (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
-
-(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
-  "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
-  [token field-id search-field-id value limit]
-  {field-id        ms/PositiveInt
-   search-field-id ms/PositiveInt
-   value           ms/NonBlankString
-   limit           [:maybe ms/PositiveInt]}
-  (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
-    (api.public/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
-                                                                                      (Integer/parseInt limit)))))
-
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
-
-(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
-  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
-  embedded Cards."
-  [token field-id remapped-id value]
-  {field-id    ms/PositiveInt
-   remapped-id ms/PositiveInt
-   value       ms/NonBlankString}
-  (let [unsigned-token (unsign-and-translate-ids token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (api.embed.common/check-embedding-enabled-for-card card-id)
-    (api.public/card-field-remapped-values card-id field-id remapped-id value)))
-
-(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
-  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
-  embedded Dashboards."
-  [token field-id remapped-id value]
-  {field-id    ms/PositiveInt
-   remapped-id ms/PositiveInt
-   value       ms/NonBlankString}
-  (let [unsigned-token (unsign-and-translate-ids token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
-    (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 (api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                       :export-format api.dataset/export-format-regex]
@@ -294,6 +219,14 @@
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
 
+(api/defendpoint GET "/dashboard/:token/params/:param-key/remapping"
+  "Embedded version of the remapped dashboard param value endpoint."
+  [token param-key value]
+  {token     ms/NonBlankString
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
+  (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
+
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [token param-key]
@@ -316,6 +249,21 @@
                                          :card           card
                                          :param-key      param-key
                                          :search-prefix  prefix})))
+
+(api/defendpoint GET "/card/:token/params/:param-key/remapping"
+  "Embedded version of api.card filter values endpoint."
+  [token param-key value]
+  {token     ms/NonBlankString
+   param-key ms/NonBlankString
+   value     ms/NonBlankString}
+  (let [unsigned (unsign-and-translate-ids token)
+        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card     (t2/select-one :model/Card :id card-id)]
+    (api.embed.common/check-embedding-enabled-for-card card-id)
+    (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
+                                                 :card           card
+                                                 :param-key      param-key
+                                                 :value          (codec/url-decode value)})))
 
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
