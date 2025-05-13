@@ -164,6 +164,40 @@ describe(
         H.assertTableRowsCount(1);
         H.filterWidget().findByText("true").should("be.visible");
       });
+
+      it("should allow to use a 'Go to a custom destination - URL' click behavior", () => {
+        createNativeQuestionAndDashboard().then(
+          ({ dashboardId, questionId }) => {
+            H.visitDashboard(dashboardId);
+
+            cy.log("set up click behavior");
+            H.editDashboard();
+            createAndMapParameter();
+            H.showDashboardCardActions();
+            cy.findByLabelText("Click behavior").click();
+            H.sidebar().within(() => {
+              cy.findByText(FIELD_NAME).click();
+              cy.findByText("Go to a custom destination").click();
+              cy.findByText("URL").click();
+            });
+            H.modal().within(() => {
+              cy.findByPlaceholderText(
+                "e.g. http://acme.com/id/{{user_id}}",
+              ).type(
+                `http://localhost:4000/question/${questionId}?boolean={{${FIELD_NAME}}}`,
+                { parseSpecialCharSequences: false },
+              );
+              cy.button("Done").click();
+            });
+            H.saveDashboard();
+
+            cy.log("assert click behavior");
+            H.getDashboardCard().findAllByText("true").first().click();
+            H.assertTableRowsCount(1);
+            H.filterWidget().findByText("true").should("be.visible");
+          },
+        );
+      });
     });
   },
 );
