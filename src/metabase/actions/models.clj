@@ -367,7 +367,7 @@
                           (sort-by :position))]
     {:database_id (:database_id table)
      :name        (name kind)
-     :kind        (str (namespace kind) "/" (name kind))
+     :kind        (u/qualified-name kind)
      :table_id    (:id table)
      :id          (primitive-action-id kind (:id table))
      ;; true for all databases with data_editing_enabled
