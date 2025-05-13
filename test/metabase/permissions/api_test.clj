@@ -423,3 +423,26 @@
                                              {:new-admin? (t/after? instance-creation-time fifty-migration-time)
                                               :setting-value banner-setting-value})]
               (is (= expected-banner-value (api.permissions/show-updated-permission-banner))))))))))
+
+(deftest enabling-tenants-changes-groups
+  (let [get-magic-group (fn [group-type]
+                          (->>
+                           (mt/user-http-request :crowberto :get 200 "/permissions/group")
+                           (filter #(= group-type (:magic_group_type %)))
+                           first))]
+    (mt/with-temporary-setting-values [use-tenants false]
+      (testing "When disabled, 'All Users' is 'All Users'"
+        (is (=? {:magic_group_type "all-internal-users"
+                 :name "All Users"}
+                (get-magic-group "all-internal-users"))))
+      (testing "When disabled, 'All External Users' is not visible"
+        (is (nil? (get-magic-group "all-external-users")))))
+    (mt/with-temporary-setting-values [use-tenants true]
+      (testing "When enabled, 'All Users' is 'All Internal Users'"
+        (is (=? {:magic_group_type "all-internal-users"
+                 :name "All Internal Users"}
+                (get-magic-group "all-internal-users"))))
+      (testing "When enabled, 'All External Users' is visible"
+        (is (=? {:magic_group_type "all-external-users"
+                 :name "All External Users"}
+                (get-magic-group "all-external-users")))))))
