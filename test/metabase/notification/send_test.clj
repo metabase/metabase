@@ -605,38 +605,42 @@
                (#'notification.send/take-notification! queue)))))
 
     (testing "take blocks until notification is available"
-      (let [queue (#'notification.send/create-dedup-priority-queue)
-            result (atom nil)
-            latch (java.util.concurrent.CountDownLatch. 1)
+      (let [result (atom nil)
+            ready-latch (java.util.concurrent.CountDownLatch. 1)
+            take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
-                              (.countDown latch) ; signal thread is ready
-                              (reset! result (#'notification.send/take-notification! queue))))]
+                              (.countDown ready-latch) ; signal thread is ready to take
+                              (reset! result (#'notification.send/take-notification! queue))
+                              (.countDown take-latch)))] ; signal take is complete
         (.start thread)
-        (.await latch) ; wait for thread to start
-        (Thread/sleep 50) ; give thread time to block on take
+        (.await ready-latch) ; wait for thread to be ready to take
 
         ; Put a notification that the thread should receive
         (#'notification.send/put-notification! queue {:id 42 :payload_type :notification/testing :test-value "X"})
 
-        ; Wait for thread to complete
-        (.join ^Thread thread 1000)
+        ; Wait for take to complete
+        (.await take-latch)
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))
 
     (testing "queue blocks when full"
       (let [small-queue (#'notification.send/->BlockingQueue (java.util.concurrent.ArrayBlockingQueue. 2))
+            put-latch (java.util.concurrent.CountDownLatch. 1)
+            take-latch (java.util.concurrent.CountDownLatch. 1)
             put-thread (Thread. (fn []
                                   (#'notification.send/put-notification! small-queue {:id 1 :test-value "A"})
                                   (#'notification.send/put-notification! small-queue {:id 2 :test-value "B"})
-                                  (#'notification.send/put-notification! small-queue {:id 3 :test-value "C"})))]
+                                  (.countDown put-latch) ; signal ready to put third item
+                                  (#'notification.send/put-notification! small-queue {:id 3 :test-value "C"})
+                                  (.countDown take-latch)))] ; signal all puts complete
         (.start put-thread)
-        (Thread/sleep 50) ; give thread time to block on third put
+        (.await put-latch) ; wait for thread to be ready to put third item
 
         ; Take one item to unblock the put
         (is (= {:id 1 :test-value "A"} (#'notification.send/take-notification! small-queue)))
 
-        ; Wait for thread to complete
-        (.join ^Thread put-thread 1000)
+        ; Wait for all puts to complete
+        (.await take-latch)
 
         ; Verify remaining items
         (is (= {:id 2 :test-value "B"} (#'notification.send/take-notification! small-queue)))
@@ -734,18 +738,19 @@
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
-            latch (java.util.concurrent.CountDownLatch. 1)
+            ready-latch (java.util.concurrent.CountDownLatch. 1)
+            take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
-                              (.countDown latch) ; signal thread is ready
-                              (reset! result (#'notification.send/take-notification! queue))))]
+                              (.countDown ready-latch) ; signal thread is ready to take
+                              (reset! result (#'notification.send/take-notification! queue))
+                              (.countDown take-latch)))] ; signal take is complete
         (.start thread)
-        (.await latch) ; wait for thread to start
-        (Thread/sleep 50) ; give thread time to block on take
+        (.await ready-latch) ; wait for thread to be ready to take
 
         ; Put a notification that the thread should receive
         (#'notification.send/put-notification! queue {:id 42 :payload_type :notification/testing :test-value "X"})
 
-        ; Wait for thread to complete
-        (.join ^Thread thread 1000)
+        ; Wait for take to complete
+        (.await take-latch)
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
