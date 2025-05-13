@@ -114,11 +114,11 @@ export function provideAdhocQueryTags(
     listTag("database"),
     idTag("database", dataset.database_id),
     listTag("field"),
-    ...dataset.data.results_metadata.columns
+    ...(dataset.data?.results_metadata?.columns
       .map((column) =>
         column.id !== undefined ? idTag("field", column.id) : null,
       )
-      .filter(isNotNull),
+      .filter(isNotNull) ?? []),
   ];
 }
 
