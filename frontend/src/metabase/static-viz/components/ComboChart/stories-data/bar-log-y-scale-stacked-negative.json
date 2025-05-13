@@ -504,7 +504,6 @@
           "base_type": "type/Float",
           "name": "Average of Defense Inverted",
           "display_name": "Average of Defense Inverted",
-          "expression_name": "Average of Defense Inverted",
           "field_ref": ["expression", "Average of Defense Inverted"],
           "source": "fields",
           "effective_type": "type/Float"
@@ -513,7 +512,6 @@
           "base_type": "type/Float",
           "name": "Average of Sp Defense Inverted",
           "display_name": "Average of Sp Defense Inverted",
-          "expression_name": "Average of Sp Defense Inverted",
           "field_ref": ["expression", "Average of Sp Defense Inverted"],
           "source": "fields",
           "effective_type": "type/Float"
