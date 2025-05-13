@@ -114,7 +114,7 @@ function resolveEmbeddingSdkPackage() {
 
   const sdkLocalPackagePath = path.resolve(
     __dirname,
-    "../../resources/embedding-sdk/dist/index.js",
+    "../../resources/embedding-sdk/dist/index.mjs",
   );
 
   if (fs.existsSync(sdkLocalPackagePath)) {
