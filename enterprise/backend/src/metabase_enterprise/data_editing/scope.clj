@@ -26,28 +26,16 @@
                                                         (:dashcard-id scope))]
       (merge {:card-id card_id, :dashboard-id dashboard_id} scope))))
 
-(defn- hydrate-from-card [scope]
+(defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
-    (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id] (:card-id scope))
+    (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id] card-id)
           source-table (-> card :dataset_query :query :source-table)
           table-id     (when (pos-int? source-table)
                          source-table)]
       (merge {:table-id table-id,
               :collection-id (:collection_id card),
               :database-id (:database_id card)}
-             scope))))
-
-(defn- hydrate-from-model [scope]
-  (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
-    scope
-    (let [model        (t2/select-one [:model/Card :dataset_query :collection_id :database_id] (:model-id scope))
-          source-table (-> model :dataset_query :query :source-table)
-          table-id     (when (pos-int? source-table)
-                         source-table)]
-      (merge {:table-id table-id,
-              :collection-id (:collection_id model),
-              :database-id (:database_id model)}
              scope))))
 
 (defn hydrate-scope* [scope]
@@ -60,9 +48,9 @@
     (:webhook-id scope)
     (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope))))
 
-    (:card-id scope) hydrate-from-card
+    (:card-id scope) (hydrate-from-card (:card-id scope))
 
-    (:model-id scope) hydrate-from-model
+    (:model-id scope) (hydrate-from-card (:model-id scope))
 
     (:table-id scope)
     (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))

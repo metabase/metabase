@@ -30,34 +30,22 @@
                                                                         :creator_id (mt/user->id :rasta)})]
           (try
             (mt/with-temp [:model/Collection   {collection-id :id}   {:name "Test Collection"}
-                           :model/Card         {mbql-card-id :id}    {:name          "Test MBQL Card"
-                                                                      :database_id   db-id
-                                                                      :dataset_query {:database db-id
-                                                                                      :type     :query
-                                                                                      :query    {:source-table table-id}}
-                                                                      :collection_id collection-id}
-                           :model/Card         {mbql-model-id :id}   {:name          "Test MBQL Model"
+                           :model/Card         {mbql-card-id :id}    {:name          "Test MBQL Card/Model"
                                                                       :database_id   db-id
                                                                       :dataset_query {:database db-id
                                                                                       :type     :query
                                                                                       :query    {:source-table table-id}}
                                                                       :collection_id collection-id
-                                                                      :dataset       true}
-                           :model/Card          {native-model-id :id} {:name          "Test Native Model"
-                                                                       :database_id   db-id
-                                                                       :dataset_query {:database db-id
-                                                                                       :type     :native
-                                                                                       :native   {:query "SELECT * FROM venues"}}
-                                                                       :collection_id collection-id
-                                                                       :dataset       true}
+                                                                      :type          :model}
                            :model/Dashboard     {dashboard-id :id}   {:name          "Test Dashboard"
                                                                       :collection_id collection-id}
-                           :model/Card          {native-card-id :id} {:name          "Test Native Card"
+                           :model/Card          {native-card-id :id} {:name          "Test Native Card/Model"
                                                                       :database_id   db-id
                                                                       :dataset_query {:database db-id
                                                                                       :type     :native
                                                                                       :native   {:query "SELECT * FROM venues"}}
-                                                                      :dashboard_id  dashboard-id}
+                                                                      :collection_id collection-id
+                                                                      :type          :model}
                            :model/DashboardCard {dashcard-id-1 :id}  {:dashboard_id dashboard-id
                                                                       :card_id      mbql-card-id
                                                                       :row          0
@@ -83,7 +71,8 @@
                 (is (= {:dashcard-id   dashcard-id-2
                         :dashboard-id  dashboard-id
                         :collection-id collection-id
-                        :card-id       native-card-id}
+                        :card-id       native-card-id
+                        :database-id   db-id}
                        (scope/hydrate {:dashcard-id dashcard-id-2}))))
 
               (testing "hydrate for dashboard"
@@ -100,20 +89,22 @@
 
               (testing "hydrate for native card"
                 (is (= {:card-id       native-card-id
-                        :collection-id collection-id}
+                        :collection-id collection-id
+                        :database-id   db-id}
                        (scope/hydrate {:card-id native-card-id}))))
 
               (testing "hydrate for MBQL model"
-                (is (= {:model-id      mbql-model-id
+                (is (= {:model-id      mbql-card-id
                         :collection-id collection-id
                         :table-id      table-id
                         :database-id   db-id}
-                       (scope/hydrate {:model-id mbql-model-id}))))
+                       (scope/hydrate {:model-id mbql-card-id}))))
 
               (testing "hydrate for native model"
-                (is (= {:model-id      native-model-id
-                        :collection-id collection-id}
-                       (scope/hydrate {:model-id native-model-id}))))
+                (is (= {:model-id      native-card-id
+                        :collection-id collection-id
+                        :database-id   db-id}
+                       (scope/hydrate {:model-id native-card-id}))))
 
               (testing "hydrate for table"
                 (is (= {:table-id    table-id
