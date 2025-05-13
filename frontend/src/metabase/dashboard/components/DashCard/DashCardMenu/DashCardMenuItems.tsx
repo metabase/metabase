@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useSdkDashboardContext } from "embedding-sdk/components/public/SdkDashboard/context";
+import { useInteractiveDashboardContext } from "embedding-sdk/components/public/SdkDashboard/context";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";
@@ -39,7 +39,7 @@ export const DashCardMenuItems = ({
     plugins,
     onEditQuestion = (question, mode = "notebook") =>
       dispatch(editQuestion(question, mode)),
-  } = useSdkDashboardContext();
+  } = useInteractiveDashboardContext();
 
   const dashcardMenuItems = plugins?.dashboard?.dashboardCardMenu as
     | DashboardCardCustomMenuItem
@@ -63,7 +63,7 @@ export const DashCardMenuItems = ({
         label: t`Edit visualization`,
         onClick: onEditVisualization,
       });
-    } else if (withEditLink && onEditQuestion && canEditQuestion(question)) {
+    } else if (withEditLink && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({

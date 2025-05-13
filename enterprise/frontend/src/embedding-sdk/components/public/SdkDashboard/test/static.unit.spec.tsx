@@ -34,7 +34,10 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import type { DrillThroughQuestionProps } from "../../InteractiveQuestion";
 import type { EmbedDisplayParams } from "../../StaticDashboard";
 import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
-import { type SdkDashboardContextType, SdkDashboardProvider } from "../context";
+import {
+  type InteractiveDashboardContextType,
+  InteractiveDashboardProvider,
+} from "../context";
 import { useCommonDashboardParams } from "../use-common-dashboard-params";
 
 export type SdkDashboardProps = {
@@ -77,7 +80,7 @@ const SdkDashboardInner = ({
   plugins,
   onEditQuestion,
 }: Pick<SdkDashboardProps, "mode"> &
-  Pick<SdkDashboardContextType, "onEditQuestion" | "plugins">) => {
+  Pick<InteractiveDashboardContextType, "onEditQuestion" | "plugins">) => {
   const { isEditing } = useDashboardContext();
   const dashboardActions = match({ mode, isEditing })
     .with({ mode: "static" }, () => DASHBOARD_DISPLAY_ACTIONS)
@@ -93,13 +96,13 @@ const SdkDashboardInner = ({
     .exhaustive();
 
   return (
-    <SdkDashboardProvider
+    <InteractiveDashboardProvider
       plugins={plugins}
       onEditQuestion={onEditQuestion}
       dashboardActions={dashboardActions}
     >
       <Dashboard />
-    </SdkDashboardProvider>
+    </InteractiveDashboardProvider>
   );
 };
 

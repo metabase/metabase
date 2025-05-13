@@ -69,6 +69,7 @@ export const DashboardApp = ({
     onNightModeChange,
     refreshPeriod,
     onFullscreenChange,
+    setRefreshElapsedHook,
     onRefreshPeriodChange,
     autoScrollToDashcardId,
     reportAutoScrolledToDashcard,
@@ -122,6 +123,8 @@ export const DashboardApp = ({
         onNightModeChange={onNightModeChange}
         isNightMode={isNightMode}
         refreshPeriod={refreshPeriod}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        onRefreshPeriodChange={onRefreshPeriodChange}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onLoad={onLoadDashboard}

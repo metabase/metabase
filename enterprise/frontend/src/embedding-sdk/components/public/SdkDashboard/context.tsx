@@ -13,19 +13,20 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import type Question from "metabase-lib/v1/Question";
 
-export type SdkDashboardContextType = Partial<{
+export type InteractiveDashboardContextType = Partial<{
   plugins: MetabasePluginsConfig;
   dashboardActions: DashboardActionKey[];
   onEditQuestion?: (question: Question) => void;
 }>;
-const SdkDashboardContext = createContext<SdkDashboardContextType>({});
+const InteractiveDashboardContext =
+  createContext<InteractiveDashboardContextType>({});
 
-export const SdkDashboardProvider = ({
+export const InteractiveDashboardProvider = ({
   children,
   plugins,
   dashboardActions,
   onEditQuestion: initOnEditQuestion,
-}: PropsWithChildren<SdkDashboardContextType>) => {
+}: PropsWithChildren<InteractiveDashboardContextType>) => {
   const globalPlugins = useSdkSelector(getPlugins);
 
   const initializedPlugins = useMemo(() => {
@@ -48,12 +49,12 @@ export const SdkDashboardProvider = ({
     [dashboardActions, initializedPlugins, onEditQuestion],
   );
   return (
-    <SdkDashboardContext.Provider value={value}>
+    <InteractiveDashboardContext.Provider value={value}>
       {children}
-    </SdkDashboardContext.Provider>
+    </InteractiveDashboardContext.Provider>
   );
 };
 
-export const useSdkDashboardContext = () => {
-  return useContext(SdkDashboardContext);
+export const useInteractiveDashboardContext = () => {
+  return useContext(InteractiveDashboardContext);
 };
