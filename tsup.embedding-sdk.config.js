@@ -391,7 +391,21 @@ await build({
     }),
     fixReactVirtualizedPlugin,
     // To properly apply @emotion plugin before `requireToImport`
-    babel({ filter: /\.[jt]s?x/ }),
+    babel({
+      filter: /\.[jt]s?x/,
+      config: {
+        // The options below extend `babel.config.json`
+        presets: [
+          [
+            "@babel/preset-env",
+            {
+              bugfixes: true,
+              modules: false,
+            },
+          ],
+        ],
+      },
+    }),
     commonjs({
       filter: /node_modules\/.*\.(?:js|cjs)$/,
       ignore: (path) => !(path === "react" || path === "react-dom"),
