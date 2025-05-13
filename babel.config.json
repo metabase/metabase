@@ -1,13 +1,7 @@
 {
   "plugins": ["@emotion"],
   "presets": [
-    [
-      "@babel/preset-env",
-      {
-        "bugfixes": true,
-        "modules": false
-      }
-    ],
+    ["@babel/preset-env"],
     [
       "@babel/preset-react",
       { "runtime": "automatic" }
