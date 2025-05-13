@@ -262,7 +262,13 @@ export const EditableDashboard = (props: EditableDashboardProps) => {
   return <SdkDashboard mode="editable" {...props} />;
 };
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveDashboard
+ */
 export type InteractiveDashboardProps = Omit<SdkDashboardProps, "mode">;
+
 /**
  * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
  *

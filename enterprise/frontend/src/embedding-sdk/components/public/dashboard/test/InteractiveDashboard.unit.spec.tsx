@@ -3,9 +3,17 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 
-import { setup } from "./setup";
+import {
+  type SetupSdkDashboardProps,
+  TEST_DASHBOARD_ID,
+  setup as setupSdkDashboard,
+} from "./setup";
 
-const TEST_DASHBOARD_ID = 1;
+const setup = (args: SetupSdkDashboardProps = {}) =>
+  setupSdkDashboard({
+    mode: "interactive",
+    ...args,
+  });
 
 describe("InteractiveDashboard", () => {
   it("should render dashboard cards", async () => {
