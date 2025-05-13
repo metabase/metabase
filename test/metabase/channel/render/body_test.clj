@@ -13,7 +13,6 @@
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
@@ -1009,7 +1008,7 @@
 
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
-    (mt/with-temporary-setting-values [public-settings/start-of-week "monday"]
+    (mt/with-temporary-setting-values [start-of-week "monday"]
       (mt/dataset test-data
         (let [q    (mt/mbql-query products
                      {:aggregation [[:sum $price]]
@@ -1032,9 +1031,9 @@
 
 (deftest render-correct-custom-date-style
   (testing "The static-viz respects custom formatting for temporal axis label"
-    (mt/with-temporary-setting-values [public-settings/custom-formatting {:type/Temporal
-                                                                          {:date_style "YYYY/M/D"
-                                                                           :date_separator "/"}}]
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal
+                                                          {:date_style "YYYY/M/D"
+                                                           :date_separator "/"}}]
       (mt/dataset test-data
         (let [q    (mt/mbql-query products
                      {:aggregation [[:count]]
@@ -1058,7 +1057,7 @@
   (when config/ee-available?
     (testing "The static-viz respects custom whitelabel colors"
       (mt/with-premium-features #{:whitelabel}
-        (mt/with-temporary-setting-values [public-settings/application-colors {:accent0 "#0005FF"}]
+        (mt/with-temporary-setting-values [application-colors {:accent0 "#0005FF"}]
           (mt/dataset test-data
             (let [q    (mt/mbql-query products
                          {:aggregation [[:count]]
