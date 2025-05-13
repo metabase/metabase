@@ -44,8 +44,18 @@ export const DataModel = ({ params }: Props) => {
   const field = table?.fields?.find((field) => field.id === fieldId);
 
   return (
-    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Stack className={S.sidebar} flex="0 0 320px" gap={0} h="100%">
+    <Flex
+      h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}
+      w="100%"
+      bg="accent-gray-light"
+    >
+      <Stack
+        className={S.sidebar}
+        flex="0 0 320px"
+        gap={0}
+        h="100%"
+        bg="bg-white"
+      >
         <Title order={2} px="xl" py="lg" pb="md">
           {t`Data model`}
         </Title>
@@ -58,7 +68,13 @@ export const DataModel = ({ params }: Props) => {
       </Stack>
 
       {tableId && (
-        <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
+        <Stack
+          className={S.sidebar}
+          flex="0 0 400px"
+          gap={0}
+          h="100%"
+          bg="bg-white"
+        >
           <Box className={S.tableSectionContainer} h="100%" p="xl" pb="lg">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {table && (
@@ -98,7 +114,7 @@ export const DataModel = ({ params }: Props) => {
       )}
 
       {!isEmptyStateShown && (
-        <Flex bg="accent-gray-light" flex="1">
+        <>
           <Box flex="0 0 400px" h="100%">
             <LoadingAndErrorWrapper
               className={S.contentLoadingAndErrorWrapper}
@@ -119,7 +135,7 @@ export const DataModel = ({ params }: Props) => {
             </LoadingAndErrorWrapper>
           </Box>
 
-          <Box flex="1" p="xl" pl={0}>
+          <Box flex="1 1 200px" p="lg" pl={0} miw={0}>
             {field && (
               <PreviewSection
                 key={tableId}
@@ -130,7 +146,7 @@ export const DataModel = ({ params }: Props) => {
               />
             )}
           </Box>
-        </Flex>
+        </>
       )}
     </Flex>
   );
