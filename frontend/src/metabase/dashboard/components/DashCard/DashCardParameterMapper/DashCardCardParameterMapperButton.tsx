@@ -6,8 +6,11 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DeprecatedTooltip from "metabase/core/components/Tooltip";
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
+import type {
+  ParameterMappingOption,
+  StructuredQuerySectionOption,
+} from "metabase/parameters/utils/mapping-options";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -24,7 +27,7 @@ interface DashCardCardParameterMapperButtonProps {
   handleChangeTarget: (target: ParameterTarget | null) => void;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
-  mappingOptions: ParameterMappingOption[];
+  mappingOptions: StructuredQuerySectionOption[];
 }
 
 export const DashCardCardParameterMapperButton = ({
@@ -143,7 +146,6 @@ export const DashCardCardParameterMapperButton = ({
               handleChangeTarget(target);
               setIsDropdownVisible(false);
             }}
-            target={target}
             mappingOptions={mappingOptions}
             selectedMappingOption={selectedMappingOption}
           />
