@@ -1,7 +1,6 @@
 import {
   type ColumnSizingState,
   type PaginationState,
-  type RowSelectionState,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -83,6 +82,8 @@ export const useDataGridInstance = <TData, TValue>({
   theme,
   pageSize,
   enableRowSelection,
+  rowSelection,
+  onRowSelectionChange,
   enableSelection,
   onColumnResize,
   onColumnReorder,
@@ -230,8 +231,6 @@ export const useDataGridInstance = <TData, TValue>({
   const enablePagination =
     pagination?.pageSize !== DISABLED_PAGINATION_STATE.pageSize;
 
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-
   const table = useReactTable({
     data,
     columns,
@@ -253,7 +252,7 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizingMap,
     onPaginationChange: setPagination,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange,
     enableRowSelection,
   });
 

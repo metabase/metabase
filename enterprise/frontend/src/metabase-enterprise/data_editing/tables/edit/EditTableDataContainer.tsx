@@ -120,13 +120,8 @@ export const EditTableDataContainer = ({
       stateUpdateStrategy,
     });
 
-  const {
-    isRowSelectionEnabled,
-    setRowSelectionEnabled,
-    setRowSelectionDisabled,
-    selectedRowIndices,
-    setSelectedRowIndices,
-  } = useEditingTableRowSelection();
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
 
   useMount(() => {
     dispatch(closeNavbar());
@@ -154,15 +149,12 @@ export const EditTableDataContainer = ({
             isLoading={isFetching}
             isUndoLoading={isUndoLoading}
             isRedoLoading={isRedoLoading}
-            isRowSelectionEnabled={isRowSelectionEnabled}
             selectedRowIndices={selectedRowIndices}
             onCreate={openCreateRowModal}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
             onUndo={undo}
             onRedo={redo}
-            onRowSelectClick={setRowSelectionEnabled}
-            onRowSelectCancel={setRowSelectionDisabled}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
@@ -178,8 +170,8 @@ export const EditTableDataContainer = ({
                 cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={openEditRowModal}
-                isRowSelectionEnabled={isRowSelectionEnabled}
-                onRowSelectionChange={setSelectedRowIndices}
+                onRowSelectionChange={setRowSelection}
+                rowSelection={rowSelection}
               />
             </Box>
             <Flex

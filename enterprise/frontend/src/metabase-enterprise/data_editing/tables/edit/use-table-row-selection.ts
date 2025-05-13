@@ -1,19 +1,16 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import type { RowSelectionState } from "@tanstack/react-table";
+import { useMemo, useState } from "react";
 
-export function useEditingTableRowSelection(initialState: boolean = false) {
-  const [selectedRowIndices, setSelectedRowIndices] = useState<number[]>([]);
-
-  const [
-    isRowSelectionEnabled,
-    { open: setRowSelectionEnabled, close: setRowSelectionDisabled },
-  ] = useDisclosure(initialState);
+export function useEditingTableRowSelection() {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const selectedRowIndices = useMemo(
+    () => Object.keys(rowSelection).map(Number),
+    [rowSelection],
+  );
 
   return {
+    rowSelection,
     selectedRowIndices,
-    isRowSelectionEnabled,
-    setSelectedRowIndices,
-    setRowSelectionEnabled,
-    setRowSelectionDisabled,
+    setRowSelection,
   };
 }

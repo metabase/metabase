@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { useLocation } from "react-use";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import Modal from "metabase/components/Modal";
@@ -161,13 +161,8 @@ export const EditTableDashcardVisualization = ({
     datasetData: data,
   });
 
-  const {
-    isRowSelectionEnabled,
-    setRowSelectionEnabled,
-    setRowSelectionDisabled,
-    selectedRowIndices,
-    setSelectedRowIndices,
-  } = useEditingTableRowSelection();
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
 
   const isActionExecuteModalOpen = !!activeActionState;
 
@@ -188,84 +183,67 @@ export const EditTableDashcardVisualization = ({
       >
         <Text fw="bold">{title}</Text>
 
-        {isRowSelectionEnabled ? (
-          <Group gap="sm" align="center">
-            <Text fw="bold" mr="sm">
-              {ngettext(
-                msgid`${selectedRowIndices.length} row selected`,
-                `${selectedRowIndices.length} rows selected`,
-                selectedRowIndices.length,
-              )}
-            </Text>
-
-            <ActionIcon size="md" disabled={true}>
-              <Icon name="pencil" tooltip={t`Edit`} />
-            </ActionIcon>
-            <ActionIcon size="md">
-              <Icon
-                name="trash"
-                tooltip={t`Delete`}
-                onClick={() => alert("TODO")}
-              />
-            </ActionIcon>
-
+        <Group gap="sm" align="center">
+          <ActionIcon
+            size="md"
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >
+            <Icon
+              name="pencil"
+              tooltip={
+                selectedRowIndices.length ? t`Edit` : t`Select rows for editing`
+              }
+            />
+          </ActionIcon>
+          <ActionIcon
+            size="md"
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >
+            <Icon
+              name="trash"
+              tooltip={
+                selectedRowIndices.length
+                  ? t`Delete`
+                  : t`Select rows for deletion`
+              }
+            />
+          </ActionIcon>
+          <Box h={rem(16)}>
+            <Divider orientation="vertical" h="100%" />
+          </Box>
+          <ActionIcon
+            size="md"
+            onClick={undo}
+            disabled={shouldDisableActions}
+            loading={isUndoLoading}
+          >
+            <Icon name="undo" tooltip={t`Undo changes`} />
+          </ActionIcon>
+          <ActionIcon
+            size="md"
+            onClick={redo}
+            disabled={shouldDisableActions}
+            loading={isRedoLoading}
+          >
+            <Icon name="redo" tooltip={t`Redo changes`} />
+          </ActionIcon>
+          {hasCreateAction && (
             <Box h={rem(16)}>
               <Divider orientation="vertical" h="100%" />
             </Box>
-
-            <Button
-              variant="inverse"
-              size="xs"
-              onClick={setRowSelectionDisabled}
-            >
-              {t`Cancel`}
-            </Button>
-          </Group>
-        ) : (
-          <Group gap="sm" align="center">
-            <Button
-              variant="inverse"
-              size="xs"
-              onClick={setRowSelectionEnabled}
-              disabled={shouldDisableActions}
-            >
-              {t`Select rows`}
-            </Button>
-            <Box h={rem(16)}>
-              <Divider orientation="vertical" h="100%" />
-            </Box>
+          )}
+          {hasCreateAction && (
             <ActionIcon
               size="md"
-              onClick={undo}
+              onClick={openCreateRowModal}
               disabled={shouldDisableActions}
-              loading={isUndoLoading}
             >
-              <Icon name="undo" tooltip={t`Undo changes`} />
+              <Icon name="add" tooltip={t`New record`} />
             </ActionIcon>
-            <ActionIcon
-              size="md"
-              onClick={redo}
-              disabled={shouldDisableActions}
-              loading={isRedoLoading}
-            >
-              <Icon name="redo" tooltip={t`Redo changes`} />
-            </ActionIcon>
-            {hasCreateAction && (
-              <Box h={rem(16)}>
-                <Divider orientation="vertical" h="100%" />
-              </Box>
-            )}
-            {hasCreateAction && (
-              <ActionIcon
-                size="md"
-                onClick={openCreateRowModal}
-                disabled={shouldDisableActions}
-              >
-                <Icon name="add" tooltip={t`New record`} />
-              </ActionIcon>
-            )}
-          </Group>
-        )}
+          )}
+        </Group>
       </Flex>
       {data.rows.length === 0 ? (
         <Stack
@@ -300,8 +278,8 @@ export const EditTableDashcardVisualization = ({
               getColumnSortDirection={getColumnSortDirection}
               rowActions={enabledRowActions}
               onActionRun={handleRowActionRun}
-              isRowSelectionEnabled={isRowSelectionEnabled}
-              onRowSelectionChange={setSelectedRowIndices}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
             />
           </Box>
 

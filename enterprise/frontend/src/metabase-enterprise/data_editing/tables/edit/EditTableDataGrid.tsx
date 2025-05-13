@@ -1,10 +1,9 @@
-import type { Row } from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
-  BaseCell,
   type ColumnOptions,
   DataGrid,
   type RowIdColumnOptions,
@@ -12,7 +11,7 @@ import {
 } from "metabase/data-grid";
 import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
 import { formatValue } from "metabase/lib/formatting/value";
-import { Box, Checkbox, Flex, Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -30,10 +29,12 @@ import type { RowPkValue, UpdateCellValueHandlerParams } from "../types";
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import type { EditableTableColumnConfig } from "./use-editable-column-config";
+import {
+  ROW_SELECT_COLUMN_ID,
+  useTableColumnRowSelect,
+} from "./use-table-column-row-select";
 import { useTableEditing } from "./use-table-editing";
 import { getCellUniqKey } from "./utils";
-
-const ROW_SELECT_COLUMN_ID = "\0_ROW_SELECT";
 
 type EditTableDataGridProps = {
   data: DatasetData;
@@ -47,8 +48,8 @@ type EditTableDataGridProps = {
   cellsWithFailedUpdatesMap?: Record<RowPkValue, true>;
   rowActions?: WritebackAction[];
   onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
-  isRowSelectionEnabled?: boolean;
-  onRowSelectionChange?: (selectedRowIndices: number[]) => void;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 };
 
 export const EditTableDataGrid = ({
@@ -61,7 +62,7 @@ export const EditTableDataGrid = ({
   cellsWithFailedUpdatesMap,
   rowActions,
   onActionRun,
-  isRowSelectionEnabled,
+  rowSelection,
   onRowSelectionChange,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
@@ -165,63 +166,25 @@ export const EditTableDataGrid = ({
     [onRowExpandClick],
   );
 
-  const columnRowSelectOptions = useMemo<ColumnOptions<RowValues, RowValue>>(
-    () => ({
-      id: ROW_SELECT_COLUMN_ID,
-      name: "",
-      size: 35,
-      accessorFn: () => null,
-      header: ({ table }) => (
-        <Flex h="100%" align="center" justify="center">
-          <Checkbox
-            checked={table.getIsAllRowsSelected()}
-            indeterminate={table.getIsSomeRowsSelected()}
-            onChange={table.getToggleAllRowsSelectedHandler()}
-            variant="stacked"
-          />
-        </Flex>
-      ),
-      cell: ({ row }) => (
-        <BaseCell>
-          <Flex h="100%" w="100%" align="center" justify="center">
-            <Checkbox
-              checked={row.getIsSelected()}
-              disabled={!row.getCanSelect()}
-              indeterminate={row.getIsSomeSelected()}
-              onChange={row.getToggleSelectedHandler()}
-            />
-          </Flex>
-        </BaseCell>
-      ),
-    }),
-    [],
-  );
+  const columnRowSelectOptions = useTableColumnRowSelect();
 
   const tableProps = useDataGridInstance({
     data: rows,
-    rowId: !isRowSelectionEnabled ? rowId : undefined,
+    rowId,
     columnOrder,
     columnSizingMap,
     columnsOptions,
     columnVisibility,
-    columnPinning: { left: [ROW_ID_COLUMN_ID, ROW_SELECT_COLUMN_ID] },
-    enableRowSelection: isRowSelectionEnabled,
-    columnRowSelectOptions: isRowSelectionEnabled
-      ? columnRowSelectOptions
-      : undefined,
+    columnPinning: { left: [ROW_SELECT_COLUMN_ID, ROW_ID_COLUMN_ID] },
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange,
+    columnRowSelectOptions: columnRowSelectOptions,
     rowActionsColumn:
       rowActions?.length && onActionRun
         ? { actions: rowActions, onActionRun }
         : undefined,
   });
-
-  const rowSelection = tableProps.table.getState().rowSelection;
-  useEffect(() => {
-    if (isRowSelectionEnabled && onRowSelectionChange) {
-      const selectedRowIndices = Object.keys(rowSelection).map(Number);
-      onRowSelectionChange(selectedRowIndices);
-    }
-  }, [rowSelection, onRowSelectionChange, isRowSelectionEnabled]);
 
   const handleCellClick = useCallback(
     (
