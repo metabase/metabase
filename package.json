@@ -17,7 +17,8 @@
     "./frontend/src/metabase/lib/dayjs.ts",
     "./frontend/src/metabase/components/AppBanner/utils.ts",
     "./frontend/src/metabase/common/components/EntityPicker/components/RecentsTab/utils.ts",
-    "./frontend/src/metabase/query_builder/components/view/QuestionLastUpdated/utils.tsx"
+    "./frontend/src/metabase/query_builder/components/view/QuestionLastUpdated/utils.tsx",
+    "./e2e/**/**"
   ],
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.3",
