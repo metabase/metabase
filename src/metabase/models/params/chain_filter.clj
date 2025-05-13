@@ -90,7 +90,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.schema.metadata-queries :as schema.metadata-queries]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
@@ -428,7 +429,7 @@
                              :breakout-idents (lib.ident/indexed-idents 1)}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)
-                   metadata-queries/add-required-filters-if-needed))
+                   schema.metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
