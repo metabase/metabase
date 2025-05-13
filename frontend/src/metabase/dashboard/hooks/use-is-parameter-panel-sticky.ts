@@ -2,8 +2,10 @@ import { type RefObject, useEffect, useState } from "react";
 
 export function useIsParameterPanelSticky({
   parameterPanelRef,
+  disabled = false,
 }: {
   parameterPanelRef: RefObject<HTMLElement>;
+  disabled?: boolean;
 }) {
   const [isSticky, setIsSticky] = useState(false);
   const [isStickyStateChanging, setIsStickyStateChanging] = useState(false);
@@ -51,7 +53,7 @@ export function useIsParameterPanelSticky({
       observer.disconnect();
       sentinel.remove();
     };
-  }, [parameterPanelRef]);
+  }, [parameterPanelRef, disabled]);
 
   return {
     isSticky,
