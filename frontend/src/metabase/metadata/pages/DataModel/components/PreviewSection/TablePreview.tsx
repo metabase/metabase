@@ -57,6 +57,7 @@ function useDataSample({
       fields: [reference],
       filter,
       limit: PREVIEW_ROW_COUNT,
+      breakout: [reference],
     },
   };
 
