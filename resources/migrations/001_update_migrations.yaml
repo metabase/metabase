@@ -11260,7 +11260,7 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: >-
-              DELETE FROM permissions_group WHERE type = 'all-external-users';
+              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
       comment: Add All External Users group
       changes:
         - sql:
