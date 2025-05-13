@@ -1,3 +1,4 @@
+;; This should move into the Actions module as things stabilize.
 (ns metabase-enterprise.data-editing.scope
   (:require
    [macaw.util :as u]
@@ -17,14 +18,14 @@
     :webhook-id   :webhook
     :table-id     :table))
 
-(defn- hydrate-from-dashcard-id* [scope]
+(defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
     (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
                                                         (:dashcard-id scope))]
       (merge {:card-id card_id, :dashboard-id dashboard_id} scope))))
 
-(defn- hydrate-from-card-id* [scope]
+(defn- hydrate-from-card [scope]
   (if (and (contains? scope :collection-id) (contains? scope :table-id))
     scope
     (let [card         (t2/select-one [:model/Card :dataset_query :collection_id] (:card-id scope))
@@ -35,7 +36,7 @@
 
 (defn hydrate-scope* [scope]
   (cond-> scope
-    (:dashcard-id scope) hydrate-from-dashcard-id*
+    (:dashcard-id scope) hydrate-from-dashcard
 
     (:dashboard-id scope)
     (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope))))
@@ -43,7 +44,7 @@
     (:webhook-id scope)
     (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope))))
 
-    (:card-id scope) hydrate-from-card-id*
+    (:card-id scope) hydrate-from-card
 
     (:table-id scope)
     (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))
