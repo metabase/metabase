@@ -292,12 +292,14 @@ await build({
     js: LICENSE_BANNER,
     css: LICENSE_BANNER,
   },
+  env: {
+    EMBEDDING_SDK_VERSION: JSON.stringify(EMBEDDING_SDK_VERSION),
+    GIT_BRANCH: JSON.stringify(GIT_BRANCH),
+    GIT_COMMIT: JSON.stringify(GIT_COMMIT),
+    IS_EMBEDDING_SDK: "true",
+    BUILD_TIME: JSON.stringify(new Date().toISOString()),
+  },
   define: {
-    "process.env.EMBEDDING_SDK_VERSION": JSON.stringify(EMBEDDING_SDK_VERSION),
-    "process.env.GIT_BRANCH": JSON.stringify(GIT_BRANCH),
-    "process.env.GIT_COMMIT": JSON.stringify(GIT_COMMIT),
-    "process.env.IS_EMBEDDING_SDK": "true",
-    "process.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
     // To completely disable the AMD parsing by a HostApp's bundler for 3rd parties.
     // AMD parser in Webpack produces incorrect code.
     define: '"undefined"',
