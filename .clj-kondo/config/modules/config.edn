@@ -977,8 +977,7 @@
   task
   {:api #{metabase.task.bootstrap
           metabase.task.core}
-   :uses #{analytics
-           config
+   :uses #{config
            db
            plugins
            premium-features
