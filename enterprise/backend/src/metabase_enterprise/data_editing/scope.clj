@@ -1,0 +1,78 @@
+;; This should move into the Actions module as things stabilize.
+(ns metabase-enterprise.data-editing.scope
+  (:require
+   [macaw.util :as u]
+   [metabase-enterprise.data-editing.types :as types]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
+
+;; TODO Perhaps we will prefer the FE just sending this explicitly instead?
+;; For now, it is not doing this, so we infer it.
+(mu/defn scope-type :- :keyword
+  "Classify the scope, useful for switching on in logic and templates."
+  [scope :- ::types/scope.raw]
+  (condp #(contains? %2 %1) scope
+    :dashcard-id  :dashcard
+    :dashboard-id :dashboard
+    :card-id      :card
+    :model-id     :model
+    :webhook-id   :webhook
+    :table-id     :table))
+
+(defn- hydrate-from-dashcard [scope]
+  (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
+    scope
+    (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
+                                                        (:dashcard-id scope))]
+      (merge {:card-id card_id, :dashboard-id dashboard_id} scope))))
+
+(defn- hydrate-from-card [scope card-id]
+  (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
+    scope
+    (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id] card-id)
+          source-table (-> card :dataset_query :query :source-table)
+          table-id     (when (pos-int? source-table)
+                         source-table)]
+      (merge {:table-id table-id,
+              :collection-id (:collection_id card),
+              :database-id (:database_id card)}
+             scope))))
+
+(defn- hydrate-scope* [scope]
+  (cond-> scope
+    (:dashcard-id scope) hydrate-from-dashcard
+
+    (:dashboard-id scope)
+    (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope))))
+
+    (:webhook-id scope)
+    (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope))))
+
+    (:card-id scope) (hydrate-from-card (:card-id scope))
+
+    (:model-id scope) (hydrate-from-card (:model-id scope))
+
+    (:table-id scope)
+    (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))
+
+(mu/defn hydrate :- ::types/scope.hydrated
+  "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
+  [scope :- ::types/scope.raw]
+  (u/strip-nils
+   ;; Rerun until it converges.
+   (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope))))))
+
+(mu/defn normalize :- ::types/scope.normalized
+  "Remove all the implicit keys that can be derived from others. Useful to form stable keys. Idempotent."
+  [scope :- ::types/scope.raw]
+  (cond-> scope
+    (:table-id scope)     (dissoc :database-id)
+    (:card-id scope)      (-> (dissoc :table-id)
+                              (dissoc :collection-id)
+                              (dissoc :database-id))
+    (:model-id scope)     (-> (dissoc :table-id)
+                              (dissoc :collection-id)
+                              (dissoc :database-id))
+    (:dashboard-id scope) (dissoc :collection-id)
+    (:dashcard-id scope)  (-> (dissoc :card-id)
+                              (dissoc :dashboard-id))))

@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.scope :as actions.scope]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -24,12 +25,17 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(defn- nested-sort
+  "Sort every map within the data structure."
+  [x]
+  (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %))) x))
+
 (defn- serialize-scope
   "Convert the scope map or string into a stable string we can do example matches on in the database. Idempotent."
   [scope]
   (if (string? scope)
     scope
-    (->> (or scope "unknown") (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %)))) pr-str)))
+    (or (some-> scope actions.scope/normalize nested-sort pr-str) "unknown")))
 
 (defn- next-batch [undo? user-id scope]
   ;; For now, we assume all the changes are to the same table.
