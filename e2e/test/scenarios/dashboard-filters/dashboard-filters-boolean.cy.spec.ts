@@ -14,8 +14,9 @@ const DIALECT = "postgres";
 const TABLE_NAME = "many_data_types";
 const QUESTION_NAME = "Test question";
 const DASHBOARD_NAME = "Test dashboard";
-const COLUMN_NAME = "Boolean";
 const PARAMETER_NAME = "Boolean parameter";
+const COLUMN_NAME = "Boolean";
+const FIELD_NAME = "boolean";
 
 describe(
   "scenarios > dashboard > filters > number",
@@ -132,9 +133,36 @@ describe(
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
         H.assertQueryBuilderRowCount(1);
-        H.queryBuilderFiltersPanel()
-          .findByText(`${COLUMN_NAME} is true`)
-          .should("be.visible");
+        H.filterWidget().findByText("true").should("be.visible");
+      });
+
+      it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
+        createNativeQuestionAndDashboard().then(({ dashboardId }) =>
+          H.visitDashboard(dashboardId),
+        );
+
+        cy.log("set up click behavior");
+        H.editDashboard();
+        createAndMapParameter();
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+        H.sidebar().within(() => {
+          cy.findByText(FIELD_NAME).click();
+          cy.findByText("Go to a custom destination").click();
+          cy.findByText("Saved question").click();
+        });
+        H.entityPickerModal().findByText(QUESTION_NAME).click();
+        H.sidebar()
+          .findByTestId("unset-click-mappings")
+          .findByText(COLUMN_NAME)
+          .click();
+        H.popover().findByText(FIELD_NAME).click();
+        H.saveDashboard();
+
+        cy.log("assert click behavior");
+        H.getDashboardCard().findAllByText("true").first().click();
+        H.assertTableRowsCount(1);
+        H.filterWidget().findByText("true").should("be.visible");
       });
     });
   },
@@ -153,7 +181,7 @@ function createQuestionAndDashboard({
       ],
       "source-table": PRODUCTS_ID,
       expressions: {
-        Boolean: ["=", ["field", PRODUCTS.ID, null], 1],
+        [COLUMN_NAME]: ["=", ["field", PRODUCTS.ID, null], 1],
       },
     },
   };
@@ -175,12 +203,12 @@ function createNativeQuestionAndDashboard({
   cy.log("create dashboard");
 
   return H.getTableId({ name: TABLE_NAME }).then((tableId) => {
-    return H.getFieldId({ tableId, name: "boolean" }).then((fieldId) => {
+    return H.getFieldId({ tableId, name: FIELD_NAME }).then((fieldId) => {
       const questionDetails: NativeQuestionDetails = {
         name: questionName,
         database: WRITABLE_DB_ID,
         native: {
-          query: `select * from ${TABLE_NAME} where {{boolean}}`,
+          query: `select id, boolean from ${TABLE_NAME} where {{boolean}}`,
           "template-tags": {
             boolean: {
               id: "0b004110-d64a-a413-5aa2-5a5314fc8fec",
