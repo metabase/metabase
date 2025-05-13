@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { mixed, number, object, string } from "yup";
+import * as Yup from "yup";
 
 import type { SettingElement } from "metabase/admin/settings/types";
 import { UpsellHosting } from "metabase/admin/upsells";
@@ -54,27 +54,31 @@ type FormValueProps = Pick<
   | "email-smtp-password"
 >;
 
-const anySchema = mixed().nullable().default(null);
+const anySchema = Yup.mixed().nullable().default(null);
 
 // we need to allow this form to be submitted even when we have removed certain inputs
 // when they are set by env vars
 const getFormValueSchema = (elementMap: _.Dictionary<SettingElement>) => {
-  return object({
+  return Yup.object({
     "email-smtp-host": elementMap["email-smtp-host"].is_env_setting
       ? anySchema
-      : string().required(Errors.required).default(""),
+      : Yup.string().required(Errors.required).default(""),
     "email-smtp-port": elementMap["email-smtp-port"].is_env_setting
       ? anySchema
-      : number().positive().nullable().required(Errors.required).default(null),
+      : Yup.number()
+          .positive()
+          .nullable()
+          .required(Errors.required)
+          .default(null),
     "email-smtp-security": elementMap["email-smtp-security"].is_env_setting
       ? anySchema
-      : string().default("none"),
+      : Yup.string().default("none"),
     "email-smtp-username": elementMap["email-smtp-username"].is_env_setting
       ? anySchema
-      : string().default(""),
+      : Yup.string().default(""),
     "email-smtp-password": elementMap["email-smtp-password"].is_env_setting
       ? anySchema
-      : string().default(""),
+      : Yup.string().default(""),
   });
 };
 

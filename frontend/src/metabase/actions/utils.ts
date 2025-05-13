@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { type AnySchema, boolean, number, object, string } from "yup";
+import * as Yup from "yup";
 
 import * as Errors from "metabase/lib/errors";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -261,24 +261,24 @@ export const getForm = (
 const getFieldValidationType = ({
   inputType,
   defaultValue,
-}: FieldSettings): AnySchema => {
+}: FieldSettings): Yup.AnySchema => {
   switch (inputType) {
     case "number":
-      return number()
+      return Yup.number()
         .nullable()
         .default(defaultValue != null ? Number(defaultValue) : null);
     case "boolean":
-      return boolean()
+      return Yup.boolean()
         .nullable()
         .default(defaultValue != null ? Boolean(defaultValue) : false);
     case "date":
     case "datetime":
     case "time":
-      return string()
+      return Yup.string()
         .nullable()
         .default(defaultValue != null ? String(defaultValue) : null);
     default:
-      return string()
+      return Yup.string()
         .nullable()
         .default(defaultValue != null ? String(defaultValue) : null);
   }
@@ -302,7 +302,7 @@ export const getFormValidationSchema = (
 
       return [fieldSetting.id, yupType];
     });
-  return object(Object.fromEntries(schema));
+  return Yup.object(Object.fromEntries(schema));
 };
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {

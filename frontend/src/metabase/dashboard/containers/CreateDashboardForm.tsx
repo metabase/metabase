@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { number, object, string } from "yup";
+import * as Yup from "yup";
 
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
@@ -22,16 +22,16 @@ import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
 
-const DASHBOARD_SCHEMA = object({
-  name: string()
+const DASHBOARD_SCHEMA = Yup.object({
+  name: Yup.string()
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: string()
+  description: Yup.string()
     .nullable()
     .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
     .default(null),
-  collection_id: number().nullable(),
+  collection_id: Yup.number().nullable(),
 });
 
 export interface CreateDashboardProperties {

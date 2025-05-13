@@ -1,4 +1,4 @@
-import { number, object, string } from "yup";
+import * as Yup from "yup";
 
 import type {
   MetabaseAuthConfig,
@@ -179,9 +179,9 @@ export const defaultGetRefreshTokenFn: MetabaseFetchRequestTokenFn = async (
   }
 };
 
-const sessionSchema = object({
-  id: string().required(),
-  exp: number().required(),
+const sessionSchema = Yup.object({
+  id: Yup.string().required(),
+  exp: Yup.number().required(),
   // We should also receive `iat` and `status` in the response, but we don't actually need them
   // as we don't use them, so we don't throw an error if they are missing
 });

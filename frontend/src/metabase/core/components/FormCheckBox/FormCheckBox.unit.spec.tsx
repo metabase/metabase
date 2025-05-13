@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import { Form, Formik } from "formik";
-import { boolean, object } from "yup";
+import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
 import FormCheckBox from "./FormCheckBox";
 
-const TEST_SCHEMA = object({
-  value: boolean().isTrue("error"),
+const TEST_SCHEMA = Yup.object({
+  value: Yup.boolean().isTrue("error"),
 });
 
 interface TestFormCheckBoxProps {

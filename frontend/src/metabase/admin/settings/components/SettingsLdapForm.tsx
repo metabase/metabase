@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 import type { TestConfig } from "yup";
-import { object, string } from "yup";
+import * as Yup from "yup";
 
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
@@ -37,10 +37,10 @@ const testPort: TestConfig<string | null | undefined> = {
   test: (value) => Boolean((value || "").trim().match(/^\d*$/)),
 };
 
-const LDAP_SCHEMA = object({
-  "ldap-port": string().nullable().test(testPort),
-  "ldap-user-filter": string().nullable().test(testParentheses),
-  "ldap-group-membership-filter": string().nullable().test(testParentheses),
+const LDAP_SCHEMA = Yup.object({
+  "ldap-port": Yup.string().nullable().test(testPort),
+  "ldap-user-filter": Yup.string().nullable().test(testParentheses),
+  "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
 export type SettingValues = Partial<Settings>;

@@ -1,7 +1,7 @@
 import type { FormikHelpers } from "formik";
 import { useMemo } from "react";
 import { c, jt, t } from "ttag";
-import { object, string } from "yup";
+import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -36,23 +36,23 @@ import {
 
 import { buildAuthInfo } from "./utils";
 
-const validationSchema = object({
-  url: string()
+const validationSchema = Yup.object({
+  url: Yup.string()
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .url(t`Please enter a correctly formatted URL`)
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .required(t`Please enter a correctly formatted URL`),
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: string().required(t`Please add a name`),
+  name: Yup.string().required(t`Please add a name`),
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  description: string().required(t`Please add a description`),
-  "auth-method": string()
+  description: Yup.string().required(t`Please add a description`),
+  "auth-method": Yup.string()
     .required()
     .equals(["none", "header", "query-param", "request-body"]),
-  "fe-form-type": string()
+  "fe-form-type": Yup.string()
     .required()
     .equals(["none", "basic", "bearer", "api-key"]),
-  "auth-info": object(),
+  "auth-info": Yup.object(),
 });
 
 const styles = {

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
-import { boolean, object } from "yup";
+import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 import {
@@ -81,8 +81,8 @@ describe("FormCheckbox", () => {
   });
 
   it("should show validation errors", async () => {
-    const validationSchema = object({
-      remember: boolean().default(true).isTrue("Must be checked"),
+    const validationSchema = Yup.object({
+      remember: Yup.boolean().default(true).isTrue("Must be checked"),
     });
     setup({ initialValues: validationSchema.getDefault(), validationSchema });
     expect(screen.queryByText("Must be checked")).not.toBeInTheDocument();
