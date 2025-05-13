@@ -5,7 +5,6 @@ import {
   DashboardNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -29,20 +28,28 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
-
 import {
   type InteractiveDashboardContextType,
   InteractiveDashboardProvider,
-} from "./context";
-import { useCommonDashboardParams } from "./use-common-dashboard-params";
+} from "../InteractiveDashboard/context";
+import { useCommonDashboardParams } from "../InteractiveDashboard/use-common-dashboard-params";
+import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+
+import { StyledPublicComponentWrapper } from "./SdkDashboard.styled";
 
 /**
  * @interface
  * @expand
  * @category InteractiveDashboard
  */
-export type EditableDashboardProps = {
+export type SdkDashboardProps = {
+  /**
+   * @internal
+   * Controls the behavior of the dashboard.
+   * - `editable`: Allows editing and drill-throughs
+   */
+  mode?: "editable";
+
   /**
    * Height of a question component when drilled from the dashboard to a question level.
    */
@@ -60,11 +67,11 @@ export type EditableDashboardProps = {
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   DashboardEventHandlersProps;
 
-const EditableDashboardInner = ({
+const SdkDashboardInner = ({
   drillThroughQuestionProps,
   onEditQuestion,
 }: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
-  Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
+  Pick<SdkDashboardProps, "drillThroughQuestionProps">) => {
   const { isEditing } = useDashboardContext();
 
   const dashboardActions = isEditing
@@ -89,7 +96,7 @@ const EditableDashboardInner = ({
  * @category InteractiveDashboard
  * @param props
  */
-export const EditableDashboard = ({
+export const SdkDashboard = ({
   dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,
@@ -104,7 +111,7 @@ export const EditableDashboard = ({
     height: drillThroughQuestionHeight,
     plugins: plugins,
   },
-}: EditableDashboardProps) => {
+}: SdkDashboardProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
@@ -198,7 +205,7 @@ export const EditableDashboard = ({
             {...drillThroughQuestionProps}
           />
         ) : (
-          <EditableDashboardInner
+          <SdkDashboardInner
             drillThroughQuestionProps={drillThroughQuestionProps}
             onEditQuestion={onEditQuestion}
           />
@@ -206,4 +213,17 @@ export const EditableDashboard = ({
       </DashboardContextProvider>
     </StyledPublicComponentWrapper>
   );
+};
+
+/**
+ * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
+ *
+ * @function
+ * @category InteractiveDashboard
+ * @param props
+ */
+
+export type EditableDashboardProps = Omit<SdkDashboardProps, "mode">;
+export const EditableDashboard = (props: EditableDashboardProps) => {
+  return <SdkDashboard mode="editable" {...props} />;
 };
