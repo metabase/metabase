@@ -34,8 +34,8 @@ interface SetupOpts {
   isJoinStep?: boolean;
   availableModels?: AvailableModels;
   selectedTable?: {
-    id: number | undefined;
-    databaseId: number | null;
+    id: number;
+    databaseId: number;
   };
 }
 
@@ -43,10 +43,7 @@ function setup({
   databases = DATABASES,
   isJoinStep = false,
   availableModels = "tables-only",
-  selectedTable = {
-    id: undefined,
-    databaseId: null,
-  },
+  selectedTable,
 }: SetupOpts = {}) {
   fetchMock.get(
     {
@@ -75,8 +72,8 @@ function setup({
     <DataSourceSelector
       isInitiallyOpen
       canChangeDatabase={!isJoinStep}
-      selectedDatabaseId={selectedTable.databaseId}
-      selectedTableId={selectedTable.id}
+      selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
+      selectedTableId={selectedTable ? selectedTable.id : undefined}
       canSelectModel={true}
       canSelectTable={true}
       triggerElement={<div>Click me to open or close data picker</div>}
