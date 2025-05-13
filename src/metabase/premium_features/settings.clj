@@ -264,6 +264,7 @@
    :cache_preemptive               (enable-preemptive-caching?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
