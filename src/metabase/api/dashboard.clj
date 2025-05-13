@@ -1017,11 +1017,11 @@
                                                                         (pos-int? (:action_id dashcard))
                                                                         (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
                                                                         (neg-int? (:action_id dashcard))
-                                                                        (let [[op param] (actions/unpack-primitive-action-id (:action_id dashcard))]
+                                                                        (let [[op table-id] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
                                                                           (-> dashcard
                                                                               (assoc-in [:visualization_settings :table_action]
                                                                                         {:kind (u/qualified-name op)
-                                                                                         :table_id param})
+                                                                                         :table_id table-id})
                                                                               (dissoc :action_id)))
                                                                         :else
                                                                         dashcard))))

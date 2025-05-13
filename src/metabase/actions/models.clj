@@ -332,22 +332,22 @@
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))
 
-;; to avoid headaches with rewriting too much frontend code we will hack in a representation an operation and a single
+;; to avoid headaches with rewriting too much frontend code we will hack in a representation of an operation and a single
 ;; parameter as an integer. The frontend picker can when creating the dashcard pass the negative action_id.
 ;; we will use an integer with an op (15 bits) and param (32 bits)
 ;; to start with table actions, the param is the table-id.
 (def ^:private primitive-action-kind->int {:table.row/create 0 :table.row/update 1 :table.row/delete 2})
 (def ^:private int->primitive-action-kind (set/map-invert primitive-action-kind->int))
 
-(defn unpack-primitive-action-id
-  "Return an [op param] vector given the negative action id."
+(defn unpack-table-primitive-action-id
+  "Return an [kind table-id] vector given the negative action id."
   [^long encoded-id]
   (let [pos-id     (bit-and (Math/abs encoded-id) 0xFFFFFFFFFFFF)
         param-bits (bit-and pos-id 0xFFFFFFFF)
         op-bits    (bit-and (bit-shift-right pos-id 32) 0xFFFF)]
     [(int->primitive-action-kind op-bits) param-bits]))
 
-(defn- primitive-action-id ^long [kind ^long param]
+(defn- table-primitive-action-id ^long [kind ^long param]
   (let [op-bits (primitive-action-kind->int kind)
         packed  (bit-or (bit-shift-left op-bits 32) (bit-and param 0xFFFFFFFF))]
     (- packed)))
@@ -369,7 +369,7 @@
      :name        (name kind)
      :kind        (u/qualified-name kind)
      :table_id    (:id table)
-     :id          (primitive-action-id kind (:id table))
+     :id          (table-primitive-action-id kind (:id table))
      ;; true for all databases with data_editing_enabled
      ;; it is expected this fn will not be called if this is not the case
      :database_enabled_actions true

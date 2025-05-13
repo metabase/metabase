@@ -42,6 +42,6 @@
   select-action
   select-actions
   table-primitive-action
-  unpack-primitive-action-id]
+  unpack-table-primitive-action-id]
  [metabase.actions.events
   publish-action-success!])
