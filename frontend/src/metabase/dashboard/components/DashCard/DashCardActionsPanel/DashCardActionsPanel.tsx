@@ -193,8 +193,10 @@ function DashCardActionsPanelInner({
     }
 
     if (
+      dashcard &&
       !isVisualizerDashboardCard(dashcard) &&
-      !isVisualizerSupportedVisualization(dashcard?.card.display)
+      !isVisualizerSupportedVisualization(dashcard?.card.display) &&
+      !isVirtualDashCard(dashcard)
     ) {
       buttons.push(
         <DashCardActionButton

@@ -1,10 +1,8 @@
-(ns metabase.models.moderation-review
-  "TODO -- this should be moved to `metabase-enterprise.content-verification.models.moderation-review` since it's a
-  premium-only model."
+(ns metabase.content-verification.models.moderation-review
   (:require
+   [metabase.content-verification.impl :as moderation]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
-   [metabase.moderation :as moderation]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
