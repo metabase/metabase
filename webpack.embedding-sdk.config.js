@@ -5,7 +5,6 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
-const { RsdoctorWebpackPlugin } = require("@rsdoctor/webpack-plugin");
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const mainConfig = require("./webpack.config");
@@ -54,8 +53,6 @@ module.exports = (env) => {
   const config = {
     ...mainConfig,
 
-    devtool: false,
-
     context: SDK_SRC_PATH,
 
     entry: "./index.ts",
@@ -75,8 +72,6 @@ module.exports = (env) => {
           test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs/,
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
-          type: "javascript/esm",
-          sideEffects: false,
         },
         {
           test: /\.(svg|png)$/,
@@ -92,14 +87,6 @@ module.exports = (env) => {
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
           ],
-        },
-
-        {
-          // only .mjs (the true ESM bundles some packages publish)
-          test: /\.mjs$/,
-          include: /node_modules/,
-          type: "javascript/esm",
-          sideEffects: false,
         },
 
         {
@@ -147,12 +134,8 @@ module.exports = (env) => {
       // so we use a different value instead
       moduleIds: isDevMode ? "natural" : undefined,
 
-      minimize: false,
+      minimize: !isDevMode,
       minimizer: mainConfig.optimization.minimizer,
-
-      usedExports: true,
-      sideEffects: true,
-      concatenateModules: true,
     },
 
     plugins: [
@@ -194,7 +177,11 @@ module.exports = (env) => {
         }),
       // we don't want to fail the build on type errors, we have a dedicated type check step for that
       new TypescriptConvertErrorsToWarnings(),
-      shouldAnalyzeBundles && new RsdoctorWebpackPlugin(),
+      shouldAnalyzeBundles &&
+        new BundleAnalyzerPlugin({
+          analyzerMode: "static",
+          reportFilename: BUILD_PATH + "/dist/report.html",
+        }),
     ].filter(Boolean),
   };
 
@@ -202,15 +189,7 @@ module.exports = (env) => {
     ...mainConfig.resolve.alias,
     "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
-    // alias moment-timezone to trimmed 10-year-range build
-    "moment-timezone$":
-      "moment-timezone/builds/moment-timezone-with-data-10-year-range.js",
-    // prevent raw JSON timezone data from being bundled
-    "moment-timezone/data/packed/latest.json$": false,
   };
-
-  config.resolve.extensions = [...mainConfig.resolve.extensions, ".mjs"];
-  config.resolve.mainFields = ["browser", "module", "main"];
 
   if (config.cache) {
     config.cache.cacheDirectory = resolve(
