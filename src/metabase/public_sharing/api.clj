@@ -15,6 +15,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
+   [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -466,7 +467,7 @@
     (let [dashboard (dashboard-with-uuid uuid)]
       (request/as-admin
         (binding [qp.perms/*param-values-query* true]
-          (api.dashboard/param-values dashboard param-key constraint-param-key->value))))))
+          (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -478,7 +479,7 @@
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
+        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
@@ -489,7 +490,7 @@
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
+        (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

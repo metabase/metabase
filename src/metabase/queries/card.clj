@@ -1,11 +1,11 @@
 (ns metabase.queries.card
   (:require
    [medley.core :as m]
-   [metabase.api.field :as api.field]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
+   [metabase.parameters.field :as parameters.field]
    [metabase.queries.models.card :as card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -32,7 +32,7 @@
   chain-filter issues or dashcards to worry about."
   [card param query]
   (when-let [field-id (param->field-id card param)]
-    (api.field/search-values-from-field-id field-id query)))
+    (parameters.field/search-values-from-field-id field-id query)))
 
 (mu/defn card-param-values
   "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.

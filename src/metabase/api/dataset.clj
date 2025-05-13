@@ -2,7 +2,6 @@
   "/api/dataset endpoints."
   (:require
    [metabase.api.common :as api]
-   [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -14,6 +13,7 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.parameters.field :as parameters.field]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -202,7 +202,7 @@
     (throw (ex-info (tru "Missing field-ids for parameter")
                     {:status-code 400})))
   (-> (reduce (fn [resp id]
-                (let [{values :values more? :has_more_values} (api.field/search-values-from-field-id id query)]
+                (let [{values :values more? :has_more_values} (parameters.field/search-values-from-field-id id query)]
                   (-> resp
                       (update :values concat values)
                       (update :has_more_values #(or % more?)))))

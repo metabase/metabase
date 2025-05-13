@@ -130,6 +130,7 @@
            logger
            model-persistence
            models
+           parameters
            permissions
            plugins
            premium-features
@@ -139,7 +140,6 @@
            request
            revisions
            sample-data
-           search
            secrets
            server
            session
@@ -414,6 +414,7 @@
            events
            models
            notification
+           parameters
            premium-features
            public-sharing
            queries
@@ -655,6 +656,17 @@
            task-history
            util}}
 
+  parameters
+  {:api  #{metabase.parameters.dashboard
+           metabase.parameters.field}
+   :uses #{api
+           db
+           legacy-mbql
+           lib
+           models
+           query-processor
+           util}}
+
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
@@ -729,6 +741,7 @@
            events
            lib
            models
+           parameters
            queries
            query-processor
            request
@@ -779,6 +792,7 @@
            legacy-mbql
            lib
            models
+           parameters
            permissions
            premium-features
            public-sharing

@@ -5,13 +5,13 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dashboard :as api.dashboard]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.models.params :as params]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.public-sharing.api :as api.public]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -105,7 +105,7 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(mu/defn- resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
+(mu/defn- resolve-dashboard-parameters :- [:sequential ms/Parameter]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/process-query-for-dashcard]]."
@@ -511,7 +511,7 @@
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})
                     api/*is-superuser?*                true]
-            (api.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
+            (parameters.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
@@ -568,4 +568,4 @@
                            (select-keys locked-param-ids))]
        (binding [api/*current-user-permissions-set* (atom #{"/"})
                  api/*is-superuser?*                true]
-         (api.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))
+         (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))
