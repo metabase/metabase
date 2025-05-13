@@ -46,7 +46,8 @@
                               :expression-literals     true
                               :now                     true
                               :identifiers-with-spaces true
-                              :convert-timezone        true}]
+                              :convert-timezone        true
+                              :expressions/date        false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
