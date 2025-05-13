@@ -114,7 +114,7 @@ export type NewButtonItemClickedEvent = ValidateEvent<{
 
 export type VisualizeAnotherWayClickedEvent = ValidateEvent<{
   event: "visualize_another_way_clicked";
-  triggered_from: "question-list";
+  triggered_from: "question-list" | "dashcard-actions-panel";
 }>;
 
 export type SimpleEvent =
