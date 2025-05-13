@@ -151,11 +151,11 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_fields           nil})
+   :param_fields           {}})
 
 (def successful-dashboard-info
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
-   :param_fields nil :width "fixed"})
+   :param_fields {} :width "fixed"})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -485,6 +485,7 @@
     :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
                :template-tags {:date {:name         "date"
                                       :display-name "Date"
+                                      :id           "_date_"
                                       :type         "dimension"
                                       :default      "Q1-2014"
                                       :dimension    [:field (mt/id :checkins :date) nil]
@@ -536,6 +537,7 @@
                       :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
                                  :template-tags {:date {:name         "date"
                                                         :display-name "Date"
+                                                        :id           "_date_"
                                                         :type         "dimension"
                                                         :dimension    [:field (mt/id :checkins :date) nil]
                                                         :widget-type  "date/quarter-year"}}}}
@@ -724,10 +726,9 @@
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :venues :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
-          (is (some?
-               (-> embedding-dashboard
-                   :param_fields
-                   (get (mt/id :venues :name)))))
+          (is (=? {:foo [{}]
+                   :bar [{}]}
+                  (:param_fields embedding-dashboard)))
           (is (= 1
                  (-> embedding-dashboard
                      :dashcards
@@ -735,10 +736,9 @@
                      :parameter_mappings
                      count))))
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (some?
-               (-> eid-embedding-dashboard
-                   :param_fields
-                   (get (mt/id :venues :name)))))
+          (is (=? {:foo [{}]
+                   :bar [{}]}
+                  (:param_fields eid-embedding-dashboard)))
           (is (= 1
                  (-> eid-embedding-dashboard
                      :dashcards

@@ -15,7 +15,7 @@
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.models :as models.notification]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -251,7 +251,7 @@
                                                     :width "50%"
                                                     :padding "4px 16px 4px 8px"
                                                     :vertical-align "baseline"})}
-                     (shared.params/value-string filter (public-settings/site-locale))]]]])
+                     (shared.params/value-string filter (system/site-locale))]]]])
                parameters)
         rows  (partition-all 2 cells)]
     (html

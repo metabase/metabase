@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
+import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -117,7 +118,33 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
   });
 }
 
-export function getDashboardUiParameters(
+export function getSavedDashboardUiParameters(
+  dashcards: Dashboard["dashcards"],
+  parameters: Dashboard["parameters"],
+  parameterFields: Dashboard["param_fields"],
+  metadata: Metadata,
+): UiParameter[] {
+  const mappableDashcards = dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableDashcards);
+  const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
+    if (isFieldFilterParameter(parameter)) {
+      return buildSavedDashboardParameter(
+        parameter,
+        mappings,
+        parameterFields,
+        metadata,
+      );
+    }
+
+    return {
+      ...parameter,
+    };
+  });
+
+  return uiParameters;
+}
+
+export function getUnsavedDashboardUiParameters(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
   metadata: Metadata,
@@ -127,7 +154,7 @@ export function getDashboardUiParameters(
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map((parameter) => {
     if (isFieldFilterParameter(parameter)) {
-      return buildFieldFilterUiParameter(
+      return buildUnsavedDashboardParameter(
         parameter,
         mappings,
         metadata,
@@ -165,7 +192,36 @@ export function getDashboardQuestions(
   }, {});
 }
 
-function buildFieldFilterUiParameter(
+function buildSavedDashboardParameter(
+  parameter: Parameter,
+  mappings: ExtendedMapping[],
+  fields: Dashboard["param_fields"],
+  metadata: Metadata,
+) {
+  const parameterMappings = mappings.filter(
+    (mapping) => mapping.parameter_id === parameter.id,
+  );
+  const hasNativeQueryTarget = parameterMappings.some(
+    (mapping) => mapping.card.dataset_query?.type === "native",
+  );
+  const hasVariableTemplateTagTarget = parameterMappings.some((mapping) =>
+    isParameterVariableTarget(mapping.target),
+  );
+  const parameterFields = (fields?.[parameter.id] ?? [])
+    .map((field) => metadata.field(field.id))
+    .filter(isNotNull)
+    // TODO we need to preserve this hack until remapping is migrated to the BE. See #57571
+    .map((field) => (hasNativeQueryTarget ? field : (field.target ?? field)));
+  const uniqueParameterFields = _.uniq(parameterFields, (field) => field.id);
+
+  return {
+    ...parameter,
+    fields: uniqueParameterFields,
+    hasVariableTemplateTagTarget,
+  };
+}
+
+function buildUnsavedDashboardParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   metadata: Metadata,

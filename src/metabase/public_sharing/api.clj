@@ -12,9 +12,9 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.query-processor.card :as qp.card]
@@ -56,15 +56,8 @@
   However, since card.parameters is a recently added feature, there may be instances where a template-tag
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
-  [{:keys [parameters] :as card}]
-  (let [template-tag-parameters     (card/template-tag-parameters card)
-        id->template-tags-parameter (m/index-by :id template-tag-parameters)
-        id->parameter               (m/index-by :id parameters)]
-    (assoc card :parameters (vals (reduce-kv (fn [acc id parameter]
-                                               ;; order importance: we want the info from `template-tag` to be merged last
-                                               (update acc id #(merge % parameter)))
-                                             id->parameter
-                                             id->template-tags-parameter)))))
+  [card]
+  (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
@@ -254,9 +247,10 @@
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (validation/check-public-sharing-enabled)
-  (u/prog1 (dashboard-with-uuid uuid)
-    (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (validation/check-public-sharing-enabled)
+    (u/prog1 (dashboard-with-uuid uuid)
+      (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
@@ -468,10 +462,11 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (dashboard-with-uuid uuid)]
-    (request/as-admin
-      (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [dashboard (dashboard-with-uuid uuid)]
+      (request/as-admin
+        (binding [qp.perms/*param-values-query* true]
+          (api.dashboard/param-values dashboard param-key constraint-param-key->value))))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."

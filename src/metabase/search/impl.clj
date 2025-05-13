@@ -1,8 +1,8 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
