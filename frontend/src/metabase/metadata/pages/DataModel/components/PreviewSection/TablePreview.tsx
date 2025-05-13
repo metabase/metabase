@@ -1,4 +1,7 @@
+import { t } from "ttag";
+
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   Card,
@@ -13,6 +16,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import S from "./TablePreview.module.css";
+
 const PREVIEW_ROW_COUNT = 5;
 
 export function TablePreview({
@@ -26,12 +31,20 @@ export function TablePreview({
   fieldId: FieldId;
   field: Field;
 }) {
-  const { rawSeries } = useDataSample({
+  const { rawSeries, error } = useDataSample({
     databaseId,
     tableId,
     fieldId,
     field,
   });
+
+  if (error) {
+    return (
+      <Box p="md" mt="lg" className={S.error}>
+        {error}
+      </Box>
+    );
+  }
 
   return (
     <Visualization
@@ -80,7 +93,7 @@ function useDataSample({
   const { data, ...rest } = useGetAdhocQueryQuery(datasetQuery);
 
   if (!data) {
-    return { ...rest, rawSeries: undefined };
+    return { ...rest, error: undefined, rawSeries: undefined };
   }
 
   const card = {
@@ -90,7 +103,20 @@ function useDataSample({
   } as Card;
 
   if (!data?.data) {
-    return { ...rest, rawSeries: undefined };
+    return { ...rest, error: undefined, rawSeries: undefined };
+  }
+
+  if (data.status === "failed") {
+    const error: string =
+      typeof data.error === "string"
+        ? data.error
+        : (data.error?.data ?? t`Something went wrong`);
+    return {
+      ...rest,
+      rawSeries: undefined,
+      isError: true,
+      error,
+    };
   }
 
   const { cols, rows } = data.data;
@@ -123,6 +149,7 @@ function useDataSample({
 
   return {
     ...rest,
+    error: undefined,
     rawSeries,
   };
 }
