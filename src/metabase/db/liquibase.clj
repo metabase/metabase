@@ -3,6 +3,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db.custom-migrations]
    [metabase.db.liquibase.h2 :as liquibase.h2]
@@ -18,13 +20,14 @@
   (:import
    (java.io StringWriter)
    (java.sql Connection)
-   (java.util List Map)
+   (java.util ArrayList List Map)
    (javax.sql DataSource)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
-   (liquibase.changelog.filter ChangeSetFilter)
+   (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
+   (liquibase.command.core AbstractRollbackCommandStep)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
@@ -509,17 +512,47 @@
                      (config/current-major-version)))))
    (with-scope-locked liquibase
     ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
-     (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ID ASC" (changelog-table-name liquibase))
+     (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table-name liquibase))
            changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
            ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
-           ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)
+           ids-to-drop     (set (filter #(< target-version (first (extract-numbers %))) changeset-ids))
            latest-available (latest-available-major-version liquibase)
-           latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))]
+           latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))
+           lb-db (.getDatabase liquibase)
+           ran-changesets   (.getRanChangeSetList lb-db)
+           changelog (.getDatabaseChangeLog liquibase)
+           changeset-filter (proxy [ChangeSetFilter] []
+                              (accepts [^ChangeSet changeSet]
+                                (let [id (.getId changeSet)
+                                      result (contains? ids-to-drop id)]
+                                  (ChangeSetFilterResult. result (if result
+                                                                   (do
+                                                                     (log/infof "Going to roll back changeset %s" id)
+                                                                     (str "Changeset ID '" id "' is in target list"))
+                                                                   (str "Changeset ID '" id "' is not in target list")) nil))))
+           changelog-iterator (ChangeLogIterator. ran-changesets changelog
+                                                  (doto (ArrayList.)
+                                                    (.addAll
+                                                     [(AlreadyRanChangeSetFilter. ran-changesets)
+                                                      (IgnoreChangeSetFilter.)
+                                                      (DbmsChangeSetFilter. lb-db)
+                                                      changeset-filter])))]
        (when (and (not force) (> latest-applied latest-available))
          (throw (ex-info
                  (format "Cannot downgrade a database at version %d from Metabase version %d. You must run 'migrate down' from Metabase version >= %d."
                          latest-applied latest-available latest-applied)
                  {:latest-available latest-available
                   :latest-applied   latest-applied})))
+
        (log/infof "Rolling back app database schema to version %d" target-version)
-       (.rollback liquibase (count ids-to-drop) "")))))
+       (if (empty? ids-to-drop)
+         (log/info "No changesets to roll back")
+         (do
+           (AbstractRollbackCommandStep/doRollback lb-db update-migrations-file nil changelog-iterator (.getChangeLogParameters liquibase) changelog nil nil)
+           (let [remaining-query (-> (sql.helpers/select :id)
+                                     (sql.helpers/from (keyword (changelog-table-name liquibase)))
+                                     (sql.helpers/where [:in :id ids-to-drop]))
+                 formatted-sql (sql/format remaining-query)
+                 remaining-ids   (map :id (t2/query conn formatted-sql))]
+             (when (seq remaining-ids)
+               (log/warnf "The following changesets were not rolled back. Likely because they are not in the changelog file: %s" (str/join ", " remaining-ids))))))))))
