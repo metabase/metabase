@@ -46,7 +46,7 @@
   Rows whose pivot-grouping values are greater than 0 represent subtotals, and should not be included in non-pivot result outputs."
   0)
 
-(defn pivot-grouping-key
+(defn pivot-grouping-index
   "Get the index into the raw pivot rows for the 'pivot-grouping' column."
   [column-titles]
   ;; A vector is kinda sorta a map of indices->values, so we can use map-invert to create the map
@@ -60,14 +60,14 @@
        (set (range (count column-titles)))
        ;; we exclude indices already used in pivot rows and cols, and the pivot-grouping key
        ;; recall that a raw pivot row will always contain this 'pivot-grouping' column, which we don't actually need to use.
-       (set (concat pivot-rows pivot-cols [(pivot-grouping-key column-titles)])))
+       (set (concat pivot-rows pivot-cols [(pivot-grouping-index column-titles)])))
       sort
       vec))
 
 (mu/defn add-pivot-measures :- ::pivot-spec
   "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
   [{measure-indices :pivot-measures :as pivot-spec} :- ::pivot-spec]
-  (let [pivot-grouping-key (pivot-grouping-key (:column-titles pivot-spec))]
+  (let [pivot-grouping-key (pivot-grouping-index (:column-titles pivot-spec))]
     (cond-> pivot-spec
       ;; if pivot-measures don't already exist (from the pivot qp), we add them ourselves, assuming lowest ID -> highest ID sort order
       (not (seq measure-indices)) (assoc :pivot-measures (pivot-measures pivot-spec))

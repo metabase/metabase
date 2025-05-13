@@ -3,7 +3,6 @@
    [clojure.data.csv]
    [medley.core :as m]
    [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
@@ -69,8 +68,8 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
-        (let [col-names          (vec (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
+        (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
+              pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
             (reset! pivot-data
@@ -79,12 +78,12 @@
                             :rows []}
                      :timezone results_timezone
                      :format-rows? format-rows?
-                     :pivot-grouping-key pivot-grouping-key
+                     :pivot-grouping-key pivot-grouping-index
                      :pivot-export-options pivot-export-options})
             ;; Non-pivoted export of pivot table: sore the pivot-grouping-key so that the pivot group can be
             ;; removed from the exported data
             pivot-export-options
-            (reset! pivot-data {:pivot-grouping-key pivot-grouping-key}))
+            (reset! pivot-data {:pivot-grouping-key pivot-grouping-index}))
 
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
@@ -93,7 +92,7 @@
 
           ;; write the column names for non-pivot tables
           (when (or (not pivot?) (not (public-settings/enable-pivoted-exports)))
-            (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
+            (let [header (m/remove-nth (or pivot-grouping-index (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))
 
