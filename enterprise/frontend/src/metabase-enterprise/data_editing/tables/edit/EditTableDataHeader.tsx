@@ -28,6 +28,7 @@ interface EditTableDataHeaderProps {
   isLoading: boolean;
   isUndoLoading: boolean;
   isRedoLoading: boolean;
+  selectedRowIndices: number[];
   onCreate: () => void;
   onQuestionChange: (newQuestion: Question) => void;
   refetchTableDataQuery: () => void;
@@ -41,6 +42,7 @@ export const EditTableDataHeader = ({
   isLoading,
   isUndoLoading,
   isRedoLoading,
+  selectedRowIndices,
   onCreate,
   onQuestionChange,
   refetchTableDataQuery,
@@ -86,6 +88,18 @@ export const EditTableDataHeader = ({
             onClick={() => onCreate()}
             disabled={shouldDisableActions}
           >{t`New record`}</Button>
+          <Button
+            leftSection={<Icon name="pencil" />}
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >{t`Edit`}</Button>
+          <Button
+            leftSection={<Icon name="trash" />}
+            variant="filled"
+            color="error"
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >{t`Delete`}</Button>
           <Flex gap="xs">
             <RunButtonWithTooltip
               iconSize={16}

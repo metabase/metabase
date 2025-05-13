@@ -1,4 +1,4 @@
-import type { Row } from "@tanstack/react-table";
+import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
@@ -9,6 +9,7 @@ import {
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
+import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
@@ -28,6 +29,10 @@ import type { RowPkValue, UpdateCellValueHandlerParams } from "../types";
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
 import type { EditableTableColumnConfig } from "./use-editable-column-config";
+import {
+  ROW_SELECT_COLUMN_ID,
+  useTableColumnRowSelect,
+} from "./use-table-column-row-select";
 import { useTableEditing } from "./use-table-editing";
 import { getCellUniqKey } from "./utils";
 
@@ -43,6 +48,8 @@ type EditTableDataGridProps = {
   cellsWithFailedUpdatesMap?: Record<RowPkValue, true>;
   rowActions?: WritebackAction[];
   onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 };
 
 export const EditTableDataGrid = ({
@@ -55,6 +62,8 @@ export const EditTableDataGrid = ({
   cellsWithFailedUpdatesMap,
   rowActions,
   onActionRun,
+  rowSelection,
+  onRowSelectionChange,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
@@ -63,7 +72,9 @@ export const EditTableDataGrid = ({
 
   const columnOrder = useMemo(
     () =>
-      columnsConfig ? columnsConfig.columnOrder : cols.map(({ name }) => name),
+      columnsConfig
+        ? [ROW_SELECT_COLUMN_ID, ...columnsConfig.columnOrder]
+        : [ROW_SELECT_COLUMN_ID, ...cols.map(({ name }) => name)],
     [cols, columnsConfig],
   );
 
@@ -155,6 +166,8 @@ export const EditTableDataGrid = ({
     [onRowExpandClick],
   );
 
+  const columnRowSelectOptions = useTableColumnRowSelect();
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -162,6 +175,11 @@ export const EditTableDataGrid = ({
     columnSizingMap,
     columnsOptions,
     columnVisibility,
+    columnPinning: { left: [ROW_SELECT_COLUMN_ID, ROW_ID_COLUMN_ID] },
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange,
+    columnRowSelectOptions: columnRowSelectOptions,
     rowActionsColumn:
       rowActions?.length && onActionRun
         ? { actions: rowActions, onActionRun }
