@@ -1,3 +1,14 @@
+## [0.54.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.9...embedding-sdk-0.54.10) (2025-05-13)
+
+
+### Bug Fixes
+
+* **sdk:** custom GeoJSON maps does not load due to wrong domain ([#57539](https://github.com/metabase/metabase/issues/57539)) ([#57645](https://github.com/metabase/metabase/issues/57645)) ([d56bf23](https://github.com/metabase/metabase/commit/d56bf2351cddec077a09122d9f7e2bb47d958548))
+* **sdk:** manual fixes for module level ttag calls causing broken translations ([#57391](https://github.com/metabase/metabase/issues/57391)) ([#57589](https://github.com/metabase/metabase/issues/57589)) ([1b2fa2d](https://github.com/metabase/metabase/commit/1b2fa2d716fb5bfa63bfe3998b0beb4239a32f97))
+* **sdk:** updating collection's entity id crashes InteractiveQuestion and CollectionBrowser ([#57529](https://github.com/metabase/metabase/issues/57529)) ([#57642](https://github.com/metabase/metabase/issues/57642)) ([182a678](https://github.com/metabase/metabase/commit/182a678c3e022cb7e43b30891053681c5bed5a9c))
+
+
+
 ## [0.54.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.8...embedding-sdk-0.54.9) (2025-04-25)
 
 
