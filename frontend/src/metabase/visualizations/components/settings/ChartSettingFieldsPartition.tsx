@@ -192,7 +192,6 @@ export const ChartSettingFieldsPartition = ({
         return "metric";
     }
   };
-
   const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
     if (!source || !destination) {
       return;
@@ -258,6 +257,16 @@ export const ChartSettingFieldsPartition = ({
     });
   };
 
+  const onRemoveBreakout = (
+    partition: keyof ColumnNameColumnSplitSetting,
+    index: number,
+  ) => {
+    onChange({
+      ...value,
+      [partition]: columnRemove(value[partition], index),
+    });
+  };
+
   const emptyColumnMessage = canEditColumns
     ? t`Add fields here`
     : t`Drag fields here`;
@@ -296,6 +305,7 @@ export const ChartSettingFieldsPartition = ({
                 >
                   <Column
                     onEditFormatting={handleEditFormatting}
+                    //onRemove={(col) => onRemoveBreakout(partitionName, col)}
                     column={updatedColumns[rubric.source.index]}
                     title={getColumnTitle(updatedColumns[rubric.source.index])}
                   />
@@ -343,6 +353,9 @@ export const ChartSettingFieldsPartition = ({
                               key={`${partitionName}-${col.name}`}
                               column={col}
                               onEditFormatting={handleEditFormatting}
+                              onRemove={() =>
+                                onRemoveBreakout(partitionName, index)
+                              }
                               title={getColumnTitle(col)}
                             />
                           </Box>
@@ -365,6 +378,7 @@ const Column = ({
   title,
   column,
   onEditFormatting,
+  onRemove,
 }: {
   title: string;
   column: RemappingHydratedDatasetColumn;
@@ -372,10 +386,13 @@ const Column = ({
     column: RemappingHydratedDatasetColumn,
     target: HTMLElement,
   ) => void;
+  onRemove?: () => void;
 }) => (
   <ColumnItem
     title={title}
     onEdit={(target) => onEditFormatting?.(column, target)}
+    onRemove={() => onRemove?.()}
+    removeIcon="close"
     draggable
     className={CS.m0}
   />
