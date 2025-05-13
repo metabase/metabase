@@ -9,6 +9,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { TemporalUnit } from "./dataset";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -24,7 +25,6 @@ import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-import { BinningMetadata, TemporalUnit } from "./dataset";
 
 export type CardType = "model" | "question" | "metric";
 
@@ -169,7 +169,7 @@ export type ColumnFormattingSetting =
   | ColumnSingleFormattingSetting
   | ColumnRangeFormattingSetting;
 
-export type ColumnNameColumnSplitSetting = {
+export type ColumnNameSplitSetting = {
   rows: string[];
   columns: string[];
   values: string[];
@@ -185,25 +185,30 @@ type BinningInfo = {
   displayName: string;
   numBins?: number;
   strategy?: string;
-}
+};
 
 export type ColumnNameAndBinning = {
   name: string;
   binning: BinningInfo | TemporalUnit | null;
-}
+};
 
 export type ColumnNameAndBinningSplitSetting = {
   rows: ColumnNameAndBinning[];
   columns: ColumnNameAndBinning[];
   values: ColumnNameAndBinning[];
-}
+};
+
+// Pre-aggregated pivots use plain column names in split settings;
+// unaggregated pivots also need to store binning information.
+export type PivotTableColumnSplitSetting =
+  | ColumnNameSplitSetting
+  | ColumnNameAndBinningSplitSetting;
 
 // Field ref-based visualization settings are considered legacy and are not used
 // for new questions. To not break existing questions we need to support both
 // old- and new-style settings until they are fully migrated.
-export type PivotTableColumnSplitSetting =
-  | ColumnNameColumnSplitSetting
-  | ColumnNameAndBinningSplitSetting
+export type MaybeLegacyPivotTableColumnSplitSetting =
+  | PivotTableColumnSplitSetting
   | FieldRefColumnSplitSetting;
 
 export type ColumnNameCollapsedRowsSetting = {
@@ -251,12 +256,12 @@ export type VisualizationSettings = {
   "graph.max_categories_enabled"?: boolean;
   "graph.max_categories"?: number;
   "graph.other_category_aggregation_fn"?:
-  | "sum"
-  | "avg"
-  | "min"
-  | "max"
-  | "stddev"
-  | "median";
+    | "sum"
+    | "avg"
+    | "min"
+    | "max"
+    | "stddev"
+    | "median";
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -268,11 +273,11 @@ export type VisualizationSettings = {
   "graph.x_axis.title_text"?: string;
   "graph.x_axis.scale"?: XAxisScale;
   "graph.x_axis.axis_enabled"?:
-  | true
-  | false
-  | "compact"
-  | "rotate-45"
-  | "rotate-90";
+    | true
+    | false
+    | "compact"
+    | "rotate-45"
+    | "rotate-90";
 
   // Y-axis
   "graph.y_axis.title_text"?: string;

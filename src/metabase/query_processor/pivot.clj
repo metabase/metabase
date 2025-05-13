@@ -659,6 +659,9 @@
       (log/error e "Error in outer-query-with-breakouts")
       (throw e))))
 
+(def ^:private empty-unagg-column-split
+  {:rows [] :columns [] :value []})
+
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
@@ -672,8 +675,8 @@
      (qp.setup/with-qp-setup [query query]
        ;; TODO
        ;; Using pivot_rows as a proxy for whether this is a plain table query (which we run directly) or a pivoted query
-       (if (or (= (:new_pivot_rows query) [])
-               (= (:new_pivot_cols query) []))
+       (if (or (= (:pivot_unagg_column_split query) empty-unagg-column-split)
+               (= (:pivot_unagg_column_split query) []))
          (qp/process-query (dissoc query :info)
                            (or rff qp.reducible/default-rff))
          (let [rff (or rff qp.reducible/default-rff)

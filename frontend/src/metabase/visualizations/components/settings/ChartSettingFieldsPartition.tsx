@@ -65,7 +65,7 @@ const AddBreakoutPopover = ({
           breakout={undefined}
           breakoutIndex={undefined}
           onAddBreakout={onAddBreakout}
-          onUpdateBreakoutColumn={() => { }}
+          onUpdateBreakoutColumn={() => {}}
           onClose={close}
         />
       </Popover.Dropdown>
@@ -115,27 +115,41 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
           onClose={close}
           allowCustomExpressions={false}
           allowMetrics={false}
-          onQueryChange={() => { }}
+          onQueryChange={() => {}}
         />
       </Popover.Dropdown>
     </Popover>
   );
 };
 
-type PartitionedColumn = string | ColumnNameAndBinning | (FieldReference | null);
+type PartitionedColumn =
+  | string
+  | ColumnNameAndBinning
+  | (FieldReference | null);
 
-const columnMove = (columns: PartitionedColumn[], from: number, to: number): PartitionedColumn[] => {
+const columnMove = (
+  columns: PartitionedColumn[],
+  from: number,
+  to: number,
+): PartitionedColumn[] => {
   const copy = [...columns];
   const [moved] = copy.splice(from, 1);
   copy.splice(to, 0, moved);
   return copy;
 };
 
-const columnRemove = (columns: PartitionedColumn[], from: number): PartitionedColumn[] => {
+const columnRemove = (
+  columns: PartitionedColumn[],
+  from: number,
+): PartitionedColumn[] => {
   return [...columns.slice(0, from), ...columns.slice(from + 1)];
 };
 
-const columnAdd = (columns: PartitionedColumn[], to: number, column: PartitionedColumn): PartitionedColumn[] => {
+const columnAdd = (
+  columns: PartitionedColumn[],
+  to: number,
+  column: PartitionedColumn,
+): PartitionedColumn[] => {
   return [...columns.slice(0, to), column, ...columns.slice(to)];
 };
 
@@ -168,12 +182,6 @@ export const ChartSettingFieldsPartition = ({
   columns,
   canEditColumns,
 }: ChartSettingFieldPartitionProps) => {
-  const breakoutableColumns = useMemo(() => {
-    Lib.breakoutableColumns(question.query(), -1);
-  },
-    [question]
-  );
-
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -225,7 +233,7 @@ export const ChartSettingFieldsPartition = ({
     } else if (sourcePartition !== destinationPartition) {
       const column =
         value[sourcePartition as keyof PivotTableColumnSplitSetting][
-        sourceIndex
+          sourceIndex
         ];
 
       onChange({
@@ -243,17 +251,20 @@ export const ChartSettingFieldsPartition = ({
     }
   };
 
-  const updatedValue = useMemo(
-    () => {
-      return _.mapObject(value || {}, (columnNames: string[] | ColumnNameAndBinning[]) => {
+  const updatedValue = useMemo(() => {
+    return _.mapObject(
+      value || {},
+      (columnsOrNames: string[] | ColumnNameAndBinning[]) => {
+        const columnNames = columnsOrNames.map((col) => {
+          return typeof col === "string" ? col : col.name;
+        });
+
         return columnNames
           .map((columnName) => columns.find((col) => col.name === columnName))
           .filter((col): col is RemappingHydratedDatasetColumn => col != null);
-      }
-      );
-    },
-    [columns, value],
-  );
+      },
+    );
+  }, [columns, value]);
 
   const onAddBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -262,17 +273,15 @@ export const ChartSettingFieldsPartition = ({
     const binning = Lib.binning(column);
     const binningInfo = binning ? Lib.displayInfo(query, 0, binning) : null;
     const bucket = Lib.temporalBucket(column);
-    const bucketName = bucket ? Lib.displayInfo(query, 0, bucket).shortName : null;
+    const bucketName = bucket
+      ? Lib.displayInfo(query, 0, bucket).shortName
+      : null;
     onChange({
       ...value,
-      [partition]: columnAdd(
-        value[partition],
-        -1,
-        {
-          name: Lib.displayInfo(question.query(), -1, column).name,
-          binning: binningInfo || bucketName,
-        }
-      ),
+      [partition]: columnAdd(value[partition], -1, {
+        name: Lib.displayInfo(question.query(), -1, column).name,
+        binning: binningInfo || bucketName,
+      }),
     });
   };
 

@@ -5,10 +5,9 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import {
-  getNewPivotOptions,
   getPivotOptions,
+  getUnaggregatedPivotOptions,
 } from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
@@ -44,7 +43,7 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     return (params, ...rest) => {
       const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
         getPivotOptions(question);
-      const newPivotOptions = getNewPivotOptions(question);
+      const newPivotOptions = getUnaggregatedPivotOptions(question);
       return api(
         {
           ...params,
