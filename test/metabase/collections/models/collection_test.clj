@@ -1,4 +1,4 @@
-(ns metabase.models.collection-test
+(ns metabase.collections.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]
@@ -7,7 +7,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.audit-app.impl :as audit]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.models.permissions :as perms]

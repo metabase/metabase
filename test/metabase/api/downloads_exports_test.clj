@@ -91,7 +91,7 @@
                               :pivot_results (boolean pivot)})
        (process-results export-format)))
 
-(defn public-question-download
+(defn- public-question-download
   [card {:keys [export-format format-rows pivot]
          :or   {format-rows false
                 pivot       false}}]
@@ -228,7 +228,7 @@
                                                      :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse)))))
 
-(defn all-downloads
+(defn- all-downloads
   [card-or-dashcard opts]
   (merge
    (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
@@ -238,7 +238,7 @@
    {:dashcard-download (card-download card-or-dashcard opts)
     :public-dashcard-download (public-dashcard-download card-or-dashcard opts)}))
 
-(defn all-outputs!
+(defn- all-outputs!
   [card-or-dashcard opts]
   (cond-> (merge
            (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
@@ -1175,7 +1175,8 @@
 
 (deftest format-rows-value-affects-xlsx-exports
   (testing "Format-rows true/false is respected for xlsx exports."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [enable-pivoted-exports true
+                                       custom-formatting      {}]
       (mt/with-temp [:model/Card card
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
@@ -1279,7 +1280,7 @@
 
 (deftest pivot-rows-order-test
   (testing "A pivot download will use the user-configured rows order."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [enable-pivoted-exports true]
       (mt/with-temp [:model/Card card {:display                :pivot
                                        :dataset_query          (mt/mbql-query products
                                                                  {:aggregation  [[:count]]
