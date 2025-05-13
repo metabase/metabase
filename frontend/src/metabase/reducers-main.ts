@@ -8,7 +8,6 @@ import { PLUGIN_REDUCERS } from "metabase/plugins";
 import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";
 import { reducer as setup } from "metabase/setup/reducers";
-import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { commonReducers } from "./reducers-common";
 
@@ -29,7 +28,6 @@ export function makeMainReducers() {
     setup,
     admin,
     plugins: combineReducers(PLUGIN_REDUCERS),
-    visualizer,
   };
 }
 
