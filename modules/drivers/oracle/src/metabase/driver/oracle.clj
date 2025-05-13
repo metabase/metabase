@@ -298,7 +298,7 @@
 
 (defmethod sql.qp/text-dbtype :oracle
   [_]
-  :VARCHAR)
+  "VARCHAR2(100)")
 
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
