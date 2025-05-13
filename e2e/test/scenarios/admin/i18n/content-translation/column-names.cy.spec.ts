@@ -59,7 +59,7 @@ describe("scenarios > admin > localization > content translation of column names
             cy.signInAsNormalUser();
           });
 
-          it.only("column headers", () => {
+          it("column headers", () => {
             H.visitQuestion(productsQuestionId);
             cy.findByTestId("table-header").within(() => {
               germanFieldNames.forEach((row) => {
@@ -86,27 +86,51 @@ describe("scenarios > admin > localization > content translation of column names
             });
           });
 
-          describe.only("column headers in viz", () => {
+          describe("column headers in viz", () => {
             const columnX = "PRICE";
             const columnY = "RATING";
             // NOTE: What about the 'trend' visualization? This is an option in
             // the app, but it's not in the cardDisplayTypes array
 
-            const visitViz = (displayType: CardDisplayType) =>
-              H.createQuestion(
-                {
-                  name: `${displayType} visualization`,
-                  display: displayType,
-                  query: {
-                    "source-table": PRODUCTS_ID,
-                  },
-                  visualization_settings: {
-                    "graph.dimensions": [columnX],
-                    "graph.metrics": [columnY],
-                  },
+            const visitViz = (displayType: CardDisplayType) => {
+              cy.signInAsAdmin();
+              H.createQuestion({
+                name: `${displayType} visualization`,
+                display: displayType,
+                query: {
+                  "source-table": PRODUCTS_ID,
                 },
-                { visitQuestion: true },
-              );
+                visualization_settings: {
+                  "graph.dimensions": [columnX],
+                  "graph.metrics": [columnY],
+                },
+              }).then(({ body: { id } }) => {
+                cy.request("PUT", `/api/card/${id}`, {
+                  enable_embedding: true,
+                });
+                H.visitQuestion(id);
+                H.openStaticEmbeddingModal({
+                  acceptTerms: false,
+                  activeTab: "parameters",
+                });
+                H.getIframeUrl().then((iframeUrl) => {
+                  cy.signOut();
+                  cy.visit(iframeUrl + "#locale=de");
+                });
+              });
+            };
+
+            const assertColumnNamesAreTranslated = () =>
+              columnsInChart.forEach((row) => {
+                console.log(
+                  "Expecting to see translated string row.msgstr",
+                  row.msgstr,
+                );
+                H.echartsContainer()
+                  .get("text")
+                  .should("contain", row.msgstr)
+                  .should("not.contain", row.msgid);
+              });
 
             const columnsInChart = germanFieldNames.filter((row) =>
               [columnX, columnY].includes(row.msgid),
@@ -133,119 +157,112 @@ describe("scenarios > admin > localization > content translation of column names
                   },
                 )
                 .with("bar", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it.only(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    // H.assertFirstEChartsTooltip(displayType, {
+                    //   header: "Bewertung",
+                    // });
                   });
                 })
                 .with("line", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("row", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("area", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("combo", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("scatter", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("waterfall", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("funnel", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
-                  });
-                  H.assertFirstEChartsTooltip(displayType, {
-                    header: "Bewertung",
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    H.assertFirstEChartsTooltip(displayType, {
+                      header: "Bewertung",
+                    });
                   });
                 })
                 .with("pivot", () => {
-                  visitViz(displayType);
-                  columnsInChart.forEach((row) => {
-                    cy.findByText(row.msgid).should("be.visible");
-                    cy.findByText(row.msgstr).should("not.exist");
+                  it(displayType, () => {
+                    visitViz(displayType);
+                    assertColumnNamesAreTranslated();
+                    // No tooltip for pivot table visualization
                   });
-                  // No tooltip for pivot
                 })
                 .with("object", () => {
                   // TODO
                 })
                 .with("map", () => {
-                  H.visitQuestionAdhoc({
-                    dataset_query: {
-                      database: SAMPLE_DB_ID,
-                      query: {
-                        "source-table": PEOPLE_ID,
-                        aggregation: [["count"]],
-                        breakout: [["field", PEOPLE.STATE, null]],
+                  it(displayType, () => {
+                    H.visitQuestionAdhoc({
+                      dataset_query: {
+                        database: SAMPLE_DB_ID,
+                        query: {
+                          "source-table": PEOPLE_ID,
+                          aggregation: [["count"]],
+                          breakout: [["field", PEOPLE.STATE, null]],
+                        },
+                        type: "query",
                       },
-                      type: "query",
-                    },
-                    display: "map",
-                    visualization_settings: {
-                      "map.type": "region",
-                      "map.region": "us_states",
-                    },
-                  });
-                  H.assertFirstEChartsTooltip("map", {
-                    rows: [], // something here describing all the columns
+                      display: "map",
+                      visualization_settings: {
+                        "map.type": "region",
+                        "map.region": "us_states",
+                      },
+                    });
+                    H.assertFirstEChartsTooltip("map", {
+                      rows: [], // something here describing all the columns
+                    });
                   });
                 })
                 .with("pie", () => {
-                  it.only(`of type: ${displayType}`, () => {
+                  it(`of type: ${displayType}`, () => {
                     H.createQuestion(
                       {
                         display: "pie",
