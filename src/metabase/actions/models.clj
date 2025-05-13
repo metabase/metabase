@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.query :as query]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -201,7 +201,7 @@
   [cards]
   (let [card-by-table-id (into {}
                                (for [card cards
-                                     :let [{:keys [table-id]} (queries/query->database-and-table-ids (:dataset_query card))]
+                                     :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]

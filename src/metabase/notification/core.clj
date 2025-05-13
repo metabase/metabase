@@ -20,8 +20,6 @@
 (p/import-vars
  [metabase.notification.card
   delete-card-notifications-and-notify!]
- #_[metabase.notification.events.notification
-    *skip-sending-notification?*]
  [metabase.notification.payload.core
   notification-payload]
  [metabase.notification.seed
@@ -29,5 +27,16 @@
  [metabase.notification.send
   send-notification!]
  [metabase.notification.task.send
-  #_*default-options*
   update-send-notification-triggers-timezone!])
+
+(defmacro with-skip-sending-notification
+  "Execute `body` with [[metabase.notification.events.notification/*skip-sending-notification?*]] bound to `skip?`."
+  [skip? & body]
+  `(binding [metabase.notification.events.notification/*skip-sending-notification?* ~skip?]
+     ~@body))
+
+(defmacro with-default-options
+  "Execute `body` with [[metabase.notification.task.send/*default-options*]] bound to `options`."
+  [options & body]
+  `(binding [metabase.notification.task.send/*default-options* ~options]
+     ~@body))

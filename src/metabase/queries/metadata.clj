@@ -1,11 +1,11 @@
 (ns metabase.queries.metadata
   (:require
-   [metabase.api.field :as api.field]
-   [metabase.api.table :as api.table]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
+   [metabase.schema.field :as schema.field]
+   [metabase.schema.table :as schema.table]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -47,14 +47,14 @@
                                         queries)
         {source-table-ids :tables
          source-card-ids  :cards} (split-tables-and-legacy-card-refs source-ids)
-        source-tables             (concat (api.table/batch-fetch-table-query-metadatas source-table-ids)
-                                          (api.table/batch-fetch-card-query-metadatas source-card-ids))
+        source-tables             (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
+                                          (schema.table/batch-fetch-card-query-metadatas source-card-ids))
         fk-target-field-ids       (into #{} (comp (mapcat :fields)
                                                   (keep :fk_target_field_id))
                                         source-tables)
         fk-target-table-ids       (into #{} (remove source-table-ids)
                                         (field-ids->table-ids fk-target-field-ids))
-        fk-target-tables          (api.table/batch-fetch-table-query-metadatas fk-target-table-ids)
+        fk-target-tables          (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids)
         tables                    (concat source-tables fk-target-tables)
         template-tag-field-ids    (into #{} (mapcat query->template-tag-field-ids) queries)
         query-database-ids        (into #{} (keep :database) queries)
@@ -74,7 +74,7 @@
                              [id ""]
                              [Integer/MAX_VALUE (str id)]))
                          tables)
-     :fields    (sort-by :id (api.field/get-fields template-tag-field-ids))}))
+     :fields    (sort-by :id (schema.field/get-fields template-tag-field-ids))}))
 
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."

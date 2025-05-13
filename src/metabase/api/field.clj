@@ -11,6 +11,7 @@
    [metabase.parameters.field :as parameters.field]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
+   [metabase.schema.field :as schema.field]
    [metabase.sync.core :as sync]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -34,42 +35,13 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
-(defn get-field
-  "Get `Field` with ID."
-  [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (t2/select-one :model/Field :id id))
-                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
-        field (if include-editable-data-model?
-                (field/hydrate-target-with-write-perms field)
-                (t2/hydrate field :target))]
-    ;; Normal read perms = normal access.
-    ;;
-    ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
-    ;; it: if you have segmented query access to the Table it belongs to. In this case, we'll still let you fetch the
-    ;; Field, since this is required to power features like Dashboard filters, but we'll treat this Field a little
-    ;; differently in other endpoints such as the FieldValues fetching endpoint.
-    ;;
-    ;; Check for permissions and throw 403 if we don't have them...
-    (if include-editable-data-model?
-      (api/write-check :model/Table (:table_id field))
-      (api/check-403 (mi/can-read? field)))
-    ;; ...but if we do, return the Field <3
-    field))
-
-(defn get-fields
-  "Get `Field`s with IDs in `ids`."
-  [ids]
-  (when (seq ids)
-    (-> (filter mi/can-read? (t2/select :model/Field :id [:in ids]))
-        (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))))
-
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
-  (get-field id {:include-editable-data-model? include-editable-data-model?}))
+  (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]

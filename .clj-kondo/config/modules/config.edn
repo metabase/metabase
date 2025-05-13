@@ -140,6 +140,7 @@
            request
            revisions
            sample-data
+           schema
            secrets
            server
            session
@@ -780,6 +781,7 @@
   queries
   {:api  #{metabase.queries.api
            metabase.queries.core
+           metabase.queries.models.query ; TODO FIXME
            metabase.queries.init}
    :uses #{analytics
            analyze
@@ -804,6 +806,7 @@
            query-processor
            request
            revisions
+           schema
            search
            util}}
 
@@ -911,8 +914,15 @@
            util}}
 
   schema
-  {:api  #{metabase.schema.metadata-queries}
-   :uses #{util}}
+  {:api  #{metabase.schema.field
+           metabase.schema.table
+           metabase.schema.metadata-queries}
+   :uses #{api
+           driver
+           models
+           premium-features
+           types
+           util}}
 
   search
   {:api #{metabase.search.api

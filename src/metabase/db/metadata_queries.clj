@@ -27,9 +27,9 @@
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
   Add the required filters if the table requires it,
   see [[metabase.schema.metadata-queries/add-required-filters-if-needed]] for more details. Also takes an optional
-  `rff`, use the default rff if not provided.
+  `rff`, use the default rff if not provided."
   ([table-id mbql-query]
-   (table-query table-id mbql-query nil))"
+   (table-query table-id mbql-query nil))
   ([table-id mbql-query rff]
    {:pre [(integer? table-id)]}
    (binding [qp.i/*disable-qp-logging* true]

@@ -6,7 +6,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.table :as api.table]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.database-routing.core :as database-routing]
@@ -27,6 +26,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
+   [metabase.schema.table :as schema.table]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.core :as sync]
@@ -185,7 +185,7 @@
   [card-type :- :queries/card-type
    & {:keys [include-fields?]}]
   (for [card (source-query-cards card-type)]
-    (api.table/card->virtual-table card :include-fields? include-fields?)))
+    (schema.table/card->virtual-table card :include-fields? include-fields?)))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- :queries/card-type
@@ -1255,10 +1255,10 @@
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
-          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
+          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map api.table/card->virtual-table))))
+         (map schema.table/card->virtual-table))))
 
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
@@ -1277,7 +1277,7 @@
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
-          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
+          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map api.table/card->virtual-table))))
+         (map schema.table/card->virtual-table))))

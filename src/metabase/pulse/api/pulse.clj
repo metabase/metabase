@@ -375,7 +375,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (binding [notification/*default-options* {:notification/sync? true}]
+  (notification/with-default-options {:notification/sync? true}
     (pulse.send/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 

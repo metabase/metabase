@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
@@ -38,7 +38,7 @@
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
   (when-not (:cache_hit query-execution)
-    (queries/save-query-and-update-average-execution-time! query query-hash running-time))
+    (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
     (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))))
@@ -90,7 +90,7 @@
    {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
     :average_execution_time (when (:cached cache)
-                              (queries/average-execution-time-ms query-hash))}))
+                              (query/average-execution-time-ms query-hash))}))
 
 (defn- add-and-save-execution-metadata-xform! [execution-info rf]
   {:pre [(fn? rf)]}
