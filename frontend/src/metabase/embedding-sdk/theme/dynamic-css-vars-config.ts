@@ -6,7 +6,7 @@ import type { DynamicCssVarConfig } from "../types/private/css-variables";
 export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
   "--mb-color-bg-sdk-question-toolbar": {
     light: { source: "bg-white", darken: 0.04 },
-    dark: { source: "bg-white", lighten: 0.15 },
+    dark: { source: "bg-white", lighten: 0.5 },
   },
   "--mb-color-notebook-step-bg": {
     light: { source: "bg-white", darken: 0.05 },
