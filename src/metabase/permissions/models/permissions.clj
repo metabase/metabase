@@ -171,7 +171,6 @@
   (:require
    [clojure.string :as str]
    [metabase.audit-app.core :as audit]
-   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
