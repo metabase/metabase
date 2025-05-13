@@ -142,7 +142,7 @@
    "/collection"           (+auth 'metabase.api.collection)
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
-   "/dataset"              'metabase.api.dataset
+   "/dataset"              (+auth 'metabase.api.dataset)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
