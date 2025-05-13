@@ -378,12 +378,11 @@
       :type "button"
       :description ""
       :fields
-      (->> (for [field field-params
-                 :let [field-name (:name field)]]
-             [field-name
-              {:hidden      false
-               :id          field-name}])
-           (into {}))}
+      (u/for-map [field field-params
+                  :let [field-name (:name field)]]
+        [field-name
+         {:hidden      false
+          :id          field-name}])}
      :parameters
      (->> (for [field field-params
                 :let [field-name (:name field)]]
