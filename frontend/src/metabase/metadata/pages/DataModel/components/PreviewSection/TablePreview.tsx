@@ -3,6 +3,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   Card,
   DatabaseId,
+  DatasetColumn,
   DatasetQuery,
   FieldFilter,
   FieldId,
@@ -73,8 +74,32 @@ function useDataSample({
     visualization_settings: {},
   } as Card;
 
-  const rawSeries: RawSeries | undefined = data?.data && [
-    { card, data: data?.data },
+  if (!data?.data) {
+    return { ...rest, rawSeries: undefined };
+  }
+
+  const { cols, rows } = data.data;
+
+  const stub: DatasetColumn = {
+    name: "__metabase_generated",
+    display_name: "—",
+    source: "generated",
+    semantic_type: "type/PK",
+  };
+
+  // create a stub column
+  const c = [stub, ...cols];
+  const r = rows.map((row) => ["—", ...row]);
+
+  const rawSeries: RawSeries = [
+    {
+      card,
+      data: {
+        ...data.data,
+        cols: c,
+        rows: r,
+      },
+    },
   ];
 
   return {
