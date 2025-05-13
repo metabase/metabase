@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { isNotNull } from "metabase/lib/types";
 import type {
   Alert,
   ApiKey,
@@ -16,6 +17,7 @@ import type {
   DashboardSubscription,
   Database,
   DatabaseXray,
+  Dataset,
   Field,
   FieldDimension,
   FieldId,
@@ -103,6 +105,21 @@ export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+}
+
+export function provideAdhocQueryTags(
+  dataset: Dataset,
+): TagDescription<TagType>[] {
+  return [
+    listTag("database"),
+    idTag("database", dataset.database_id),
+    listTag("field"),
+    ...dataset.data.results_metadata.columns
+      .map((column) =>
+        column.id !== undefined ? idTag("field", column.id) : null,
+      )
+      .filter(isNotNull),
+  ];
 }
 
 export function provideAdhocQueryMetadataTags(
