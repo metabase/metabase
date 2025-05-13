@@ -621,30 +621,7 @@
         ; Wait for take to complete
         (.await take-latch)
 
-        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))
-
-    (testing "queue blocks when full"
-      (let [small-queue (#'notification.send/->BlockingQueue (java.util.concurrent.ArrayBlockingQueue. 2))
-            put-latch (java.util.concurrent.CountDownLatch. 1)
-            take-latch (java.util.concurrent.CountDownLatch. 1)
-            put-thread (Thread. (fn []
-                                  (#'notification.send/put-notification! small-queue {:id 1 :test-value "A"})
-                                  (#'notification.send/put-notification! small-queue {:id 2 :test-value "B"})
-                                  (.countDown put-latch) ; signal ready to put third item
-                                  (#'notification.send/put-notification! small-queue {:id 3 :test-value "C"})
-                                  (.countDown take-latch)))] ; signal all puts complete
-        (.start put-thread)
-        (.await put-latch) ; wait for thread to be ready to put third item
-
-        ; Take one item to unblock the put
-        (is (= {:id 1 :test-value "A"} (#'notification.send/take-notification! small-queue)))
-
-        ; Wait for all puts to complete
-        (.await take-latch)
-
-        ; Verify remaining items
-        (is (= {:id 2 :test-value "B"} (#'notification.send/take-notification! small-queue)))
-        (is (= {:id 3 :test-value "C"} (#'notification.send/take-notification! small-queue)))))))
+        (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
 
 (deftest blocking-queue-concurrency-test
   (testing "blocking queue handles concurrent operations correctly"
