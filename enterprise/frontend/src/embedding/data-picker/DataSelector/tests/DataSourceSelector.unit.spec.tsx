@@ -121,15 +121,15 @@ describe("DataSourceSelector", () => {
 
       await userEvent.click(await screen.findByText("Many tables Database"));
       expect(await screen.findByText("Table 1")).toBeInTheDocument();
-      expect(await screen.findByText("Table 2")).toBeInTheDocument();
-      expect(await screen.findByText("Table 3")).toBeInTheDocument();
-      expect(await screen.findByText("Table 4")).toBeInTheDocument();
-      expect(await screen.findByText("Table 5")).toBeInTheDocument();
-      expect(await screen.findByText("Table 6")).toBeInTheDocument();
-      expect(await screen.findByText("Table 7")).toBeInTheDocument();
-      expect(await screen.findByText("Table 8")).toBeInTheDocument();
-      expect(await screen.findByText("Table 9")).toBeInTheDocument();
-      expect(await screen.findByText("Table 10")).toBeInTheDocument();
+      expect(screen.getByText("Table 2")).toBeInTheDocument();
+      expect(screen.getByText("Table 3")).toBeInTheDocument();
+      expect(screen.getByText("Table 4")).toBeInTheDocument();
+      expect(screen.getByText("Table 5")).toBeInTheDocument();
+      expect(screen.getByText("Table 6")).toBeInTheDocument();
+      expect(screen.getByText("Table 7")).toBeInTheDocument();
+      expect(screen.getByText("Table 8")).toBeInTheDocument();
+      expect(screen.getByText("Table 9")).toBeInTheDocument();
+      expect(screen.getByText("Table 10")).toBeInTheDocument();
 
       const searchBox = screen.getByPlaceholderText("Find...");
       expect(searchBox).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Table 7")).not.toBeInTheDocument();
       expect(screen.queryByText("Table 8")).not.toBeInTheDocument();
       expect(screen.queryByText("Table 9")).not.toBeInTheDocument();
-      expect(await screen.findByText("Table 10")).toBeInTheDocument();
+      expect(screen.getByText("Table 10")).toBeInTheDocument();
     });
 
     it("should not show search input when there less than 10 tables", async () => {
