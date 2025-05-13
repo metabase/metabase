@@ -220,19 +220,20 @@
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
-  (queue/listen! listener-name queue bulk-ingest!
-                 {:success-handler     (fn [result duration _]
-                                         (report->prometheus! duration result)
-                                         (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
-                                         (track-queue-size!))
-                  :err-handler        (fn [err _]
-                                        (log/error err "Error indexing search entries")
-                                        (analytics/inc! :metabase-search/index-error)
-                                        (track-queue-size!))
-                  ;; Note that each message can correspond to multiple documents,
-                  ;; for example there would be 1 message for updating all
-                  ;; the tables within a given database when it is renamed.
-                  ;; Messages can also correspond to zero documents,
-                  ;; such as when updating a table that is marked as not visible.
-                  :max-batch-messages 50
-                  :max-next-ms       100}))
+  (when (seq (search.engine/active-engines))
+    (queue/listen! listener-name queue bulk-ingest!
+                   {:success-handler     (fn [result duration _]
+                                           (report->prometheus! duration result)
+                                           (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) result))
+                                           (track-queue-size!))
+                    :err-handler        (fn [err _]
+                                          (log/error err "Error indexing search entries")
+                                          (analytics/inc! :metabase-search/index-error)
+                                          (track-queue-size!))
+                    ;; Note that each message can correspond to multiple documents,
+                    ;; for example there would be 1 message for updating all
+                    ;; the tables within a given database when it is renamed.
+                    ;; Messages can also correspond to zero documents,
+                    ;; such as when updating a table that is marked as not visible.
+                    :max-batch-messages 50
+                    :max-next-ms       100})))
