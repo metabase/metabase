@@ -6,57 +6,38 @@ redirect_from:
 
 # Upgrading Metabase
 
-Instructions for upgrading to a new [Metabase release](https://github.com/metabase/metabase/releases).
+This page covers how to upgrade to a new [Metabase release](https://github.com/metabase/metabase/releases).
 
-## What happens during an upgrade or downgrade?
+## Upgrading Metabase Cloud
 
-Metabase keeps all the metadata it needs to work on the application database. During a major version upgrade, the process will identify the version it's in and which version it needs to go to and perform all the migrations needed to start the new version.
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end. 
 
-If a major version downgrade occurs without migrating the schema first to a lower version, then Metabase will refuse to start.
+How soon we upgrade you depends on the type of release:
 
-You can move between minor versions across a specific major version without any issues. Unless it's critical, we don't perform any database migrations across minor versions.
+- Minor releases (e.g., x.54.4 to x.54.5): Usually about a week.
+- Major releases (e.g., x.53.4 to x.54.1): Longer, usually months (just to make sure everything goes smoothly).
 
-## First: do a back up of your application database
+Cloud customers can request an early upgrade by emailing support at help@metabase.com. Include the URL of the Metabase you want us to upgrade.
+
+## Upgrading a self-hosted Metabase
+
+Here are the steps for upgrading to a new Metabase version (major or minor):
+
+### 1. Back up of your application database
 
 The application database keeps track of every single thing (but the data of your connected database) of your Metabase instance. While it's unlikely you'll need to roll back to your current version, a backup will do wonders for your peace of mind in case something goes wrong.
 
 See [Backing up Metabase application data](backing-up-metabase-application-data.md).
 
-## Second: swapping in the new Metabase version
+### 2. Swap in the new Metabase version
 
-Steps differ depending on whether you're running the JAR or a container image.
+Steps differ depending on whether you're running the container image or the JAR.
 
-### Upgrading the JAR
-
-To upgrade, you'll need to stop the service, replace the JAR with the newer version, and restart the service.
-
-E.g., if you're running Metabase on Debian as a service using Nginx.
-
-1. Stop the Metabase service. Assuming you called your service `metabase.service`, you'll run:
-
-   ```
-   sudo systemctl stop metabase.service
-   ```
-2. Download the latest version of the JAR file:
-
-   - [Metabase Open Source JAR](https://www.metabase.com/start/oss/jar)
-   - [Metabase Pro or Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar)
-
-And replace the current (older) Metabase JAR file with the newer JAR you downloaded.
-
-3. Restart the service:
-
-   ```
-   sudo systemctl restart metabase.service
-   ```
-
-### Upgrading the container image
-
-If you're running Metabase in a container:
+**Upgrading the container image**
 
 1. Stop the current container.
 
-2. Pull the latest Metabase Docker image.
+2. Pull the latest Metabase Docker image (though we recommend that you pull a specific tag instead of using `latest`).
 
    Metabase Open Source:
 
@@ -70,9 +51,7 @@ If you're running Metabase in a container:
    docker pull metabase/metabase-enterprise:latest
    ```
 
-NOTE: we recommend that you pull a specific tag instead of using `latest`.
-
-4. Start the new container image. Depending on the ports and what you want to name the container, the command will look something like:
+3. Start the new container image. Depending on the ports and container name, the command will look something like:
 
    Metabase Open Source:
 
@@ -87,6 +66,31 @@ NOTE: we recommend that you pull a specific tag instead of using `latest`.
    ```
 
 On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
+
+**Upgrading the JAR**
+
+To upgrade, you'll need to stop the service, replace the JAR with the newer version, and restart the service.
+
+E.g., if you're running Metabase on Debian as a service using Nginx.
+
+1. Stop the Metabase service. Assuming you called your service `metabase.service`, you'll run:
+
+   ```
+   sudo systemctl stop metabase.service
+   ```
+
+2. Download the latest version of the JAR file:
+
+   - [Metabase Open Source JAR](https://www.metabase.com/start/oss/jar)
+   - [Metabase Pro or Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar)
+
+And replace the current (older) Metabase JAR file with the newer JAR you downloaded.
+
+3. Restart the service:
+
+   ```
+   sudo systemctl restart metabase.service
+   ```
 
 ## Upgrading from older versions of Metabase
 
@@ -103,18 +107,22 @@ With X being the latest version available for each release.
 
 Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
-## Upgrading Metabase Cloud
-
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end. How soon we upgrade you depends on the type of release:
-
-- Minor releases (e.g., x.47.4 to x.47.5): Usually about a week.
-- Major releases (e.g., x.47.4 to x.48.0): Longer, usually months (just to make sure everything goes smoothly).
-
-Cloud customers can request an early upgrade by emailing support at help@metabase.com. Include the URL of the Metabase you want us to upgrade.
-
 ## Upgrading Metabase on other platforms
 
 - [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
+
+## What happens during an upgrade or downgrade?
+
+During a **major version** upgrade (e.g., 53.1 5o 54.1), Metabase will:
+
+- Perform all the migrations needed to upgrade to the new version, such as any schema changes to the application database between the two versions.
+- Keep all the metadata it needs to work on the application database.
+
+Metabase will do all this automatically. 
+
+If you need to downgrade after a major version upgrade, you'll either need to restore from a backup, or manually migrate to a lower version, otherwise Metabase may refuse to start (see the next section).
+
+Durning a **minor version upgrade** (e.g., 54.1 to 54.2), the new Metabase container or Jar will just work. Only in rare cases will it have to perform a migration, but, like with major version upgrades, Metabase will perform the migration automatically. And of course, you're backing up your application database each time you upgrade, right?
 
 ## Rolling back an upgrade or to an older version
 
@@ -148,19 +156,15 @@ docker run
   -e "MB_DB_HOST=my-database-host" \
 --rm metabase/metabase:<tag> "migrate down"
 ```
-(Note the quotes around `"migrate down"`)
 
-or just open a shell into the container and run the migrate command inside it.
+Note the quotes around `"migrate down"`. You can also just open a shell into the container and run the migrate command inside it.
 
 Once the migration process completes, start up Metabase using the JAR or container image for the version you want to run.
 
-## Upgrading clusters
+## Upgrading Metabase running in a cluster
 
 If you're running Metabase in a cluster:
-1) reduce the number of nodes to just one
-2) perform the upgrade
-3) raise the number of nodes to the same quantity you had before
 
-If you keep more than one node when you do a major version upgrade, the application will not behave correctly (since nodes running the older version will probably get wrong data/data with the wrong schema from the application database).
-
-NOTE: you can't upgrade all nodes at the same time, since the process works by acquiring a migration lock on the application database from a single client, which performs the migration.
+1. Reduce the number of nodes to a single node. You can't upgrade all nodes at the same time because the ugprade process works by acquiring a migration lock on the application database from a single client, which performs the migration. If you keep more than one node active when you do a major version upgrade, the application won't behave correctly, as schema changes to the application database could cause problems for nodes that are still running the older version of Metabase.
+2. Perform the upgrade as normal (as outlined above).
+3. Raise the number of nodes to the same number you had before.
