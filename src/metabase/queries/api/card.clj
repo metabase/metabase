@@ -19,7 +19,8 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.queries.metadata :as api.query-metadata]
+   [metabase.permissions.core :as perms]
+   [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.query :as query]
@@ -428,14 +429,11 @@
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
-(mr/def ::card-type
-  (into [:enum {:decode/json keyword}] card/card-types))
-
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
   (when (and dataset-query (= card-type :metric))
     (when-not (lib/can-save (dataset-query->query dataset-query) card-type)
-      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
+      (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))
 
@@ -474,7 +472,7 @@
     card-type     :type
     :as           body} :- [:map
                             [:name                   ms/NonBlankString]
-                            [:type                   {:optional true} [:maybe ::card-type]]
+                            [:type                   {:optional true} [:maybe :queries/card-type]]
                             [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
                             [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -491,7 +489,7 @@
                             [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (card/check-run-permissions-for-query query)
+  (perms/check-run-permissions-for-query query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (collection/check-write-perms-for-collection
@@ -520,7 +518,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (card/check-run-permissions-for-query (:dataset_query card-updates)))))
+      (perms/check-run-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -541,7 +539,7 @@
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
-   [:type                   {:optional true} [:maybe ::card-type]]
+   [:type                   {:optional true} [:maybe :queries/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:visualization_settings {:optional true} [:maybe ms/Map]]
@@ -654,7 +652,7 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api.query-metadata/batch-fetch-card-metadata [(get-card id)]))
+  (queries.metadata/batch-fetch-card-metadata [(get-card id)]))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 

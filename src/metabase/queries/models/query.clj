@@ -159,14 +159,6 @@
     (walk/prewalk walker query)
     (seq ids)))
 
-;;; TODO -- only used in X-Rays code; move there
-(mu/defn adhoc-query :- (ms/InstanceOf :model/Query)
-  "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
-  (mi/instance :model/Query
-               (merge (query->database-and-table-ids query)
-                      {:dataset_query (mi/maybe-normalize-query :out query)})))
-
 (mu/defn query-is-native? :- :boolean
   "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
   regardless of whether the Card has a native query or not."

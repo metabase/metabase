@@ -16,7 +16,6 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
-   [metabase.queries.api.card :as api.card]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -34,6 +33,7 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [throttle.core :as throttle]
+   [metabase.queries.core :as queries]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -433,7 +433,7 @@
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-values card param-key))))
+      (queries/card-param-values card param-key))))
 
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
@@ -444,7 +444,7 @@
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-values card param-key query))))
+      (queries/card-param-values card param-key query))))
 
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
@@ -454,7 +454,7 @@
    {:keys [value]}          :- [:map [:value :any]]]
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-remapped-value card param-key (codec/url-decode value)))))
+      (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."

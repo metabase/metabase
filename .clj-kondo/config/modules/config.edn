@@ -185,7 +185,6 @@
   {:api  #{metabase.bookmarks.api}
    :uses #{api
            db
-           queries
            util}}
 
   bug-reporting
@@ -298,6 +297,7 @@
            events
            legacy-mbql
            models
+           notification
            permissions
            premium-features
            queries
@@ -655,11 +655,13 @@
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
+           ;; TODO -- move these into the API namespace.
            metabase.permissions.models.collection-permission-graph-revision
            metabase.permissions.models.collection.graph
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
+           metabase.permissions.models.query.permissions
            metabase.permissions.util}
    :uses #{api
            audit-app
@@ -757,7 +759,9 @@
            enterprise/sandbox}}
 
   queries
-  {:api  #{metabase.queries.init}
+  {:api  #{metabase.queries.api
+           metabase.queries.core
+           metabase.queries.init}
    :uses #{analytics
            analyze
            api
@@ -772,7 +776,6 @@
            legacy-mbql
            lib
            models
-           notification
            permissions
            premium-features
            public-sharing
@@ -876,7 +879,7 @@
            config
            events
            models
-           queries
+           permissions
            util}}
 
   sample-data

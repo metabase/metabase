@@ -15,6 +15,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
@@ -975,7 +976,7 @@
                                          :dashboard_id dash-id))))
       (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
         (testing "invalid"
-          (doseq [invalid-type (disj card/card-types :question)]
+          (doseq [invalid-type (disj queries.schema/card-types :question)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
                                   (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                                  :dashboard_id dash-id

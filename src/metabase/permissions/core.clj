@@ -5,6 +5,7 @@
    [metabase.permissions.models.permissions]
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
+   [metabase.permissions.query]
    [metabase.permissions.util]
    [potemkin :as p]))
 
@@ -13,6 +14,7 @@
   metabase.permissions.models.permissions/keep-me
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
+  metabase.permissions.query/keep-me
   metabase.permissions.util/keep-me)
 
 (p/import-vars
@@ -59,6 +61,8 @@
   remove-user-from-groups!
   throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
+ [metabase.permissions.query
+  check-run-permissions-for-query]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

@@ -27,12 +27,10 @@
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
-   [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
@@ -46,7 +44,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -109,27 +106,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;;; TODO -- this should be part of `can-write?`/`can-update?` and be done automatically
-(defn check-run-permissions-for-query
-  "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
-  queries they wouldn't be allowed to run!"
-  [query]
-  {:pre [(map? query)]}
-  (when-not (query-perms/can-run-query? query)
-    (let [required-perms (try
-                           (query-perms/required-perms-for-query query :throw-exceptions? true)
-                           (catch Throwable e
-                             e))]
-      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                      {:status-code    403
-                       :query          query
-                       :required-perms (if (instance? Throwable required-perms)
-                                         :error
-                                         required-perms)
-                       :actual-perms   @api/*current-user-permissions-set*}
-                      (when (instance? Throwable required-perms)
-                        required-perms))))))
-
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
@@ -149,20 +125,6 @@
    (perms/can-read-audit-helper :model/Card instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
-
-(def card-types
-  "All acceptable card types.
-
-  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean
-  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
-  to differentiate between all types. So we've added a new `type` column for this purpose.
-
-  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
-  gradually."
-  #{:model :question :metric})
-
-(mr/def ::type
-  (into [:enum] card-types))
 
 (defn model?
   "Returns true if `card` is a model."
@@ -265,7 +227,7 @@
       (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
 
 (defn with-can-run-adhoc-query
-  "Adds can_run_adhoc_query to each card."
+  "Adds `:can_run_adhoc_query` to each card."
   [cards]
   ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
   (let [dataset-cards (filter (comp seq :dataset_query) cards)
@@ -422,9 +384,13 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
 
-;; TODO: move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and frontend
-;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
-;; If this function moves you should update the comment that links to this one (#40013)
+;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
+;;; frontend (?)
+;;;
+;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
+;;; If this function moves you should update the comment that links to this one (#40013)
+;;;
+;;; TODO -- does this belong HERE or in the `parameters` module?
 (defn template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
@@ -1103,15 +1069,6 @@
      card)))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
-
-(defn delete-alert-and-notify!
-  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
-  [topic actor card]
-  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
-    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
-    (events/publish-event! topic {:card          card
-                                  :actor         actor
-                                  :notifications card-notifications})))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent

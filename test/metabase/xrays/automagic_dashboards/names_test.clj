@@ -6,6 +6,7 @@
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.names :as names]))
 
@@ -51,7 +52,7 @@
 ;;; ------------------- Cell titles -------------------
 (deftest ^:parallel cell-title-test
   (mt/$ids venues
-    (let [query (query/adhoc-query {:query    {:source-table (mt/id :venues)
+    (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :venues)
                                                :aggregation  [:count]}
                                     :type     :query
                                     :database (mt/id)})
@@ -86,7 +87,7 @@
 
 (deftest ^:parallel cell-title-default-test
   (mt/$ids venues
-    (let [query (query/adhoc-query {:query    {:source-table (mt/id :venues)
+    (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :venues)
                                                :aggregation  [:count]}
                                     :type     :query
                                     :database (mt/id)})
@@ -98,7 +99,7 @@
 (deftest ^:parallel cell-title-with-dates-comparison-test
   (testing "Ensure cell titles with date comparisons display correctly"
     (mt/$ids users
-      (let [query (query/adhoc-query {:query    {:source-table (mt/id :users)
+      (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :users)
                                                  :aggregation  [:count]}
                                       :type     :query
                                       :database (mt/id)})
@@ -130,7 +131,7 @@
   (testing "Ensure various permutations of temporal units produce valid strings (without nulls in them)
             as was reported in issue https://github.com/metabase/metabase/issues/35170"
     (mt/$ids users
-      (let [query (query/adhoc-query {:query    {:source-table (mt/id :users)
+      (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :users)
                                                  :aggregation  [:count]}
                                       :type     :query
                                       :database (mt/id)})

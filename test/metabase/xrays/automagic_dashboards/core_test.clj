@@ -17,6 +17,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.dashboard-templates
@@ -897,7 +898,7 @@
 (deftest adhoc-filter-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                           :source-table (mt/id :venues)}
                                   :type :query
                                   :database (mt/id)})]
@@ -906,7 +907,7 @@
 (deftest adhoc-count-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
                                           :breakout [[:field (mt/id :venues :category_id) nil]]
                                           :source-table (mt/id :venues)}
                                   :type :query
@@ -916,7 +917,7 @@
 (deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
                                           :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
                                           :source-table (mt/id :checkins)}
                                   :type :query
@@ -926,7 +927,7 @@
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                           :source-table (mt/id :venues)}
                                   :type :query
                                   :database (mt/id)})]
@@ -939,7 +940,7 @@
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
                           :alias        "Dealios"}]
-            q           (query/adhoc-query {:query {:source-table (mt/id :venues)
+            q           (api.automagic-dashboards/adhoc-query-instance {:query {:source-table (mt/id :venues)
                                                     :joins join-vec
                                                     :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
                                             :type :query
@@ -1315,7 +1316,7 @@
                                                                   {:base-type :type/DateTime :temporal-unit :year}]
                                                               "2018"]}
                                   :parameters []}
-                q                (query/adhoc-query query-with-joins)
+                q                (api.automagic-dashboards/adhoc-query-instance query-with-joins)
                 section-headings (->> (magic/automagic-analysis q {:show :all})
                                       :dashcards
                                       (keep (comp :text :visualization_settings))
@@ -1330,7 +1331,7 @@
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [left                 (query/adhoc-query
+        (let [left                 (api.automagic-dashboards/adhoc-query-instance
                                     (mt/mbql-query orders
                                       {:joins [{:strategy     :left-join
                                                 :alias        "Products"
@@ -1374,7 +1375,7 @@
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [left                 (query/adhoc-query
+        (let [left                 (api.automagic-dashboards/adhoc-query-instance
                                     {:database (mt/id)
                                      :type     :query
                                      :query

@@ -13,8 +13,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.queries.models.card :as card]
-   [metabase.queries.models.query :as query]
+   [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -29,7 +28,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -44,7 +42,7 @@
 
 (defn- enrich-strategy [strategy query]
   (case (:type strategy)
-    :ttl (let [et (query/average-execution-time-ms (qp.util/query-hash query))]
+    :ttl (let [et (queries/average-execution-time-ms (qp.util/query-hash query))]
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
@@ -254,7 +252,7 @@
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
   [{:keys [parameters] :as card}]
-  (let [template-tag-parameters     (card/template-tag-parameters card)
+  (let [template-tag-parameters     (queries/card-template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
         id->parameter               (m/index-by :id parameters)]
     (vals (reduce-kv (fn [acc id parameter]

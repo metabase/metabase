@@ -13,7 +13,7 @@
 
   It may be be possible to use the persistence cache with sandboxing and/or impersonation at a later date with further
   work, but for now we skip the cache in these cases."
-  [{::query-perms/keys [:metabase.permissions.models.query.permissions/perms] :as query}]
+  [{::query-perms/keys [perms] :as query}]
   (if (and api/*current-user-id*
            (or perms ;; sandboxed?
                (perms/impersonation-enforced-for-db? (:database query))))

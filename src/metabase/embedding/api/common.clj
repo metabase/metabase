@@ -13,8 +13,7 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-sharing.api :as api.public]
-   [metabase.queries.api.card :as api.card]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
@@ -383,11 +382,11 @@
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
-  values according to [[api.card/param-values]]."
+  values according to [[queries/card-param-values]]."
   [{:keys [unsigned-token card param-key search-prefix]}]
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
-                                (card/template-tag-parameters card))
+                                (queries/card-template-tag-parameters card))
         id->slug            (into {} (map (juxt :id :slug)) parameters)
         slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
@@ -403,7 +402,7 @@
       (try
         (binding [api/*current-user-permissions-set* (atom #{"/"})
                   api/*is-superuser?* true]
-          (api.card/param-values card param-key search-prefix))
+          (queries/card-param-values card param-key search-prefix))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id       (u/the-id card)
@@ -427,11 +426,11 @@
 
 (defn card-param-remapped-value
   "Get the remapped value of card parameter value. Does security checks to ensure the parameter is on the card,
-  and then gets the remapped parameter value according to [[api.card/param-remapped-value]]."
+  and then gets the remapped parameter value according to [[queries/card-param-remapped-value]]."
   [{:keys [unsigned-token card param-key value]}]
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
-                                (card/template-tag-parameters card))
+                                (queries/card-template-tag-parameters card))
         id->slug            (into {} (map (juxt :id :slug)) parameters)
         slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
@@ -448,7 +447,7 @@
       (try
         (binding [api/*current-user-permissions-set* (atom #{"/"})
                   api/*is-superuser?* true]
-          (api.card/param-remapped-value card param-key value))
+          (queries/card-param-remapped-value card param-key value))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id   (u/the-id card)

@@ -38,8 +38,7 @@
    [metabase.product-feedback.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
-   [metabase.queries.api.card]
-   [metabase.queries.api.cards]
+   [metabase.queries.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -62,8 +61,6 @@
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
-         metabase.queries.api.card/keep-me
-         metabase.queries.api.cards/keep-me
          metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
          metabase.api.dataset/keep-me
@@ -141,8 +138,8 @@
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
-   "/card"                 (+auth 'metabase.queries.api.card)
-   "/cards"                (+auth 'metabase.queries.api.cards)
+   "/card"                 (+auth metabase.queries.api/card-routes)
+   "/cards"                (+auth metabase.queries.api/cards-routes)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)

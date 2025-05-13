@@ -15,7 +15,7 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.queries.metadata :as api.query-metadata]
+   [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -179,7 +179,7 @@
    _query-params
    query :- [:map
              [:database ms/PositiveInt]]]
-  (api.query-metadata/batch-fetch-query-metadata [query]))
+  (queries/batch-fetch-query-metadata [query]))
 
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."

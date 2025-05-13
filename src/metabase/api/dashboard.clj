@@ -35,8 +35,7 @@
    [metabase.permissions.models.query.permissions :as query-perms]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
-   [metabase.queries.metadata :as api.query-metadata]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -383,7 +382,7 @@
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
-                            [id (card/create-card!
+                            [id (queries/create-card!
                                  (cond-> to-copy
                                    true                    (assoc :collection_id dest-coll-id)
                                    same-collection?        (update :name #(str % " - " (tru "Duplicate")))
@@ -905,19 +904,19 @@
                                            :embedding_params :archived :auto_apply_filters}))]
              (when (api/column-will-change? :archived current-dash dash-updates)
                (if (:archived dash-updates)
-                 (card/with-allowed-changes-to-internal-dashboard-card
+                 (queries/with-allowed-changes-to-internal-dashboard-card
                    (t2/update! :model/Card
                                :dashboard_id id
                                :archived false
                                {:archived true :archived_directly false}))
-                 (card/with-allowed-changes-to-internal-dashboard-card
+                 (queries/with-allowed-changes-to-internal-dashboard-card
                    (t2/update! :model/Card
                                :dashboard_id id
                                :archived true
                                :archived_directly false
                                {:archived false}))))
              (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (card/with-allowed-changes-to-internal-dashboard-card
+               (queries/with-allowed-changes-to-internal-dashboard-card
                  (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
@@ -1030,7 +1029,7 @@
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [dashboard (get-dashboard id)]
-        (api.query-metadata/batch-fetch-dashboard-metadata [dashboard])))))
+        (queries/batch-fetch-dashboard-metadata [dashboard])))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
