@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
-   [metabase.api.table :as api.table]
    [metabase.api.test-util :as api.test-util]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
