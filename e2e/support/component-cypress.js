@@ -1,2 +1,2 @@
 import "./cypress";
-import "../../resources/embedding-sdk/dist/index.css";
+import "@metabase/embedding-sdk-react/styles";
