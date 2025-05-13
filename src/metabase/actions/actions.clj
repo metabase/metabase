@@ -253,7 +253,7 @@
     ;; The action might not be database-centric (e.g., call a webhook)
     (when db
       (case policy
-        :ad-hoc-action-invocation
+        :ad-hoc-invocation
         (check-actions-enabled-for-database! db)
         :model-action
         (check-actions-enabled-for-database! db)
@@ -264,7 +264,7 @@
       (when (= :model-action policy)
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
-      (when (= :ad-hoc-action-invocation policy)
+      (when (= :ad-hoc-invocation policy)
         (doseq [arg-map arg-maps]
           (cond
             (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
