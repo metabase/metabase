@@ -68,7 +68,7 @@ export function getTemplateTagParameter(
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/models/card.clj
 // If this function moves you should update the comment that links to this one
-function getTemplateTagParameters(
+export function getTemplateTagParameters(
   tags: TemplateTag[],
   parameters: Parameter[] = [],
 ): ParameterWithTarget[] {

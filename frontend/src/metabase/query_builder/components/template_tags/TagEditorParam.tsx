@@ -52,25 +52,27 @@ import {
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 import type { WidgetOption } from "./types";
 
-interface Props {
-  tag: TemplateTag;
-  /**
-   * parameter can be undefined when it's an incomplete "Field Filter", i.e. when
-   * `field` ("Field to map to" input) is not set yet.
-   */
-  parameter: Parameter | undefined;
-  embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
-  database?: Database | null;
-  databases: Database[];
+interface StateProps {
   metadata: Metadata;
   originalQuestion?: Question;
-  setTemplateTag: (tag: TemplateTag) => void;
+}
+
+interface DispatchProps {
+  fetchField: (fieldId: FieldId, force?: boolean) => void;
   setTemplateTagConfig: (
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ) => void;
+}
+
+interface OwnProps {
+  tag: TemplateTag;
+  parameter: Parameter | undefined;
+  embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
+  database?: Database | null;
+  databases: Database[];
+  setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
-  fetchField: (fieldId: FieldId, force?: boolean) => void;
 }
 
 function mapStateToProps(state: State) {
@@ -88,7 +90,9 @@ const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
   values_source_config: undefined,
 };
 
-class TagEditorParamInner extends Component<Props> {
+class TagEditorParamInner extends Component<
+  OwnProps & StateProps & DispatchProps
+> {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -375,7 +379,12 @@ class TagEditorParamInner extends Component<Props> {
   }
 }
 
-export const TagEditorParam = connect(
+export const TagEditorParam = connect<
+  StateProps,
+  DispatchProps,
+  OwnProps,
+  State
+>(
   mapStateToProps,
   mapDispatchToProps,
 )(TagEditorParamInner);

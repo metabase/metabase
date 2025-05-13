@@ -16,7 +16,6 @@ import type {
   NativeDatasetQuery,
   Parameter,
   ParameterId,
-  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -37,10 +36,6 @@ interface TagEditorSidebarProps {
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
@@ -67,7 +62,6 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
       query,
       question,
       setTemplateTag,
-      setTemplateTagConfig,
       setParameterValue,
       onClose,
       getEmbeddedParameterVisibility,
@@ -130,7 +124,6 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
               database={database}
               databases={databases}
               setTemplateTag={setTemplateTag}
-              setTemplateTagConfig={setTemplateTagConfig}
               setParameterValue={setParameterValue}
               getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
             />
@@ -154,10 +147,6 @@ interface SettingsPaneProps {
   databases: Database[];
   parametersById: Record<ParameterId, Parameter>;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
@@ -168,7 +157,6 @@ const SettingsPane = ({
   database,
   databases,
   setTemplateTag,
-  setTemplateTagConfig,
   setParameterValue,
   getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => {
@@ -188,7 +176,6 @@ const SettingsPane = ({
           database={database}
           databases={databases}
           setTemplateTag={setTemplateTag}
-          setTemplateTagConfig={setTemplateTagConfig}
           setParameterValue={setParameterValue}
         />
       </div>
