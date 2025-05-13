@@ -171,43 +171,44 @@ interface AccordionButtonProps {
   size?: number;
 }
 
-const TemplateButton = React.forwardRef<HTMLDivElement, AccordionButtonProps>(
-  function TemplateButton({ icon, label, onClick, size = 32 }, ref) {
-    return (
-      <Tooltip label={label} ref={ref}>
-        <ActionIcon
-          size={size}
-          variant="viewHeader"
-          style={{
-            cursor: "pointer",
-            backgrond: "transparent",
-            border: "none",
-          }}
-          onClickCapture={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onClick();
-          }}
-        >
-          <Icon name={icon} size={size * 0.6} />
-        </ActionIcon>
-      </Tooltip>
-    );
-  },
-);
+const TemplateToolbarButton = React.forwardRef<
+  HTMLDivElement,
+  AccordionButtonProps
+>(function TemplateToolbarButton({ icon, label, onClick, size = 32 }, ref) {
+  return (
+    <Tooltip label={label} ref={ref}>
+      <ActionIcon
+        size={size}
+        variant="viewHeader"
+        style={{
+          cursor: "pointer",
+          backgrond: "transparent",
+          border: "none",
+        }}
+        onClickCapture={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+        }}
+      >
+        <Icon name={icon} size={size * 0.6} />
+      </ActionIcon>
+    </Tooltip>
+  );
+});
 
-interface TemplateHelperTooltipProps {
-  payload?: any;
+interface TemplateInfoTooltipProps {
+  context?: Record<string, any>;
 }
 
-const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
+const TemplateInfoTooltip = ({ context }: TemplateInfoTooltipProps) => {
   const [open, setOpen] = useState(false);
-  const formattedPayload = useMemo(() => {
-    if (!payload) {
+  const formattedContext = useMemo(() => {
+    if (!context) {
       return "";
     }
-    return JSON.stringify(payload, null, 2);
-  }, [payload]);
+    return JSON.stringify(context, null, 2);
+  }, [context]);
 
   return (
     <Popover
@@ -220,7 +221,7 @@ const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
       onChange={setOpen}
     >
       <Popover.Target>
-        <TemplateButton
+        <TemplateToolbarButton
           icon="info"
           label={t`Template instructions`}
           onClick={() => setOpen(!open)}
@@ -265,7 +266,7 @@ const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
             overflowY: "auto",
           }}
         >
-          <CodeEditor language="json" value={formattedPayload} />
+          <CodeEditor language="json" value={formattedContext} />
         </div>
       </Popover.Dropdown>
     </Popover>
@@ -658,17 +659,17 @@ export const NotificationChannelsPicker = ({
                 >{t`Custom email template`}</Text>
                 <Flex gap="sm" align="center" mr="0.25rem">
                   {!!emailHandler.template && (
-                    <TemplateButton
+                    <TemplateToolbarButton
                       icon="history"
                       label={t`Reset to default`}
                       onClick={() => resetTemplateForChannel("email")}
                     />
                   )}
-                  <TemplateHelperTooltip
-                    payload={templateContext["channel/email"]}
+                  <TemplateInfoTooltip
+                    context={templateContext["channel/email"]}
                   />
                   {onPreviewClick && (
-                    <TemplateButton
+                    <TemplateToolbarButton
                       icon="eye"
                       label={isPreviewOpen ? t`Close preview` : t`Show preview`}
                       onClick={() =>
@@ -756,14 +757,14 @@ export const NotificationChannelsPicker = ({
                 >{t`Custom Slack message`}</Text>
                 <Flex gap="xs" align="center">
                   {!!slackHandler.template && (
-                    <TemplateButton
+                    <TemplateToolbarButton
                       icon="history"
                       label={t`Reset to default`}
                       onClick={() => resetTemplateForChannel("slack")}
                     />
                   )}
-                  <TemplateHelperTooltip
-                    payload={templateContext["channel/slack"]}
+                  <TemplateInfoTooltip
+                    context={templateContext["channel/slack"]}
                   />
                 </Flex>
               </Flex>
