@@ -12,3 +12,4 @@ export * from "./setup";
 export * from "./state";
 export * from "./upload";
 export * from "./downloads";
+export * from "./visualizer";

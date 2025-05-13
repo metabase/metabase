@@ -54,7 +54,6 @@ describe(
         colors: {
           background: BACKGROUND_COLOR,
           "background-hover": "rgb(14, 17, 20)",
-          "background-disabled": "rgb(45, 45, 48)",
           "text-primary": "rgb(255, 255, 255)",
           brand: "rgb(253, 121, 168)",
         },
@@ -93,6 +92,10 @@ describe(
           .should(($el) =>
             assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.4)),
           );
+
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.5)),
+        );
       });
     });
 
@@ -103,7 +106,6 @@ describe(
         colors: {
           background: BACKGROUND_COLOR,
           "background-hover": "rgb(245, 245, 245)",
-          "background-disabled": "rgb(230, 230, 230)",
           "text-primary": "rgb(51, 51, 51)",
           brand: "rgb(253, 121, 168)",
         },
@@ -128,6 +130,36 @@ describe(
           .should(($el) =>
             assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.1)),
           );
+
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.04)),
+        );
+      });
+    });
+
+    it("overrides the question toolbar's default background color", () => {
+      const BACKGROUND_COLOR = "rgb(100, 150, 200)";
+
+      setupInteractiveQuestionWithTheme({
+        colors: {
+          background: "rgb(255, 255, 255)",
+          "text-primary": "rgb(51, 51, 51)",
+          brand: "rgb(253, 121, 168)",
+        },
+        components: {
+          question: {
+            toolbar: { backgroundColor: BACKGROUND_COLOR },
+          },
+        },
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+
+        // Should use the toolbar backgroundColor override, not the default background
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          assertBackgroundColorEqual($el, BACKGROUND_COLOR),
+        );
       });
     });
 

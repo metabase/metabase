@@ -165,8 +165,8 @@
   org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.20"}
   org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.20"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.polyglot/js-community         {:mvn/version "24.2.0" :extension "pom"} ; JavaScript engine
-  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.0"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
+  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.1"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.20.1"}             ; required by hickory
   org.liquibase/liquibase-core              ^:antq/exclude                      ; FIXME: no idea why it fails
   {:mvn/version "4.26.0"              ; migration management (Java lib)
@@ -247,11 +247,13 @@
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
+    com.nextjournal/beholder     {:mvn/version "1.0.2"}                     ; watcher
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
     djblue/portal                {:mvn/version "0.59.0"}                    ; ui for inspecting values
-    io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:mvn/version "1.0.7"}
+    io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
+    io.github.metabase/hawk      {:mvn/version "1.0.7"}                     ; test runner
+    io.github.tonsky/clj-reload  {:mvn/version "0.9.5"}                     ; reloader
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -868,11 +870,11 @@
   :test/kondo
   {:exec-args {:only [".clj-kondo/test"]}}
 
-  ;; watch and reload clojure namespaces
-  :watch {:extra-deps
-          {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
-           io.github.tonsky/clj-reload {:mvn/version "0.9.5"}} ;; reloader
-          :extra-paths "dev/src/watch"
+  ;; Watch and Reload clojure code. Will not start a repl.
+  ;; Reccomended way to use this:
+  ;;   1) start the server with `clojure -M:dev:dev-start`
+  ;;   2) ./bin/mage start-watcher
+  :watch {:extra-paths "dev/src/watch"
           :main-opts ["-m" "watch.watcher"]}
 
   ;; DB configs -- start DBs with:

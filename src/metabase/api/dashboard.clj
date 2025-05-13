@@ -7,13 +7,15 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
-   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.channel.email.messages :as messages]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -24,8 +26,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -53,6 +53,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
+   [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -404,6 +405,27 @@
                                                     (dissoc :id :entity_id :created_at :updated_at))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
+(defn- update-colvalmap-setting
+  "Visualizer dashcards have unique visualization settings which embed column id remapping metadata
+  This function iterates through the `:columnValueMapping` viz setting and updates referenced card ids
+
+  col->val-source can look like:
+  {:COLUMN_2 [{:sourceId 'card:<OLD_CARD_ID>', :originalName 'sum', :name 'COLUMN_2'}], ...}"
+  [col->val-source id->new-card]
+  (let [update-cvm-item (fn [item]
+                          (if-let [source-id (:sourceId item)]
+                            (if-let [[_ card-id] (and (string? source-id)
+                                                      (re-find #"^card:(\d+)$" source-id))]
+                              (if-let [new-card (get id->new-card (Long/parseLong card-id))]
+                                (assoc item :sourceId (str "card:" (:id new-card)))
+                                item)
+                              item)
+                            item))
+        update-cvm      (fn [cvm]
+                          (when (map? cvm)
+                            (update-vals cvm #(mapv update-cvm-item %))))]
+    (update-cvm col->val-source)))
+
 (defn update-cards-for-copy
   "Update dashcards in a dashboard for copying.
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
@@ -448,7 +470,9 @@
                                          (keep (fn [card]
                                                  (when-let [id' (new-id (:id card))]
                                                    (assoc card :id id')))
-                                               series)))))))
+                                               series)))
+                    (m/update-existing-in [:visualization_settings :visualization :columnValuesMapping]
+                                          update-colvalmap-setting id->new-card)))))
           dashcards)))
 
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
@@ -1105,6 +1129,9 @@
     (keyword (name type))
     :=))
 
+;; TODO needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
+;; TODO duplicates code in params.clj
+;; TODO needs to wrap models and metrics properly!
 (mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (let [cards (into {}
@@ -1218,7 +1245,8 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (t2/hydrate dashboard :resolved-params)
+   (let [dashboard   (cond-> dashboard
+                       (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (into #{} (map :field-id (param->fields param)))]
@@ -1299,6 +1327,46 @@
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value query))))
+
+(defn dashboard-param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
+  ([dashboard param-key value]
+   (dashboard-param-remapped-value dashboard param-key value nil))
+  ([dashboard param-key value constraint-param-key->value]
+   (when (contains? constraint-param-key->value param-key)
+     (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
+                     {:status-code 400
+                      :parameter param-key})))
+   (or (let [dashboard (-> dashboard
+                           (t2/hydrate :resolved-params)
+                           ;; whatever the param's type, we want an equality constraint
+                           (m/update-existing-in [:resolved-params param-key] assoc :type :id))
+             param     (get-in dashboard [:resolved-params param-key])]
+         (custom-values/parameter-remapped-value
+          param
+          value
+          #(let [field-ids (into #{} (map :field-id (param->fields param)))]
+             (-> (if (= (count field-ids) 1)
+                   (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
+                                              :relax-fk-requirement? true :limit 1)
+                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                     (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+                 :values
+                 first))))
+       [value])))
+
+(api.macros/defendpoint :get "/:id/params/:param-key/remapping"
+  "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
+
+    ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
+    GET /api/dashboard/1/params/abc/remapping?value=100"
+  [{:keys [id param-key]} :- [:map
+                              [:id ms/PositiveInt]
+                              [:param-key :string]]
+   {:keys [value]}        :- [:map [:value :string]]]
+  (let [dashboard (api/read-check :model/Dashboard id)]
+    (binding [qp.perms/*param-values-query* true]
+      (dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

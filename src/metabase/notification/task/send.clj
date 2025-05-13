@@ -8,8 +8,8 @@
    [metabase.driver :as driver]
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
    [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import

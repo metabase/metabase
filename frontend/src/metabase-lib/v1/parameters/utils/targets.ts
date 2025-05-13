@@ -101,15 +101,6 @@ function getParameterTargetFieldFromFieldRef(
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
-
-  if (columns.length === 0) {
-    // query and metadata are not available: 1) no data permissions 2) embedding
-    // there is no way to find the correct field so pick the first one matching by name
-    return fields.find(
-      (field) => typeof field.id === "number" && field.name === fieldIdOrName,
-    );
-  }
-
   const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
 
   for (const stageIndex of stageIndexes) {

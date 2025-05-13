@@ -15,10 +15,10 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
-   [metabase.models.collection :as collection]
-   [metabase.models.moderation-review :as moderation-review]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -30,7 +30,8 @@
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
@@ -656,13 +657,13 @@
 
 (defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
-        already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
+        already-bound? (identical? @task.impl/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+        (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
           (with-redefs [qs/initialize (constantly temp-scheduler)
                         ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
                         ;; after it's done, but we need the scheduler for testing
@@ -677,7 +678,7 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (qs/start @task/*quartz-scheduler*)
+     (qs/start @task.impl/*quartz-scheduler*)
      (thunk))))
 
 (defmacro with-temp-scheduler!
@@ -697,7 +698,7 @@
   "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler. Intended so we
   can test that things were scheduled correctly."
   []
-  (when-let [^Scheduler scheduler (#'task/scheduler)]
+  (when-let [^Scheduler scheduler (task/scheduler)]
     (vec
      (sort-by
       :key
@@ -1035,7 +1036,7 @@
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
     ;; rewriting a few tests.
     (finally
-      (when (and (:metabase.models.collection.root/is-root? collection)
+      (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
         (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
