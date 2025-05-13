@@ -48,6 +48,6 @@
   "Classifier that attempts to determine whether `field` ought to be marked as a Category based on its distinct count."
   [field       :- analyze.schema/Field
    fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
-  (when (and (sync-util/can-be-category-or-list? (:base_type field) (:semantic_type field))
+  (when (and (sync-util/can-be-category? (:base_type field) (:semantic_type field))
              (field-should-be-category? fingerprint field))
     (assoc field :semantic_type :type/Category)))
