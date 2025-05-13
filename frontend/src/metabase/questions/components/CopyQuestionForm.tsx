@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { number, object, string } from "yup";
+import * as Yup from "yup";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
@@ -26,18 +26,18 @@ import type {
   DashboardTabId,
 } from "metabase-types/api";
 
-const QUESTION_SCHEMA = object({
-  name: string()
+const QUESTION_SCHEMA = Yup.object({
+  name: Yup.string()
     .required(Errors.required)
     .max(QUESTION_NAME_MAX_LENGTH, Errors.maxLength)
     .default(""),
-  description: string().nullable().default(null),
-  collection_id: number().nullable().default(null),
+  description: Yup.string().nullable().default(null),
+  collection_id: Yup.number().nullable().default(null),
 });
 
 const MAYBE_DASHBOARD_QUESTION_SCHEMA = QUESTION_SCHEMA.shape({
-  dashboard_id: number().nullable().default(undefined),
-  dashboard_tab_id: number().default(undefined),
+  dashboard_id: Yup.number().nullable().default(undefined),
+  dashboard_tab_id: Yup.number().default(undefined),
 });
 
 export type CopyQuestionProperties = {

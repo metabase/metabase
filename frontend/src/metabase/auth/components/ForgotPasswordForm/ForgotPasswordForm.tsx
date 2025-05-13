@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { object, string } from "yup";
+import * as Yup from "yup";
 
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
@@ -18,8 +18,8 @@ import {
   PasswordFormTitle,
 } from "./ForgotPasswordForm.styled";
 
-const FORGOT_PASSWORD_SCHEMA = object({
-  email: string().required(Errors.required).email(Errors.email),
+const FORGOT_PASSWORD_SCHEMA = Yup.object({
+  email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
 interface ForgotPasswordFormProps {

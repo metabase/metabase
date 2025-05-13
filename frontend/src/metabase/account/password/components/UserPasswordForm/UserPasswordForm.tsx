@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { object, ref, string } from "yup";
+import * as Yup from "yup";
 
 import { useUpdatePasswordMutation } from "metabase/api";
 import {
@@ -17,20 +17,20 @@ import type { User } from "metabase-types/api";
 
 import type { UserPasswordData } from "../../types";
 
-const USER_PASSWORD_SCHEMA = object({
-  old_password: string().default("").required(requiredErrorMessage),
-  password: string()
+const USER_PASSWORD_SCHEMA = Yup.object({
+  old_password: Yup.string().default("").required(requiredErrorMessage),
+  password: Yup.string()
     .default("")
     .required(requiredErrorMessage)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
-  password_confirm: string()
+  password_confirm: Yup.string()
     .default("")
     .required(requiredErrorMessage)
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .oneOf([ref("password")], t`Passwords do not match`),
+    .oneOf([Yup.ref("password")], t`Passwords do not match`),
 });
 
 export interface UserPasswordFormProps {

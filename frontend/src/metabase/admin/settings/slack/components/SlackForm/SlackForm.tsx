@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
-import { object, string } from "yup";
+import * as Yup from "yup";
 
 import { useSetting } from "metabase/common/hooks";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -10,9 +10,9 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { SlackSettings } from "metabase-types/api";
 
-const SLACK_SCHEMA = object({
-  "slack-app-token": string().ensure().required(Errors.required),
-  "slack-bug-report-channel": string()
+const SLACK_SCHEMA = Yup.object({
+  "slack-app-token": Yup.string().ensure().required(Errors.required),
+  "slack-bug-report-channel": Yup.string()
     .nullable()
     .default(null)
     .transform((value, originalValue) => (originalValue === "" ? null : value))

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { number, object, string } from "yup";
+import * as Yup from "yup";
 
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -13,13 +13,13 @@ import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { FormModelPicker } from "metabase/models/containers/FormModelPicker";
 
-const ACTION_SCHEMA = object({
-  name: string()
+const ACTION_SCHEMA = Yup.object({
+  name: Yup.string()
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: string().nullable().max(255, Errors.maxLength).default(null),
-  model_id: number().required(Errors.required),
+  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+  model_id: Yup.number().required(Errors.required),
 });
 
 export type FormValues = Pick<

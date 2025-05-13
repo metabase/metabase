@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { object, string } from "yup";
+import * as Yup from "yup";
 
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
@@ -13,14 +13,14 @@ import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
 
-const SSO_PROFILE_SCHEMA = object({
-  locale: string().nullable().default(null),
+const SSO_PROFILE_SCHEMA = Yup.object({
+  locale: Yup.string().nullable().default(null),
 });
 
 const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
-  first_name: string().nullable().default(null).max(100, Errors.maxLength),
-  last_name: string().nullable().default(null).max(100, Errors.maxLength),
-  email: string().ensure().required(Errors.required).email(Errors.email),
+  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  email: Yup.string().ensure().required(Errors.required).email(Errors.email),
 });
 
 export interface UserProfileFormProps {

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { object, ref, string } from "yup";
+import * as Yup from "yup";
 
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
@@ -17,19 +17,19 @@ import {
   PasswordFormTitle,
 } from "./ResetPasswordForm.styled";
 
-const RESET_PASSWORD_SCHEMA = object({
-  password: string()
+const RESET_PASSWORD_SCHEMA = Yup.object({
+  password: Yup.string()
     .default("")
     .required(Errors.required)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
-  password_confirm: string()
+  password_confirm: Yup.string()
     .default("")
     .required(Errors.required)
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .oneOf([ref("password")], t`passwords do not match`),
+    .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
 
 interface ResetPasswordFormProps {

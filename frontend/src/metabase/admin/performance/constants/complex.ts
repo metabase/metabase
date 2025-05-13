@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { type AnySchema, ValidationError, number, object, string } from "yup";
+import * as Yup from "yup";
 
 import type { CacheableModel } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
@@ -11,23 +11,23 @@ import { defaultMinDurationMs } from "./simple";
 
 /** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
 export const getPositiveIntegerSchema = () =>
-  number()
+  Yup.number()
     .positive(t`Enter a positive number.`)
     .integer(t`Enter an integer.`);
 
-export const inheritStrategyValidationSchema = object({
-  type: string().equals(["inherit"]),
+export const inheritStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["inherit"]),
 });
 
-export const doNotCacheStrategyValidationSchema = object({
-  type: string().equals(["nocache"]),
+export const doNotCacheStrategyValidationSchema = Yup.object({
+  type: Yup.string().equals(["nocache"]),
 });
 
 /** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
 export const getAdaptiveStrategyValidationSchema = () => {
   const positiveInteger = getPositiveIntegerSchema();
-  return object({
-    type: string().equals(["ttl"]),
+  return Yup.object({
+    type: Yup.string().equals(["ttl"]),
     min_duration_ms: positiveInteger.default(defaultMinDurationMs),
     min_duration_seconds: positiveInteger.default(
       Math.ceil(defaultMinDurationMs / 1000),
@@ -36,7 +36,7 @@ export const getAdaptiveStrategyValidationSchema = () => {
   });
 };
 
-export const strategyValidationSchema = object().test(
+export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
   "The object must match one of the strategy validation schemas",
   function (value) {
@@ -57,7 +57,7 @@ export const strategyValidationSchema = object().test(
       schema.validateSync(value);
       return true;
     } catch (error: unknown) {
-      if (error instanceof ValidationError) {
+      if (error instanceof Yup.ValidationError) {
         return this.createError({
           message: error.message,
           path: error.path,
@@ -68,7 +68,7 @@ export const strategyValidationSchema = object().test(
       }
     }
   },
-) as AnySchema;
+) as Yup.AnySchema;
 
 export const strategies = {
   inherit: {
