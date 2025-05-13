@@ -51,7 +51,7 @@ describe("scenarios > collection defaults", () => {
         .click();
 
       cy.log("Track the collection initiation from the header");
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "plus_button_clicked",
         triggered_from: "collection-header",
       });
@@ -77,7 +77,7 @@ describe("scenarios > collection defaults", () => {
       cy.log("Track the collection initiation from the main navbar");
       H.navigationSidebar().findByLabelText("Create a new collection").click();
       cy.findByTestId("new-collection-modal").should("be.visible");
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "plus_button_clicked",
         triggered_from: "collection-nav",
       });
