@@ -114,33 +114,46 @@ describe(
         H.assertTableRowsCount(1);
       });
 
-      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior", () => {
+      it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a column", () => {
+        cy.log("setup target dashboard");
         createQuestionAndDashboard({
           dashboardName: DASHBOARD_NAME,
           questionName: QUESTION_NAME,
         }).then(({ dashboardId }) => {
-          createQuestionAndDashboard({
-            dashboardName: DASHBOARD_2_NAME,
-            questionName: QUESTION_2_NAME,
-          }).then(() => {
-            H.visitDashboard(dashboardId);
-          });
+          H.visitDashboard(dashboardId);
+          H.editDashboard();
+          createAndMapParameter();
+          H.saveDashboard();
         });
 
         cy.log("set up click behavior");
-        H.editDashboard();
-        createAndMapParameter();
-        H.showDashboardCardActions();
-        cy.findByLabelText("Click behavior").click();
-        H.sidebar().within(() => {
-          cy.findByText(COLUMN_NAME).click();
-          cy.findByText("Go to a custom destination").click();
-          cy.findByText("Dashboard").click();
+        createQuestionAndDashboard({
+          dashboardName: DASHBOARD_2_NAME,
+          questionName: QUESTION_2_NAME,
+        }).then(({ dashboardId }) => {
+          H.visitDashboard(dashboardId);
+          H.editDashboard();
+          createAndMapParameter();
+          H.showDashboardCardActions();
+          cy.findByLabelText("Click behavior").click();
+          H.sidebar().within(() => {
+            cy.findByText(COLUMN_NAME).click();
+            cy.findByText("Go to a custom destination").click();
+            cy.findByText("Dashboard").click();
+          });
+          H.entityPickerModal().within(() => {
+            H.entityPickerModalTab("Dashboards").click();
+            cy.findByText(DASHBOARD_NAME).click();
+          });
+          H.sidebar().findByText(PARAMETER_NAME).click();
+          H.popover().findByText(COLUMN_NAME).click();
+          H.saveDashboard();
         });
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Dashboards").click();
-          cy.findByText(DASHBOARD_2_NAME).click();
-        });
+
+        cy.log("assert click behavior");
+        H.getDashboardCard().findAllByText("true").first().click();
+        H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
+        H.filterWidget().findByText("true").should("be.visible");
       });
     });
 
