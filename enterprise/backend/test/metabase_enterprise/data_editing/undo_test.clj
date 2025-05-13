@@ -293,15 +293,14 @@
           (let [table-1    @table-ref-1
                 table-2    @table-ref-2
                 user-1     (mt/user->id :crowberto)
-                user-2     (mt/user->id :rasta)
-                test-scope {:shared true}]
+                user-2     (mt/user->id :rasta)]
             (data-editing.tu/toggle-data-editing-enabled! true)
 
             (testing "Total rows"
               (with-redefs [undo/retention-total-rows 17]
                 (dotimes [i 25]
                   (undo/track-change! user-1
-                                      test-scope
+                                      {:table-id table-1}
                                       {table-1
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -315,7 +314,7 @@
               (with-redefs [undo/retention-total-batches 15]
                 (dotimes [i 25]
                   (undo/track-change! user-1
-                                      test-scope
+                                      {:table-id table-1}
                                       {table-1
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -330,7 +329,7 @@
                 (dotimes [i 25]
                   ;; just toggle existence
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
-                                      test-scope
+                                      {:table-id table-1}
                                       {table-1
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
@@ -370,7 +369,7 @@
                 (dotimes [i 25]
                   ;; just toggle existence
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
-                                      test-scope
+                                      {:dashboard-id 1}
                                       {(if (zero? (mod i 5)) table-1 table-2)
                                        {{:id 1} [(if (even? i) {} nil)
                                                  (if (even? i) nil {})]
