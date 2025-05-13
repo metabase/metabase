@@ -1003,3 +1003,7 @@
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
   (get-in database [:details :user]))
+
+(defmethod sql.qp/text-dbtype :starburst
+  [_]
+  :VARCHAR)
