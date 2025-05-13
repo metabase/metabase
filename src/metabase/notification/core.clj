@@ -18,16 +18,16 @@
   metabase.notification.task.send/keep-me)
 
 (p/import-vars
-  [metabase.notification.card
-   delete-card-notifications-and-notify!]
-  #_[metabase.notification.events.notification
-   *skip-sending-notification?*]
-  [metabase.notification.payload.core
-   notification-payload]
-  [metabase.notification.seed
-   seed-notification!]
-  [metabase.notification.send
-   send-notification!]
-  [metabase.notification.task.send
-   #_*default-options*
-   update-send-notification-triggers-timezone!])
+ [metabase.notification.card
+  delete-card-notifications-and-notify!]
+ #_[metabase.notification.events.notification
+    *skip-sending-notification?*]
+ [metabase.notification.payload.core
+  notification-payload]
+ [metabase.notification.seed
+  seed-notification!]
+ [metabase.notification.send
+  send-notification!]
+ [metabase.notification.task.send
+  #_*default-options*
+  update-send-notification-triggers-timezone!])

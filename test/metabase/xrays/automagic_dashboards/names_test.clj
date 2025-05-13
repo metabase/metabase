@@ -53,9 +53,9 @@
 (deftest ^:parallel cell-title-test
   (mt/$ids venues
     (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :venues)
-                                               :aggregation  [:count]}
-                                    :type     :query
-                                    :database (mt/id)})
+                                                                           :aggregation  [:count]}
+                                                                :type     :query
+                                                                :database (mt/id)})
           root  (magic/->root query)]
       (testing "Should humanize equal filter"
         (is (= "number of Venues where Name is Test"
@@ -88,9 +88,9 @@
 (deftest ^:parallel cell-title-default-test
   (mt/$ids venues
     (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :venues)
-                                               :aggregation  [:count]}
-                                    :type     :query
-                                    :database (mt/id)})
+                                                                           :aggregation  [:count]}
+                                                                :type     :query
+                                                                :database (mt/id)})
           root  (magic/->root query)]
       (testing "Just say \"relates to\" when we don't know what the operator is"
         (is (= "number of Venues where Name relates to Test"
@@ -100,9 +100,9 @@
   (testing "Ensure cell titles with date comparisons display correctly"
     (mt/$ids users
       (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :users)
-                                                 :aggregation  [:count]}
-                                      :type     :query
-                                      :database (mt/id)})
+                                                                             :aggregation  [:count]}
+                                                                  :type     :query
+                                                                  :database (mt/id)})
             root  (magic/->root query)]
         ;; The "on" might read a little odd here, but this would require a larger change to
         ;; humanize-datetime which we probably should not do right now.
@@ -132,9 +132,9 @@
             as was reported in issue https://github.com/metabase/metabase/issues/35170"
     (mt/$ids users
       (let [query (api.automagic-dashboards/adhoc-query-instance {:query    {:source-table (mt/id :users)
-                                                 :aggregation  [:count]}
-                                      :type     :query
-                                      :database (mt/id)})
+                                                                             :aggregation  [:count]}
+                                                                  :type     :query
+                                                                  :database (mt/id)})
             root  (magic/->root query)]
         (testing "Should not contain nulls when temporal-unit is hour"
           (is (= "number of Users where Last Login is at 12 PM, September 9, 1990"

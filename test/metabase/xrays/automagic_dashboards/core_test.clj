@@ -899,38 +899,38 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 7)))))
 
 (deftest adhoc-count-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
-                                          :breakout [[:field (mt/id :venues :category_id) nil]]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+                                                                      :breakout [[:field (mt/id :venues :category_id) nil]]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 17)))))
 
 (deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
-                                          :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
-                                          :source-table (mt/id :checkins)}
-                                  :type :query
-                                  :database (mt/id)})]
+                                                                      :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
+                                                                      :source-table (mt/id :checkins)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 9)))))
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
 (deftest join-splicing-test
@@ -941,10 +941,10 @@
                           :strategy     :left-join
                           :alias        "Dealios"}]
             q           (api.automagic-dashboards/adhoc-query-instance {:query {:source-table (mt/id :venues)
-                                                    :joins join-vec
-                                                    :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
-                                            :type :query
-                                            :database (mt/id)})
+                                                                                :joins join-vec
+                                                                                :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
+                                                                        :type :query
+                                                                        :database (mt/id)})
             res         (magic/automagic-analysis q {})
             cards       (vec (:dashcards res))
             join-member (get-in cards [2 :card :dataset_query :query :joins])]

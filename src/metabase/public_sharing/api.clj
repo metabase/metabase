@@ -16,6 +16,7 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -33,7 +34,6 @@
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [throttle.core :as throttle]
-   [metabase.queries.core :as queries]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))

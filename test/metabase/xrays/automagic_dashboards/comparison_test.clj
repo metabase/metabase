@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.queries.models.query :as query]
-   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.test :as mt]
+   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as c]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
@@ -44,9 +44,9 @@
   (mt/with-test-user :rasta
     (with-dashboard-cleanup!
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query    {:filter       (-> @segment :definition :filter)
-                                             :source-table (mt/id :venues)}
-                                  :type     :query
-                                  :database (mt/id)})]
+                                                                         :source-table (mt/id :venues)}
+                                                              :type     :query
+                                                              :database (mt/id)})]
         (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) q)))))))
 
 (deftest test-4

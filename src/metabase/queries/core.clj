@@ -16,28 +16,28 @@
          metabase.queries.models.query/keep-me)
 
 (p/import-vars
-  [metabase.queries.models.card
-   create-card!]
-  [metabase.queries.metadata
+ [metabase.queries.models.card
+  create-card!]
+ [metabase.queries.metadata
    ;; TODO does this belong here, or in the `dashboards` module?
-   batch-fetch-dashboard-metadata
-   batch-fetch-query-metadata]
-  [metabase.queries.models.card
-   model-supports-implicit-actions?
-   model?
-   sole-dashboard-id
-   update-card!
+  batch-fetch-dashboard-metadata
+  batch-fetch-query-metadata]
+ [metabase.queries.models.card
+  model-supports-implicit-actions?
+  model?
+  sole-dashboard-id
+  update-card!
    ;; TODO -- 95% sure this should go in the `dashboards` module rather than here.
-   with-allowed-changes-to-internal-dashboard-card
+  with-allowed-changes-to-internal-dashboard-card
    ;; TODO -- not convinced whether this belongs here or in `permissions`
-   with-can-run-adhoc-query]
-  [metabase.queries.models.card.metadata
-   refresh-metadata]
-  [metabase.queries.models.parameter-card]
-  [metabase.queries.models.query
-   average-execution-time-ms
-   query->database-and-table-ids
-   save-query-and-update-average-execution-time!])
+  with-can-run-adhoc-query]
+ [metabase.queries.models.card.metadata
+  refresh-metadata]
+ [metabase.queries.models.parameter-card]
+ [metabase.queries.models.query
+  average-execution-time-ms
+  query->database-and-table-ids
+  save-query-and-update-average-execution-time!])
 
 #_{:clj-kondo/ignore [:missing-docstring]} ; false positive
 (p/import-def metabase.queries.api.card/param-values card-param-values)
