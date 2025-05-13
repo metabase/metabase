@@ -11,8 +11,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
