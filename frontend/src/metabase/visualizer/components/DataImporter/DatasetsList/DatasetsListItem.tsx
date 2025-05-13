@@ -48,7 +48,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
     return getIsCompatible({
       currentDataset: {
         display: currentDisplay,
-        primaryColumn,
+        dimensions: primaryColumn ? [primaryColumn] : [],
       },
       targetDataset: {
         display,

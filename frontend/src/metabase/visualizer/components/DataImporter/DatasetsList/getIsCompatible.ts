@@ -6,40 +6,27 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-function compareIdAndName(
-  column: DatasetColumn | undefined,
-  field: Field,
-): boolean {
-  if (!column) {
-    return false;
-  }
-
-  return column.name === field.name && column.id === field.id;
-}
-
-function compareType(column: DatasetColumn | undefined, field: Field): boolean {
-  if (!column) {
-    return false;
-  }
-
-  return Lib.isAssignableType(
-    Lib.legacyColumnTypeInfo(column),
-    Lib.legacyColumnTypeInfo(field as any), // TODO: Fix this type
+function compareIdAndName(dimensions: DatasetColumn[], field: Field): boolean {
+  return dimensions.some(
+    (column) => column.id === field.id && column.name === field.name,
   );
 }
 
-function comparedId(column: DatasetColumn | undefined, field: Field): boolean {
-  if (!column) {
-    return false;
-  }
+function compareType(dimensions: DatasetColumn[], field: Field): boolean {
+  const fieldType = Lib.legacyColumnTypeInfo(field as any); // TODO: Fix this type
+  return dimensions
+    .map((column) => Lib.legacyColumnTypeInfo(column))
+    .some((dimensionType) => Lib.isAssignableType(dimensionType, fieldType));
+}
 
-  return column.id === field.id;
+function comparedId(dimensions: DatasetColumn[], field: Field): boolean {
+  return dimensions.some((column) => column.id === field.id);
 }
 
 interface CompatibilityParameters {
   currentDataset: {
     display?: VisualizationDisplay;
-    primaryColumn?: DatasetColumn;
+    dimensions?: DatasetColumn[];
   };
   targetDataset?: {
     display?: VisualizationDisplay;
@@ -50,7 +37,7 @@ interface CompatibilityParameters {
 export function getIsCompatible(parameters: CompatibilityParameters) {
   const { currentDataset, targetDataset } = parameters;
 
-  const { display: currentDisplay, primaryColumn } = currentDataset;
+  const { display: currentDisplay, dimensions = [] } = currentDataset;
   const fields = targetDataset?.fields;
 
   if (!fields) {
@@ -65,9 +52,9 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
-  const idAndNameMatcher = (f: Field) => compareIdAndName(primaryColumn, f);
-  const idMatcher = (f: Field) => comparedId(primaryColumn, f);
-  const typeMatcher = (f: Field) => compareType(primaryColumn, f);
+  const idAndNameMatcher = (f: Field) => compareIdAndName(dimensions, f);
+  const idMatcher = (f: Field) => comparedId(dimensions, f);
+  const typeMatcher = (f: Field) => compareType(dimensions, f);
 
   if (currentDisplay === "scalar") {
     return (
@@ -75,9 +62,11 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     );
   }
 
-  if (!primaryColumn || !targetDataset) {
+  if (!targetDataset || dimensions.length === 0) {
     return false;
   }
+
+  const [primaryColumn] = dimensions;
 
   if (isNumber(primaryColumn) || isString(primaryColumn)) {
     return fields.some(idMatcher) || fields.some(typeMatcher);

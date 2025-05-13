@@ -27,12 +27,14 @@ describe("getIsCompatible", () => {
   });
 
   it("should not match scalars with anything", () => {
-    const primaryColumn = createMockColumn(
-      NumberColumn({
-        id: 1,
-        name: "the column",
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        NumberColumn({
+          id: 1,
+          name: "the column",
+        }),
+      ),
+    ];
 
     const field = createMockField(
       NumberColumn({
@@ -57,21 +59,21 @@ describe("getIsCompatible", () => {
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "scalar", primaryColumn },
+        currentDataset: { display: "scalar", dimensions },
         targetDataset: { display: "scalar", fields: [field] },
       }),
     ).toBe(false);
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "scalar", primaryColumn },
+        currentDataset: { display: "scalar", dimensions },
         targetDataset: { display: "scalar", fields: [anotherField] },
       }),
     ).toBe(false);
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "scalar", primaryColumn },
+        currentDataset: { display: "scalar", dimensions },
         targetDataset: {
           display: "scalar",
           fields: [fieldButWithDifferentName],
@@ -81,12 +83,14 @@ describe("getIsCompatible", () => {
   });
 
   it("should never accept a target that only has one field (if it's not a scalar)", () => {
-    const primaryColumn = createMockColumn(
-      NumberColumn({
-        id: 1,
-        name: "the column",
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        NumberColumn({
+          id: 1,
+          name: "the column",
+        }),
+      ),
+    ];
 
     const field = createMockField(
       NumberColumn({
@@ -104,26 +108,28 @@ describe("getIsCompatible", () => {
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: { display: "pie", fields: [field] },
       }),
     ).toBe(false);
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: { display: "pie", fields: [anotherField] },
       }),
     ).toBe(false);
   });
 
   it("should accept a target that only has one field if we are building a funnel", () => {
-    const primaryColumn = createMockColumn(
-      NumberColumn({
-        id: 1,
-        name: "the column",
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        NumberColumn({
+          id: 1,
+          name: "the column",
+        }),
+      ),
+    ];
 
     const field = createMockField(
       NumberColumn({
@@ -134,25 +140,27 @@ describe("getIsCompatible", () => {
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "funnel", primaryColumn },
+        currentDataset: { display: "funnel", dimensions },
         targetDataset: { display: "scalar", fields: [field] },
       }),
     ).toBe(true);
     expect(
       getIsCompatible({
-        currentDataset: { display: "funnel", primaryColumn },
+        currentDataset: { display: "funnel", dimensions },
         targetDataset: { display: "funnel", fields: [] },
       }),
     ).toBe(false);
   });
 
   it("should accept a target if the primary column is a string or number (assuming the target has the same column)", () => {
-    const primaryColumn = createMockColumn(
-      NumberColumn({
-        id: 1,
-        name: "the column",
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        NumberColumn({
+          id: 1,
+          name: "the column",
+        }),
+      ),
+    ];
 
     const field = createMockField(
       NumberColumn({
@@ -178,7 +186,7 @@ describe("getIsCompatible", () => {
     // No type match (primary is number, and target is DateTime or string)
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: {
           display: "line",
           fields: [anotherField, andAnotherField],
@@ -189,19 +197,21 @@ describe("getIsCompatible", () => {
     // same type found (field is Number)
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: { display: "line", fields: [field, anotherField] },
       }),
     ).toBe(true);
   });
 
   it("should accept a target with a field with the same type as the primary column", () => {
-    const primaryColumn = createMockColumn(
-      NumberColumn({
-        id: 1,
-        name: "the column",
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        NumberColumn({
+          id: 1,
+          name: "the column",
+        }),
+      ),
+    ];
 
     const field = createMockField(
       NumberColumn({
@@ -234,7 +244,7 @@ describe("getIsCompatible", () => {
     // same field found
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: { display: "line", fields: [field, anotherField] },
       }),
     ).toBe(true);
@@ -242,7 +252,7 @@ describe("getIsCompatible", () => {
     // no similar field found
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: {
           display: "line",
           fields: [anotherField, andAnotherField],
@@ -253,7 +263,7 @@ describe("getIsCompatible", () => {
     // different field but same type found
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: {
           display: "line",
           fields: [anotherFieldWithSameType, anotherField],
@@ -263,13 +273,15 @@ describe("getIsCompatible", () => {
   });
 
   it("should accept a target with an assignable type to the primary column, regardless of the semantic type (VIZ-638)", () => {
-    const primaryColumn = createMockColumn(
-      DateTimeColumn({
-        id: 1,
-        name: "the column",
-        semantic_type: TYPE.Temporal, // <-- this needs to be set to something
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        DateTimeColumn({
+          id: 1,
+          name: "the column",
+          semantic_type: TYPE.Temporal, // <-- this needs to be set to something
+        }),
+      ),
+    ];
 
     const field = createMockField(
       StringColumn({
@@ -288,18 +300,20 @@ describe("getIsCompatible", () => {
 
     expect(
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: { display: "line", fields: [field, anotherField] },
       }),
     ).toBe(true);
   });
 
   it("should only accept columns with same id and same type", () => {
-    const primaryColumn = createMockColumn(
-      NumberColumn({
-        id: 1,
-      }),
-    );
+    const dimensions = [
+      createMockColumn(
+        NumberColumn({
+          id: 1,
+        }),
+      ),
+    ];
 
     const dateField = createMockField(
       DateTimeColumn({
@@ -334,7 +348,7 @@ describe("getIsCompatible", () => {
 
     const isCompatible = (fields: Field[]) =>
       getIsCompatible({
-        currentDataset: { display: "line", primaryColumn },
+        currentDataset: { display: "line", dimensions },
         targetDataset: { display: "line", fields },
       });
 
