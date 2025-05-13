@@ -182,6 +182,10 @@
   "Should we enable extra knobs around permissions (block access, connection impersonation, etc.)?"
   :advanced-permissions)
 
+(define-premium-feature ^{:added "0.41.0"} enable-content-translation?
+  "Should we enable translation of user-generate content, like question names?"
+  :content-verification)
+
 (define-premium-feature ^{:added "0.41.0"} enable-content-verification?
   "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
   :content-verification)
