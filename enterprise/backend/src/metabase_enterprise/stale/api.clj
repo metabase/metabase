@@ -10,7 +10,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]

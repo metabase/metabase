@@ -19,7 +19,7 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]

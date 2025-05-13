@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.permissions.core :as perms]))
 
 (defn substitute-persisted-query
@@ -13,7 +13,7 @@
 
   It may be be possible to use the persistence cache with sandboxing and/or impersonation at a later date with further
   work, but for now we skip the cache in these cases."
-  [{::query-perms/keys [perms] :as query}]
+  [{::query-perms/keys [:metabase.permissions.models.query.permissions/perms] :as query}]
   (if (and api/*current-user-id*
            (or perms ;; sandboxed?
                (perms/impersonation-enforced-for-db? (:database query))))

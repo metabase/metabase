@@ -136,10 +136,10 @@
 
 (comment ;; hi self
 
-  (check "test/metabase/models/card_test.clj" 20)
-  ;; => {:readable true, :starting-at "(ns metabase.models.card-test\n  (:require"}
+  (check "test/metabase/queries/models/card_test.clj" 20)
+  ;; => {:readable true, :starting-at "(ns metabase.queries.models.card-test\n  (:require"}
 
-  (check "test/metabase/models/card_test.clj" 20000)
+  (check "test/metabase/queries/models/card_test.clj" 20000)
   ;; => {:readable false, :exception true,
   ;;     :message "Line number 20000 is greater than the number of lines in the file (1472).",
   ;;     :data {:cause :line-number-too-high}}

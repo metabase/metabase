@@ -1,4 +1,4 @@
-(ns metabase.models.query-table
+(ns metabase.queries.models.query-table
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

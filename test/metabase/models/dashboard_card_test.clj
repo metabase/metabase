@@ -1,7 +1,7 @@
 (ns metabase.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card-test :as card-test]
+   [metabase.queries.models.card-test :as card-test]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]

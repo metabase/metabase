@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]

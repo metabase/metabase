@@ -1,4 +1,4 @@
-(ns metabase.models.card.metadata
+(ns metabase.queries.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
    [medley.core :as m]

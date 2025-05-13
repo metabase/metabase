@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [toucan2.core :as t2]))
 

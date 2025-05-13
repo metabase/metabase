@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.card-test
+(ns ^:mb/driver-tests metabase.queries.api.card-test
   "Tests for /api/card endpoints."
   (:require
    [clojure.data.csv :as csv]
@@ -8,7 +8,7 @@
    [clojure.tools.macro :as tools.macro]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
-   [metabase.api.card :as api.card]
+   [metabase.queries.api.card :as api.card]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
@@ -21,7 +21,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.card.metadata :as card.metadata]
+   [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -693,7 +693,7 @@
 
 (deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.api.card) "/api/card")
+    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries.api.card) "/api/card")
           schemas                    (get-in openapi-object [:components :schemas])
           body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
           _                          (is (some? body-properties))

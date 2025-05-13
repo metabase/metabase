@@ -1,4 +1,4 @@
-(ns metabase.models.card
+(ns metabase.queries.models.card
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
@@ -23,13 +23,13 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.models.card.metadata :as card.metadata]
+   [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.query :as query]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.queries.models.query :as query]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.models.serialization :as serdes]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]

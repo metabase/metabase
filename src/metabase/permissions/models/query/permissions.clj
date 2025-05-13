@@ -1,4 +1,4 @@
-(ns metabase.models.query.permissions
+(ns metabase.permissions.models.query.permissions
   "Functions used to calculate the permissions needed to run a query based on old-style DATA ACCESS PERMISSIONS. The
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong.

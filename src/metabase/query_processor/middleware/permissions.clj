@@ -9,7 +9,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.walk :as lib.walk]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]

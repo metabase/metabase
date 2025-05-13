@@ -12,7 +12,7 @@
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]

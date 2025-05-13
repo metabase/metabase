@@ -1,4 +1,4 @@
-(ns metabase.models.card-test
+(ns metabase.queries.models.card-test
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
@@ -11,9 +11,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]

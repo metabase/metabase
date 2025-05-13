@@ -2,7 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]

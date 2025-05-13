@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

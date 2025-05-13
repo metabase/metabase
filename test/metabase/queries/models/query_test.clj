@@ -1,11 +1,11 @@
-(ns metabase.models.query-test
+(ns metabase.queries.models.query-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.test :as mt]))
 
 (deftest ^:parallel query->database-and-table-ids-test

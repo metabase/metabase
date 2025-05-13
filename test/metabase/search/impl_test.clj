@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.card :as api.card]
+   [metabase.queries.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.search.appdb.index :as search.index]

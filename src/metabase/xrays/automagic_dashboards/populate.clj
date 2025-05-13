@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.filters :as filters]

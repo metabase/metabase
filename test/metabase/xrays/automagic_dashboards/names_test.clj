@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]

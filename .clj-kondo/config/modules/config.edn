@@ -96,8 +96,6 @@
 
   api
   {:api #{metabase.api.auth
-          metabase.api.card
-          metabase.api.cards
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dashboard
@@ -566,8 +564,6 @@
 
   models
   {:api #{metabase.models.application-permissions-revision
-          metabase.models.card
-          metabase.models.card.metadata
           metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
@@ -584,8 +580,6 @@
           metabase.models.params.custom-values
           metabase.models.params.field-values
           metabase.models.params.shared
-          metabase.models.query
-          metabase.models.query.permissions
           metabase.models.resolution
           metabase.models.secret
           metabase.models.serialization

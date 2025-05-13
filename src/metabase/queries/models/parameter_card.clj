@@ -1,4 +1,4 @@
-(ns metabase.models.parameter-card
+(ns metabase.queries.models.parameter-card
   (:require
    [metabase.models.interface :as mi]
    [metabase.util :as u]

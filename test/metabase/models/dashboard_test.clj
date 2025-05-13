@@ -5,7 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.permissions.models.permissions :as perms]

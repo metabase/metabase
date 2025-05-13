@@ -22,7 +22,7 @@
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
    [metabase.lib.ident :as lib.ident]
-   [metabase.models.card :as card]
+   [metabase.queries.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]

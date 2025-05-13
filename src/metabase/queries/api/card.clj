@@ -1,4 +1,4 @@
-(ns metabase.api.card
+(ns metabase.queries.api.card
   "/api/card endpoints."
   (:require
    [medley.core :as m]
@@ -16,13 +16,13 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :as card]
-   [metabase.models.card.metadata :as card.metadata]
+   [metabase.queries.models.card :as card]
+   [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]

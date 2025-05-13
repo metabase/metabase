@@ -1,4 +1,4 @@
-(ns metabase.models.query-execution
+(ns metabase.queries.models.query-execution
   "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
   time, context it was executed in, etc."
   (:require

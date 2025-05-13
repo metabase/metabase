@@ -1,7 +1,7 @@
 (ns metabase.xrays.automagic-dashboards.comparison-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.comparison :as c]
    [metabase.xrays.automagic-dashboards.core :as magic]

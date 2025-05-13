@@ -1,4 +1,4 @@
-(ns macros.metabase.api.card-test)
+(ns macros.metabase.queries.api.card-test)
 
 (defmacro with-ordered-items
   [collection model-and-name-syms & body]

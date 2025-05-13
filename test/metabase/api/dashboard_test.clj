@@ -8,7 +8,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.card-test :as api.card-test]
+   [metabase.queries.api.card-test :as api.card-test]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]

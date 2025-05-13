@@ -1,7 +1,7 @@
-(ns metabase.api.cards
+(ns metabase.queries.api.cards
   "Bulk endpoints for Cards"
   (:require
-   [metabase.api.card :as api.card]
+   [metabase.queries.api.card :as api.card]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]

@@ -1,4 +1,4 @@
-(ns metabase.models.query
+(ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
    [clojure.walk :as walk]

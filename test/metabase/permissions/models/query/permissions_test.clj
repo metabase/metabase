@@ -1,4 +1,4 @@
-(ns metabase.models.query.permissions-test
+(ns metabase.permissions.models.query.permissions-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common
@@ -8,7 +8,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -251,7 +251,8 @@
              (query-perms/required-perms-for-query query))))))
 
 (deftest ^:parallel native-query-referenced-card-permissions-test
-  (testing "Check permissions for native query card reference parameters (the `:metabase.models.query.permissions/referenced-card-ids` key(s))"
+  (testing (str "Check permissions for native query card reference parameters"
+                " (the `:metabase.permissions.models.query.permissions/referenced-card-ids` key(s))")
     (mt/with-temp [:model/Collection {collection-1-id :id} {}
                    :model/Collection {collection-2-id :id} {}
                    :model/Card       {card-1-id :id}       {:collection_id collection-1-id}
