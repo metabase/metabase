@@ -145,7 +145,7 @@
                              (-> details
                                  ;; Setting private-key-value to nil will delete the secret
                                  (assoc :use-password true :private-key-value nil)
-                                 (dissoc :private-key-id :private-key-value :private-key-path :private-key-options)
+                                 (dissoc :private-key-id :private-key-path :private-key-options)
                                  ;; Add meta for testing
                                  (with-meta {:auth :password})))
           private-key-path-details (when private-key-path
