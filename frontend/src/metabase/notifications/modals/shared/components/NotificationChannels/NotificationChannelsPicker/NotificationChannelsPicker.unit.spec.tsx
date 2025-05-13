@@ -220,7 +220,10 @@ describe("NotificationChannelsPicker", () => {
           createMockNotificationHandlerSlack(),
         ],
         defaultTemplates,
-        enableTemplates: true,
+        enableTemplates: {
+          email: true,
+          slack: true,
+        },
       });
       // Email template editor should show default subject/body
       expect(
@@ -250,7 +253,10 @@ describe("NotificationChannelsPicker", () => {
             },
           },
         },
-        enableTemplates: true,
+        enableTemplates: {
+          email: true,
+          slack: true,
+        },
       });
       // Confirm initial value
       expect(
@@ -285,7 +291,7 @@ describe("NotificationChannelsPicker", () => {
               },
             },
           }}
-          enableTemplates={true}
+          enableTemplates={{ email: true, slack: true }}
         />,
       );
       // TemplateEditor should update
@@ -309,7 +315,10 @@ describe("NotificationChannelsPicker", () => {
             },
           },
         },
-        enableTemplates: true,
+        enableTemplates: {
+          email: true,
+          slack: true,
+        },
       });
       const subjectInput = await screen.findByDisplayValue("Default subject");
       await userEvent.clear(subjectInput);
@@ -324,7 +333,10 @@ describe("NotificationChannelsPicker", () => {
       setup({
         isEmailSetup: true,
         notificationHandlers: [createMockNotificationHandlerEmail()],
-        enableTemplates: true,
+        enableTemplates: {
+          email: true,
+          slack: true,
+        },
       });
       expect(
         await screen.findByPlaceholderText("Your custom email template"),

@@ -23,7 +23,9 @@ import { type RefObject, useEffect } from "react";
 import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 
-export function getLanguageExtension(language: CodeLanguage): Extension {
+export function getLanguageExtension(
+  language: CodeLanguage,
+): Extension | undefined {
   switch (language) {
     case "clojure":
       return StreamLanguage.define(clojure);

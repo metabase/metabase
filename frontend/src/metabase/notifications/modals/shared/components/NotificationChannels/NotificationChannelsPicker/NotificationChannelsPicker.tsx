@@ -144,7 +144,10 @@ interface NotificationChannelsPickerProps {
   channels: ChannelApiResponse["channels"] | undefined;
   onChange: (newHandlers: NotificationHandler[]) => void;
   getInvalidRecipientText?: (domains: string) => string;
-  enableTemplates?: boolean;
+  enableTemplates?: {
+    email?: boolean;
+    slack?: boolean;
+  };
   templateContext?: Record<string, any>;
   onPreviewClick?: (channelType: NotificationChannelType) => void;
   isPreviewOpen?: boolean;
@@ -168,43 +171,44 @@ interface AccordionButtonProps {
   size?: number;
 }
 
-const TemplateButton = React.forwardRef<HTMLDivElement, AccordionButtonProps>(
-  function TemplateButton({ icon, label, onClick, size = 32 }, ref) {
-    return (
-      <Tooltip label={label} ref={ref}>
-        <ActionIcon
-          size={size}
-          variant="viewHeader"
-          style={{
-            cursor: "pointer",
-            backgrond: "transparent",
-            border: "none",
-          }}
-          onClickCapture={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onClick();
-          }}
-        >
-          <Icon name={icon} size={size * 0.6} />
-        </ActionIcon>
-      </Tooltip>
-    );
-  },
-);
+const TemplateToolbarButton = React.forwardRef<
+  HTMLDivElement,
+  AccordionButtonProps
+>(function TemplateToolbarButton({ icon, label, onClick, size = 32 }, ref) {
+  return (
+    <Tooltip label={label} ref={ref}>
+      <ActionIcon
+        size={size}
+        variant="viewHeader"
+        style={{
+          cursor: "pointer",
+          backgrond: "transparent",
+          border: "none",
+        }}
+        onClickCapture={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClick();
+        }}
+      >
+        <Icon name={icon} size={size * 0.6} />
+      </ActionIcon>
+    </Tooltip>
+  );
+});
 
-interface TemplateHelperTooltipProps {
-  payload?: any;
+interface TemplateInfoTooltipProps {
+  context?: Record<string, any>;
 }
 
-const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
+const TemplateInfoTooltip = ({ context }: TemplateInfoTooltipProps) => {
   const [open, setOpen] = useState(false);
-  const formattedPayload = useMemo(() => {
-    if (!payload) {
+  const formattedContext = useMemo(() => {
+    if (!context) {
       return "";
     }
-    return JSON.stringify(payload, null, 2);
-  }, [payload]);
+    return JSON.stringify(context, null, 2);
+  }, [context]);
 
   return (
     <Popover
@@ -217,7 +221,7 @@ const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
       onChange={setOpen}
     >
       <Popover.Target>
-        <TemplateButton
+        <TemplateToolbarButton
           icon="info"
           label={t`Template instructions`}
           onClick={() => setOpen(!open)}
@@ -262,7 +266,7 @@ const TemplateHelperTooltip = ({ payload }: TemplateHelperTooltipProps) => {
             overflowY: "auto",
           }}
         >
-          <CodeEditor language="json" value={formattedPayload} />
+          <CodeEditor language="json" value={formattedContext} />
         </div>
       </Popover.Dropdown>
     </Popover>
@@ -289,7 +293,7 @@ export const NotificationChannelsPicker = ({
   channels: nullableChannels,
   onChange,
   getInvalidRecipientText = defaultGetInvalidRecipientText,
-  enableTemplates = false,
+  enableTemplates,
   templateContext = {},
   onPreviewClick,
   isPreviewOpen,
@@ -535,10 +539,11 @@ export const NotificationChannelsPicker = ({
     }
   };
 
-  const handleTemplateBlur = (
+  const handleTemplateChange = (
     channel: "email" | "slack",
     field: "subject" | "body",
     value: string,
+    isFocused = false,
   ) => {
     const updateAction: TemplateAction = {
       type: "UPDATE_TEMPLATE",
@@ -569,7 +574,7 @@ export const NotificationChannelsPicker = ({
       }));
 
       if (bothEmpty) {
-        shouldRemove = !isCurrentTemplateNull;
+        shouldRemove = !isCurrentTemplateNull && !isFocused;
       } else if (bothFilled) {
         shouldUpdate = true;
       }
@@ -577,7 +582,7 @@ export const NotificationChannelsPicker = ({
       // Slack
       // No validation, since it's always valid (either empty of filled)
       if (!hasBody) {
-        shouldRemove = !isCurrentTemplateNull;
+        shouldRemove = !isCurrentTemplateNull && !isFocused;
       } else {
         shouldUpdate = true;
       }
@@ -640,7 +645,7 @@ export const NotificationChannelsPicker = ({
             invalidRecipientText={getInvalidRecipientText}
             onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
           />
-          {enableTemplates && (
+          {enableTemplates?.email && (
             <Stack
               mt="sm"
               className={cx({ [S.defaultTemplate]: !emailHandler.template })}
@@ -655,17 +660,17 @@ export const NotificationChannelsPicker = ({
                 >{t`Custom email template`}</Text>
                 <Flex gap="sm" align="center" mr="0.25rem">
                   {!!emailHandler.template && (
-                    <TemplateButton
+                    <TemplateToolbarButton
                       icon="history"
                       label={t`Reset to default`}
                       onClick={() => resetTemplateForChannel("email")}
                     />
                   )}
-                  <TemplateHelperTooltip
-                    payload={templateContext["channel/email"]}
+                  <TemplateInfoTooltip
+                    context={templateContext["channel/email"]}
                   />
                   {onPreviewClick && (
-                    <TemplateButton
+                    <TemplateToolbarButton
                       icon="eye"
                       label={isPreviewOpen ? t`Close preview` : t`Show preview`}
                       onClick={() =>
@@ -684,10 +689,15 @@ export const NotificationChannelsPicker = ({
                     templateContext={templateContext["channel/email"]}
                     defaultValue={getTemplateValue("email", "subject")}
                     onChange={(value) => {
-                      handleTemplateBlur("email", "subject", value);
+                      handleTemplateChange("email", "subject", value, true);
                     }}
                     onFocus={(initialValue) => {
-                      handleTemplateBlur("email", "subject", initialValue);
+                      handleTemplateChange(
+                        "email",
+                        "subject",
+                        initialValue,
+                        true,
+                      );
                     }}
                     error={
                       validationErrors.email.subject
@@ -707,10 +717,13 @@ export const NotificationChannelsPicker = ({
                     height="10rem"
                     defaultValue={getTemplateValue("email", "body")}
                     onFocus={(initialValue) => {
-                      handleTemplateBlur("email", "body", initialValue);
+                      handleTemplateChange("email", "body", initialValue, true);
                     }}
                     onChange={(value) => {
-                      handleTemplateBlur("email", "body", value);
+                      handleTemplateChange("email", "body", value, true);
+                    }}
+                    onBlur={(value) => {
+                      handleTemplateChange("email", "body", value);
                     }}
                     error={
                       validationErrors.email.body
@@ -738,7 +751,7 @@ export const NotificationChannelsPicker = ({
             channelSpec={channels.slack as SlackChannelSpec}
             onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
           />
-          {enableTemplates && (
+          {enableTemplates?.slack && (
             <Stack
               mt="sm"
               className={cx({ [S.defaultTemplate]: !slackHandler.template })}
@@ -753,14 +766,14 @@ export const NotificationChannelsPicker = ({
                 >{t`Custom Slack message`}</Text>
                 <Flex gap="xs" align="center">
                   {!!slackHandler.template && (
-                    <TemplateButton
+                    <TemplateToolbarButton
                       icon="history"
                       label={t`Reset to default`}
                       onClick={() => resetTemplateForChannel("slack")}
                     />
                   )}
-                  <TemplateHelperTooltip
-                    payload={templateContext["channel/slack"]}
+                  <TemplateInfoTooltip
+                    context={templateContext["channel/slack"]}
                   />
                 </Flex>
               </Flex>
@@ -772,10 +785,12 @@ export const NotificationChannelsPicker = ({
                   placeholder={t`Your custom Markdown template`}
                   templateContext={templateContext["channel/slack"]}
                   defaultValue={getTemplateValue("slack", "body")}
-                  onBlur={(newValue) => {
-                    handleTemplateBlur("slack", "body", newValue);
+                  onChange={(value) => {
+                    handleTemplateChange("slack", "body", value, true);
                   }}
-                  language="markdown"
+                  onBlur={(newValue) => {
+                    handleTemplateChange("slack", "body", newValue);
+                  }}
                 />
               </Stack>
             </Stack>

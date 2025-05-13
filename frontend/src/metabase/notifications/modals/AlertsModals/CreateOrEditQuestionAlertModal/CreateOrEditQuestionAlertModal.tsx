@@ -405,7 +405,7 @@ export const CreateOrEditQuestionAlertModal = ({
                   ? t`You're only allowed to email alerts to addresses ending in ${domains}`
                   : t`You're only allowed to email alerts to allowed domains`
               }
-              enableTemplates
+              enableTemplates={{ slack: true }}
               defaultTemplates={defaultTemplates}
               templateContext={templateContext}
             />
