@@ -8,7 +8,7 @@ import { measureText } from "metabase/lib/measure-text";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
-  ColumnNameColumnSplitSetting,
+  ColumnNameSplitSetting,
   DatasetColumn,
   PivotTableColumnSplitSetting,
   Series,
@@ -55,7 +55,7 @@ export function updateValueWithCurrentColumns(
   }
 
   // remove toRemove
-  const value: ColumnNameColumnSplitSetting = _.mapObject(
+  const value: ColumnNameSplitSetting = _.mapObject(
     migratedValue,
     (columnNames) =>
       columnNames?.filter((columnName) => !toRemove.includes(columnName)),

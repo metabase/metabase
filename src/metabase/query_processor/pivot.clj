@@ -607,22 +607,22 @@
             :data
             :cols))))
 
-(defn outer-query-with-breakouts
-  [query pivot-row-names pivot-col-names]
+(defn- outer-query-with-breakouts
+  [query column-split]
   (try
     (let [base-query-cols (original-cols query)
           pivot-row-cols (reduce
-                          (fn [acc name]
+                          (fn [acc {:keys [name]}]
                             (conj acc
                                   (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
                           []
-                          pivot-row-names)
+                          (:rows column-split))
           pivot-col-cols (reduce
-                          (fn [acc name]
+                          (fn [acc {:keys [name]}]
                             (conj acc
                                   (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
                           []
-                          pivot-col-names)]
+                          (:columns column-split))]
       (if (get-in query [:query :source-query :native])
         (-> query
             (assoc-in [:query :breakout]
@@ -659,20 +659,22 @@
          (qp/process-query (dissoc query :info)
                            (or rff qp.reducible/default-rff))
          (let [rff (or rff qp.reducible/default-rff)
-               new-pivot-rows    (filter some? (:new_pivot_rows query))
-               new-pivot-cols    (filter some? (:new_pivot_cols query))
-               base-query        (dissoc query :info)
-               nested-query      (-> base-query
-                                     (dissoc :new_pivot_rows :new_pivot_cols)
-                                     nest-query)
-               query2            (outer-query-with-breakouts nested-query new-pivot-rows new-pivot-cols)
-               query3            (-> query2
-                                     (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
-                                                                             :pivot-cols new-pivot-cols
-                                                                             :pivot-measures ["count"]})
-                                     (assoc :non-pivoted-cols (original-cols base-query)))
-               query4            (qp.store/with-metadata-provider (:database query)
-                                   (lib/query (qp.store/metadata-provider) query3))
-               all-queries       (generate-queries query4 {})
-               column-mapping-fn (make-column-mapping-fn query4)]
+               unagg-column-split (:pivot_unagg_column_split query)
+               new-pivot-rows     (or (map :name (:rows unagg-column-split))
+                                      (:pivot_rows query))
+               new-pivot-cols     (or (map :name (:columns unagg-column-split))
+                                      (:pivot_cols query))
+               base-query         (dissoc query :info :pivot_unagg_column_split)
+               nested-query       (-> (lib/query (qp.store/metadata-provider) base-query)
+                                      lib/append-stage)
+               query2             (outer-query-with-breakouts nested-query unagg-column-split)
+               query3             (-> query2
+                                      (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
+                                                                              :pivot-cols new-pivot-cols
+                                                                              :pivot-measures ["count"]})
+                                      (assoc :non-pivoted-cols (original-cols base-query)))
+               query4             (qp.store/with-metadata-provider (:database query)
+                                    (lib/query (qp.store/metadata-provider) query3))
+               all-queries        (generate-queries query4 {})
+               column-mapping-fn  (make-column-mapping-fn query4)]
            (process-multiple-queries all-queries rff column-mapping-fn)))))))

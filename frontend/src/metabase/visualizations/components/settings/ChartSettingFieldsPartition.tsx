@@ -82,9 +82,6 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
   const operators = useMemo(() => {
     const baseOperators = Lib.availableAggregationOperators(query, -1);
     return Lib.filterPivotAggregationOperators(baseOperators);
-    //return isUpdate
-    //  ? Lib.selectedAggregationOperators(baseOperators, clause)
-    //  : baseOperators;
   }, [query]);
 
   return (
