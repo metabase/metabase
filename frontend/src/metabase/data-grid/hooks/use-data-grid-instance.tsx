@@ -241,7 +241,7 @@ export const useDataGridInstance = <TData, TValue>({
       columnVisibility: controlledColumnVisibility,
       sorting,
       pagination,
-      rowSelection,
+      rowSelection: rowSelection ?? {},
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
