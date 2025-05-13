@@ -102,28 +102,38 @@
         (tx/with-temp-database! :postgres db-name
           (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.table_with_access;"
                              "DROP TABLE IF EXISTS PUBLIC.table_without_access;"
-                             "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL);"
-                             "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"]]
+                             "CREATE TABLE PUBLIC.table_with_access (x INTEGER NOT NULL, y INTEGER, z INTEGER);"
+                             "CREATE TABLE PUBLIC.table_without_access (y INTEGER NOT NULL);"
+                             "INSERT INTO table_with_access (x, y, z) VALUES (1, 2, 3), (2, 4, 6);"]]
             (jdbc/execute! spec [statement]))
-          (tx/with-temp-roles! :postgres
-            details
-            {"impersonation.role" {"table_with_access" []}}
-            (:user details)
-            (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-              (mt/with-db database (sync/sync-database! database)
+          (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+            (mt/with-db database (sync/sync-database! database)
+              (tx/with-temp-roles! :postgres
+                details
+                {"impersonation.role" {:table_with_access {:columns [:x :z]
+                                                           :rls [:= :y 4]}}}
+                (:user details)
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "impersonation.role"}}
-                  (is (= []
-                         (-> {:query "SELECT * FROM \"table_with_access\";"}
+                  (is (= [[2 6]]
+                         (-> {:query "SELECT x, z FROM \"table_with_access\";"}
                              mt/native-query
                              mt/process-query
                              mt/rows)))
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                        #"permission denied"
-                                        (-> {:query "SELECT * FROM \"table_without_access\";"}
-                                            mt/native-query
-                                            mt/process-query
-                                            mt/rows))))))))))))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"permission denied"
+                       (-> {:query "SELECT y FROM \"table_with_access\";"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"permission denied"
+                       (-> {:query "SELECT * FROM \"table_without_access\";"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows))))))))))))
 
 (deftest conn-impersonation-test-mysql
   (mt/test-driver :mysql
@@ -173,12 +183,13 @@
                              mt/native-query
                              mt/process-query
                              mt/rows)))
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                        #"SELECT command denied to user"
-                                        (-> {:query "select * from table_a;"}
-                                            mt/native-query
-                                            mt/process-query
-                                            mt/rows))))))))))))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"SELECT command denied to user"
+                       (-> {:query "select * from table_a;"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows))))))))))))
 
 (deftest conn-impersonation-test-sqlserver
   (mt/test-driver :sqlserver
@@ -202,7 +213,8 @@
             (jdbc/execute! spec [statement]))
           (tx/with-temp-roles! :sqlserver
             details
-            {"user_a" {"table_a" ["id" "foo"]} "user_b" {"table_b" ["id" "bar"]}}
+            {"user_a" {"table_a" ["id" "foo"]}
+             "user_b" {"table_b" ["id" "bar"]}}
             "default_role_user"
             (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
               (mt/with-db database
@@ -214,12 +226,13 @@
                              mt/native-query
                              mt/process-query
                              mt/rows)))
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                        #"The SELECT permission was denied on the object"
-                                        (-> {:query "select * from table_b;"}
-                                            mt/native-query
-                                            mt/process-query
-                                            mt/rows))))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"The SELECT permission was denied on the object"
+                       (-> {:query "select * from table_b;"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows))))
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "user_b"}}
                   (is (= [[11 33] [22 66]]
@@ -227,12 +240,13 @@
                              mt/native-query
                              mt/process-query
                              mt/rows)))
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                        #"The SELECT permission was denied on the object"
-                                        (-> {:query "select * from table_a;"}
-                                            mt/native-query
-                                            mt/process-query
-                                            mt/rows))))))))))))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"The SELECT permission was denied on the object"
+                       (-> {:query "select * from table_a;"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows))))))))))))
 
 (deftest conn-impersonation-with-db-routing
   (mt/test-driver :postgres
