@@ -10,7 +10,7 @@ import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, type BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -67,6 +67,10 @@ interface DispatchProps {
 
 interface OwnProps {
   tag: TemplateTag;
+  /**
+   * parameter can be undefined when it's an incomplete "Field Filter", i.e. when
+   * `field` ("Field to map to" input) is not set yet.
+   */
   parameter: Parameter | undefined;
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
@@ -292,18 +296,28 @@ class TagEditorParamInner extends Component<
         className={TagEditorParamS.TagContainer}
         data-testid={`tag-editor-variable-${tag.name}`}
       >
-        <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
-        <Box component="h3" className={TagEditorParamS.TagName}>
-          {tag.name}
-        </Box>
-
         {isTemporalUnit && parameter && (
           <>
-            <ContainerLabel paddingTop>{t`Variable type`}</ContainerLabel>
-            <Box component="h3">{t`time_grouping`}</Box>
+            <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+            <Box mb="xl" className={TagEditorParamS.Parameter}>
+              {tag.name}
+            </Box>
 
-            <Box mb="xl" mt="xl">
-              <SettingLabel>{t`Time grouping options`}</SettingLabel>
+            <ContainerLabel>{t`Variable type`}</ContainerLabel>
+            <Box
+              mb="xl"
+              className={TagEditorParamS.Parameter}
+            >{t`time_grouping`}</Box>
+
+            <FilterWidgetLabelInput
+              tag={tag}
+              onChange={(value) =>
+                this.setParameterAttribute("display-name", value)
+              }
+            />
+
+            <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
+            <Box mb="xl">
               <TemporalUnitSettings
                 parameter={parameter}
                 onChangeTemporalUnits={(newTemporalUnits) => {
@@ -317,7 +331,13 @@ class TagEditorParamInner extends Component<
         )}
 
         {!isTemporalUnit && (
-          <VariableTypeSelect value={tag.type} onChange={this.setType} />
+          <>
+            <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+            <Box component="h3" className={TagEditorParamS.TagName}>
+              {tag.name}
+            </Box>
+            <VariableTypeSelect value={tag.type} onChange={this.setType} />
+          </>
         )}
 
         {tag.type === "dimension" && (
@@ -342,7 +362,7 @@ class TagEditorParamInner extends Component<
           />
         )}
 
-        {(hasWidgetOptions || !isDimension) && (
+        {(hasWidgetOptions || (!isDimension && !isTemporalUnit)) && (
           <FilterWidgetLabelInput
             tag={tag}
             onChange={(value) =>
@@ -388,18 +408,3 @@ export const TagEditorParam = connect<
   mapStateToProps,
   mapDispatchToProps,
 )(TagEditorParamInner);
-
-function SettingLabel(
-  props: BoxProps & { id?: string; children?: React.ReactNode },
-) {
-  return (
-    <Box
-      component="label"
-      c="--mb-color-text-medium"
-      mb="sm"
-      fw="bold"
-      display="block"
-      {...props}
-    />
-  );
-}

@@ -160,26 +160,22 @@ const SettingsPane = ({
   setParameterValue,
   getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => {
-  return (
-    // <div>
-    tags.map((tag) => (
-      <div key={tag.id}>
-        <TagEditorParam
-          tag={tag}
-          key={tag.name}
-          parameter={parametersById[tag.id]}
-          embeddedParameterVisibility={
-            parametersById[tag.id]
-              ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
-              : null
-          }
-          database={database}
-          databases={databases}
-          setTemplateTag={setTemplateTag}
-          setParameterValue={setParameterValue}
-        />
-      </div>
-    ))
-    // </div>
-  );
+  return tags.map((tag) => (
+    <div key={tag.id}>
+      <TagEditorParam
+        tag={tag}
+        key={tag.name}
+        parameter={parametersById[tag.id]}
+        embeddedParameterVisibility={
+          parametersById[tag.id]
+            ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
+            : null
+        }
+        database={database}
+        databases={databases}
+        setTemplateTag={setTemplateTag}
+        setParameterValue={setParameterValue}
+      />
+    </div>
+  ));
 };
