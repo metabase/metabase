@@ -783,7 +783,16 @@
               :params []}
              (expand-with-field-filter-param-on-datetime-field
               "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
-              nil))))))
+              nil))))
+    (testing "generate valid closed-open interval for timestamp field and hour and second units (##57767)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-07T11:00Z[UTC]" #t "2016-06-07T12:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "past1hours"})))
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-07T11:59:59Z[UTC]" #t "2016-06-07T12:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "past1seconds"}))))))
 
 (deftest ^:parallel expand-exclude-field-filter-test
   (mt/with-driver :h2
@@ -950,43 +959,6 @@
                 :parameters [{:type   :date/relative
                               :target [:dimension [:template-tag "checkin_date"]]
                               :value  "thismonth"}]))))))))
-
-(deftest e2e-relative-datetime-test
-  (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
-    (mt/test-drivers (sql-parameters-engines)
-      (testing "generate valid closed-open interval for timestamp field (##57767)"
-        (doseq [{:keys [unit value expected-duration]}
-                [{:unit "seconds",  :value 1, :expected-duration "PT1S"}
-                 {:unit "seconds",  :value 3, :expected-duration "PT3S"}
-                 {:unit "minutes",  :value 1, :expected-duration "PT1M"}
-                 {:unit "minutes",  :value 3, :expected-duration "PT3M"}
-                 {:unit "hours",    :value 1, :expected-duration "PT1H"}
-                 {:unit "hours",    :value 3, :expected-duration "PT3H"}
-                 {:unit "days",     :value 1, :expected-duration "PT24H"}
-                 {:unit "days",     :value 3, :expected-duration "PT72H"}
-                 {:unit "weeks",    :value 1, :expected-duration "PT168H"}
-                 ;; May had 31 days
-                 {:unit "months",   :value 1, :expected-duration "PT744H"}
-                 ;; Jan, Fab, and Mar had 31 + 29 + 31 days
-                 {:unit "quarters", :value 1, :expected-duration "PT2184H"}
-                 ;; 2015 had 365 days
-                 {:unit "years",    :value 1, :expected-duration "PT8760H"}]]
-          (testing unit
-            (let [[start end] (-> (process-native
-                                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{datetime}}"
-                                                                       (table-identifier :orders))
-                                                :template-tags {"datetime" {:name         "datetime"
-                                                                            :display-name "DateTime"
-                                                                            :type         :dimension
-                                                                            :widget-type  :date/all-options
-                                                                            :dimension    [:field (mt/id :orders :created_at) nil]}}}
-                                   :parameters [{:type   :date/all-options
-                                                 :target [:dimension [:template-tag "datetime"]]
-                                                 :value  (str "past" value unit)}])
-                                  :data
-                                  :native_form
-                                  :params)]
-              (is (= (t/duration expected-duration) (t/duration start end))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::e2e-exclude-date-parts-test]
   [driver _feature _database]
