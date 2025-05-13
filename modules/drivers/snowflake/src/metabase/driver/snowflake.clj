@@ -31,7 +31,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -82,7 +82,7 @@
 (defn- start-of-week-setting->snowflake-offset
   "Value to use for the `WEEK_START` connection parameter -- see
   https://docs.snowflake.com/en/sql-reference/parameters.html#label-week-start -- based on
-  the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting. Snowflake considers `:monday` to be `1`, through `:sunday`
+  the [[metabase.lib-be.core/start-of-week]] Setting. Snowflake considers `:monday` to be `1`, through `:sunday`
   as `7`."
   []
   (inc (driver.common/start-of-week->int)))
@@ -208,7 +208,7 @@
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
                 :timezone                                   "UTC"
                 ;; tell Snowflake to use the same start of week that we have set for the
-                ;; [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting.
+                ;; [[metabase.lib-be.core/start-of-week]] Setting.
                 :week_start                                 (start-of-week-setting->snowflake-offset)}
                (-> details
                    ;; see https://github.com/metabase/metabase/issues/22133
@@ -816,7 +816,7 @@
                 :dashboardId dashboard-id
                 :databaseId  database-id
                 :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                :serverId    (public-settings/site-uuid)}))
+                :serverId    (system/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

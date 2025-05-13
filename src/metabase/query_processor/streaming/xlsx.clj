@@ -9,9 +9,10 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
@@ -664,7 +665,7 @@
                    :or   {format-rows? true
                           pivot?       false}} :data}
                viz-settings]
-        (let [pivot-spec       (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
+        (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
                                                                 pivot-export-options) ordered-cols))

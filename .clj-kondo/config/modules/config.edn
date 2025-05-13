@@ -53,22 +53,32 @@
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
    :uses #{api collections config db events models util}}
 
+  appearance
+  {:api  #{metabase.appearance.core
+           metabase.appearance.init}
+   :uses #{settings util}}
+
   analytics
   {:api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
            metabase.analytics.prometheus
            metabase.analytics.snowplow}
-   :uses #{api
+   :uses #{appearance
+           api
            channel
            config
            db
            driver
            eid-translation
            internal-stats
+           lib-be
            models
            premium-features
+           session
            settings
+           sso
+           system
            task
            util
            version}}
@@ -108,6 +118,7 @@
            analytics
            analyze
            api-routes
+           appearance
            channel
            collections
            config
@@ -118,6 +129,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            logger
            model-persistence
            models
@@ -218,6 +230,7 @@
            metabase.channel.template.core}
    :uses #{analytics
            api
+           appearance
            collections
            config
            db
@@ -225,10 +238,12 @@
            events
            formatter
            lib
+           lib-be
            models
            notification
            permissions
            premium-features
+           system
            settings
            query-processor
            task
@@ -355,6 +370,7 @@
           metabase.driver.util}
    :uses #{actions
            api
+           appearance
            auth-provider
            config
            connection-pool
@@ -362,16 +378,19 @@
            db
            legacy-mbql
            lib
+           lib-be
            logger
            models
            notification
            plugins
            premium-features
-           settings
            pulse
            query-processor
+           settings
            sync
+           system
            upload
+           warehouses
            util}}
 
   eid-translation
@@ -412,8 +431,9 @@
 
   formatter
   {:api  #{metabase.formatter}
-   :uses #{models
-           settings
+   :uses #{appearance
+           models
+           system
            query-processor
            types
            util}}
@@ -501,7 +521,8 @@
            util}}
 
   lib-be
-  {:api #{metabase.lib-be.init}
+  {:api #{metabase.lib-be.core
+          metabase.lib-be.init}
    :uses #{models
            settings
            task
@@ -538,6 +559,7 @@
            settings
            query-processor
            request
+           system
            task
            task-history
            util}}
@@ -599,6 +621,7 @@
            search
            setup
            sync
+           system
            types
            util}}
 
@@ -620,6 +643,7 @@
            metabase.notification.payload.core}
    :uses #{analytics
            api
+           appearance
            channel
            config
            driver
@@ -627,9 +651,12 @@
            models
            permissions
            premium-features
-           settings
            query-processor
            request
+           session
+           settings
+           sso
+           system
            task
            task-history
            util}}
@@ -753,6 +780,7 @@
           metabase.query-processor.dashboard
           metabase.query-processor.debug
           metabase.query-processor.error-type
+          metabase.query-processor.init
           metabase.query-processor.interface
           metabase.query-processor.metadata
           metabase.query-processor.middleware.annotate
@@ -783,6 +811,7 @@
    :uses #{analytics
            analyze
            api
+           appearance
            audit-app
            cache
            config
@@ -791,23 +820,27 @@
            formatter
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
            permissions
            pivot
            premium-features
-           settings
            request
+           settings
+           system
            server
            types
            util}}
 
   request
-  {:api  #{metabase.request.core}
+  {:api  #{metabase.request.core
+           metabase.request.init}
    :uses #{api
            config
            models
            permissions
+           session
            settings
            util}}
 
@@ -840,6 +873,7 @@
           metabase.search.spec}
    :uses #{analytics
            api
+           appearance
            audit-app
            collections
            config
@@ -868,13 +902,15 @@
 
   server
   {:api #{metabase.server.core
+          metabase.server.init
           metabase.server.middleware.json
           metabase.server.middleware.session
-          metabase.server.streaming-response}
+          metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
            api-keys
            api-routes
+           appearance
            config
            core
            db
@@ -882,9 +918,10 @@
            embedding
            models
            premium-features
-           settings
-           session
            request
+           session
+           settings
+           system
            util
            enterprise/sso}}
 
@@ -892,7 +929,8 @@
   {:api  #{metabase.session.core
            metabase.session.api
            metabase.session.init
-           metabase.session.models.session}
+           metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            channel
            config
@@ -904,13 +942,13 @@
            settings
            request
            sso
+           system
            task
            util}}
 
   settings
   {:api  #{metabase.settings.api
            metabase.settings.core
-           metabase.settings.deprecated-grab-bag
            metabase.settings.init}
    :uses #{api
            config
@@ -926,15 +964,17 @@
   {:api  #{metabase.setup.api metabase.setup.core}
    :uses #{analytics
            api
+           appearance
            channel
            config
            db
            events
            models
            permissions
-           settings
            request
            session
+           settings
+           system
            util}}
 
   sso
@@ -942,6 +982,7 @@
            metabase.sso.core
            metabase.sso.init}
    :uses #{api
+           config
            models
            permissions
            premium-features
@@ -974,15 +1015,17 @@
            task-history
            util}}
 
+  system
+  {:api  #{metabase.system.core
+           metabase.system.init}
+   :uses #{appearance settings util}}
+
   task
   {:api #{metabase.task.bootstrap
           metabase.task.core}
    :uses #{analytics
-           config
            db
            plugins
-           premium-features
-           settings
            util}}
 
   task-history
@@ -1036,6 +1079,7 @@
            metabase.upload.core
            metabase.upload.init}
    :uses #{analytics
+           appearance
            api
            collections
            driver
@@ -1059,20 +1103,23 @@
 
   util
   {:api :any
-   :uses #{config
+   :uses #{channel
+           config
            db
            driver
            legacy-mbql
            lib
            models
            plugins
-           settings}}
+           settings
+           system}}
 
   version
   {:api  #{metabase.version.core
            metabase.version.init}
    :uses #{config
            settings
+           system
            task
            util}}
 
@@ -1087,11 +1134,19 @@
            premium-features
            util}}
 
+  warehouses
+  {:api  #{metabase.warehouses.core
+           metabase.warehouses.init}
+   :uses #{premium-features
+           settings
+           util}}
+
   xrays
   {:api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
    :uses #{analyze
+           appearance
            api
            collections
            driver
@@ -1301,6 +1356,7 @@
            pulse
            query-processor
            request
+           system
            util}}
 
   enterprise/premium-features
@@ -1335,7 +1391,8 @@
            enterprise/api}}
 
   enterprise/scim
-  {:api  #{metabase-enterprise.scim.api
+  {:api  #{metabase-enterprise.scim.core
+           metabase-enterprise.scim.init
            metabase-enterprise.scim.routes}
    :uses #{analytics
            api
@@ -1344,6 +1401,7 @@
            permissions
            settings
            server
+           system
            util
            enterprise/serialization}}
 
@@ -1358,6 +1416,7 @@
           metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
+           appearance
            collections
            config
            db
@@ -1384,6 +1443,7 @@
           metabase-enterprise.sso.integrations.sso-settings
           metabase-enterprise.sso.integrations.sso-utils}
    :uses #{api
+           appearance
            channel
            embedding
            events
@@ -1393,6 +1453,7 @@
            session
            settings
            sso
+           system
            util
            enterprise/scim}}
 

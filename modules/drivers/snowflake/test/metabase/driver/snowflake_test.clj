@@ -29,10 +29,10 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl :as data.impl]
@@ -898,7 +898,7 @@
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
     (mt/test-driver :snowflake
       (let [expected-map {"pulseId" nil
-                          "serverId" (public-settings/site-uuid)
+                          "serverId" (system/site-uuid)
                           "client" "Metabase"
                           "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
                           "queryType" "query"

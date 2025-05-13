@@ -8,8 +8,9 @@
    [metabase.config :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.request.core :as request]
+   [metabase.server.settings :as server.settings]
+
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -149,7 +150,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
+                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
