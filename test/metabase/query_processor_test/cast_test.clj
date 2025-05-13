@@ -563,8 +563,26 @@
     (let [mp (mt/metadata-provider)]
       (doseq [[table fields] [[:people [{:value 10 :expected "10" :msg "integer"}
                                         {:value 10.4 :expected "10.4" :msg "float"}
-                                        {:value "Hello!" :expected "Hello!" :msg "text"}
-                                        {:value (lib/date "2025-04-02") :expected "2025-04-02" :msg "text" :compare str/starts-with?}]]]
+                                        {:value "Hello!" :expected "Hello!" :msg "text"}]]]
+              {:keys [value expected msg compare] :or {compare =}} fields]
+        (testing (str "casting " (pr-str value) "(" msg ") to text")
+          (let [field-md (lib.metadata/field mp (mt/id table :id))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field-md])
+                          (lib/expression "TEXTCAST" (lib/text value))
+                          (lib/limit 1))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (types/field-is-type? :type/Text (last cols)))
+            (doseq [[_id casted-value] rows]
+              (is (string? casted-value))
+              (is (compare casted-value expected) (str "Not equal for " msg)))))))))
+
+(deftest ^:parallel text-cast-examples-with-date
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/text :expressions/date)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table fields] [[:people [{:value (lib/date "2025-04-02") :expected "2025-04-02" :msg "text" :compare str/starts-with?}]]]
               {:keys [value expected msg compare] :or {compare =}} fields]
         (testing (str "casting " (pr-str value) "(" msg ") to text")
           (let [field-md (lib.metadata/field mp (mt/id table :id))
@@ -638,7 +656,7 @@
                                               {:expression 4.5 :db-type "DECIMAL"}]]]
               {:keys [expression db-type]} expressions]
         (testing (str "Casting " db-type " to text from native query")
-          (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED")})]
+          (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED FROM PEOPLE LIMIT 1")})]
             (mt/with-temp
               [:model/Card
                {card-id :id}
