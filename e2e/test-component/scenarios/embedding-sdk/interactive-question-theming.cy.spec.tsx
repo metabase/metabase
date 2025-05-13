@@ -100,10 +100,8 @@ describe(
             haveBackgroundColor($el, lighten(theme.colors?.background, 0.4)),
           );
 
-        cy.findByTestId("interactive-question-result-toolbar").should(
-          "have.css",
-          "background-color",
-          lighten(theme.colors?.background, 0.15),
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          haveBackgroundColor($el, lighten(theme.colors?.background, 0.5)),
         );
       });
     });
@@ -147,10 +145,8 @@ describe(
             haveBackgroundColor($el, darken(theme.colors?.background, 0.1)),
           );
 
-        cy.findByTestId("interactive-question-result-toolbar").should(
-          "have.css",
-          "background-color",
-          darken(theme.colors?.background, 0.04),
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          haveBackgroundColor($el, darken(theme.colors?.background, 0.04)),
         );
       });
     });
@@ -181,10 +177,8 @@ describe(
       getSdkRoot().within(() => {
         cy.findByText("Product ID").should("be.visible");
         // Should use the toolbar backgroundColor override, not the default background
-        cy.findByTestId("interactive-question-result-toolbar").should(
-          "have.css",
-          "background-color",
-          "rgb(100, 150, 200)",
+        cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
+          haveBackgroundColor($el, "rgb(100, 150, 200)"),
         );
       });
     });
