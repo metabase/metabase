@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.types :as types]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -79,7 +80,7 @@
    {:keys [rows scope]} :- [:map
                             [:rows [:sequential {:min 1} :map]]
                             ;; TODO make this non-optional in the future
-                            [:scope {:optional true} :map]]]
+                            [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
   (let [rows' (data-editing/apply-coercions table-id rows)
         scope (or scope {:table-id table-id})
@@ -97,12 +98,12 @@
        [:mixed-updates [:map
                         [:rows [:sequential {:min 1} :map]]
                         ;; TODO make :scope required
-                        [:scope {:optional true} :map]]]
+                        [:scope {:optional true} ::types/scope.raw]]]
        [:uniform-updates [:map
                           [:pks [:sequential {:min 1} :map]]
                           [:updates :map]
                           ;; TODO make :scope required
-                          [:scope {:optional true} :map]]]]]
+                          [:scope {:optional true} ::types/scope.raw]]]]]
   (check-permissions)
   (if (empty? (or rows pks))
     {:updated []}
@@ -124,7 +125,7 @@
    {:keys [rows scope]} :- [:map
                             [:rows [:sequential {:min 1} :map]]
                             ;; make this non-optional in the future
-                            [:scope {:optional true} :map]]]
+                            [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
   (let [user-id api/*current-user-id*
         scope   (or scope {:table-id table-id})]
@@ -213,8 +214,7 @@
    {:keys [table-id scope no-op]}] :- [:map
                                        ;; deprecated, this will be replaced by scope
                                        [:table-id ms/PositiveInt]
-                                       ;; TODO make this non-optional in the future
-                                       [:scope {:optional true} :map]
+                                       [:scope ::types/scope.raw]
                                        [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
   (let [user-id api/*current-user-id*
@@ -238,8 +238,7 @@
    {:keys [table-id scope no-op]}] :- [:map
                                          ;; deprecated, this will be replaced by scope
                                        [:table-id ms/PositiveInt]
-                                       ;; TODO: make this non-optional in the future
-                                       [:scope {:optional true} :map]
+                                       [:scope ::types/scope.raw]
                                        [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
   (let [user-id api/*current-user-id*
