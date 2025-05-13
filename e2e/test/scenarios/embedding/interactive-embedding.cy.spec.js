@@ -903,6 +903,19 @@ describe("scenarios > embedding > full app", () => {
       });
     }
 
+    /**
+     * Go back from the table selector to the bucket step (where it shows "Raw Data" and "Models").
+     *
+     * This step only shows when there are more than 1 option in the bucket step, the only time this happens
+     * is when there are both selectable models and tables for the current user.
+     */
+    function goBackToBucketStep() {
+      H.popover().within(() => {
+        cy.icon("chevronleft").click();
+        cy.icon("chevronleft").click();
+      });
+    }
+
     beforeEach(() => {
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/card/*").as("getCard");
@@ -1068,10 +1081,7 @@ describe("scenarios > embedding > full app", () => {
           tableName: "Products",
         });
         H.getNotebookStep("data").button("Join data").click();
-        H.popover().within(() => {
-          cy.icon("chevronleft").click();
-          cy.icon("chevronleft").click();
-        });
+        goBackToBucketStep();
         selectCard({
           cardName: cardDetails.name,
           cardType: "model",
@@ -1289,10 +1299,7 @@ describe("scenarios > embedding > full app", () => {
         });
 
         H.getNotebookStep("data").button("Join data").click();
-        H.popover().within(() => {
-          cy.icon("chevronleft").click();
-          cy.icon("chevronleft").click();
-        });
+        goBackToBucketStep();
         selectCard({
           cardName: ordersCountModelDetails.name,
           cardType: "model",
@@ -1322,10 +1329,7 @@ describe("scenarios > embedding > full app", () => {
         });
 
         H.getNotebookStep("data").button("Join data").click();
-        H.popover().within(() => {
-          cy.icon("chevronleft").click();
-          cy.icon("chevronleft").click();
-        });
+        goBackToBucketStep();
 
         selectTable({
           tableName: "Products",
