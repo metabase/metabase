@@ -185,6 +185,7 @@ const InteractiveDashboardInner = ({
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             onLoad={handleLoad}
             onLoadWithoutCards={handleLoadWithoutCards}
+            onError={(error) => dispatch(setErrorPage(error))}
             downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
             isNightMode={false}
             onNightModeChange={_.noop}

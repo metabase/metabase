@@ -16,7 +16,6 @@ import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard"
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
@@ -35,7 +34,7 @@ export type StaticDashboardProps = SdkDashboardDisplayProps &
   DashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
-  dashboardId,
+  dashboardId: initialDashboardId,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -47,6 +46,8 @@ export const StaticDashboardInner = ({
   style,
   className,
 }: StaticDashboardProps) => {
+  const errorPage = useSdkSelector(getErrorPage);
+
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
@@ -60,8 +61,10 @@ export const StaticDashboardInner = ({
     refreshPeriod,
     onRefreshPeriodChange,
     setRefreshElapsedHook,
-  } = useSdkDashboardParams({
     dashboardId,
+    isLoading,
+  } = useSdkDashboardParams({
+    dashboardId: initialDashboardId,
     initialParameters,
     withTitle,
     withDownloads,
@@ -70,6 +73,21 @@ export const StaticDashboardInner = ({
   });
 
   const { theme } = useEmbedTheme();
+
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(setErrorPage(null));
+    }
+  }, [dashboardId, dispatch]);
+
+  if (isLoading) {
+    return <SdkLoader />;
+  }
+
+  if (!dashboardId || errorPage?.status === 404) {
+    return <DashboardNotFoundError id={initialDashboardId} />;
+  }
 
   return (
     <Box
@@ -94,6 +112,7 @@ export const StaticDashboardInner = ({
         bordered={displayOptions.bordered}
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
         downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
         isNightMode={false}
         onNightModeChange={_.noop}
@@ -114,31 +133,7 @@ export const StaticDashboardInner = ({
  * @function
  * @category StaticDashboard
  */
-const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
-  ({ dashboardId: initialDashboardId, ...rest }) => {
-    const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
-      type: "dashboard",
-      id: initialDashboardId,
-    });
-
-    const errorPage = useSdkSelector(getErrorPage);
-    const dispatch = useSdkDispatch();
-    useEffect(() => {
-      if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
-      }
-    }, [dispatch, resolvedDashboardId]);
-
-    if (isLoading) {
-      return <SdkLoader />;
-    }
-
-    if (!resolvedDashboardId || errorPage?.status === 404) {
-      return <DashboardNotFoundError id={initialDashboardId} />;
-    }
-
-    return <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />;
-  },
-);
+const StaticDashboard =
+  withPublicComponentWrapper<StaticDashboardProps>(StaticDashboardInner);
 
 export { EmbedDisplayParams, StaticDashboard };
