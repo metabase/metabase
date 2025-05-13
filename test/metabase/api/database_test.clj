@@ -21,6 +21,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
+   [metabase.schema.table :as schema.table]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
@@ -1765,14 +1766,14 @@
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
-                                                       (api.table/root-collection-schema-name)))]
+                                                       (schema.table/root-collection-schema-name)))]
             (is (malli= [:sequential
                          [:map
                           [:id               #"^card__\d+$"]
                           [:db_id            ::lib.schema.id/database]
                           [:display_name     :string]
                           [:moderated_status [:maybe [:= "verified"]]]
-                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:schema           [:= (schema.table/root-collection-schema-name)]]
                           [:description      [:maybe :string]]]]
                         response))
             (is (not (contains? (set (map :display_name response)) "Card 3")))
@@ -1783,7 +1784,7 @@
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
-                            :schema           (api.table/root-collection-schema-name)
+                            :schema           (schema.table/root-collection-schema-name)
                             :description      nil
                             :type             "question"}))))
 
@@ -1836,14 +1837,14 @@
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
-                                                       (api.table/root-collection-schema-name)))]
+                                                       (schema.table/root-collection-schema-name)))]
             (is (malli= [:sequential
                          [:map
                           [:id               [:re #"^card__\d+$"]]
                           [:db_id            ::lib.schema.id/database]
                           [:display_name     :string]
                           [:moderated_status [:maybe [:= :verified]]]
-                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:schema           [:= (schema.table/root-collection-schema-name)]]
                           [:description      [:maybe :string]]]]
                         response))
             (is (contains? (set response)
@@ -1853,7 +1854,7 @@
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
-                            :schema           (api.table/root-collection-schema-name)
+                            :schema           (schema.table/root-collection-schema-name)
                             :description      nil
                             :type             "model"}))))
 
