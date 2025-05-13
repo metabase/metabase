@@ -5,7 +5,7 @@ import {
 } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isColumnNameCollapsedRowsSetting,
-  isColumnNameColumnSplitSetting,
+  isColumnNameSplitSetting,
 } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   ColumnSettings,
@@ -251,7 +251,7 @@ function syncPivotColumnSplit(
   oldColumns: ColumnInfo[],
 ): VisualizationSettings {
   const columnSettings = settings["pivot_table.column_split"];
-  if (!columnSettings || !isColumnNameColumnSplitSetting(columnSettings)) {
+  if (!columnSettings || !isColumnNameSplitSetting(columnSettings)) {
     return settings;
   }
 
