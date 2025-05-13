@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Card, SegmentedControl, Text } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
+import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
+import type { DatabaseId, FieldId, TableId } from "metabase-types/api";
 
 import { TablePreview } from "./TablePreview";
 
 interface Props {
+  databaseId: DatabaseId;
+  tableId: TableId;
   fieldId: FieldId;
 }
 
@@ -42,5 +44,14 @@ function PreviewTypeSelector({
 }) {
   const data = useMemo(getTypeSelectorData, []);
 
-  return <SegmentedControl data={data} value={value} onChange={onChange} />;
+  return (
+    <Flex py="sm">
+      <SegmentedControl
+        data={data}
+        value={value}
+        onChange={onChange}
+        w="100%"
+      />
+    </Flex>
+  );
 }
