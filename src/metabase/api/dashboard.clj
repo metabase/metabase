@@ -1470,7 +1470,7 @@
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
-                                                                [:export-format api.dataset/ExportFormat]]
+                                                                [:export-format :query-processor/export-format]]
    _query-params
    {:keys          [parameters]
     format-rows?   :format_rows

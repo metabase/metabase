@@ -1,6 +1,6 @@
 (ns metabase.queries.core
   (:require
-   [metabase.queries.api.card]
+   [metabase.queries.card]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
    [metabase.queries.models.card.metadata]
@@ -8,7 +8,7 @@
    [metabase.queries.models.query]
    [potemkin :as p]))
 
-(comment metabase.queries.api.card/keep-me
+(comment metabase.queries.card/keep-me
          metabase.queries.metadata/keep-me
          metabase.queries.models.card/keep-me
          metabase.queries.models.card.metadata/keep-me
@@ -16,6 +16,9 @@
          metabase.queries.models.query/keep-me)
 
 (p/import-vars
+ [metabase.queries.card
+  card-param-values
+  card-param-remapped-value]
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.metadata
@@ -38,12 +41,6 @@
   average-execution-time-ms
   query->database-and-table-ids
   save-query-and-update-average-execution-time!])
-
-#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
-(p/import-def metabase.queries.api.card/param-values card-param-values)
-
-#_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.api.card/param-remapped-value card-param-remapped-value)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/lib-query card->lib-query)

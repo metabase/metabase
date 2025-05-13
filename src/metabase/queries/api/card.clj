@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -14,12 +13,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.custom-values :as custom-values]
    [metabase.permissions.core :as perms]
+   [metabase.queries.card :as queries.card]
    [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -780,7 +776,7 @@
   HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
-                                       [:export-format (into [:enum] api.dataset/export-formats)]]
+                                       [:export-format :query-processor/export-format]]
    _query-params
    {:keys          [parameters]
     pivot-results? :pivot_results
@@ -870,43 +866,6 @@
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
 
-(defn- get-param-or-throw
-  [card param-key]
-  (u/prog1 (m/find-first #(= (:id %) param-key)
-                         (or (seq (:parameters card))
-                             ;; some older cards or cards in e2e just use the template tags on native queries
-                             (card/template-tag-parameters card)))
-    (when-not <>
-      (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
-                      {:status-code 400})))))
-
-(defn- param->field-id
-  [card param]
-  (when-let [field-clause (params/param-target->field-clause (:target param) card)]
-    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
-
-(defn mapping->field-values
-  "Get param values for the \"old style\" parameters. This mimic's the api/dashboard version except we don't have
-  chain-filter issues or dashcards to worry about."
-  [card param query]
-  (when-let [field-id (param->field-id card param)]
-    (api.field/search-values-from-field-id field-id query)))
-
-(mu/defn param-values
-  "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.
-
-  The source of values could be:
-  - static-list: user defined values list
-  - card: values is result of running a card"
-  ([card param-key]
-   (param-values card param-key nil))
-
-  ([card      :- ms/Map
-    param-key :- ms/NonBlankString
-    query     :- [:maybe ms/NonBlankString]]
-   (let [param (get-param-or-throw card param-key)]
-     (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
-
 (api.macros/defendpoint :get "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
 
@@ -915,7 +874,7 @@
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]]
-  (param-values (api/read-check :model/Card card-id) param-key))
+  (queries.card/card-param-values (api/read-check :model/Card card-id) param-key))
 
 (api.macros/defendpoint :get "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
@@ -928,20 +887,7 @@
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ms/NonBlankString]
                                          [:query     ms/NonBlankString]]]
-  (param-values (api/read-check :model/Card card-id) param-key query))
-
-(defn param-remapped-value
-  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `card`."
-  [card param-key value]
-  (or (let [param (get-param-or-throw card param-key)]
-        (custom-values/parameter-remapped-value
-         param
-         value
-         #(when-let [field-id (param->field-id card param)]
-            (-> (chain-filter/chain-filter field-id [{:field-id field-id, :op :=, :value value}] :limit 1)
-                :values
-                first))))
-      [value]))
+  (queries.card/card-param-values (api/read-check :model/Card card-id) param-key query))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
@@ -953,4 +899,4 @@
                               [:param-key :string]]
    {:keys [value]}        :- [:map [:value :string]]]
   (-> (api/read-check :model/Card id)
-      (param-remapped-value param-key (codec/url-decode value))))
+      (queries.card/card-param-remapped-value param-key (codec/url-decode value))))

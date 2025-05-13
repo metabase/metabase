@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -24,6 +23,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -180,7 +180,7 @@
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map
                                     [:uuid          ms/UUIDString]
-                                    [:export-format api.dataset/ExportFormat]]
+                                    [:export-format :query-processor/export-format]]
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
@@ -302,14 +302,14 @@
       (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
-                               :export-format api.dataset/export-format-regex]
+                               :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map
                                                         [:uuid          ms/UUIDString]
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
-                                                        [:export-format (into [:enum] api.dataset/export-formats)]]
+                                                        [:export-format :query-processor/export-format]]
    _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
                                                       [:parameters    {:optional true} [:maybe

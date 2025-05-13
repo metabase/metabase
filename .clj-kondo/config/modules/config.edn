@@ -946,6 +946,7 @@
            embedding
            models
            premium-features
+           query-processor
            request
            session
            settings

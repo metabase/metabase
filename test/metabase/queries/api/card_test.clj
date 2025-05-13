@@ -28,6 +28,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.queries.api.card :as api.card]
+   [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
@@ -3101,7 +3102,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (with-redefs [api.card/mapping->field-values (constantly mock-default-result)]
+      (with-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp
             [:model/Card {source-card-id :id} {}

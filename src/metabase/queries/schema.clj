@@ -1,6 +1,7 @@
 (ns metabase.queries.schema
   (:require
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.regex :as u.regex]))
 
 (def card-types
   "All acceptable card types.
@@ -14,4 +15,6 @@
   #{:model :question :metric})
 
 (mr/def :queries/card-type
-  (into [:enum {:decode/json keyword}] card-types))
+  (into [:enum {:decode/json keyword
+                :api/regex   (u.regex/re-or (map name card-types))}]
+        card-types))

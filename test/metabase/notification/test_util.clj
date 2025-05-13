@@ -268,7 +268,7 @@
   ([subscription-id cron-schedule]
    (subscription->trigger-info subscription-id cron-schedule "UTC"))
   ([subscription-id cron-schedule timezone]
-   {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
+   {:key      (.getName ^org.quartz.TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
     :data     {"subscription-id" subscription-id}
     :timezone timezone}))
