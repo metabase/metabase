@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.db :as mdb]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -42,9 +43,11 @@
   The passed column should be a keyword that is qualified as needed.
   Uses a slightly larger value that what will be stored in the db so we can better use word boundaries on the actual end"
   [column]
-  [:left
-   column
-   [:cast (+ max-searchable-value-length 100) :integer]])
+  (if (#{:postgres :h2} (mdb/db-type))
+    [:left
+     column
+     [:cast (+ max-searchable-value-length 100) :integer]]
+    column))
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
