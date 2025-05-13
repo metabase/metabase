@@ -357,6 +357,8 @@
        ~@body)))
 
 (defn add-job-listener!
+  "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will
+  be called turing Job activation."
   [^JobListener job-listener]
   (when-let [scheduler (scheduler)]
     (.. scheduler
@@ -364,6 +366,8 @@
         (addJobListener job-listener))))
 
 (defn add-trigger-listener!
+  "Add a [Quartz Trigger listener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will
+  be called turing trigger activation."
   [^TriggerListener trigger-listener]
   (when-let [scheduler (scheduler)]
     (.. scheduler
