@@ -20,8 +20,10 @@
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.query :as query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -467,7 +469,7 @@
     card-type     :type
     :as           body} :- [:map
                             [:name                   ms/NonBlankString]
-                            [:type                   {:optional true} [:maybe :queries/card-type]]
+                            [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
                             [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
                             [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -534,7 +536,7 @@
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
-   [:type                   {:optional true} [:maybe :queries/card-type]]
+   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:visualization_settings {:optional true} [:maybe ms/Map]]
@@ -776,7 +778,7 @@
   HTML `form` actions)."
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
-                                       [:export-format :query-processor/export-format]]
+                                       [:export-format ::qp.schema/export-format]]
    _query-params
    {:keys          [parameters]
     pivot-results? :pivot_results

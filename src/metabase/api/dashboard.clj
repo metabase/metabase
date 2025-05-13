@@ -35,6 +35,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
@@ -1242,7 +1243,7 @@
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
-                                                                [:export-format :query-processor/export-format]]
+                                                                [:export-format ::qp.schema/export-format]]
    _query-params
    {:keys          [parameters]
     format-rows?   :format_rows

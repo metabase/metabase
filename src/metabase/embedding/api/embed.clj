@@ -112,7 +112,7 @@
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map
                                      [:token         string?]
-                                     [:export-format :query-processor/export-format]]
+                                     [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot?       :pivot_results
     :as          query-params} :- [:map
@@ -199,7 +199,7 @@
   [{:keys [token dashcard-id card-id export-format]} :- [:map
                                                          [:dashcard-id   ms/PositiveInt]
                                                          [:card-id       ms/PositiveInt]
-                                                         [:export-format :query-processor/export-format]]
+                                                         [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot?       :pivot_results
     :as          query-params} :- [:map

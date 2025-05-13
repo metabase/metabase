@@ -188,6 +188,7 @@
   {:api  #{metabase.bookmarks.api}
    :uses #{api
            db
+           queries
            util}}
 
   bug-reporting
@@ -781,8 +782,9 @@
   queries
   {:api  #{metabase.queries.api
            metabase.queries.core
+           metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
-           metabase.queries.init}
+           metabase.queries.schema}      ; TODO FIXME
    :uses #{analytics
            analyze
            api
@@ -1457,6 +1459,7 @@
            premium-features
            query-processor
            request
+           schema
            util
            enterprise/api}}
 

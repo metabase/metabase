@@ -45,7 +45,7 @@
   "Regex for `export-formats` for use in API routes."
   (u.regex/re-or (map u/qualified-name export-formats)))
 
-(mr/def :query-processor/export-format
+(mr/def ::export-format
   "Schema for valid export formats for downloading query results."
   (into [:enum {:decode/json keyword
                 :api/regex   export-formats-regex}]

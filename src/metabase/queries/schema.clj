@@ -14,7 +14,7 @@
   gradually."
   #{:model :question :metric})
 
-(mr/def :queries/card-type
+(mr/def ::card-type
   (into [:enum {:decode/json keyword
                 :api/regex   (u.regex/re-or (map name card-types))}]
         card-types))

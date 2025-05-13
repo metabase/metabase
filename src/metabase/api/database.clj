@@ -24,6 +24,7 @@
    [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.schema.table :as schema.table]
@@ -142,7 +143,7 @@
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- :queries/card-type
+  [card-type :- ::queries.schema/card-type
    & {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
@@ -175,20 +176,20 @@
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- :queries/card-type]
+  [card-type :- ::queries.schema/card-type]
   (seq (source-query-cards card-type :xform (take 1))))
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- :queries/card-type
+  [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
   (for [card (source-query-cards card-type)]
     (schema.table/card->virtual-table card :include-fields? include-fields?)))
 
 (mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- :queries/card-type
+  [card-type :- ::queries.schema/card-type
    & {:keys [include-tables? include-fields?]}]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")

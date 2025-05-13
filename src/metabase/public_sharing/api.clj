@@ -181,7 +181,7 @@
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map
                                     [:uuid          ms/UUIDString]
-                                    [:export-format :query-processor/export-format]]
+                                    [:export-format ::qp.schema/export-format]]
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
@@ -310,7 +310,7 @@
                                                         [:uuid          ms/UUIDString]
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
-                                                        [:export-format :query-processor/export-format]]
+                                                        [:export-format ::qp.schema/export-format]]
    _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
                                                       [:parameters    {:optional true} [:maybe

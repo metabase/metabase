@@ -36,7 +36,7 @@
      ~@body))
 
 (defmacro with-default-options
-  "Execute `body` with [[metabase.notification.task.send/*default-options*]] bound to `options`."
+  "Execute `body` with [[metabase.notification.send/*default-options*]] bound to `options`."
   [options & body]
-  `(binding [metabase.notification.task.send/*default-options* ~options]
+  `(binding [metabase.notification.send/*default-options* ~options]
      ~@body))

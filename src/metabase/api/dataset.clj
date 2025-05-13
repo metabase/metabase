@@ -118,7 +118,7 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
-                               [:export-format :query-processor/export-format]]
+                               [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
     format-rows                   :format_rows
