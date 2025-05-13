@@ -114,7 +114,6 @@
           metabase.api.util.handlers}
    :uses #{actions
            analytics
-           analyze
            api-routes
            appearance
            channel
@@ -135,11 +134,11 @@
            plugins
            premium-features
            pulse
+           queries
            query-processor
            request
            revisions
            sample-data
-           search
            server
            session
            settings
@@ -186,7 +185,7 @@
   {:api  #{metabase.bookmarks.api}
    :uses #{api
            db
-           models
+           queries
            util}}
 
   bug-reporting
@@ -301,6 +300,7 @@
            models
            permissions
            premium-features
+           queries
            request
            revisions
            search
@@ -413,6 +413,7 @@
            notification
            premium-features
            public-sharing
+           queries
            query-processor
            settings
            tiles
@@ -421,8 +422,7 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{channel
-           driver
+   :uses #{driver
            models
            util
            view-log}}
@@ -555,6 +555,7 @@
            models
            premium-features
            settings
+           queries
            query-processor
            request
            system
@@ -592,26 +593,22 @@
            analyze
            api
            audit-app
-           cache
            channel
            collections
            config
-           content-verification
            db
            driver
            events
            legacy-mbql
            lib
-           notification
            permissions
            plugins
            premium-features
            settings
            public-sharing
            pulse
-           query-analysis
+           queries
            query-processor
-           request
            search
            setup
            sync
@@ -669,8 +666,11 @@
            collections
            config
            db
+           legacy-mbql
+           lib
            models
            premium-features
+           query-processor
            request
            server
            settings
@@ -724,6 +724,7 @@
            events
            lib
            models
+           queries
            query-processor
            request
            settings
@@ -754,6 +755,34 @@
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
+
+  queries
+  {:api  #{metabase.queries.init}
+   :uses #{analytics
+           analyze
+           api
+           audit-app
+           cache
+           channel
+           collections
+           config
+           content-verification
+           db
+           events
+           legacy-mbql
+           lib
+           models
+           notification
+           permissions
+           premium-features
+           public-sharing
+           pulse
+           query-analysis
+           query-processor
+           request
+           revisions
+           search
+           util}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core
@@ -820,6 +849,7 @@
            permissions
            pivot
            premium-features
+           queries
            request
            settings
            system
@@ -846,6 +876,7 @@
            config
            events
            models
+           queries
            util}}
 
   sample-data
@@ -1083,6 +1114,7 @@
            model-persistence
            models
            permissions
+           queries
            settings
            sync
            util}}
@@ -1125,6 +1157,7 @@
            audit-app
            events
            models
+           permissions
            premium-features
            util}}
 
@@ -1147,7 +1180,9 @@
            legacy-mbql
            lib
            models
+           permissions
            settings
+           queries
            query-processor
            util}}
 
@@ -1458,8 +1493,8 @@
            api
            collections
            embedding
-           models
            premium-features
+           queries
            request
            settings
            util}}

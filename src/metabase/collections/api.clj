@@ -19,12 +19,12 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.queries.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.models.card :as card]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]

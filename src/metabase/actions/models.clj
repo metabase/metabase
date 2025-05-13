@@ -2,8 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.queries.models.query :as query]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.models.query :as query]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
