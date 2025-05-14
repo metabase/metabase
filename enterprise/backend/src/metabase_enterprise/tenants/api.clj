@@ -12,9 +12,10 @@
   [_route-params
    _query-params
    tenant :- [:map {:closed true}
-              [:name ms/NonBlankString]]]
-  (api/check-400 (not (tenant/name-exists? (:name tenant)))
-                 "This tenant name is already taken.")
+              [:name ms/NonBlankString]
+              [:slug ms/NonBlankString]]]
+  (api/check-400 (not (tenant/tenant-exists? tenant))
+                 "This tenant name or slug is already taken.")
   (t2/insert! :model/Tenant tenant))
 
 (def ^{:arglists '([request respond raise])} routes

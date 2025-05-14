@@ -257,9 +257,9 @@
                     [:id ms/PositiveInt]]]
   (validation/check-group-manager id)
   (api/check-404
-   (-> (t2/select-one :model/PermissionsGroup :id id)
-       (t2/hydrate :members)
-       (maybe-fix-name (setting/get :use-tenants)))))
+   (some-> (t2/select-one :model/PermissionsGroup :id id)
+           (t2/hydrate :members)
+           (maybe-fix-name (setting/get :use-tenants)))))
 
 (api.macros/defendpoint :post "/group"
   "Create a new `PermissionsGroup`."
