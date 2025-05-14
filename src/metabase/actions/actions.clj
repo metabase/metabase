@@ -63,7 +63,10 @@
   validation, and binds Database-local values."
   {:arglists '([action context inputs]), :added "0.44.0"}
   (fn [action {:keys [driver]} _inputs]
-    [(driver/dispatch-on-initialized-driver driver)
+    [(if driver
+       (driver/dispatch-on-initialized-driver driver)
+       ;; For now, all actions have this as the lowest common denominator, and use it even where the db is irrelevant.
+       :sql-jdbc)
      (keyword action)])
   :hierarchy #'driver/hierarchy)
 
@@ -240,7 +243,11 @@
         _         (when (seq errors)
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
-        dbs       (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps)))
+        dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
+                      ;; for data-grid actions that use their scope
+                      ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
+                      (when-let [db-id (:database-id scope)]
+                        [db-id]))
         _         (when (> (count dbs) 1)
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400

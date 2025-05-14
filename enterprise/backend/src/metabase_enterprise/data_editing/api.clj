@@ -9,44 +9,15 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.models.field-values :as field-values]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
-
-;; TODO consider moving this down somewhere generic, like in handle-effects!*
-(defn- invalidate-field-values! [table-id rows]
-  ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
-  (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))
-        lower-names (keys ln->values)
-        ln->ids     (when (seq lower-names)
-                      (u/group-by
-                       :lower_name :id
-                       (t2/query {:select [:id [[:lower :name] :lower_name]]
-                                  :from   [(t2/table-name :model/Field)]
-                                  :where  [:and
-                                           [:= :table_id table-id]
-                                           [:in [:lower :name] lower-names]
-                                           [:in :has_field_values ["list" "auto-list"]]
-                                           [:= :semantic_type "type/Category"]]})))
-        stale-fields (->> (for [[lower-name field-ids] ln->ids
-                                :let [new-values (into #{} (filter some?) (ln->values lower-name))
-                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
-                                                                                 :field_id [:in field-ids]))]]
-                            (when (seq (set/difference new-values old-values))
-                              field-ids))
-                          (apply concat))]
-    ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
-    (when (seq stale-fields)
-      ;; Using a future is not ideal, it would be better to use a queue and a single worker, to avoid tying up threads.
-      (future
-        (->> (t2/select :model/Field :id [:in stale-fields])
-             (run! field-values/create-or-update-full-field-values!))))))
 
 (defn require-authz?
   "Temporary hack to have auth be off by default, only on if MB_DATA_EDITING_AUTHZ=true.
@@ -58,21 +29,6 @@
   (when (require-authz?)
     (api/check-superuser)))
 
-(defn- invalidate-and-present!
-  "We invalidate the field-values, in case any new category values were added.
-  The FE also expects data to be formatted according to PQ logic, e.g. considering semantic types.
-  Actions, however, return raw values, since lossy coercions would limit composition.
-  So, we apply the coercions here."
-  [table-id rows]
-  ;; We could optimize this significantly:
-  ;; 1. Skip if no category fields were changes on update.
-  ;; 2. Check whether all corresponding categorical field values are already in the database.
-  (invalidate-field-values! table-id rows)
-  ;; right now the FE works off qp outputs, which coerce output row data
-  ;; still feels messy, revisit this
-  (let [pk-fields (data-editing/select-table-pk-fields table-id)]
-    (data-editing/query-db-rows table-id pk-fields rows)))
-
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
@@ -82,10 +38,10 @@
                             ;; TODO make this non-optional in the future
                             [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
-  (let [rows' (data-editing/apply-coercions table-id rows)
-        scope (or scope {:table-id table-id})
-        res   (data-editing/insert! api/*current-user-id* scope table-id rows')]
-    {:created-rows (invalidate-and-present! table-id (:created-rows res))}))
+  (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
+        ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
+        scope (or scope {:table-id table-id})]
+    {:created-rows (:outputs (actions/perform-action! :data-grid/update scope rows))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -107,15 +63,14 @@
   (check-permissions)
   (if (empty? (or rows pks))
     {:updated []}
-    (let [user-id api/*current-user-id*
+    (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
+          ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
           scope   (or scope {:table-id table-id})
           rows    (or rows
                       ;; For now, it's just a shim, because we haven't implemented an efficient bulk update action yet.
                       ;; This is a dumb shim; we're not checking that the pk maps are really (just) the pks.
-                      (map #(merge % updates) pks))
-          rows    (data-editing/apply-coercions table-id rows)
-          rows    (map :after (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows))]
-      {:updated (invalidate-and-present! table-id rows)})))
+                      (map #(merge % updates) pks))]
+      {:updated (:outputs (actions/perform-action! :data-grid/update scope rows))})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
@@ -127,9 +82,10 @@
                             ;; make this non-optional in the future
                             [:scope {:optional true} ::types/scope.raw]]]
   (check-permissions)
-  (let [user-id api/*current-user-id*
-        scope   (or scope {:table-id table-id})]
-    (data-editing/perform-bulk-action! :table.row/delete user-id scope table-id rows)
+  ;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
+  ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
+  (let [scope (or scope {:table-id table-id})]
+    (actions/perform-action! :data-grid/delete scope rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
