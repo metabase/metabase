@@ -58,7 +58,9 @@ export const viewEmailPage = (emailSubject) => {
   const webmailInterface = `http://localhost:${WEB_PORT}`;
 
   cy.window().then((win) => (win.location.href = webmailInterface));
-  cy.findByText(emailSubject).click();
+  if (emailSubject) {
+    cy.findByText(emailSubject).click();
+  }
 };
 
 export const openEmailPage = (emailSubject) => {
@@ -125,5 +127,23 @@ export function sendEmailAndVisitIt() {
   return cy.request("GET", emailUrl).then(({ body }) => {
     const latest = body.slice(-1)[0];
     cy.visit(`${emailUrl}/${latest.id}/html`);
+  });
+}
+
+export function checkEmailContent(subject, body) {
+  viewEmailPage(subject);
+
+  cy.get(".main-container").within(() => {
+    cy.get(".subject").should("contain", subject);
+    cy.get(".preview-iframe")
+      .its("0.contentDocument.body")
+      .should("not.be.empty")
+      .then(($body) => {
+        if (Array.isArray(body)) {
+          body.forEach((str) => expect($body).to.contain(str));
+        } else {
+          expect($body).to.contain(body);
+        }
+      });
   });
 }
