@@ -143,7 +143,7 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "error";
+  status: "not-connected" | "syncing" | "active" | "paused" | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -242,7 +242,11 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "metabot_v3",
+  "ai_sql_fixer",
+  "ai_sql_generation",
   "database_routing",
+  "development-mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -293,6 +297,9 @@ export interface UploadsSettings {
 
 interface InstanceSettings {
   "admin-email": string;
+  "email-from-name": string | null;
+  "email-from-address": string | null;
+  "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
   "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
@@ -347,7 +354,7 @@ interface AdminSettings {
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
-  "version-info": VersionInfo | null;
+  "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
@@ -393,9 +400,9 @@ interface PublicSettings {
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
-  "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
+  "enable-sandboxes?": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
@@ -433,6 +440,7 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "non-table-chart-generated": boolean;
 }
 
 export type UserSettings = {
@@ -490,9 +498,13 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
+export type ColorSettings = Record<string, string>;
+
 export type IllustrationSettingValue = "default" | "none" | "custom";
+export type TimeoutValue = { amount: number; unit: string };
+
 export interface EnterpriseSettings extends Settings {
-  "application-colors"?: Record<string, string>;
+  "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
@@ -507,6 +519,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "saml-user-provisioning-enabled?"?: boolean;
+  "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

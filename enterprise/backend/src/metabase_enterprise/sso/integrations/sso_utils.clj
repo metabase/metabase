@@ -3,11 +3,12 @@
   (:require
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
-   [metabase.events.notification :as events.notification]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.events.core :as events]
+   [metabase.notification.core :as notification]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -34,7 +35,7 @@
   [user-provisioning-type]
   (when (not user-provisioning-type)
     (throw (ex-info (trs "Sorry, but you''ll need a {0} account to view this page. Please contact your administrator."
-                         (u/slugify (public-settings/site-name))) {}))))
+                         (u/slugify (appearance/site-name))) {}))))
 
 (defmulti check-user-provisioning
   "If `user-provisioning-enabled?` is false, then we should throw an error when attempting to create a new user."
@@ -63,7 +64,7 @@
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       ;; skip sending user invited emails for sso users
-      (binding [events.notification/*skip-sending-notification?* true]
+      (binding [notification/*skip-sending-notification?* true]
         (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
       (when (sso/send-new-sso-user-admin-email?)
@@ -105,7 +106,7 @@
   [redirect-url]
   (try
     (let [redirect (some-> redirect-url (URI.))
-          our-host (some-> (public-settings/site-url) (URI.) (.getHost))]
+          our-host (some-> (system/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url)
                          (relative-uri? redirect)
                          (= (.getHost redirect) our-host))))

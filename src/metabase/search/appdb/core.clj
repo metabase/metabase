@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -68,6 +69,17 @@
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
+(defn add-table-where-clauses
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  [search-ctx qry]
+  (sql.helpers/where qry
+                     [:or
+                      [:= :search_index.model nil]
+                      [:!= :search_index.model [:inline "table"]]
+                      [:and
+                       [:= :search_index.model [:inline "table"]]
+                       (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]]))
+
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -122,6 +134,7 @@
           scorers (search.scoring/scorers search-ctx)]
       (->> (search.index/search-query search-string search-ctx [:legacy_input])
            (add-collection-join-and-where-clauses search-ctx)
+           (add-table-where-clauses search-ctx)
            (search.scoring/with-scores search-ctx scorers)
            (search.filter/with-filters search-ctx)
            t2/query
@@ -148,9 +161,16 @@
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
-  (let [created? (search.index/ensure-ready! opts)]
-    (when (or created? re-populate?)
-      (populate-index! :search/updating))))
+  (let [index-created (search.index/when-index-created)]
+    (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
+      (do
+        (log/debug "Forcing early reindex because existing index is old")
+        (search.engine/reindex! :search.engine/appdb {}))
+
+      (let [created? (search.index/ensure-ready! opts)]
+        (when (or created? re-populate?)
+          (log/debug "Populating index")
+          (populate-index! :search/updating))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]

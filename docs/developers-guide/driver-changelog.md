@@ -6,6 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.55.0
 
+- Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
+
+- Add the multi-method `date-dbtype` that allows the driver to control which types dates are cast to.
+
+- Extend `date()` to accept a DateTime (or DB equivalent) in addition to an ISO string. When given a DateTime, it will truncate it to a date.
+
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
@@ -19,6 +25,19 @@ title: Driver interface changelog
 - Added a feature `:expressions/float` for drivers that support casting text to floats.
 
 - Added the multi-method `integer-dbtype` that allows the driver to control which type integers are cast to.
+
+- The `metabase.upload` namespace has been replaced with `metabase.upload.core`, but upload type keywords e.g.
+  `:metabase.upload/varchar-255` remain unchanged. Make sure you weren't using `::` keywords inside methods like
+  `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
+  `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
+
+- The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
+  update your usages.
+
+- The namespace `metabase.public-settings` has been removed, and settings have been moved to appropriate modules, e.g.
+  `site-uuid` now lives in `metabase.system.core`. If you were using this namespace, please update your code
+  accordingly. You should be able to find the correct one by looking at how those settings are used in our first-party
+  drivers.
 
 ## Metabase 0.54.0
 

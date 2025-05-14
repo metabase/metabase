@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - master
+      - metabot-v3-main
       - feature-visualizer
       - internal-tools
     paths-ignore:
@@ -141,6 +142,8 @@ jobs:
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
       release: "false"
+      build-args: |
+        GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.sha }}
 
   run-trivy:
     needs: [get-container-info, containerize]

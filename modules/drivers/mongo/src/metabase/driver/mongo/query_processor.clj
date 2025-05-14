@@ -19,6 +19,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -30,7 +31,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -189,6 +189,8 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
+(declare with-rvalue-temporal-bucketing)
+
 (defn- scope-with-join-field
   "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
   [field-name join-field source-alias]
@@ -243,6 +245,9 @@
       (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
+
+      (isa? coercion :Coercion/DateTime->Date)
+      (with-rvalue-temporal-bucketing field-name :day)
 
       (isa? coercion :Coercion/String->Float)
       {"$toDouble" field-name}
@@ -303,8 +308,6 @@
                                               [resolution])]
                              [part (str (name parts) \. (name part))]))}))
 
-(declare with-rvalue-temporal-bucketing)
-
 (defn- days-till-start-of-first-full-week
   [column]
   (let [start-of-year                (with-rvalue-temporal-bucketing column :year)
@@ -338,7 +341,7 @@
                   {:$dateTrunc {:date column
                                 :unit (name unit)
                                 :timezone (qp.timezone/results-timezone-id)
-                                :startOfWeek (name (public-settings/start-of-week))}}
+                                :startOfWeek (name (lib-be/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column

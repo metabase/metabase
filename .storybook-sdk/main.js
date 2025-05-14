@@ -11,7 +11,7 @@ const {
 
 module.exports = {
   stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
-  staticDirs: ["../resources/frontend_client"],
+  staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-interactions",
@@ -25,9 +25,9 @@ module.exports = {
     options: {},
   },
   typescript: {
-    reactDocgen: "react-docgen-typescript",
+    reactDocgen: false,
   },
-  webpackFinal: storybookConfig => ({
+  webpackFinal: (storybookConfig) => ({
     ...storybookConfig,
     plugins: [
       ...storybookConfig.plugins,
@@ -44,10 +44,10 @@ module.exports = {
       ...storybookConfig.module,
       rules: [
         ...storybookConfig.module.rules.filter(
-          rule => !isCSSRule(rule) && !isSvgRule(rule),
+          (rule) => !isCSSRule(rule) && !isSvgRule(rule),
         ),
         ...appConfig.module.rules.filter(
-          rule => isCSSRule(rule) || isSvgRule(rule),
+          (rule) => isCSSRule(rule) || isSvgRule(rule),
         ),
       ],
     },
@@ -65,8 +65,8 @@ module.exports = {
   }),
 };
 
-const isCSSRule = rule => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = rule => rule.test && rule.test?.test(".svg");
+const isCSSRule = (rule) => rule.test?.toString() === "/\\.css$/";
+const isSvgRule = (rule) => rule.test && rule.test?.test(".svg");
 
 function resolveEmbeddingSdkPackage() {
   let isEmbeddingSdkPackageInstalled = false;

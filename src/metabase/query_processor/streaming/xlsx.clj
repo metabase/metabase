@@ -9,9 +9,10 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
@@ -610,30 +611,41 @@
 
 (defn- init-workbook
   "Initializes the provided workbook, and returns the created sheet"
-  [{:keys [workbook ordered-cols col-count col-settings format-rows? pivot?]}]
+  [{:keys [workbook ordered-cols col-count viz-settings format-rows? pivot?]}]
   (let [sheet (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
     (when (not pivot?)
       (setup-header-row! sheet (count ordered-cols))
-      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or col-settings []) format-rows?)))
+      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?)))
     sheet))
 
+(defn get-formatter
+  "Returns a memoized formatter for a column"
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (formatter/create-formatter timezone column settings format-rows?))))
+
 (defn- create-formatters
-  [cell-styles cols indexes]
-  (let [cell-styles (vec cell-styles)
-        cols        (vec cols)]
+  [cell-styles cols indexes timezone settings format-rows?]
+  (let [cell-styles  (vec cell-styles)
+        cols         (vec cols)
+        formatter-fn (get-formatter timezone settings format-rows?)]
     (mapv (fn [idx]
-            (fn [value]
-              {:col          (nth cols idx)
-               :value        value
-               :styles       (nth cell-styles idx)}))
+            (let [col (nth cols idx)
+                  formatter (formatter-fn col)]
+              (fn [value]
+                {:col                  (nth cols idx)
+                 :value                value
+                 :xlsx-formatted-value (formatter (streaming.common/format-value value))
+                 :styles               (nth cell-styles idx)})))
           indexes)))
 
 (defn- make-formatters
-  [cell-styles cols row-indexes col-indexes val-indexes]
-  {:row-formatters (create-formatters cell-styles cols row-indexes)
-   :col-formatters (create-formatters cell-styles cols col-indexes)
-   :val-formatters (create-formatters cell-styles cols val-indexes)})
+  [cell-styles cols row-indexes col-indexes val-indexes settings timezone format-rows?]
+  {:row-formatters (create-formatters cell-styles cols row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters cell-styles cols col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters cell-styles cols val-indexes timezone settings format-rows?)})
 
 (defn- generate-styles
   [workbook viz-settings non-pivot-cols format-rows?]
@@ -652,8 +664,8 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
-               {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [pivot-spec       (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
+               viz-settings]
+        (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
                                                                 pivot-export-options) ordered-cols))
@@ -672,7 +684,7 @@
                       :pivot-export-options pivot-export-options})
             (let [sheet (init-workbook {:workbook     workbook
                                         :ordered-cols non-pivot-cols
-                                        :col-settings col-settings
+                                        :viz-settings viz-settings
                                         :format-rows? true})]
               (set-no-style-custom-helper! sheet)
               (vreset! styles (generate-styles workbook viz-settings non-pivot-cols format-rows?))
@@ -703,7 +715,7 @@
         (when @pivot-data
           ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
           ;; document all at once
-          (let [{:keys [settings non-pivot-cols pivot-export-options format-rows?]} @pivot-data
+          (let [{:keys [settings non-pivot-cols pivot-export-options timezone format-rows?]} @pivot-data
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
 
                 {:keys [cell-styles typed-cell-styles]}
@@ -713,7 +725,10 @@
                                             non-pivot-cols
                                             pivot-rows
                                             pivot-cols
-                                            pivot-measures)
+                                            pivot-measures
+                                            settings
+                                            timezone
+                                            format-rows?)
                 output (qp.pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)

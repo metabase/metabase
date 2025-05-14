@@ -100,6 +100,45 @@ describe("format", () => {
         expression`
           90071992547409901
         `,
+        expression`
+          1 + 2 - (3 + 4)
+        `,
+        expression`
+          1 - 2 + (3 - 4)
+        `,
+        expression`
+          1 - 2 - 3 + 4
+        `,
+        expression`
+          1 * 2 / (3 + 4)
+        `,
+        expression`
+          1 / 2 * (3 / 4)
+        `,
+        expression`
+          1 / 2 / 3 * 4
+        `,
+        expression`
+          1 * (2 + 3)
+        `,
+        expression`
+          1 * (2 - 3)
+        `,
+        expression`
+          1 * (2 / 3)
+        `,
+        expression`
+          1 / (2 + 3)
+        `,
+        expression`
+          1 / (2 - 3)
+        `,
+        expression`
+          1 / (2 / 3)
+        `,
+        expression`
+          1 - (2 - 3)
+        `,
       ]);
     });
 
@@ -204,6 +243,12 @@ describe("format", () => {
             "John"
           )
           OR [User ID] = 1
+        `,
+        expression`
+          NOT (
+            [Product ID] > 10
+            AND [Tax] < 10
+          )
         `,
       ]);
     });
@@ -326,12 +371,6 @@ describe("if printWidth = Infinity, it should return the same results as the sin
       "1 + [Subtotal]": op("+", 1, fields.orders.SUBTOTAL),
       "[User ID]": fields.orders.USER_ID,
       "[User → Name]": fields.people.NAME,
-    });
-  });
-
-  it("should format expression references", async () => {
-    await all({
-      "[foo]": op("expression", "foo"),
     });
   });
 

@@ -80,7 +80,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
     cy.findByLabelText("Edit dashboard").click();
 
     H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
-    H.expectGoodSnowplowEvent(EVENTS.duplicateDashcard);
+    H.expectUnstructuredSnowplowEvent(EVENTS.duplicateDashcard);
 
     // check that the new card loads _before_ saving
     cy.findAllByText("Products").should("have.length", 2);
@@ -88,7 +88,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
     cy.findAllByText("Small Marble Shoes").should("have.length", 2);
 
     H.saveDashboard();
-    H.expectGoodSnowplowEvent(EVENTS.saveDashboard);
+    H.expectUnstructuredSnowplowEvent(EVENTS.saveDashboard);
 
     // 2. Confirm filter still works
     H.filterWidget().click();
@@ -106,14 +106,14 @@ H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
     cy.findByLabelText("Edit dashboard").click();
 
     H.duplicateTab("Tab 1");
-    H.expectGoodSnowplowEvent(EVENTS.duplicateTab);
+    H.expectUnstructuredSnowplowEvent(EVENTS.duplicateTab);
     H.getDashboardCard().within(() => {
       cy.findByText("Products").should("exist");
       cy.findByText("Category").should("exist");
       cy.findByText(/(Problem|Error)/i).should("not.exist");
     });
     H.saveDashboard();
-    H.expectGoodSnowplowEvent(EVENTS.saveDashboard);
+    H.expectUnstructuredSnowplowEvent(EVENTS.saveDashboard);
 
     H.dashboardCards().within(() => {
       cy.findByText("Products");

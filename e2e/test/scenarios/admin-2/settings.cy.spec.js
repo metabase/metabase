@@ -30,7 +30,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "upsell_viewed",
         promoted_feature: "cloud",
       });
@@ -548,9 +548,12 @@ describe("scenarios > admin > settings > email settings", () => {
       Cypress.config().baseUrl + "/admin/settings/email",
     );
     cy.findByTestId("smtp-connection-card").should("exist");
-
     // Non SMTP-settings should save automatically
-    cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
+    cy.findByLabelText("From Address")
+      .clear()
+      .type("mailer@metabase.test")
+      .blur();
+
     cy.findByLabelText("From Name").type("Sender Name").blur();
     cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
@@ -1286,12 +1289,15 @@ describe("admin > settings > updates", () => {
     cy.signInAsAdmin();
     cy.visit("/admin/settings/updates");
 
-    cy.intercept("GET", "/api/session/properties", (req, res) => {
+    cy.intercept("GET", "/api/session/properties", (req) => {
       req.continue((res) => {
-        res.body["version-info"] = versionInfo;
         res.body.version.tag = currentVersion;
         return res.body;
       });
+    });
+
+    cy.intercept("GET", "/api/setting/version-info", (req) => {
+      req.reply(versionInfo);
     });
   });
 

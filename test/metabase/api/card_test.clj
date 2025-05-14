@@ -13,6 +13,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
@@ -22,7 +23,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -38,7 +38,6 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -342,7 +341,6 @@
   (mt/with-temp [:model/Database {database-id :id} {}
                  :model/Table {table-id :id} {:db_id database-id}
                  :model/Segment {segment-id :id} {:table_id table-id}
-                 :model/LegacyMetric {metric-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
                                                        :dataset_query {:query {:source-table (mt/id :venues)
@@ -354,12 +352,6 @@
                                                      :database (mt/id)
                                                      :type :query}}
                  :model/Card {other-card-id :id} {}
-                 ;; source-table doesn't match
-                 :model/Card card-2 {:name "Card 2"
-                                     :dataset_query (mt/mbql-query nil
-                                                      {:source-table (str "card__" other-card-id)
-                                                       :filter [:= [:field 5 nil] (str "card__" model-id)]
-                                                       :aggregation [[:metric metric-id]]})}
                  ;; matching join
                  :model/Card card-3 {:name "Card 3"
                                      :dataset_query (let [alias (str "Question " model-id)]
@@ -380,7 +372,7 @@
                                                                                  :filter [:or
                                                                                           [:> [:field 1 nil] 3]
                                                                                           [:segment segment-id]]
-                                                                                 :aggregation  [[:+ [:metric metric-id] 1]]
+                                                                                 :aggregation  [[:+ [:count] 1]]
                                                                                  :breakout     [[:field 4 nil]]}}]
                                                          :fields [[:field 9 nil]]
                                                          :source-table (str "card__" other-card-id)}))}
@@ -421,16 +413,13 @@
                                      :archived true
                                      :dataset_query {:query {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
-      (with-cards-in-readable-collection! [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
+      (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))
         (is (= #{"Card 1" "Card 3"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_segment :model_id segment-id))))
-        (is (= #{"Card 2" "Card 3"}
-               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_metric :model_id metric-id))))))))
+                                                           :f :using_segment :model_id segment-id))))))))
 
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
@@ -3007,22 +2996,38 @@
      [:model/Card source-card {:database_id   (mt/id)
                                :table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues {:limit 5})}
-      :model/Card field-filter-card  {:dataset_query
-                                      {:database (mt/id)
-                                       :type     :native
-                                       :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
-                                                  :template-tags {"NAME" {:id           "name_param_id"
-                                                                          :name         "NAME"
-                                                                          :display_name "Name"
-                                                                          :type         :dimension
-                                                                          :dimension    [:field (mt/id :venues :name) nil]
-                                                                          :required     true}}}}
-                                      :name       "native card with field filter"
-                                      :parameters [{:id     "name_param_id"
-                                                    :type   :string/=
-                                                    :target [:dimension [:template-tag "NAME"]]
-                                                    :name   "Name"
-                                                    :slug   "NAME"}]}
+      :model/Card field-filter-card {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
+                                                 :template-tags {"NAME" {:id           "name_param_id"
+                                                                         :name         "NAME"
+                                                                         :display_name "Name"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :venues :name) nil]
+                                                                         :required     true}}}}
+                                     :name       "native card with field filter"
+                                     :parameters [{:id     "name_param_id"
+                                                   :type   :string/=
+                                                   :target [:dimension [:template-tag "NAME"]]
+                                                   :name   "Name"
+                                                   :slug   "NAME"}]}
+      :model/Card name-mapped-card  {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM PEOPLE WHERE {{ID}}"
+                                                 :template-tags {"id" {:id           "id"
+                                                                       :name         "ID"
+                                                                       :display_name "Id"
+                                                                       :type         :dimension
+                                                                       :dimension    [:field (mt/id :people :id) nil]
+                                                                       :required     true}}}}
+                                     :name       "native card with named field filter"
+                                     :parameters [{:id     "id"
+                                                   :type   :number/>=
+                                                   :target [:dimension [:template-tag "id"]]
+                                                   :name   "Id"
+                                                   :slug   "id"}]}
       :model/Card card        (merge
                                {:database_id   (mt/id)
                                 :dataset_query (mt/mbql-query venues)
@@ -3050,15 +3055,33 @@
      (f {:source-card       source-card
          :card              card
          :field-filter-card field-filter-card
-         :param-keys        {:static-list       "_STATIC_CATEGORY_"
-                             :static-list-label "_STATIC_CATEGORY_LABEL_"
-                             :card              "_CARD_"
-                             :field-values      "name_param_id"}}))))
+         :name-mapped-card  name-mapped-card
+         :param-keys        {:static-list          "_STATIC_CATEGORY_"
+                             :static-list-label    "_STATIC_CATEGORY_LABEL_"
+                             :card                 "_CARD_"
+                             :field-values         "name_param_id"
+                             :labeled-field-values "id"}}))))
 
 (defmacro with-card-param-values-fixtures
   "Execute `body` with all needed setup to tests param values on card."
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
+
+(deftest parameter-remapping-test
+  (with-card-param-values-fixtures [{:keys [card field-filter-card name-mapped-card param-keys]}]
+    (letfn [(request [{:keys [id] :as _card} value-source value]
+              (mt/user-http-request :crowberto :get 200
+                                    (format "card/%d/params/%s/remapping?value=%s" id (param-keys value-source) value)))]
+      (are [card value-source value] (= [value] (request card value-source value))
+        field-filter-card :field-values      "20th Century Cafe"
+        field-filter-card :field-values      "Not a value in the DB"
+        card              :card              "33 Taps"
+        card              :card              "Not provided by the card"
+        card              :static-list       "African"
+        card              :static-list       "Whatever"
+        card              :static-list-label "European")
+      (is (= ["African" "Af"] (request card :static-list-label "African")))
+      (is (= [42 "Reyes Strosin"] (request name-mapped-card :labeled-field-values "42"))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "getting values"
@@ -3251,34 +3274,6 @@
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
-
-(defn- upload-example-csv-via-api!
-  "Upload a small CSV file to the given collection ID. Default args can be overridden"
-  [& {:as args}]
-  (mt/with-current-user (mt/user->id :rasta)
-    (let [;; Make the file-name unique so the table names don't collide
-          filename (str "example csv file " (random-uuid) ".csv")
-          file     (upload-test/csv-file-with
-                    ["id, name"
-                     "1, Luke Skywalker"
-                     "2, Darth Vader"]
-                    filename)]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (@#'api.card/from-csv! (merge {:collection-id nil ;; root collection
-                                       :filename      filename
-                                       :file          file}
-                                      args))))))
-
-(deftest from-csv-test
-  (mt/test-driver :h2
-    (mt/with-empty-db
-      (testing "Happy path"
-        (t2/update! :model/Database (mt/id) {:uploads_enabled true :uploads_schema_name "PUBLIC" :uploads_table_prefix nil})
-        (let [{:keys [status body]} (upload-example-csv-via-api!)]
-          (is (= 200
-                 status))
-          (is (= body
-                 (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
@@ -3553,41 +3548,48 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
+(defn- native-card-with-template-tags []
+  {:dataset_query
+   {:type     :native
+    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+               :template-tags
+               {"id"      {:name         "id"
+                           :display-name "Id"
+                           :id           "_id_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :people :id) nil]
+                           :widget-type  :id
+                           :default      nil}
+                "name"    {:name         "name"
+                           :display-name "Name"
+                           :id           "_name_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :people :name) nil]
+                           :widget-type  :category
+                           :default      nil}
+                "source"  {:name         "source"
+                           :display-name "Source"
+                           :id           "_soure_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :people :source) nil]
+                           :widget-type  :category
+                           :default      nil}
+                "user_id" {:name         "user_id"
+                           :display-name "User"
+                           :id           "_user_id_"
+                           :type         :dimension
+                           :dimension    [:field (mt/id :orders :user_id) nil]
+                           :widget-type  :id
+                           :default      nil}}}
+    :database (mt/id)}
+   :query_type :native
+   :database_id (mt/id)})
+
 (deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
-     :model/Card {card-id-2 :id} {:dataset_query
-                                  {:type     :native
-                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-                                              :template-tags
-                                              {"id"      {:name         "id"
-                                                          :display-name "Id"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}
-                                               "name"    {:name         "name"
-                                                          :display-name "Name"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :name) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "source"  {:name         "source"
-                                                          :display-name "Source"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :source) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "user_id" {:name         "user_id"
-                                                          :display-name "User"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :orders :user_id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}}}
-                                   :database (mt/id)}
-                                  :query_type :native
-                                  :database_id (mt/id)}]
+     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
     (testing "Simple card"
       (is (=?
            {:fields empty?
@@ -3612,37 +3614,7 @@
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
-     :model/Card {card-id-2 :id} {:dataset_query
-                                  {:type     :native
-                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-                                              :template-tags
-                                              {"id"      {:name         "id"
-                                                          :display-name "Id"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}
-                                               "name"    {:name         "name"
-                                                          :display-name "Name"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :name) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "source"  {:name         "source"
-                                                          :display-name "Source"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :people :source) nil]
-                                                          :widget-type  :category
-                                                          :default      nil}
-                                               "user_id" {:name         "user_id"
-                                                          :display-name "User"
-                                                          :type         :dimension
-                                                          :dimension    [:field (mt/id :orders :user_id) nil]
-                                                          :widget-type  :id
-                                                          :default      nil}}}
-                                   :database (mt/id)}
-                                  :query_type :native
-                                  :database_id (mt/id)}]
+     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
     (testing "Simple card"
       (is (=? {:fields api.test-util/all-have-entity-ids?
                :tables api.test-util/all-have-entity-ids?

@@ -113,7 +113,6 @@
              :cum-sum
              :sum-where
              :var
-             ;; legacy metric ref
              :metric]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
