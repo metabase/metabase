@@ -422,7 +422,7 @@
                  (first
                   (:outputs
                    (actions/perform-action! :table.row/update
-                                            test-ns
+                                            test-scope
                                             (for [row [{id 1, name "Seed Bowl"}
                                                        {id 2, name "Millet Treat"}]]
                                               {:database (mt/id)
