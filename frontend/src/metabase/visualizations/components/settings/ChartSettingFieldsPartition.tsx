@@ -373,6 +373,43 @@ export const ChartSettingFieldsPartition = ({
     : t`Drag fields here`;
 
   const query = question.query();
+  const aggregationQuery = useMemo(() => {
+    if (!canEditColumns) {
+      return query;
+    }
+
+    const aggregations = (value?.values as PivotAggregation[]) || [];
+    if (aggregations.length === 0) {
+      return query;
+    }
+
+    const breakoutColumns = Lib.breakoutableColumns(query, -1);
+    const operators = Lib.availableAggregationOperators(query, 0);
+
+    // Create aggregation clauses and add them to the query using reduce
+    return aggregations.reduce((accQuery, agg) => {
+      // Find the column being aggregated (if any)
+      const columnObj = agg.column
+        ? breakoutColumns.find(
+            (col) => Lib.displayInfo(query, -1, col).name === agg.column?.name,
+          )
+        : undefined;
+
+      // Find the operator being used
+      const operator = operators.find(
+        (op) => Lib.displayInfo(query, -1, op).shortName === agg.aggregation,
+      );
+
+      // If we found the operator, add the aggregation to the query
+      if (operator) {
+        const clause = Lib.aggregationClause(operator, columnObj);
+        return Lib.aggregate(accQuery, -1, clause);
+      }
+
+      // If we couldn't create this aggregation, just return the query unchanged
+      return accQuery;
+    }, query);
+  }, [query, canEditColumns, value?.values]);
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -382,7 +419,7 @@ export const ChartSettingFieldsPartition = ({
         const AggregationOrBreakoutPopover =
           partitionType === "metric" ? (
             <AddAggregationPopover
-              query={query}
+              query={aggregationQuery}
               onAddAggregation={onAddAggregation}
             />
           ) : (
