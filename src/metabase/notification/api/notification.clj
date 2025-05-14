@@ -3,7 +3,6 @@
   (:require
    [clojure.data :refer [diff]]
    [honey.sql.helpers :as sql.helpers]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -18,7 +17,6 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
