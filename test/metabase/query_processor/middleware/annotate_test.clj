@@ -758,7 +758,7 @@
                        {:name "count_2", :display_name "count_2", :base_type :type/Number}]}))))))
 
 (deftest ^:parallel expressions-keys-test
-  (testing "make sure expressions come back with the right set of keys, including `:expression_name` (#8854)"
+  (testing "make sure expressions come back with the right set of keys (#8854)"
     (is (= {:name            "discount_price"
             :display_name    "discount_price"
             :base_type       :type/Float
