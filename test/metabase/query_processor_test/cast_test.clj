@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver.impl]
