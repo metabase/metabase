@@ -13,7 +13,10 @@ import {
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
-import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type {
+  DashboardCardCustomMenuItem,
+  MetabasePluginsConfig,
+} from "embedding-sdk/types/plugins";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import {
   DASHBOARD_DISPLAY_ACTIONS,
@@ -32,6 +35,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
+import type { DashboardModeProp } from "../../../../../../../frontend/src/metabase/dashboard/context/DashboardMode";
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
 import { StyledPublicComponentWrapper } from "./SdkDashboard.styled";
@@ -47,14 +51,6 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
  * @category InteractiveDashboard
  */
 export type SdkDashboardProps = {
-  /**
-   * @internal
-   * Controls the behavior of the dashboard.
-   * - `editable`: Allows editing and drill-throughs
-   * - `interactive`: Allows drill-throughs only
-   */
-  mode?: "editable" | "interactive";
-
   // @todo pass the question context to the question view component,
   //       once we have a public-facing question context.
   /**
@@ -77,17 +73,20 @@ export type SdkDashboardProps = {
    * Props for the drill-through question
    */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
-} & SdkDashboardDisplayProps &
-  DashboardEventHandlersProps;
+} & DashboardModeProp &
+  SdkDashboardDisplayProps &
+  DashboardEventHandlersProps &
+  Pick<DashboardCardCustomMenuItem, "withMetabot">;
 
 const SdkDashboardInner = ({
   drillThroughQuestionProps,
   onEditQuestion,
   mode,
-}: Pick<SdkDashboardProps, "mode"> &
+  withMetabot,
+}: Pick<SdkDashboardProps, "mode" | "withMetabot"> &
   Pick<InteractiveDashboardContextType, "onEditQuestion"> &
   Pick<SdkDashboardProps, "drillThroughQuestionProps">) => {
-  const { isEditing } = useDashboardContext();
+  const { downloadsEnabled, isEditing } = useDashboardContext();
 
   const dashboardActions = match({ mode, isEditing })
     .with(
@@ -100,9 +99,29 @@ const SdkDashboardInner = ({
     )
     .otherwise(() => DASHBOARD_DISPLAY_ACTIONS);
 
+  const dashcardMenu =
+    drillThroughQuestionProps?.plugins?.dashboard?.dashboardCardMenu ?? {};
+
   return (
     <InteractiveDashboardProvider
-      plugins={drillThroughQuestionProps?.plugins}
+      plugins={{
+        ...drillThroughQuestionProps?.plugins,
+        dashboard: {
+          ...drillThroughQuestionProps?.plugins?.dashboard,
+          dashboardCardMenu:
+            typeof dashcardMenu === "object"
+              ? {
+                  ...drillThroughQuestionProps?.plugins?.dashboard
+                    ?.dashboardCardMenu,
+                  ...(mode === "interactive" ? { withEditLink: false } : {}),
+                  withDownloads:
+                    dashcardMenu.withDownloads ??
+                    Boolean(downloadsEnabled.results),
+                  withMetabot,
+                }
+              : dashcardMenu,
+        },
+      }}
       onEditQuestion={onEditQuestion}
       dashboardActions={dashboardActions}
     >
@@ -125,6 +144,7 @@ export const SdkDashboard = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  withMetabot = false,
   withFooter = true,
   hiddenParameters = [],
   drillThroughQuestionHeight,
@@ -211,6 +231,7 @@ export const SdkDashboard = ({
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       <DashboardContextProvider
+        mode={mode}
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}
         refreshPeriod={refreshPeriod}
@@ -244,6 +265,7 @@ export const SdkDashboard = ({
           <SdkDashboardInner
             drillThroughQuestionProps={drillThroughQuestionProps}
             onEditQuestion={onEditQuestion}
+            withMetabot={withMetabot}
             mode={mode}
           />
         )}

@@ -77,6 +77,7 @@ function Dashboard() {
     closeSidebar,
     toggleSidebar,
     setEditingDashboard,
+    mode,
   } = useDashboardContext();
 
   const canWrite = Boolean(dashboard?.can_write);
@@ -131,7 +132,7 @@ function Dashboard() {
 
   const renderEmptyStates = () => {
     if (!dashboardHasCards) {
-      return canWrite ? (
+      return mode === "editable" && canWrite ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}
@@ -148,7 +149,7 @@ function Dashboard() {
     }
 
     if (dashboardHasCards && !tabHasCards) {
-      return canWrite ? (
+      return mode === "editable" && canWrite ? (
         <DashboardEmptyState
           canCreateQuestions={canCreateQuestions}
           addQuestion={handleAddQuestion}

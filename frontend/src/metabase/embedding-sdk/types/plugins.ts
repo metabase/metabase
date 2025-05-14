@@ -30,6 +30,7 @@ export type CustomDashboardCardMenuItem = ({
 export type DashboardCardCustomMenuItem = {
   withDownloads?: boolean;
   withEditLink?: boolean;
+  withMetabot?: boolean;
   customItems?: (DashCardMenuItem | CustomDashboardCardMenuItem)[];
 };
 
