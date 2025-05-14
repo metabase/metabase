@@ -64,7 +64,8 @@
                         :collection-id collection-id
                         :card-id       mbql-card-id
                         :table-id      table-id
-                        :database-id   db-id}
+                        :database-id   db-id
+                        :type          :dashcard}
                        (scope/hydrate {:dashcard-id dashcard-id-1}))))
 
               (testing "hydrate for dashcard with native card"
@@ -72,49 +73,57 @@
                         :dashboard-id  dashboard-id
                         :collection-id collection-id
                         :card-id       native-card-id
-                        :database-id   db-id}
+                        :database-id   db-id
+                        :type          :dashcard}
                        (scope/hydrate {:dashcard-id dashcard-id-2}))))
 
               (testing "hydrate for dashboard"
                 (is (= {:dashboard-id  dashboard-id
-                        :collection-id collection-id}
+                        :collection-id collection-id
+                        :type          :dashboard}
                        (scope/hydrate {:dashboard-id dashboard-id}))))
 
               (testing "hydrate for MBQL card"
                 (is (= {:card-id       mbql-card-id
                         :collection-id collection-id
                         :table-id      table-id
-                        :database-id   db-id}
+                        :database-id   db-id
+                        :type          :card}
                        (scope/hydrate {:card-id mbql-card-id}))))
 
               (testing "hydrate for native card"
                 (is (= {:card-id       native-card-id
                         :collection-id collection-id
-                        :database-id   db-id}
+                        :database-id   db-id
+                        :type          :card}
                        (scope/hydrate {:card-id native-card-id}))))
 
               (testing "hydrate for MBQL model"
                 (is (= {:model-id      mbql-card-id
                         :collection-id collection-id
                         :table-id      table-id
-                        :database-id   db-id}
+                        :database-id   db-id
+                        :type          :model}
                        (scope/hydrate {:model-id mbql-card-id}))))
 
               (testing "hydrate for native model"
                 (is (= {:model-id      native-card-id
                         :collection-id collection-id
-                        :database-id   db-id}
+                        :database-id   db-id
+                        :type          :model}
                        (scope/hydrate {:model-id native-card-id}))))
 
               (testing "hydrate for table"
                 (is (= {:table-id    table-id
-                        :database-id db-id}
+                        :database-id db-id
+                        :type        :table}
                        (scope/hydrate {:table-id table-id}))))
 
               (testing "hydrate for webhook"
                 (is (= {:webhook-id  webhook-id
                         :table-id    table-id
-                        :database-id db-id}
+                        :database-id db-id
+                        :type        :webhook}
                        (scope/hydrate {:webhook-id webhook-id})))))
 
             (finally

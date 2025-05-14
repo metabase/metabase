@@ -650,7 +650,8 @@
            metabase.notification.init
            metabase.notification.models
            metabase.notification.payload.core}
-   :uses #{analytics
+   :uses #{actions
+           analytics
            api
            appearance
            channel
