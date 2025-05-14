@@ -1,14 +1,17 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   Box,
   type BoxProps,
+  Button,
   Flex,
   Icon,
+  Paper,
+  Stack,
   Text,
   Textarea,
   UnstyledButton,
@@ -34,8 +37,12 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     setInputExpanded(false);
   }, []);
 
-  const handleSend = () => {
-    const trimmedInput = input.trim();
+  // TODO: i don't like the override, just trying to get this out quick..
+  // there's a problem where setting the value and sending in in the same
+  // function results in the current value being stale as rerender hasn't happend
+  // this this function to have the correct value in scope
+  const handleSend = (inputOverride?: string) => {
+    const trimmedInput = (inputOverride ?? input).trim();
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
@@ -81,10 +88,11 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     setMessage(value);
   };
 
-  const inputPlaceholder = t`Tell me to do something, or ask a question`;
-  const placeholder = metabot.isDoingScience
-    ? t`Doing science...`
-    : inputPlaceholder;
+  const promptSuggestions = [
+    t`Top performing products`,
+    t`Customers over time in the pacific northwest`,
+    t`Accounts in Europe that are still in trial`,
+  ];
 
   return (
     <Sidebar
@@ -123,6 +131,23 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           data-testid="metabot-chat-messages"
         >
           <Box className={Styles.messages}>
+            {metabot.messages.length === 0 && (
+              <Stack gap="sm">
+                <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
+                {promptSuggestions.map((suggestion, index) => (
+                  <Box key={index}>
+                    <Button
+                      fz="sm"
+                      size="xs"
+                      onClick={() => handleSend(suggestion)}
+                    >
+                      {suggestion}
+                    </Button>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+
             {metabot.messages.map(({ actor, message }, index) => (
               <Message
                 key={index}
@@ -138,6 +163,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
                 actor="agent"
                 message="Thinking..."
                 copyable={false}
+                shimmer
               />
             )}
           </Box>
@@ -148,55 +174,73 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           <Box w="33px" h="24px">
             <MetabotIcon isLoading={metabot.isDoingScience} />
           </Box>
-          <Text fz="sm" c="text-light">
-            {t`Metabot isn't perfect. Double-check results.`}
-          </Text>
+
+          {metabot.messages.length > 0 && metabot.isDoingScience === false && (
+            <Text fz="sm" c="text-light">
+              {t`Metabot isn't perfect. Double-check results.`}
+            </Text>
+          )}
         </Box>
 
-        <Flex
-          className={cx(
-            Styles.inputContainer,
-            metabot.isDoingScience && Styles.inputContainerLoading,
-            inputExpanded && Styles.inputContainerExpanded,
-          )}
-          gap="sm"
-        >
-          <Textarea
-            data-testid="metabot-chat-input"
-            w="100%"
-            autosize
-            minRows={1}
-            maxRows={4}
-            ref={textareaRef}
-            autoFocus
-            value={input}
-            disabled={metabot.isDoingScience}
+        {metabot.isLongConversation && (
+          <Text c="text-light" my="xs" ta="center">
+            {jt`This chat is getting long. You can ${(
+              <UnstyledButton
+                display="inline"
+                c="brand"
+                td="underline"
+                onClick={() => metabot.resetConversation()}
+              >{t`clear it`}</UnstyledButton>
+            )}.`}
+          </Text>
+        )}
+
+        <Box p="md">
+          <Paper
             className={cx(
-              Styles.textarea,
-              inputExpanded && Styles.textareaExpanded,
-              metabot.isDoingScience && Styles.textareaLoading,
+              Styles.inputContainer,
+              metabot.isDoingScience && Styles.inputContainerLoading,
+              inputExpanded && Styles.inputContainerExpanded,
             )}
-            placeholder={placeholder}
-            onChange={(e) => handleInputChange(e.target.value)}
-            // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
-            onHeightChange={handleMaybeExpandInput}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                // prevent event from inserting new line + interacting with other content
-                e.preventDefault();
-                e.stopPropagation();
-                handleSend();
-              }
-            }}
-          />
-          <UnstyledButton
-            h="1rem"
-            onClick={handleClose}
-            data-testid="metabot-close-chat"
+            withBorder
           >
-            <Icon name="close" c="text-light" size="1rem" />
-          </UnstyledButton>
-        </Flex>
+            <Textarea
+              data-testid="metabot-chat-input"
+              w="100%"
+              autosize
+              minRows={1}
+              maxRows={4}
+              ref={textareaRef}
+              autoFocus
+              value={input}
+              disabled={metabot.isDoingScience}
+              className={cx(
+                Styles.textarea,
+                inputExpanded && Styles.textareaExpanded,
+                metabot.isDoingScience && Styles.textareaLoading,
+              )}
+              placeholder={t`Tell me to do something, or ask a question`}
+              onChange={(e) => handleInputChange(e.target.value)}
+              // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
+              onHeightChange={handleMaybeExpandInput}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // prevent event from inserting new line + interacting with other content
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSend();
+                }
+              }}
+            />
+            <UnstyledButton
+              h="1rem"
+              onClick={handleClose}
+              data-testid="metabot-close-chat"
+            >
+              <Icon name="close" c="text-light" size="1rem" />
+            </UnstyledButton>
+          </Paper>
+        </Box>
       </Box>
     </Sidebar>
   );
@@ -207,11 +251,13 @@ const Message = ({
   message,
   className,
   copyable = true,
+  shimmer,
   ...props
 }: BoxProps & {
   actor: "agent" | "user";
   message: string;
   copyable?: boolean;
+  shimmer?: boolean;
 }) => {
   const clipboard = useClipboard();
 
@@ -224,7 +270,7 @@ const Message = ({
       )}
       {...props}
     >
-      <Box>{message}</Box>
+      <Box className={cx(shimmer && Styles.textShimmer)}>{message}</Box>
       <Flex justify="flex-end">
         {copyable && (
           <UnstyledButton onClick={() => clipboard.copy(message)} h="md">
