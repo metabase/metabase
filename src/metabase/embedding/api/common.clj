@@ -105,7 +105,8 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(mu/defn- resolve-dashboard-parameters :- [:sequential ms/Parameter]
+(mu/defn- resolve-dashboard-parameters :- [:sequential [:map
+                                                        [:id ms/NonBlankString]]]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/process-query-for-dashcard]]."

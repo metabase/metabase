@@ -130,11 +130,11 @@
           (qp (update query :info merge info) rff))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
-  [export-format]
-  (case export-format
-    "csv"  :public-csv-download
-    "xlsx" :public-xlsx-download
-    "json" :public-json-download
+  [export-format :- [:maybe :keyword]]
+  (case (keyword export-format)
+    :csv  :public-csv-download
+    :xlsx :public-xlsx-download
+    :json :public-json-download
     :public-question))
 
 (mu/defn process-query-for-card-with-id

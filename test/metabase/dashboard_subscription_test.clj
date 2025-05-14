@@ -980,7 +980,7 @@
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
          (with-open [os baos]
-           (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
+           (#'email.result-attachment/stream-api-results-to-export-format! os {:export-format :csv :format-rows? true} result)
            (let [output-string (.toString baos "UTF-8")]
              {:type         :attachment
               :content-type :csv
@@ -1028,7 +1028,7 @@
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"
-    (let [tmp (#'email.result-attachment/create-temp-file ".tmp")
+    (let [tmp (#'email.result-attachment/create-temp-file! ".tmp")
           {:keys [file-name]} (#'email.result-attachment/create-result-attachment-map :csv "テストSQL質問" tmp)]
       (is (= "テストSQL質問" (first (str/split file-name #"_")))))))
 

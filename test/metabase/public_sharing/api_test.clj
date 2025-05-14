@@ -534,11 +534,12 @@
                  keys
                  set))))))
 
-(deftest query-execution-context test
+(deftest query-execution-context-test
   (testing "Make sure we record the correct context for each export format (#45147)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [query (merge (mt/mbql-query venues)
-                         ;; Add these constraints for the API query so that the query hash matches in `with-query-execution!`
+                         ;; Add these constraints for the API query so that the query hash matches in
+                         ;; `with-query-execution!`
                          {:constraints {:max-results 10000, :max-results-bare-rows 2000}})]
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
           (testing "Default :api response format"

@@ -21,7 +21,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.queries.schema :as queries.schema]))
 
 (def ^:private HoneySQLColumn
   [:or
@@ -453,7 +454,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- :metabase.queries.models.card/type
+  [model :- ::queries.schema/card-type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
