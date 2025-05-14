@@ -25,6 +25,7 @@
    [metabase.cloud-migration.api]
    [metabase.collections.api]
    [metabase.config :as config]
+   [metabase.content-translation.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
@@ -143,6 +144,7 @@
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
+   "/content-translation"  metabase.content-translation.api/routes
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              (+auth 'metabase.api.dataset)
