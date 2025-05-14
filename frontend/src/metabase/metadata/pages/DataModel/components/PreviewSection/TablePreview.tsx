@@ -113,6 +113,10 @@ function useDataSample({
       error = t`Something went wrong fetching the data for this field. This could mean something is wrong with the field settings, like a cast that is not supported for the underlying data type. Please check your settings and try again.`;
     }
 
+    if (data.error_type === "missing-required-permissions") {
+      error = t`You do not have permission to preview this field's data.`;
+    }
+
     return {
       ...rest,
       rawSeries: undefined,
