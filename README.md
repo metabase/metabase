@@ -1,3 +1,5 @@
+hello
+
 # Metabase
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
@@ -61,7 +63,7 @@ To build and run with hot-reload:
 $ yarn build-hot
 ```
 
-### Backend  quick setup
+### Backend quick setup
 
 In order to run the backend, you'll need to build the drivers first, and then start the backend:
 
@@ -76,7 +78,7 @@ For a more detailed setup of a dev environment for Metabase, check out our [Deve
 
 You need [Babashka](https://github.com/babashka/babashka#quickstart) to run The Metabase Automation Genius Engine (MAGE). Run `./bin/mage` to list your tasks. All of them support `-h` to learn more and show examples.
 
-``` shell
+```shell
 $ ./bin/mage
    ███╗   ███╗ █████╗  ██████╗ ███████╗
    ████╗ ████║██╔══██╗██╔════╝ ██╔════╝
