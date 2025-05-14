@@ -16,7 +16,7 @@ import {
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
-  title: "EmbeddingSDK/InteractiveDashboard",
+  title: "EmbeddingSDK/dashboard/InteractiveDashboard",
   component: InteractiveDashboard,
   parameters: {
     layout: "fullscreen",

@@ -16,7 +16,7 @@ const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 const darkTheme = storybookThemes.dark;
 
 export default {
-  title: "EmbeddingSDK/EditableDashboard",
+  title: "EmbeddingSDK/dashboard/EditableDashboard",
   component: EditableDashboard,
   parameters: {
     layout: "fullscreen",
