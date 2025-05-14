@@ -64,7 +64,13 @@
                    ordered-fields))))
 
 (def ^:private timestamp-schema
-  [:timestamp  {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
+  [:timestamp {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
+
+(def ^:private scope-schema
+  [:scope [:map {:gen/return {:type       "dashboard"
+                              :origin_url (urls/dashboard-url 1337)}}
+           [:type :keyword]
+           [:origin_url :string]]])
 
 (def ^{:dynamic true
        :doc "Dynamic variable used to control the value of sampling example for row schema"}
@@ -98,7 +104,7 @@
                                    :url  (urls/table-url db_id *sample-table-id*)})
                                 {:id    1
                                  :name "orders"
-                                 :url  "https://metabase.com/databases/1337/table/1"}))}
+                                 :url  (urls/table-url 1337 1)}))}
             [:id :int]
             [:name :string]
             [:url :string]]]
@@ -112,9 +118,10 @@
   [:merge
    ::row.mutate
    [:map
-    [:context [:map  {:closed true}
+    [:context [:map {:closed true}
                [:event_name [:enum :event/row.created "event/row.created"]]
-               timestamp-schema]]
+               timestamp-schema
+               scope-schema]]
     [:record {:description "The newly created row with all its field values"
               :gen/fmap    (fn [_]
                              (if *sample-table-id*
@@ -131,7 +138,8 @@
    [:map
     [:context [:map {:closed true}
                [:event_name [:enum :event/row.updated "event/row.updated"]]
-               timestamp-schema]]
+               timestamp-schema
+               scope-schema]]
     [:record {:description "The row after updates were applied, containing all fields"
               :gen/fmap    (fn [_]
                              (if *sample-table-id*
@@ -159,7 +167,8 @@
    [:map {:closed true}
     [:context [:map {:closed true}
                [:event_name [:enum :event/row.deleted "event/row.deleted"]]
-               timestamp-schema]]
+               timestamp-schema
+               scope-schema]]
     [:record {:description "The row that was deleted, showing all field values before deletion"
               :gen/fmap    (fn [_]
                              (if *sample-table-id*
@@ -227,6 +236,12 @@
    [:event/row.updated ::row.updated]
    [:event/row.deleted ::row.deleted]])
 
+(defn- scope->origin-url
+  [{:keys [dashboard_id database_id table_id] :as scope}]
+  (case (:type scope)
+    (:dashcard :dashboard) (urls/dashboard-url dashboard_id)
+    (urls/table-url database_id table_id)))
+
 (mu/defn- bulk-row-transformation :- ::row.mutate.all
   [notification-info]
   (or (lib.util.match/match-one
@@ -234,6 +249,7 @@
         {:payload    {:event_name ?event_name}
          :creator    ?creator
          :event_info {:actor       ?actor
+                      :scope       ?scope
                       :args        {:table_id  ?table_id
                                     :db_id     ?db_id
                                     :table     {:name ?table_name
@@ -245,7 +261,9 @@
         (let [ordered-fields (table/ordered-fields ?table_id ?field_order)]
           (merge
            {:context  {:event_name ?event_name
-                       :timestamp  (u.date/format ?timestamp)}
+                       :timestamp  (u.date/format ?timestamp)
+                       :scope      {:type       (:type ?scope)
+                                    :origin_url (scope->origin-url ?scope)}}
             :editor   (select-keys ?actor [:first_name :last_name :email :common_name])
             :creator  (select-keys ?creator [:first_name :last_name :email :common_name])
             :table    {:id   ?table_id

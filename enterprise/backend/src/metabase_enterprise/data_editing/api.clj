@@ -2,9 +2,9 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.types :as types]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
+   [metabase.actions.types :as types]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]

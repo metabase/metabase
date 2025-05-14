@@ -13,6 +13,7 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.util.malli])))
@@ -142,22 +143,35 @@
       (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
 
-#?(:clj
-   (defn- require-all-keys
-     "Ensure maps has no optional keys, maybe is required."
-     [schema]
-     (mc/walk
-      schema
-      (fn [schema _path children _options]
-        (case (mc/type schema)
-          :map
-          (mc/-set-children schema
-                            (mapv (fn [[k p s]]
-                                    [k (dissoc p :optional) s]) children))
-          :maybe
-          (first children)
+(core/defn require-all-keys
+  "Ensure maps has no optional keys, maybe is required."
+  [schema]
+  (mc/walk
+   schema
+   (mc/schema-walker
+    (fn [schema]
+      (case (mc/type schema)
+        :map
+        (mc/-set-children schema
+                          (mapv (fn [[k p s]]
+                                  [k (dissoc p :optional) s]) (mc/children schema)))
+        :maybe
+        (first (mc/children schema))
 
-          schema)))))
+        schema)))))
+
+(core/defn snake-keyed-schema
+  "Ensure all maps has snake key schemas"
+  [schema]
+  (mc/walk
+   schema
+   (mc/schema-walker (fn [schema]
+                       (if (= :map (mc/type schema))
+                         (mc/-set-children schema
+                                           (mapv (fn [[k p s]]
+                                                   [(u/->snake_case_en k) p s]) (mc/children schema)))
+
+                         schema)))))
 
 #?(:clj
    (defn generate-example

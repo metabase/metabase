@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-editing.types
+(ns metabase.actions.types
   (:require
    [metabase.util.malli.registry :as mr]))
 
@@ -8,10 +8,10 @@
   [[:map [:dashboard-id pos-int?]]
    [:map [:dashcard-id pos-int?]]
    [:map [:card-id pos-int?]]
-   ;; We represent legacy-actions, which get called against a model, distinctly.
-   ;; Treated the same as card-id, mostly.
-   ;; Might end up always assigning the key according to the card type, or always use card-id, but either way we would
-   ;; then need some way to tell legacy-action invocations apart.
+  ;; We represent legacy-actions, which get called against a model, distinctly.
+  ;; Treated the same as card-id, mostly.
+  ;; Might end up always assigning the key according to the card type, or always use card-id, but either way we would
+  ;; then need some way to tell legacy-action invocations apart.
    [:map [:model-id pos-int?]]
    [:map [:table-id pos-int?]]
    [:map [:webhook-id pos-int?]]])

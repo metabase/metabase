@@ -2,7 +2,7 @@
 (ns metabase-enterprise.data-editing.scope
   (:require
    [macaw.util :as u]
-   [metabase-enterprise.data-editing.types :as types]
+   [metabase.actions.types :as types]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -58,9 +58,11 @@
 (mu/defn hydrate :- ::types/scope.hydrated
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
   [scope :- ::types/scope.raw]
-  (u/strip-nils
-   ;; Rerun until it converges.
-   (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope))))))
+  (let [scope-type (scope-type scope)]
+    (assoc (u/strip-nils
+            ;; Rerun until it converges.
+            (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope)))))
+           :type scope-type)))
 
 (mu/defn normalize :- ::types/scope.normalized
   "Remove all the implicit keys that can be derived from others. Useful to form stable keys. Idempotent."
