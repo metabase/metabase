@@ -614,29 +614,19 @@
 
   ([query :- ::qp.schema/query
     rff   :- [:maybe ::qp.schema/rff]]
-   (println "TSP run-pivot-query")
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
        (let [rff               (or rff qp.reducible/default-rff)
              query             (lib/query (qp.store/metadata-provider) query)
-             _                 (def query query)
              pivot-opts        (or
                                 (pivot-options query (get query :viz-settings))
                                 (pivot-options query (get-in query [:info :visualization-settings]))
                                 (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-             _                 (def tmp-pivot-opts pivot-opts)
-             _                 (println "TSP pivot-opts:" pivot-opts)
              query             (-> query
                                    (assoc-in [:middleware :pivot-options] pivot-opts)
                                    (add-pivot-group-breakout 0))
              all-queries       (generate-queries query pivot-opts)
-             _                 (def pivot-opts pivot-opts)
-             _                 (def all-queries all-queries)
              column-mapping-fn (make-column-mapping-fn query)
-             _                 (def column-mapping-fn column-mapping-fn)
-             res               (if (= 1 (count all-queries))
-                                 (qp/process-query (first all-queries) rff)
-                                 (process-multiple-queries all-queries rff column-mapping-fn))
-             _                 (def res res)]
+             res               (process-multiple-queries all-queries rff column-mapping-fn)]
          res)))))
