@@ -49,7 +49,11 @@ export function AIQuestionAnalysisSidebar({
 
     const timelineEvents =
       timelines
-        ?.flatMap((timeline) =>
+        ?.filter(
+          (timeline) =>
+            timeline.collection_id === question.card().collection_id,
+        )
+        .flatMap((timeline) =>
           timeline.events?.map((event) => ({
             name: event.name,
             description: event.description ?? undefined,

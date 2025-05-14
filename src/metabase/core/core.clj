@@ -5,6 +5,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
@@ -19,8 +20,7 @@
    [metabase.logger :as logger]
    [metabase.models.database :as database]
    [metabase.notification.core :as notification]
-   [metabase.plugins :as plugins]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
@@ -145,11 +145,12 @@
   (init-status/set-progress! 0.5)
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.55)
+  (task/init-scheduler!)
+  (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
-    (task/init-scheduler!)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
     (when new-install?

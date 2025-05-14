@@ -13,9 +13,9 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.secrets.core :as secret]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log])

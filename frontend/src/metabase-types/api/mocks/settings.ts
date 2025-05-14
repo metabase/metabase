@@ -195,6 +195,7 @@ export const createMockSettings = (
   "embedding-app-origins-sdk": "",
   "embedding-app-origins-interactive": "",
   "enable-embedding": false,
+  "non-table-chart-generated": true,
   "enable-embedding-static": false,
   "enable-embedding-sdk": false,
   "enable-embedding-interactive": false,

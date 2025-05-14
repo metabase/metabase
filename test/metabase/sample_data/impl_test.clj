@@ -9,7 +9,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.field-values :as field-values]
-   [metabase.plugins :as plugins]
+   [metabase.plugins.impl :as plugins]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]

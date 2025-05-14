@@ -18,9 +18,9 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]

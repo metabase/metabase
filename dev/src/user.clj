@@ -4,7 +4,7 @@
    [environ.core :as env]
    [hashp.preload]
    [metabase.core.bootstrap]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util :as u]
    [nrepl.cmdline]))
 
