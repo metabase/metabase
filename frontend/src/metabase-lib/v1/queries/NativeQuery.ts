@@ -347,11 +347,7 @@ export default class NativeQuery {
     operatorFilter = _.identity,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(
-        (tag) =>
-          (tag.type === "dimension" || tag.type === "temporal-unit") &&
-          operatorFilter(tag),
-      )
+      .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
       .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter((dimension) => dimensionFilter(dimension));
 

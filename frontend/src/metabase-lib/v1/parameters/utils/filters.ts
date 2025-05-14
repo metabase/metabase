@@ -98,9 +98,6 @@ export function columnFilterForParameter(
 export function dimensionFilterForParameter(parameter: Parameter | string) {
   const fieldFilter = fieldFilterForParameter(parameter);
   return (dimension: TemplateTagDimension) => {
-    if (dimension.isTemporalUnitType()) {
-      return getParameterType(parameter) === "temporal-unit";
-    }
     const field = dimension.field();
     return field != null && fieldFilter(field);
   };
@@ -140,6 +137,8 @@ function tagFilterForParameter(
       return (tag) => tag.type === "number";
     case "string":
       return (tag) => tag.type === "text";
+    case "temporal-unit":
+      return (tag) => tag.type === "temporal-unit";
   }
   return () => false;
 }
