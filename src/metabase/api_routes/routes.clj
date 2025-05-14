@@ -7,7 +7,6 @@
    [metabase.api-keys.api]
    [metabase.api.card]
    [metabase.api.cards]
-   [metabase.api.collection]
    [metabase.api.dashboard]
    [metabase.api.database]
    [metabase.api.dataset]
@@ -26,6 +25,7 @@
    [metabase.cache.api]
    [metabase.channel.api]
    [metabase.cloud-migration.api]
+   [metabase.collections.api]
    [metabase.config :as config]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
@@ -64,7 +64,6 @@
          metabase.api-keys.api/keep-me
          metabase.api.card/keep-me
          metabase.api.cards/keep-me
-         metabase.api.collection/keep-me
          metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
          metabase.api.dataset/keep-me
@@ -77,6 +76,7 @@
          metabase.bug-reporting.api/keep-me
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
+         metabase.collections.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
@@ -145,10 +145,10 @@
    "/cards"                (+auth 'metabase.api.cards)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
-   "/collection"           (+auth 'metabase.api.collection)
+   "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.api.dashboard)
    "/database"             (+auth 'metabase.api.database)
-   "/dataset"              'metabase.api.dataset
+   "/dataset"              (+auth 'metabase.api.dataset)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes

@@ -12,7 +12,6 @@
    [metabase.config :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
-   [metabase.server.middleware.json]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -31,10 +30,6 @@
    (java.time.temporal Temporal)
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
-
-;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
-;;; other things we need for `:json` settings
-(comment metabase.server.middleware.json/keep-me)
 
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of

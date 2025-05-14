@@ -2,8 +2,8 @@
   "This namespace contains functions for work with mongo specific database and database details."
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
+   [metabase.secrets.core :as secret]
    [metabase.util.i18n :refer [tru]])
   (:import
    (com.mongodb ConnectionString)))
