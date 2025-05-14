@@ -4,10 +4,10 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
-   [metabase.models.collection :as collection]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
@@ -15,7 +15,6 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
-   [metabase.moderation :as moderation]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -190,8 +189,6 @@
                                                  :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
-
-(comment moderation/keep-me)
 
 (defn archive-or-unarchive-internal-dashboard-questions!
   "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the

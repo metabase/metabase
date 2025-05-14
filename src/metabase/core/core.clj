@@ -25,9 +25,9 @@
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
+   [metabase.system.core :as system]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -77,7 +77,7 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        site-url  (or (public-settings/site-url)
+        site-url  (or (system/site-url)
                       (str "http://"
                            hostname
                            (when-not (= 80 port) (str ":" port))))
@@ -145,11 +145,12 @@
   (init-status/set-progress! 0.5)
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.55)
+  (task/init-scheduler!)
+  (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
-    (task/init-scheduler!)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
     (when new-install?
@@ -189,7 +190,7 @@
   []
   (let [start-time (t/zoned-date-time)]
     (init!*)
-    (public-settings/startup-time-millis!
+    (system/startup-time-millis!
      (.toMillis (t/duration start-time (t/zoned-date-time))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------

@@ -6,10 +6,10 @@
    [clojure.pprint :refer [cl-format]]
    [clojure.string :as str]
    [hiccup.util]
+   [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.types :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
@@ -156,7 +156,7 @@
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?        (= number-style "scientific")
         [decimal grouping] (or number-separators
-                               (get-in (public-settings/custom-formatting) [:type/Number :number_separators])
+                               (get-in (appearance/custom-formatting) [:type/Number :number_separators])
                                ".,")
         symbols            (doto (DecimalFormatSymbols.)
                              (cond-> decimal (.setDecimalSeparator decimal))

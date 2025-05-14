@@ -3,6 +3,7 @@ import type { USAGE_PROBLEM_MESSAGES } from "embedding-sdk/lib/usage-problem";
 export interface SdkUsageProblem {
   type: SdkUsageProblemKey;
   severity: "warning" | "error";
+  title: string;
   message: string;
   documentationUrl: string;
 }
