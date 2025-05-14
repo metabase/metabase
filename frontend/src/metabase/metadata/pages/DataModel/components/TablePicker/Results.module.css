@@ -11,6 +11,10 @@
   left: var(--mantine-spacing-xl);
   right: var(--mantine-spacing-xl);
 
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-focus);
+  }
+
   &.active {
     background-color: var(--mb-color-brand-light);
     color: var(--mb-color-brand);

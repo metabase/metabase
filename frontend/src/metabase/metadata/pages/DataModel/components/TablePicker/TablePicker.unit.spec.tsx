@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import {
   act,
@@ -241,4 +243,53 @@ describe("TablePicker", () => {
     expect(await screen.findByText(QUU.name)).toBeInTheDocument();
     expect(await screen.findByText(QUX.name)).toBeInTheDocument();
   });
+
+  it("should be possible to navigate with the keyboard", async () => {
+    const { onChange } = setup();
+
+    await userEvent.click(await screen.findByRole("textbox"));
+
+    // focus the first item
+    await userEvent.keyboard("{Tab}");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)).toHaveFocus();
+
+    // arrow down moves focus down
+    await userEvent.keyboard("{ArrowDown}");
+    expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS.name)).toHaveFocus();
+
+    // arrow up moves focus up
+    await userEvent.keyboard("{ArrowUp}");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)).toHaveFocus();
+
+    // right arrow opens the node
+    await userEvent.keyboard("{ArrowRight}");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe("true");
+
+    // left arrow closes the node
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe(
+      undefined,
+    );
+
+    // space toggles the node
+    await userEvent.keyboard(" ");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe("true");
+
+    await userEvent.keyboard(" ");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe(
+      undefined,
+    );
+
+    // enter selects the node
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith({
+      databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
+    });
+  });
 });
+
+function item(name: string) {
+  return screen.getByText(name)?.parentNode?.parentNode as
+    | HTMLDivElement
+    | undefined;
+}

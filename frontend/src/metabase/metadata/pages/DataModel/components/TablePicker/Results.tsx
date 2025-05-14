@@ -86,6 +86,41 @@ export function Results({
             (item) => item.index === parentIndex,
           );
 
+          const handleItemSelect = (open?: boolean) => {
+            toggle?.(key, open);
+            if (value && (!isExpanded || type === "table")) {
+              onItemClick?.(value);
+            }
+          };
+
+          const handleKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
+            if (evt.code === "ArrowDown") {
+              ref.current
+                ?.querySelector<HTMLDivElement>(`[data-index='${index + 1}']`)
+                ?.focus();
+
+              evt.preventDefault();
+            }
+            if (evt.code === "ArrowRight") {
+              handleItemSelect(true);
+              evt.preventDefault();
+            }
+            if (evt.code === "ArrowLeft") {
+              handleItemSelect(false);
+              evt.preventDefault();
+            }
+            if (evt.code === "ArrowUp") {
+              ref.current
+                ?.querySelector<HTMLDivElement>(`[data-index='${index - 1}']`)
+                ?.focus();
+              evt.preventDefault();
+            }
+            if (evt.code === "Space" || evt.code === "Enter") {
+              handleItemSelect();
+              evt.preventDefault();
+            }
+          };
+
           return (
             <Fragment key={key}>
               {type !== "database" && (
@@ -102,19 +137,16 @@ export function Results({
                 ref={virtual.measureElement}
                 className={cx(S.item, S[type], { [S.active]: isActive })}
                 data-index={index}
+                data-open={isExpanded}
+                tabIndex={0}
                 style={{
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
                 }}
                 data-test-id="tree-item"
                 data-type={type}
-                onClick={() => {
-                  toggle?.(key);
-
-                  if (value && (!isExpanded || type === "table")) {
-                    onItemClick?.(value);
-                  }
-                }}
+                onKeyDown={handleKeyDown}
+                onClick={() => handleItemSelect()}
               >
                 <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
                   {hasChildren(type) && (
