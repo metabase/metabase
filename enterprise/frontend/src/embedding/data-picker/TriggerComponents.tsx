@@ -9,7 +9,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import DataSelectorS from "./DataSelector.module.css";
+import DataSelectorS from "./DataSelector/DataSelector.module.css";
 
 export function Trigger({
   className,

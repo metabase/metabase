@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase.api.card-test :refer [card-with-name-and-query]]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]))
 
 (def dashboard-defaults {:name          "Dashboard"

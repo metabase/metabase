@@ -5,7 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.druid.sync :as druid.sync]
-   [metabase.models.secret :as secret]
+   [metabase.secrets.models.secret :as secret]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]

@@ -11,7 +11,10 @@ import { useDispatch } from "metabase/lib/redux";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
-import type { DashboardCard } from "metabase-types/api";
+import type {
+  DashboardCard,
+  Dashboard as IDashboard,
+} from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { DashboardGridConnected } from "../DashboardGrid";
@@ -111,19 +114,20 @@ function Dashboard() {
   );
   const canCreateQuestions = hasDataAccess || hasNativeWrite;
 
+  const handleSetEditing = useCallback(
+    (dashboard: IDashboard | null) => {
+      if (!isEditing) {
+        onRefreshPeriodChange(null);
+        setEditingDashboard(dashboard);
+      }
+    },
+    [isEditing, onRefreshPeriodChange, setEditingDashboard],
+  );
+
   const handleAddQuestion = useCallback(() => {
-    if (!isEditing) {
-      onRefreshPeriodChange?.(null);
-      setEditingDashboard(dashboard);
-    }
+    handleSetEditing(dashboard);
     toggleSidebar(SIDEBAR_NAME.addQuestion);
-  }, [
-    dashboard,
-    isEditing,
-    onRefreshPeriodChange,
-    setEditingDashboard,
-    toggleSidebar,
-  ]);
+  }, [handleSetEditing, dashboard, toggleSidebar]);
 
   const renderEmptyStates = () => {
     if (!dashboardHasCards) {
@@ -273,6 +277,7 @@ function Dashboard() {
                       reportAutoScrolledToDashcard={
                         reportAutoScrolledToDashcard
                       }
+                      handleSetEditing={handleSetEditing}
                     />
                   </FullWidthContainer>
                 )}
