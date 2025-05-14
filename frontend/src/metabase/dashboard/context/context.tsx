@@ -75,6 +75,8 @@ export const DashboardContext = createContext<ContextReturned | undefined>(
 );
 
 const DashboardContextProviderInner = ({
+  mode,
+
   dashboardId: initialDashboardId,
   parameterQueryParams = {},
   onLoad,
@@ -300,6 +302,7 @@ const DashboardContextProviderInner = ({
   return (
     <DashboardContext.Provider
       value={{
+        mode,
         initialDashboardId,
         dashboardId,
         parameterQueryParams,
