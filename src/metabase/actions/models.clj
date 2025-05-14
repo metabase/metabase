@@ -391,7 +391,6 @@
              :type (:base_type field)
              :target [:variable [:template-tag field-name]]
              :slug  field-name
-             ;; todo
              :required (or (= :type/PK (:semantic_type field))
                            (:database_required field))
              :is-auto-increment (:database_is_auto_increment field)})
