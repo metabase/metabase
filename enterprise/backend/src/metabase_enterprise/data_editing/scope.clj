@@ -33,9 +33,9 @@
           source-table (-> card :dataset_query :query :source-table)
           table-id     (when (pos-int? source-table)
                          source-table)]
-      (merge {:table-id table-id,
-              :collection-id (:collection_id card),
-              :database-id (:database_id card)}
+      (merge {:table-id      table-id
+              :collection-id (:collection_id card)
+              :database-id   (:database_id card)}
              scope))))
 
 (defn- hydrate-scope* [scope]

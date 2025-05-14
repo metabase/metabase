@@ -48,7 +48,7 @@
     [:map {:closed true}
      [:type                           [:enum :card]]
      [:card-id                        pos-int?]
-     [:collection-id                  pos-int?]
+     [:collection-id {:optional true} pos-int?]
      [:table-id      {:optional true} pos-int?]
      [:database-id                    pos-int?]]]
    ;; model - unified type that handles both with and without table cases
@@ -56,7 +56,7 @@
     [:map {:closed true}
      [:type                           [:enum :model]]
      [:model-id                       pos-int?]
-     [:collection-id                  pos-int?]
+     [:collection-id {:optional true} pos-int?]
      [:table-id      {:optional true} pos-int?]
      [:database-id                    pos-int?]]]
    ;; dashcard - unified type that handles all cases:
