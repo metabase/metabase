@@ -11,7 +11,8 @@
   left: var(--mantine-spacing-xl);
   right: var(--mantine-spacing-xl);
 
-  &:focus-visible {
+  &:focus-visible,
+  &.selected {
     outline: 2px solid var(--mb-color-focus);
   }
 

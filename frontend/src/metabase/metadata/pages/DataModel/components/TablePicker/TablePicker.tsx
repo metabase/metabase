@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useState } from "react";
+import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -98,15 +99,60 @@ function Search({
 }) {
   const debouncedQuery = useDebouncedValue(query, 300);
   const { tree, isLoading } = useSearch(debouncedQuery);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const items = flatten(tree);
   const isEmpty = !isLoading && items.length === 0;
+
+  useKeyPressEvent("ArrowDown", (evt) => {
+    setSelectedIndex((selectedIndex) => {
+      const nextTableIndex = items.findIndex(
+        (item, index) => item.type === "table" && index > selectedIndex,
+      );
+      if (nextTableIndex >= 0) {
+        return nextTableIndex;
+      }
+      const firstTableIndex = items.findIndex((item) => item.type === "table");
+      return firstTableIndex;
+    });
+    evt.preventDefault();
+  });
+  useKeyPressEvent("ArrowUp", (evt) => {
+    setSelectedIndex((selectedIndex) => {
+      const previousTableIndex = items.findLastIndex(
+        (item, index) => item.type === "table" && index < selectedIndex,
+      );
+      if (previousTableIndex >= 0) {
+        return previousTableIndex;
+      }
+      const lastTableIndex = items.findLastIndex(
+        (item) => item.type === "table",
+      );
+      return lastTableIndex;
+    });
+    evt.preventDefault();
+  });
+
+  useKeyPressEvent("Enter", (evt) => {
+    const item = items[selectedIndex];
+    if (item.value) {
+      onChange?.(item.value);
+      evt.preventDefault();
+    }
+  });
 
   if (isEmpty) {
     return <EmptyState title={t`No results.`} />;
   }
 
-  return <Results items={items} path={path} onItemClick={onChange} />;
+  return (
+    <Results
+      items={items}
+      path={path}
+      onItemClick={onChange}
+      selectedIndex={selectedIndex}
+    />
+  );
 }
 
 function EmptyState({ title }: { title: string }) {

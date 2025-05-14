@@ -18,11 +18,13 @@ export function Results({
   toggle,
   path,
   onItemClick,
+  selectedIndex,
 }: {
   items: FlatItem[];
   toggle?: (key: string, value?: boolean) => void;
   path: TreePath;
   onItemClick?: (path: TreePath) => void;
+  selectedIndex?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -135,10 +137,13 @@ export function Results({
               <Flex
                 key={key}
                 ref={virtual.measureElement}
-                className={cx(S.item, S[type], { [S.active]: isActive })}
+                className={cx(S.item, S[type], {
+                  [S.active]: isActive,
+                  [S.selected]: selectedIndex === index,
+                })}
                 data-index={index}
                 data-open={isExpanded}
-                tabIndex={0}
+                tabIndex={selectedIndex === undefined ? 0 : undefined}
                 style={{
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
