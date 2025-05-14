@@ -7,13 +7,15 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
-   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.channel.email.messages :as messages]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -24,8 +26,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -1129,6 +1129,9 @@
     (keyword (name type))
     :=))
 
+;; TODO needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
+;; TODO duplicates code in params.clj
+;; TODO needs to wrap models and metrics properly!
 (mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (let [cards (into {}
