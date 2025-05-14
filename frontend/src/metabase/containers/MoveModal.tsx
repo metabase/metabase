@@ -43,7 +43,7 @@ const makeRecentFilter = (
 ) => {
   return (recentItems: RecentItem[]) =>
     recentItems.filter(
-      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
+      (result) => !disableFn?.(result as CollectionPickerItem),
     );
 };
 
@@ -52,7 +52,7 @@ const makeSearchResultFilter = (
 ) => {
   return (searchResults: SearchResult[]) =>
     searchResults.filter(
-      (result) => !disableFn?.(result as CollectionPickerItem) ?? true,
+      (result) => !disableFn?.(result as CollectionPickerItem),
     );
 };
 
