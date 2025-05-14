@@ -31,14 +31,6 @@
    :headers {"Content-Type" "application/json"}
    :body (json/encode {:success true})})
 
-(api.macros/defendpoint :get "/dictionary"
-  "Provides content translations stored in the content_translations table"
-  [_route-params query-params _body]
-  (let [locale (:locale query-params)]
-    (if locale
-      {:data (ct/get-translations locale)}
-      {:data (ct/get-translations)})))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/content-translation` routes."
   (api.macros/ns-handler *ns* +auth))
