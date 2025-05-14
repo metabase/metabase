@@ -183,10 +183,10 @@
   (testing "visible-tables-filter-clause generates a HoneySQL clause that filters tables based on user permissions"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table    {table-id-1 :id} {:db_id db-id :name "Table1"}
-                     :model/Table    {table-id-2 :id} {:db_id db-id :name "Table2"}
-                     :model/Table    {table-id-3 :id} {:db_id db-id :name "Table3"}
-                     :model/Table    {table-id-4 :id} {:db_id db-id :name "Table4"}
+                     :model/Table    {table-view-data-unrestricted-create-queries-query-builder-id :id} {:db_id db-id :name "Table1"}
+                     :model/Table    {table-view-data-unrestricted-create-queries-query-builder-and-native-id :id} {:db_id db-id :name "Table2"}
+                     :model/Table    {table-view-data-blocked-create-queries-no-id :id} {:db_id db-id :name "Table3"}
+                     :model/Table    {table-view-data-legacy-no-self-service-create-queries-no-id :id} {:db_id db-id :name "Table4"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
 
@@ -201,17 +201,17 @@
         (data-perms/set-database-permission! pg2 db-id :perms/view-data :legacy-no-self-service)
         (data-perms/set-database-permission! pg2 db-id :perms/create-queries :no)
 
-        (data-perms/set-table-permission! pg1 table-id-1 :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! pg1 table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! pg1 table-view-data-unrestricted-create-queries-query-builder-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg1 table-view-data-unrestricted-create-queries-query-builder-id :perms/create-queries :query-builder)
 
-        (data-perms/set-table-permission! pg1 table-id-2 :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! pg1 table-id-2 :perms/create-queries :query-builder-and-native)
+        (data-perms/set-table-permission! pg1 table-view-data-unrestricted-create-queries-query-builder-and-native-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg1 table-view-data-unrestricted-create-queries-query-builder-and-native-id :perms/create-queries :query-builder-and-native)
 
-        (data-perms/set-table-permission! pg1 table-id-3 :perms/view-data :blocked)
-        (data-perms/set-table-permission! pg1 table-id-3 :perms/create-queries :no)
+        (data-perms/set-table-permission! pg1 table-view-data-blocked-create-queries-no-id :perms/view-data :blocked)
+        (data-perms/set-table-permission! pg1 table-view-data-blocked-create-queries-no-id :perms/create-queries :no)
 
-        (data-perms/set-table-permission! pg1 table-id-4 :perms/view-data :legacy-no-self-service)
-        (data-perms/set-table-permission! pg1 table-id-4 :perms/create-queries :no)
+        (data-perms/set-table-permission! pg1 table-view-data-legacy-no-self-service-create-queries-no-id :perms/view-data :legacy-no-self-service)
+        (data-perms/set-table-permission! pg1 table-view-data-legacy-no-self-service-create-queries-no-id :perms/create-queries :no)
 
         (let [user-id            (mt/user->id :rasta)
               fetch-visible-ids (fn [user-info permission-mapping table-id-field]
@@ -227,7 +227,10 @@
                                     :is-superuser? true}
                   permission-map {:perms/view-data      :unrestricted ; Levels don't matter for superuser
                                   :perms/create-queries :query-builder}]
-              (is (= #{table-id-1 table-id-2 table-id-3 table-id-4}
+              (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                       table-view-data-unrestricted-create-queries-query-builder-and-native-id
+                       table-view-data-blocked-create-queries-no-id
+                       table-view-data-legacy-no-self-service-create-queries-no-id}
                      (fetch-visible-ids user-info permission-map :id)))))
 
           (testing "Non-superuser should only see tables where they have both view and query permissions (mimics mi/can-read?)"
@@ -235,17 +238,20 @@
                                   :is-superuser? false}
                   permission-map {:perms/view-data      :unrestricted
                                   :perms/create-queries :query-builder}]
-              (is (= #{table-id-1 table-id-2}
+              (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                       table-view-data-unrestricted-create-queries-query-builder-and-native-id}
                      (fetch-visible-ids user-info permission-map :id))
                   "Clause should filter out tables without sufficient view/query permissions")
 
               (testing "using a sequence of fields for the table ID"
-                (is (= #{table-id-1 table-id-2}
+                (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                         table-view-data-unrestricted-create-queries-query-builder-and-native-id}
                        (fetch-visible-ids user-info permission-map [:coalesce :id :metabase_table.id]))
                     "Clause should work with coalesce when a sequence of fields is provided"))
 
               (testing "using a qualified keyword"
-                (is (= #{table-id-1 table-id-2}
+                (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                         table-view-data-unrestricted-create-queries-query-builder-and-native-id}
                        (fetch-visible-ids user-info permission-map :metabase_table.id))
                     "Clause should work with qualified keyword"))))
 
@@ -254,7 +260,8 @@
                                        :is-superuser? false}
                   permission-map      {:perms/view-data      :unrestricted
                                        :perms/create-queries :no}]
-              (is (= #{table-id-1 table-id-2}
+              (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                       table-view-data-unrestricted-create-queries-query-builder-and-native-id}
                      (fetch-visible-ids user-info permission-map :id))
                   "Clause should respect the provided permission levels")))
 
@@ -263,28 +270,34 @@
                                        :is-superuser? false}
                   permission-map      {:perms/view-data      :legacy-no-self-service
                                        :perms/create-queries :no}]
-              (is (= #{table-id-1 table-id-2 table-id-4}
+              (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                       table-view-data-unrestricted-create-queries-query-builder-and-native-id
+                       table-view-data-legacy-no-self-service-create-queries-no-id}
                      (fetch-visible-ids user-info permission-map :id))
                   "Clause should respect the provided permission levels")))
 
-          (testing "Non-superuser requiring :view-data :blocked should all tables since all values are more permissive "
+          (testing "Non-superuser requiring :view-data :blocked should see all tables since all values are more permissive "
             (let [user-info           {:user-id       user-id
                                        :is-superuser? false}
                   permission-map      {:perms/view-data      :blocked
                                        :perms/create-queries :no}]
-              (is (= #{table-id-1 table-id-2 table-id-3 table-id-4}
+              (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                       table-view-data-unrestricted-create-queries-query-builder-and-native-id
+                       table-view-data-blocked-create-queries-no-id
+                       table-view-data-legacy-no-self-service-create-queries-no-id}
                      (fetch-visible-ids user-info permission-map :id))
                   "Clause should filter correctly when requiring :blocked level")))
 
           (testing "Blocked table takes precedence over legacy-no-self-service when in any group a user is a member of"
-            (data-perms/set-table-permission! pg2 table-id-4 :perms/view-data :blocked)
-            (data-perms/set-table-permission! pg2 table-id-4 :perms/create-queries :no)
+            (data-perms/set-table-permission! pg2 table-view-data-legacy-no-self-service-create-queries-no-id :perms/view-data :blocked)
+            (data-perms/set-table-permission! pg2 table-view-data-legacy-no-self-service-create-queries-no-id :perms/create-queries :no)
 
             (let [user-info           {:user-id       user-id
                                        :is-superuser? false}
                   permission-map      {:perms/view-data      :legacy-no-self-service
                                        :perms/create-queries :no}]
-              (is (= #{table-id-1 table-id-2}
+              (is (= #{table-view-data-unrestricted-create-queries-query-builder-id
+                       table-view-data-unrestricted-create-queries-query-builder-and-native-id}
                      (fetch-visible-ids user-info permission-map :id))
                   "Clause should respect the provided permission levels"))))))))
 
