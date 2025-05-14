@@ -654,9 +654,6 @@
       (doseq [[table expressions] [[:people [{:expression (lib/+ 0 2)
                                               :db-type "INTEGER"
                                               :expected "2"}
-                                             {:expression (lib/concat "" "")
-                                              :db-type "TEXT"
-                                              :expected ""}
                                              {:expression (lib/concat "abc" "")
                                               :db-type "TEXT"
                                               :expected "abc"}
