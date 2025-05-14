@@ -298,6 +298,17 @@ export interface UploadsSettings {
   table_prefix: string | null;
 }
 
+type CustomGeoJSONSetting = Record<
+  string,
+  {
+    name: string;
+    url: string;
+    region_key: string;
+    region_name: string;
+    builtin?: boolean;
+  }
+>;
+
 interface InstanceSettings {
   "admin-email": string;
   "email-from-name": string | null;
@@ -341,6 +352,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
@@ -396,6 +408,7 @@ interface PublicSettings {
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
