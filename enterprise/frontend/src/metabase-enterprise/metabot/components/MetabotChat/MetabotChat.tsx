@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
-import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
+import { Box, Flex, Icon, Text, Textarea, UnstyledButton } from "metabase/ui";
 
 import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
@@ -11,7 +11,6 @@ import { MetabotIcon } from "../MetabotIcon";
 import Styles from "./MetabotChat.module.css";
 
 const MIN_INPUT_HEIGHT = 42;
-const ANIMATION_DURATION_MS = 300;
 
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -70,33 +69,52 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     <Sidebar
       isOpen={metabot.visible}
       side="right"
-      width="400px"
+      width="25rem"
       aria-hidden={!metabot.visible}
     >
-      <Box
-        className={Styles.container}
-        style={{ animationDuration: `${ANIMATION_DURATION_MS}ms` }}
-        data-testid="metabot-chat"
-      >
-        {metabot.userMessages.length > 0 && (
-          <Box className={Styles.responses} data-testid="metabot-chat-messages">
-            {metabot.userMessages.map((msg, index) => (
-              <Box
-                className={Styles.response}
-                key={msg}
-                data-testid="metabot-chat-message"
+      <Box className={Styles.container} data-testid="metabot-chat">
+        {/* header */}
+        <Box className={Styles.header} data-testid="metabot-chat-header">
+          <Text fz="xl" fw="bold">{t`Metabot Chat`}</Text>
+          <Flex gap="md">
+            <UnstyledButton
+              c="text-light"
+              onClick={() => metabot.resetConversation()}
+              h="md"
+            >
+              <Icon name="trash" size="1rem" />
+            </UnstyledButton>
+
+            <UnstyledButton
+              c="text-light"
+              onClick={() => metabot.setVisible(false)}
+              h="md"
+            >
+              <Icon name="close" size="1rem" />
+            </UnstyledButton>
+          </Flex>
+        </Box>
+
+        {/* chat messages */}
+        <Box className={Styles.responses} data-testid="metabot-chat-messages">
+          {metabot.userMessages.map((msg, index) => (
+            <Box
+              className={Styles.response}
+              key={msg}
+              data-testid="metabot-chat-message"
+            >
+              <Box>{msg}</Box>
+              <UnstyledButton
+                className={Styles.responseDismissBtn}
+                onClick={() => metabot.dismissUserMessage(index)}
+                h="md"
               >
-                <Box>{msg}</Box>
-                <UnstyledButton
-                  className={Styles.responseDismissBtn}
-                  onClick={() => metabot.dismissUserMessage(index)}
-                >
-                  <Icon name="close" size="1rem" />
-                </UnstyledButton>
-              </Box>
-            ))}
-          </Box>
-        )}
+                <Icon name="close" size="1rem" />
+              </UnstyledButton>
+            </Box>
+          ))}
+        </Box>
+
         <Flex
           className={cx(
             Styles.innerContainer,
