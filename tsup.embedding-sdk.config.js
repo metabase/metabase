@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { execSync } from "child_process";
 import fs from "fs";
 
@@ -98,26 +99,6 @@ const aliases = {
     "dev/null",
   ),
 };
-
-const processPolyfillPlugin = () => ({
-  name: "process-polyfill",
-  setup(build) {
-    build.onResolve({ filter: /^process$/ }, () => ({
-      path: "process",
-      namespace: "process-polyfill",
-    }));
-    build.onLoad({ filter: /.*/, namespace: "process-polyfill" }, () => ({
-      contents: `export default { browser: true, env: { EMBEDDING_SDK_VERSION: ${JSON.stringify(
-        EMBEDDING_SDK_VERSION,
-      )}, GIT_BRANCH: ${JSON.stringify(GIT_BRANCH)}, GIT_COMMIT: ${JSON.stringify(
-        GIT_COMMIT,
-      )}, IS_EMBEDDING_SDK: true, BUILD_TIME: ${JSON.stringify(
-        new Date().toISOString(),
-      )}, NODE_ENV: ${JSON.stringify(isDevMode ? "development" : "production")} } };`,
-      loader: "js",
-    }));
-  },
-});
 
 const getFullPathFromResolvePath = ({ resolveDir, resolvePath, aliases }) => {
   let fullPath;
@@ -369,11 +350,15 @@ await build({
     css: LICENSE_BANNER,
   },
   env: {
+    BUILD_TIME: JSON.stringify(new Date().toISOString()),
     EMBEDDING_SDK_VERSION: JSON.stringify(EMBEDDING_SDK_VERSION),
     GIT_BRANCH: JSON.stringify(GIT_BRANCH),
     GIT_COMMIT: JSON.stringify(GIT_COMMIT),
     IS_EMBEDDING_SDK: "true",
-    BUILD_TIME: JSON.stringify(new Date().toISOString()),
+    MB_LOG_ANALYTICS: "false",
+    MB_LOG_CHARTS_DEBUG: "false",
+    STORYBOOK: "false",
+    WEBPACK_BUNDLE: "development", // this is weird, but it is how it is done in the rspack config
   },
   define: {
     // To completely disable the AMD parsing by a HostApp's bundler for 3rd parties.
@@ -415,7 +400,6 @@ await build({
       ignore: (path) => !(path === "react" || path === "react-dom"),
     }),
     NodeModulesPolyfillPlugin(),
-    processPolyfillPlugin(),
     svgrPlugin(),
     sideEffectsPlugin({
       sideEffects: [
