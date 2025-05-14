@@ -63,7 +63,7 @@
 
 (deftest available-tsv-languages
   (when (= :postgres (mdb/db-type))
-    (let [available #'search.postgres/available-tsv-languages]
+    (let [available @#'search.postgres/available-tsv-languages]
       (is (= :english (:en available)))
       (is (= :german (:de available)))
       (is (nil? (:ko available))))))
