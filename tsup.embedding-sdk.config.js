@@ -396,6 +396,32 @@ const sideEffectsPlugin = ({ sideEffects }) => ({
 
       return result;
     });
+
+    build.onEnd((result) => {
+      if (!result.warnings.length) {
+        return;
+      }
+
+      const sideEffectWarnings = result.warnings.filter((warning) =>
+        warning.text.includes("Ignoring this import because"),
+      );
+
+      if (!sideEffectWarnings.length) {
+        return;
+      }
+
+      const errorMessage = sideEffectWarnings
+        .map((warning) => {
+          const {
+            location: { file },
+          } = warning;
+
+          return `Found unregistered side-effect import in ${file}. Add it to the \`sideEffects\` array of the \`sideEffectsPlugin\` plugin.`;
+        })
+        .join("\n\n");
+
+      throw new Error(errorMessage);
+    });
   },
 });
 
