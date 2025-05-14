@@ -253,3 +253,20 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
+
+(deftest classify-numeric-values
+  (testing "Make sure Integer fields are not classified as Category"
+    (let [field (mi/instance :model/Field {:base_type :type/Integer})
+          fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
+          threshold classifiers.category/category-cardinality-threshold]
+
+      (are [card]
+
+           (->
+            (classifiers.category/infer-is-category field (fingerprint card))
+            :semantic_type
+            (not= :type/Category))
+
+        (dec threshold)
+        threshold
+        (inc threshold)))))
