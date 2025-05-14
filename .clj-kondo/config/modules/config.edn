@@ -140,7 +140,6 @@
            request
            revisions
            sample-data
-           schema
            secrets
            server
            session
@@ -150,6 +149,7 @@
            types
            upload
            util
+           warehouse-schema
            xrays
            enterprise/advanced-permissions}}
 
@@ -348,9 +348,9 @@
            legacy-mbql
            lib
            query-processor
-           schema
            task
-           util}}
+           util
+           warehouse-schema}}
 
   driver
   {:api #{metabase.driver
@@ -621,13 +621,13 @@
            pulse
            queries
            query-processor
-           schema
            search
            setup
            sync
            system
            types
-           util}}
+           util
+           warehouse-schema}}
 
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
@@ -813,9 +813,9 @@
            query-processor
            request
            revisions
-           schema
            search
-           util}}
+           util
+           warehouse-schema}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core
@@ -918,17 +918,6 @@
    :uses #{plugins
            settings
            sync
-           util}}
-
-  schema
-  {:api  #{metabase.schema.field
-           metabase.schema.table
-           metabase.schema.metadata-queries}
-   :uses #{api
-           driver
-           models
-           premium-features
-           types
            util}}
 
   search
@@ -1207,6 +1196,17 @@
            premium-features
            util}}
 
+  warehouse-schema
+  {:api  #{metabase.warehouse-schema.field
+           metabase.warehouse-schema.table
+           metabase.warehouse-schema.metadata-queries}
+   :uses #{api
+           driver
+           models
+           premium-features
+           types
+           util}}
+
   warehouses
   {:api  #{metabase.warehouses.core
            metabase.warehouses.init}
@@ -1463,8 +1463,8 @@
            premium-features
            query-processor
            request
-           schema
            util
+           warehouse-schema
            enterprise/api}}
 
   enterprise/scim

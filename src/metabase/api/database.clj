@@ -27,7 +27,6 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
-   [metabase.schema.table :as schema.table]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.core :as sync]
@@ -42,6 +41,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

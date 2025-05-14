@@ -1,4 +1,4 @@
-(ns metabase.schema.table
+(ns metabase.warehouse-schema.table
   (:require
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]

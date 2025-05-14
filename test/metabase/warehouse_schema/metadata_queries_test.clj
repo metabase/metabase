@@ -1,8 +1,8 @@
-(ns metabase.schema.metadata-queries-test
+(ns metabase.warehouse-schema.metadata-queries-test
   (:require
    [clojure.test :refer :all]
-   [metabase.schema.metadata-queries :as metadata-queries]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.warehouse-schema.metadata-queries :as metadata-queries]))
 
 (defn- ordered-filter [query]
   ;; sort by id [:field id option]

@@ -1,4 +1,4 @@
-(ns metabase.schema.metadata-queries
+(ns metabase.warehouse-schema.metadata-queries
   "Functions for constructing queries that can be used to get metadata about an attached data warehouse. TODO -- do
   these belong here? Or in `warehouses`? Or in `sync`?"
   (:require

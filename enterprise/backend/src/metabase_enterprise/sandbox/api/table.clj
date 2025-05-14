@@ -5,10 +5,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.schema.table :as schema.table]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (mu/defn- find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]

@@ -2,7 +2,7 @@
   "Predefined MBQL queries for getting metadata about an external database.
 
   TODO -- these have nothing to do with the application database. This namespace should moved into either `schema` or
-  `warehouses` or `sync` (TBD). Some of this stuff has already been moved into [[metabase.schema.metadata-queries]],
+  `warehouses` or `sync` (TBD). Some of this stuff has already been moved into [[metabase.warehouse-schema.metadata-queries]],
   maybe we should move the pure functions there (and move the ones that use the QP somewhere else)."
   (:require
    [clojure.string :as str]
@@ -14,10 +14,10 @@
    [metabase.lib.ident :as lib.ident]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.schema.metadata-queries :as schema.metadata-queries]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [toucan2.core :as t2]))
 
 (defn- add-breakout-idents-if-needed [{:keys [breakout] :as inner-query}]
@@ -26,7 +26,7 @@
 (defn table-query
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
   Add the required filters if the table requires it,
-  see [[metabase.schema.metadata-queries/add-required-filters-if-needed]] for more details. Also takes an optional
+  see [[metabase.warehouse-schema.metadata-queries/add-required-filters-if-needed]] for more details. Also takes an optional
   `rff`, use the default rff if not provided."
   ([table-id mbql-query]
    (table-query table-id mbql-query nil))

@@ -11,13 +11,13 @@
    [metabase.parameters.field :as parameters.field]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
-   [metabase.schema.field :as schema.field]
    [metabase.sync.core :as sync]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.field :as schema.field]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2])
   (:import

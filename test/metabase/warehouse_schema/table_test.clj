@@ -1,7 +1,7 @@
-(ns metabase.schema.table-test
+(ns metabase.warehouse-schema.table-test
   (:require
    [clojure.test :refer :all]
-   [metabase.schema.table :as schema.table]))
+   [metabase.warehouse-schema.table :as schema.table]))
 
 (deftest ^:parallel dimension-options-sort-test
   (testing "Ensure dimensions options are sorted numerically, but returned as strings"

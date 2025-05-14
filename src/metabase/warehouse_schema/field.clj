@@ -1,4 +1,4 @@
-(ns metabase.schema.field
+(ns metabase.warehouse-schema.field
   (:require
    [metabase.api.common :as api]
    [metabase.models.field :as field]
