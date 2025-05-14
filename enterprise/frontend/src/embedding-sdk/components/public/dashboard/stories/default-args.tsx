@@ -1,15 +1,19 @@
 import { action } from "@storybook/addon-actions";
 
-import type { DashboardId } from "metabase-types/api";
+import { dashboardIds } from "embedding-sdk/test/storybook-id-args";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
 export const MockDrillThroughQuestion = () => (
   <div>Custom Drill Through Question View</div>
 );
 
-export const dashboardStoryDefaultArgs = (
-  dashboardId: DashboardId,
-): SdkDashboardProps => ({
+const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
+
+export type DashboardStoryDefaultArgsProps = Partial<SdkDashboardProps>;
+export const dashboardStoryDefaultArgs = ({
+  dashboardId = DASHBOARD_ID,
+  ...rest
+}: DashboardStoryDefaultArgsProps = {}): SdkDashboardProps => ({
   mode: "editable",
   dashboardId,
   withTitle: true,
@@ -81,4 +85,5 @@ export const dashboardStoryDefaultArgs = (
       },
     },
   },
+  ...rest,
 });

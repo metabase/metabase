@@ -1,8 +1,16 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryFn } from "@storybook/react";
+import { useMemo } from "react";
 
-import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { dashboardIds } from "embedding-sdk/test/storybook-id-args";
+import {
+  CommonSdkStoryWrapper,
+  getStorybookSdkAuthConfigForUser,
+} from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 
+import {
+  MetabaseProvider,
+  type MetabaseProviderProps,
+} from "../../MetabaseProvider";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 import { dashboardStoryArgTypes } from "./arg-types";
@@ -10,8 +18,6 @@ import {
   MockDrillThroughQuestion,
   dashboardStoryDefaultArgs,
 } from "./default-args";
-
-const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 /**
  * The SdkDashboard component provides a configurable dashboard experience.
@@ -25,22 +31,39 @@ const meta: Meta<SdkDashboardProps> = {
 
 export default meta;
 
-/**
- * Example of the SdkDashboard component with controls.
- */
-export const Dashboard: StoryObj<
-  SdkDashboardProps & { useCustomDrillThrough: boolean }
-> = {
-  args: dashboardStoryDefaultArgs(DASHBOARD_ID),
-  render: (args) => {
-    const { useCustomDrillThrough, ...restArgs } = args;
-    return (
+export const Default: StoryFn<
+  SdkDashboardProps & { useCustomDrillThrough: boolean } & Pick<
+      MetabaseProviderProps,
+      "theme"
+    >
+> = (args, context) => {
+  const { useCustomDrillThrough, theme, ...restArgs } = args;
+  const sdkTheme = context.globals.sdkTheme;
+  const storybookTheme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
+  const locale = context.globals.locale;
+  const user = context.globals.user;
+
+  const key = `${user}-${locale}`;
+
+  const authConfig = useMemo(() => {
+    return getStorybookSdkAuthConfigForUser(user);
+  }, [user]);
+
+  return (
+    <MetabaseProvider
+      authConfig={authConfig}
+      key={key}
+      theme={theme ?? storybookTheme}
+      locale={locale}
+    >
       <SdkDashboard
         {...restArgs}
         renderDrillThroughQuestion={
           useCustomDrillThrough ? MockDrillThroughQuestion : undefined
         }
       />
-    );
-  },
+    </MetabaseProvider>
+  );
 };
+
+Default.args = dashboardStoryDefaultArgs();
