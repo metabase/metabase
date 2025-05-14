@@ -243,7 +243,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2025.04.07"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
-    {:mvn/version "1.6.1"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
