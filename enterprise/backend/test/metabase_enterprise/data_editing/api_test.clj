@@ -774,7 +774,8 @@
                     dashcards]
 
                 (testing "create"
-                  (is (= {} (prefill-values create-card {})))
+                  (testing "prefill does not crash"
+                    (is (= {} (prefill-values create-card {}))))
                   (execute! create-card
                             {:text      "hello, world!"
                              :int       42
@@ -788,9 +789,9 @@
                               (sort-by first)))))
 
                 (testing "update"
-                  (is (= {} (prefill-values update-card {})))
-                  ;; todo should this do something
-                  (is (= {} (prefill-values update-card {:id 1})))
+                  (testing "prefill does not crash"
+                    (is (= {} (prefill-values update-card {})))
+                    (is (= {} (prefill-values update-card {:id 1}))))
                   (execute! update-card
                             {:id 1
                              :int 43})
@@ -800,7 +801,9 @@
                               (sort-by first)))))
 
                 (testing "delete"
-                  (is (= {} (prefill-values delete-card {})))
+                  (testing "prefill does not crash"
+                    (is (= {} (prefill-values delete-card {})))
+                    (is (= {} (prefill-values delete-card {:id 2}))))
                   (execute! delete-card {:id 2})
                   (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
                          (->> (table-rows @test-table)
