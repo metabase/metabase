@@ -16,11 +16,7 @@ import {
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
 import { findSlotForColumn } from "metabase/visualizer/visualizations/compat";
-import {
-  addColumn,
-  removeColumn,
-  removeDataSource,
-} from "metabase/visualizer/visualizer.slice";
+import { addColumn, removeColumn } from "metabase/visualizer/visualizer.slice";
 import type {
   DatasetColumn,
   VisualizerDataSource,
@@ -33,10 +29,11 @@ import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
 export interface ColumnListProps {
   collapsedDataSources: Record<string, boolean>;
   toggleDataSource: (sourceId: VisualizerDataSourceId) => void;
+  onRemoveDataSource: (source: VisualizerDataSource) => void;
 }
 
 export const ColumnsList = (props: ColumnListProps) => {
-  const { collapsedDataSources, toggleDataSource } = props;
+  const { collapsedDataSources, toggleDataSource, onRemoveDataSource } = props;
 
   const display = useSelector(getVisualizationType) ?? null;
   const columns = useSelector(getVisualizerDatasetColumns);
@@ -99,7 +96,9 @@ export const ColumnsList = (props: ColumnListProps) => {
                   size={12}
                   aria-label={t`Remove`}
                   cursor="pointer"
-                  onClick={() => dispatch(removeDataSource(source))}
+                  onClick={() => {
+                    onRemoveDataSource(source);
+                  }}
                 />
               )}
             </Flex>
