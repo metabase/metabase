@@ -279,7 +279,7 @@
 
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
-  `metabase.api.field/search-values` for a more detailed explanation."
+  [[metabase.parameters.field/search-values]] for a more detailed explanation."
   [{:keys [id search-id]} :- [:map
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
