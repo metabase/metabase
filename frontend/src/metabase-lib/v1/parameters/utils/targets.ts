@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -197,9 +198,9 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
 }
 
 function getTemporalColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.breakouts(query, stageIndex).map((breakout) => {
-    return Lib.breakoutColumn(query, stageIndex, breakout);
-  });
+  const columns = Lib.breakouts(query, stageIndex)
+    .map((breakout) => Lib.breakoutColumn(query, stageIndex, breakout))
+    .filter(isNotNull);
   const [group] = Lib.groupColumns(columns);
 
   return columns.map((column) => ({
