@@ -10,7 +10,7 @@ available-fonts: null
 available-locales: null
 available-timezones: null
 breakout-bins-num: null
-chart-generated: null
+non-table-chart-generated: null
 custom-formatting: null
 custom-geojson: null
 custom-geojson-enabled: null

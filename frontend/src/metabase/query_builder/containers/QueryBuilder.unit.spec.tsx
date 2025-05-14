@@ -97,7 +97,7 @@ describe("QueryBuilder", () => {
       ];
 
       beforeEach(() => {
-        fetchMock.put("path:/api/setting/chart-generated", 200);
+        fetchMock.put("path:/api/setting/non-table-chart-generated", 200);
         setupSettingsEndpoints([]);
       });
 

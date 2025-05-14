@@ -92,7 +92,7 @@
                 (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
   :doc false)
 
-(defsetting chart-generated
+(defsetting non-table-chart-generated
   (deferred-tru "Whether a non-table chart has already been generated. Required for analytics to track instance activation journey.")
   :visibility :authenticated
   :default    false
@@ -101,7 +101,7 @@
   :setter     (fn [new-value]
                 ;; Only allow toggling from false -> true one time
                 (when (true? new-value)
-                  (setting/set-value-of-type! :boolean :chart-generated true))))
+                  (setting/set-value-of-type! :boolean :non-table-chart-generated true))))
 
 (defn- tracker-config
   []

@@ -186,7 +186,10 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isLoadingComplete: getIsLoadingComplete(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
-    didFirstNonTableChartGenerated: getSetting(state, "chart-generated"),
+    didFirstNonTableChartGenerated: getSetting(
+      state,
+      "non-table-chart-generated",
+    ),
 
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),

@@ -121,7 +121,7 @@ export const setNotebookNativePreviewState = (isShown: boolean) =>
 export const setDidFirstNonTableChartRender = (card: Card) => {
   trackFirstNonTableChartGenerated(card);
   return updateSetting({
-    key: "chart-generated",
+    key: "non-table-chart-generated",
     value: true,
   });
 };
