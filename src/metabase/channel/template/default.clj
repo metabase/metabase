@@ -19,7 +19,7 @@
                                                                                    :path    "metabase/channel/email/data_editing_row_update.hbs"}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/email
                                                                     :details      {:type    :email/handlebars-resource
-                                                                                   :subject "A new record was deleted from \"{{table.name}}\" by {{editor.common_name}}"
+                                                                                   :subject "A record was deleted from \"{{table.name}}\" by {{editor.common_name}}"
                                                                                    :path    "metabase/channel/email/data_editing_row_delete.hbs"}}}
    :channel/slack {[:notification/system-event :event/row.created] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
