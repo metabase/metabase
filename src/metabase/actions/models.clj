@@ -405,10 +405,10 @@
 
 (defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."
-  [dashcard-or-dashcard-id]
+  [dashcard-id]
   (let [{:keys [action_id
                 visualization_settings]}
-        (t2/select-one [:model/DashboardCard :action_id :visualization_settings] (u/the-id dashcard-or-dashcard-id))
+        (t2/select-one [:model/DashboardCard :action_id :visualization_settings] dashcard-id)
         {:keys [table_action]}
         visualization_settings]
     (cond
