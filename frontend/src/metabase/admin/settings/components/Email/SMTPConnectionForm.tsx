@@ -6,7 +6,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { SettingElement } from "metabase/admin/settings/types";
 import { UpsellHosting } from "metabase/admin/upsells";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -47,11 +46,6 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 type ButtonStateType = keyof typeof SEND_TEST_BUTTON_STATES;
-
-export interface SMTPConnectionFormProps {
-  elements: SettingElement[];
-  settingValues: Settings;
-}
 
 const emailSettingKeys = [
   "email-smtp-host",
@@ -106,9 +100,7 @@ const getFormValueSchema = (
 export const SMTPConnectionForm = () => {
   const [sendingEmail, setSendingEmail] = useState<ButtonStateType>("default");
   const [testEmailError, setTestEmailError] = useState<string | null>(null);
-
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
-
   const isHosted = useSelector(getIsHosted);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
   const dispatch = useDispatch();
@@ -126,7 +118,6 @@ export const SMTPConnectionForm = () => {
     }),
     [settingsDetails],
   );
-
   const handleClearEmailSettings = useCallback(async () => {
     await dispatch(clearEmailSettings());
   }, [dispatch]);
@@ -283,7 +274,7 @@ export const SMTPConnectionForm = () => {
                   }}
                 />
               </SetByEnvVarWrapper>
-              {isHosted && (
+              {!isHosted && (
                 <SetByEnvVarWrapper
                   settingKey="email-smtp-password"
                   settingDetails={settingsDetails?.["email-smtp-password"]}
