@@ -274,8 +274,8 @@
                                   :query {:source-table (:table-id arg-map)}}))))
 
       ;; TODO fix tons of tests which execute without user scope
-      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)
-                                                       :scope   scope})]
+      (let [result (let [context (-> (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})
+                                     (u/assoc-default :scope scope))]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver
