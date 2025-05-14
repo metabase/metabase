@@ -119,6 +119,7 @@ const SdkDashboardInner = ({
  * @param props
  */
 export const SdkDashboard = ({
+  mode,
   dashboardId: initialDashboardId,
   initialParameters = {},
   withTitle = true,
@@ -243,6 +244,7 @@ export const SdkDashboard = ({
           <SdkDashboardInner
             drillThroughQuestionProps={drillThroughQuestionProps}
             onEditQuestion={onEditQuestion}
+            mode={mode}
           />
         )}
       </DashboardContextProvider>
