@@ -32,12 +32,12 @@
             year-query (assoc native-query
                               :parameters [{:type   :temporal-unit
                                             :name   "time-unit"
-                                            :target [:dimension [:template-tag "time-unit"]]
+                                            :target [:variable [:template-tag "time-unit"]]
                                             :value  "year"}])
             month-query (assoc native-query
                                :parameters [{:type   :temporal-unit
                                              :name   "time-unit"
-                                             :target [:dimension [:template-tag "time-unit"]]
+                                             :target [:variable [:template-tag "time-unit"]]
                                              :value  "month"}])]
         (mt/with-native-query-testing-context year-query
           (is (= [[#t "2019-01-01"]
@@ -61,7 +61,7 @@
                                                                :type         :temporal-unit}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
-                                       :target [:dimension [:template-tag "time-unit"]]
+                                       :target [:variable [:template-tag "time-unit"]]
                                        :value  "year"}])]
         (mt/with-native-query-testing-context query
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized function: mb.bad_function_name"
@@ -78,7 +78,7 @@
                                                                :type         :temporal-unit}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
-                                       :target [:dimension [:template-tag "time-unit"]]
+                                       :target [:variable [:template-tag "time-unit"]]
                                        :value  "foo"}])]
         (mt/with-native-query-testing-context query
           (is (thrown? clojure.lang.ExceptionInfo
