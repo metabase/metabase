@@ -1073,7 +1073,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
 
 export const getSubmittableQuestion = (state, question) => {
   const rawSeries = createRawSeries({
-    question: getCard(state),
+    card: getCard(state),
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });
