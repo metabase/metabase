@@ -165,6 +165,7 @@
 .responseMessage code {
   background-color: rgba(255, 255, 255, 0.2);
   padding: 0.1rem 0.3rem;
+  margin-right: 0.25rem;
   border-radius: 3px;
   font-family: monospace;
   font-size: 0.8rem;
@@ -178,6 +179,8 @@
   overflow-x: auto;
   margin: 0.5rem 0;
   width: 100%;
+  white-space: pre-wrap; /* CSS3 */
+  word-wrap: break-word; /* Modern browsers */
 }
 
 .responseMessage pre code {
