@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
 
+import { ObjectDetailPreview } from "./ObjectDetail";
 import { TablePreview } from "./TablePreview";
 
 interface Props {
@@ -24,6 +25,7 @@ export const PreviewSection = (props: Props) => {
       <PreviewTypeSelector value={previewType} onChange={setPreviewType} />
 
       {previewType === "table" && <TablePreview {...props} />}
+      {previewType === "detail" && <ObjectDetailPreview {...props} />}
     </Card>
   );
 };
