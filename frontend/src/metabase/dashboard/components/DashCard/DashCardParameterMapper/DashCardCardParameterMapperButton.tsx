@@ -7,10 +7,7 @@ import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
-import type {
-  ParameterMappingOption,
-  StructuredQuerySectionOption,
-} from "metabase/parameters/utils/mapping-options";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -27,7 +24,7 @@ interface DashCardCardParameterMapperButtonProps {
   handleChangeTarget: (target: ParameterTarget | null) => void;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
-  mappingOptions: StructuredQuerySectionOption[];
+  mappingOptions: ParameterMappingOption[];
 }
 
 export const DashCardCardParameterMapperButton = ({

@@ -9,7 +9,7 @@ import {
   renameTab,
   selectTab,
   undoDeleteTab,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/tabs";
 import { trackTabDuplicated } from "metabase/dashboard/analytics";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

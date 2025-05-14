@@ -52,7 +52,9 @@ function isParameterCompatibleWithColumn(
       return isNumeric && !isID && !isLocation;
     case "string":
       return (
-        (isString || (isBoolean && hasFieldValues === "list")) && !isLocation
+        (isString || (isBoolean && hasFieldValues === "list")) &&
+        !isLocation &&
+        !isTemporalBucketable
       );
     case "temporal-unit":
       return isTemporalBucketable;
@@ -99,8 +101,11 @@ export function dimensionFilterForParameter(parameter: Parameter | string) {
   const fieldFilter = fieldFilterForParameter(parameter);
   return (dimension: TemplateTagDimension) => {
     const isTemporalUnit = dimension.isTemporalUnitType();
+    if (isTemporalUnit) {
+      return getParameterType(parameter) === "temporal-unit";
+    }
     const field = dimension.field();
-    return (field != null && fieldFilter(field)) || isTemporalUnit;
+    return field != null && fieldFilter(field);
   };
 }
 
@@ -138,8 +143,6 @@ function tagFilterForParameter(
       return (tag) => tag.type === "number";
     case "string":
       return (tag) => tag.type === "text";
-    // case "temporal-unit":
-    //   return (tag) => tag.type === "temporal-unit";
   }
   return () => false;
 }
