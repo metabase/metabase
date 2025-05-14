@@ -172,14 +172,16 @@ export const setTemplateTag = createThunkAction(
 export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
 export const setTemplateTagConfig = createThunkAction(
   SET_TEMPLATE_TAG_CONFIG,
-  (tag: TemplateTag, parameter: ParameterValuesConfig) => {
+  (tag: TemplateTag, parameterConfig: ParameterValuesConfig) => {
     return (dispatch: Dispatch, getState: GetState) => {
       const question = getQuestion(getState());
       if (!question) {
         return;
       }
       const query = question.legacyNativeQuery() as NativeQuery;
-      const newQuestion = query.setTemplateTagConfig(tag, parameter).question();
+      const newQuestion = query
+        .setTemplateTagConfig(tag, parameterConfig)
+        .question();
       dispatch(updateQuestion(newQuestion));
     };
   },
