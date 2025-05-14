@@ -886,6 +886,7 @@
            config
            db
            driver
+           events
            models
            permissions
            premium-features
