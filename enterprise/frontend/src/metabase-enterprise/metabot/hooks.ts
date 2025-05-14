@@ -38,6 +38,7 @@ export const useMetabotAgent = () => {
       [dispatch],
     ),
     messages,
+    isLongConversation: messages.length > 6, // TODO: figure out how we want to calculate this
     resetConversation: () => dispatch(resetConversation()),
     submitInput: useCallback(
       (message: string, metabotId?: string) => {
