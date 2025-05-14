@@ -6,7 +6,7 @@
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
-const plugins = ["react", "no-only-tests", "ttag"];
+const plugins = ["react", "no-only-tests", "ttag", "i18next"];
 if (shouldLintCssModules) {
   plugins.push("postcss-modules");
 }
@@ -149,6 +149,7 @@ module.exports = {
     "plugin:import/typescript",
     "plugin:depend/recommended",
     "plugin:storybook/recommended",
+    "plugin:i18next/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -209,6 +210,22 @@ module.exports = {
         "no-color-literals": "off",
         "no-unconditional-metabase-links-render": "off",
         "no-literal-metabase-strings": "off",
+      },
+    },
+    {
+      files: [
+        "*.unit.spec.*",
+        "frontend/lint/**/*",
+        "*.stories.*",
+        "stories-data.*",
+        "e2e/**/*",
+        "**/tests/*",
+        "release/**/*",
+        "webpack.config.js",
+        "rspack.config.js",
+      ],
+      rules: {
+        "i18next/no-literal-string": "off",
       },
     },
     {
