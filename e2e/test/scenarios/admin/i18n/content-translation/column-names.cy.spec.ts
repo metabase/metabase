@@ -117,7 +117,9 @@ describe("scenarios > admin > localization > content translation of column names
                 });
                 H.getIframeUrl().then((iframeUrl) => {
                   cy.signOut();
-                  cy.visit(iframeUrl + "#locale=de");
+                  const [urlBeforeHash, urlHash] = iframeUrl.split("#");
+                  const separator = urlHash === undefined ? "#" : "&";
+                  cy.visit(`${urlBeforeHash}${separator}locale=de`);
                 });
               });
             };
