@@ -11,6 +11,7 @@ import {
   Icon,
   Loader,
   Text,
+  Title,
   Tooltip,
 } from "metabase/ui";
 import { isCartesianChart } from "metabase/visualizations";
@@ -27,7 +28,6 @@ import { useVisualizerUi } from "../VisualizerUiContext";
 
 import { HorizontalWell } from "./HorizontalWell";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";
-import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
 import S from "./VisualizationCanvas.module.css";
 
@@ -64,7 +64,10 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
   if (!display && !isLoading) {
     return (
       <Center h="100%" w="100%" mx="auto" className={className}>
-        <StartFromViz />
+        <Flex direction="row" align="center" gap={20}>
+          <Icon c="text-light" name="arrow_left" size={30} />
+          <Title c="text-light">{t`Select a dataset to start`}</Title>
+        </Flex>
       </Center>
     );
   }
