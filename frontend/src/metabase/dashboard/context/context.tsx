@@ -27,6 +27,7 @@ import type {
   SuccessfulFetchDashboardResult,
 } from "../types";
 
+import type { DashboardModeProp } from "./DashboardMode";
 import { type ReduxProps, connector } from "./context.redux";
 
 export type DashboardContextErrorState = {
@@ -42,7 +43,7 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
-};
+} & DashboardModeProp;
 
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
@@ -72,6 +73,8 @@ export const DashboardContext = createContext<ContextReturned | undefined>(
 );
 
 const DashboardContextProviderInner = ({
+  mode,
+
   dashboardId: initialDashboardId,
   parameterQueryParams = {},
   onLoad,
@@ -291,6 +294,7 @@ const DashboardContextProviderInner = ({
   return (
     <DashboardContext.Provider
       value={{
+        mode,
         initialDashboardId,
         dashboardId,
         parameterQueryParams,

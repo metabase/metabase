@@ -18,6 +18,7 @@ import {
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
+  type DashboardContextProps,
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
@@ -44,13 +45,6 @@ import { StyledPublicComponentWrapper } from "./SdkDashboard.styled";
  */
 export type SdkDashboardProps = {
   /**
-   * @internal
-   * Controls the behavior of the dashboard.
-   * - `editable`: Allows editing and drill-throughs
-   */
-  mode?: "editable";
-
-  /**
    * Height of a question component when drilled from the dashboard to a question level.
    */
   drillThroughQuestionHeight?: number;
@@ -64,7 +58,8 @@ export type SdkDashboardProps = {
    * Props for the drill-through question
    */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
-} & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
+} & Pick<DashboardContextProps, "mode"> &
+  Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   DashboardEventHandlersProps;
 
 const SdkDashboardInner = ({
@@ -97,6 +92,7 @@ const SdkDashboardInner = ({
  * @param props
  */
 export const SdkDashboard = ({
+  mode,
   dashboardId: initialDashboardId,
   initialParameters = {},
   withDownloads = false,
@@ -171,6 +167,7 @@ export const SdkDashboard = ({
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       <DashboardContextProvider
+        mode={mode}
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}
         refreshPeriod={refreshPeriod}
