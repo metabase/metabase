@@ -22,9 +22,9 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.classloader.core :as classloader]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

@@ -13,6 +13,7 @@
    [metabase.bug-reporting.init]
    [metabase.cache.init]
    [metabase.channel.init]
+   [metabase.classloader.init]
    [metabase.cloud-migration.init]
    [metabase.config :as config]
    [metabase.content-verification.init]

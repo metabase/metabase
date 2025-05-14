@@ -1,6 +1,6 @@
 (ns metabase.models.resolution
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
