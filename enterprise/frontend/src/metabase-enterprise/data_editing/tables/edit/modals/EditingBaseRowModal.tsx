@@ -144,7 +144,7 @@ export function EditingBaseRowModal({
 
   // Columns might be reordered to match the order in `columnsConfig`
   const orderedDatasetColumns = useMemo(() => {
-    if (!columnsConfig) {
+    if (!columnsConfig?.columnOrder.length) {
       return datasetColumns;
     }
 
