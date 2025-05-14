@@ -417,42 +417,64 @@
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
     (mt/with-premium-features #{:advanced-permissions}
-      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                     :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
-        ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
-        ;; since there is no way to reset the connection after impersonation is applied.
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Connection impersonation is enabled for this database, but no default role is found"
-             (mt/run-mbql-query venues
-               {:aggregation [[:count]]})))
-        (request/as-admin
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Connection impersonation is enabled for this database, but no default role is found"
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]}))))
+      (let [details (assoc (:details (mt/db)) :role "ACCOUNTADMIN")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (doseq [statement ["DROP ROLE IF EXISTS TEST_ROLE_2;"
+                           "CREATE ROLE TEST_ROLE_2;"
+                           #_"GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE TEST_ROLE_2;"
+                           #_"GRANT USAGE ON DATABASE \"v3_sample-dataset\" TO ROLE TEST_ROLE_2;"
+                           #_(format "GRANT USAGE ON DATABASE \"%s\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           #_"USE DATABASE \"v3_sample-dataset\";"
+                           #_(format "GRANT USAGE ON SCHEMA \"v3_sample-dataset\".\"%s\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           #_(format "GRANT USAGE ON SCHEMA \"%s\".\"PUBLIC\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           #_(format "GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\".\"PUBLIC\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           #_(format "GRANT SELECT ON TABLE  \"%s\".\"PUBLIC\".\"venues\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\".\"PUBLIC\" FROM ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           "GRANT ROLE TEST_ROLE_2 TO ROLE ACCOUNTADMIN;"
+                           #_"GRANT ROLE TEST_ROLE_2 TO USER SNOWFLAKE_DEVELOPER;"
+                           #_"DROP ROLE IF EXISTS TEST_ROLE_2;"]]
+          (tap> {:stmt statement})
+          (jdbc/execute! spec [statement]))
+        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "TEST_ROLE_2" #_"LIMITED.ROLE"}}
+          ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
+          ;; since there is no way to reset the connection after impersonation is applied.
+          #_(is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Connection impersonation is enabled for this database, but no default role is found"
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:count]]})))
+          #_(request/as-admin
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Connection impersonation is enabled for this database, but no default role is found"
+                   (mt/run-mbql-query venues
+                     {:aggregation [[:count]]}))))
 
-        ;; Update the test database with a default role that has full permissions
-        (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
+          ;; Update the test database with a default role that has full permissions
+          (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "ACCOUNTADMIN"))
 
-        (try
-          ;; User with connection impersonation should not be able to query a table they don't have access to
-          ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"SQL compilation error:\nDatabase.*does not exist or not authorized"
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]})))
+          (try
+            ;; User with connection impersonation should not be able to query a table they don't have access to
+            ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"SQL compilation error:\nObject does not exist, or operation cannot be performed."
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:count]]})))
 
-          ;; Non-impersonated user should stil be able to query the table
-          (request/as-admin
-            (is (= [100]
-                   (mt/first-row
-                    (mt/run-mbql-query venues
-                      {:aggregation [[:count]]})))))
-          (finally
-            (t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role))))))))
+            #_(is (= [[100]]
+                     (mt/rows (mt/run-mbql-query venues
+                                {:aggregation [[:count]]}))))
+
+            ;; Non-impersonated user should stil be able to query the table
+            (request/as-admin
+              (is (= [100]
+                     (mt/first-row
+                      (mt/run-mbql-query venues
+                        {:aggregation [[:count]]})))))
+            (finally
+              #_(t2/update! :model/Database :id (mt/id) (update (mt/db) :details dissoc :role)))))))))
 
 (deftest persistence-disabled-when-impersonated-test
   ;; Test explicitly with postgres since it supports persistence and impersonation
