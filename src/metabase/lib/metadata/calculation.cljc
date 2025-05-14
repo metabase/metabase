@@ -307,8 +307,10 @@
    [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; if this is a ColumnGroup, is it the main one?
    [:is-main-group {:optional true} [:maybe :boolean]]
-   ;; For the `:table` field of a Column, is this the source table, or a joined table?
+   ;; if this is a Table, is it the source table of the query?
    [:is-source-table {:optional true} [:maybe :boolean]]
+   ;; if this is a Card, is it the source card of the query?
+   [:is-source-card {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?
    [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
