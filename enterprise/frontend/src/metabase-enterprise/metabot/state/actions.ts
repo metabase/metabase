@@ -17,9 +17,9 @@ import { metabot } from "./reducer";
 import { getIsProcessing, getMetabotConversationId } from "./selectors";
 
 export const {
+  addAgentMessage,
   addUserMessage,
-  dismissUserMessage,
-  clearUserMessages,
+  clearMessages,
   resetConversationId,
   setIsProcessing,
 } = metabot.actions;
@@ -63,10 +63,11 @@ export const submitInput = createAsyncThunk(
       return console.error("Metabot is actively serving a request");
     }
 
-    dispatch(clearUserMessages());
+    dispatch(addUserMessage(data.message));
     const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
+      // TODO: if the request fails, do we want to put the message back into the input?
     });
     return sendMessageRequestPromise;
   },
@@ -118,7 +119,6 @@ export const sendMessageRequest = createAsyncThunk(
 
     if (result.error) {
       console.error("Metabot request returned error: ", result.error);
-      dispatch(clearUserMessages());
       const message =
         (result.error as any).status >= 500 ? getErrorMessage() : undefined;
       dispatch(stopProcessingAndNotify(message));
@@ -137,7 +137,7 @@ export const resetConversation = () => (dispatch: Dispatch, getState: any) => {
     return console.error("Metabot is actively serving a request");
   }
 
-  dispatch(clearUserMessages());
+  dispatch(clearMessages());
   dispatch(resetConversationId());
 };
 
@@ -175,6 +175,5 @@ export const processMetabotReactions = createAsyncThunk(
 export const stopProcessingAndNotify =
   (message?: string) => (dispatch: Dispatch) => {
     dispatch(setIsProcessing(false));
-    dispatch(clearUserMessages());
-    dispatch(addUserMessage(message || t`I can’t do that, unfortunately.`));
+    dispatch(addAgentMessage(message || t`I can’t do that, unfortunately.`));
   };

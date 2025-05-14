@@ -51,7 +51,7 @@ const AppBarLarge = ({
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   return (
-    <AppBarRoot isNavBarOpen={isNavBarVisible}>
+    <AppBarRoot isNavBarOpen={true}>
       <AppBarLeftContainer>
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}

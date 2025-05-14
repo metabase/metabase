@@ -1,9 +1,18 @@
+import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
-import { Box, Flex, Icon, Text, Textarea, UnstyledButton } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  Flex,
+  Icon,
+  Text,
+  Textarea,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
@@ -14,6 +23,7 @@ const MIN_INPUT_HEIGHT = 42;
 
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   const [input, setMessage] = useState("");
 
@@ -56,6 +66,17 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     textarea.scrollTop = Math.max(MIN_INPUT_HEIGHT, textarea.scrollHeight);
   };
 
+  // TODO: think throug this a bit more... look at what other chat UIs are doing
+  useEffect(
+    function autoScrollToBottom() {
+      const el = messagesRef.current;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+    },
+    [metabot.messages],
+  );
+
   const handleInputChange = (value: string) => {
     setMessage(value);
   };
@@ -69,7 +90,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     <Sidebar
       isOpen={metabot.visible}
       side="right"
-      width="25rem"
+      width="30rem"
       aria-hidden={!metabot.visible}
     >
       <Box className={Styles.container} data-testid="metabot-chat">
@@ -96,36 +117,50 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
         </Box>
 
         {/* chat messages */}
-        <Box className={Styles.responses} data-testid="metabot-chat-messages">
-          {metabot.userMessages.map((msg, index) => (
-            <Box
-              className={Styles.response}
-              key={msg}
-              data-testid="metabot-chat-message"
-            >
-              <Box>{msg}</Box>
-              <UnstyledButton
-                className={Styles.responseDismissBtn}
-                onClick={() => metabot.dismissUserMessage(index)}
-                h="md"
-              >
-                <Icon name="close" size="1rem" />
-              </UnstyledButton>
-            </Box>
-          ))}
+        <Box
+          className={Styles.messagesContainer}
+          ref={messagesRef}
+          data-testid="metabot-chat-messages"
+        >
+          <Box className={Styles.messages}>
+            {metabot.messages.map(({ actor, message }, index) => (
+              <Message
+                key={index}
+                data-testid="metabot-chat-message"
+                actor={actor}
+                message={message}
+              />
+            ))}
+            {metabot.isDoingScience && (
+              <Message
+                key="thinkin"
+                data-testid="metabot-chat-message-thinking"
+                actor="agent"
+                message="Thinking..."
+                copyable={false}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* conversation status container */}
+        <Box className={Styles.conversationStatusContainer}>
+          <Box w="33px" h="24px">
+            <MetabotIcon isLoading={metabot.isDoingScience} />
+          </Box>
+          <Text fz="sm" c="text-light">
+            {t`Metabot isn't perfect. Double-check results.`}
+          </Text>
         </Box>
 
         <Flex
           className={cx(
-            Styles.innerContainer,
-            metabot.isDoingScience && Styles.innerContainerLoading,
-            inputExpanded && Styles.innerContainerExpanded,
+            Styles.inputContainer,
+            metabot.isDoingScience && Styles.inputContainerLoading,
+            inputExpanded && Styles.inputContainerExpanded,
           )}
           gap="sm"
         >
-          <Box w="33px" h="24px">
-            <MetabotIcon isLoading={metabot.isDoingScience} />
-          </Box>
           <Textarea
             data-testid="metabot-chat-input"
             w="100%"
@@ -164,5 +199,39 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
         </Flex>
       </Box>
     </Sidebar>
+  );
+};
+
+const Message = ({
+  actor,
+  message,
+  className,
+  copyable = true,
+  ...props
+}: BoxProps & {
+  actor: "agent" | "user";
+  message: string;
+  copyable?: boolean;
+}) => {
+  const clipboard = useClipboard();
+
+  return (
+    <Box
+      className={cx(
+        Styles.message,
+        actor === "agent" ? Styles.messageAgent : Styles.messageUser,
+        className,
+      )}
+      {...props}
+    >
+      <Box>{message}</Box>
+      <Flex justify="flex-end">
+        {copyable && (
+          <UnstyledButton onClick={() => clipboard.copy(message)} h="md">
+            <Icon name="copy" size="1rem" />
+          </UnstyledButton>
+        )}
+      </Flex>
+    </Box>
   );
 };
