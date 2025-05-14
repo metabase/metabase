@@ -209,7 +209,8 @@
   [kind table-id request-parameters]
   (let [args
         {:table-id table-id
-         :arg      [request-parameters]}
+         :database (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
+         :arg      request-parameters}
 
         opts
         {:policy :data-editing}]
