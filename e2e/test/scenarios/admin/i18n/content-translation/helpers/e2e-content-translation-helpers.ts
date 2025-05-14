@@ -29,7 +29,7 @@ export const assertOnlyTheseTranslationsAreStored = (rows: DictionaryArray) => {
   cy.signInAsNormalUser();
   cy.request<DictionaryResponse>(
     "GET",
-    "/api/ee/content-translation/dictionary",
+    "/api/content-translation/dictionary",
   ).then((interception) => {
     const { data } = interception.body;
     const msgstrs = data.map((row) => row.msgstr);
