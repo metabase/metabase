@@ -1115,14 +1115,6 @@
   "How many results to return when chain filtering"
   1000)
 
-(defn- get-template-tag
-  "Fetch the `:field` clause from `dashcard` referenced by `:template-tag`.
-
-    (get-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [dimension card]
-  (when-let [[_ tag] (mbql.u/check-clause :template-tag dimension)]
-    (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
-
 (defn- param-type->op
   [type]
   (if (get-in lib.schema.parameter/types [type :operator])

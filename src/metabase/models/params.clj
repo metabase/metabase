@@ -303,7 +303,7 @@
 
 (mu/defn dashboard-param->field-ids :- [:set ms/PositiveInt]
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
-  [{:keys [mappings] :as param}]
+  [{:keys [mappings]} :- ms/Parameter]
   (let [param-id->field-ids (transduce (map (fn [mapping]
                                               {:dashcard           (:dashcard mapping)
                                                :param-mapping      mapping
