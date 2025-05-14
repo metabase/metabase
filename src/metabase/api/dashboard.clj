@@ -1183,6 +1183,17 @@
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
+;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
+;;; different?
+(def ParameterWithID
+  "Schema for a parameter map with an string `:id`."
+  (mu/with-api-error-message
+   [:and
+    [:map
+     [:id ms/NonBlankString]]
+    [:map-of :keyword :any]]
+   (deferred-tru "value must be a parameter map with an ''id'' key")))
+
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/execute"
@@ -1223,7 +1234,7 @@
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ms/Parameter]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
   (with-dashboard-load-id dashboard_load_id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge
@@ -1250,7 +1261,7 @@
     pivot-results? :pivot_results}
    :- [:map
        [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ms/Parameter]
+                                                 [:sequential ParameterWithID]
                                                  ;; support <form> encoded params for backwards compatibility... see
                                                  ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
                                                  ms/JSONString]]]
@@ -1283,7 +1294,7 @@
                                                   [:card-id      ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ms/Parameter]]]]]
+            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
   (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                      (merge
                       body
