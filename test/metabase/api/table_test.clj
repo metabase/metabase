@@ -961,8 +961,6 @@
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
                                  (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
-
-
 (defn field-from-response [response, ^String field-name]
   (->> response
        :fields
