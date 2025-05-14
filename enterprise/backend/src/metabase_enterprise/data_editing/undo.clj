@@ -187,7 +187,8 @@
             :let [rows (batch->rows undo? sub-batch)
                   iid  (nano-id/nano-id)
                   opts {:existing-context {:invocation_id    iid
-                                           :invocation-stack [[action-kw iid]]}}]]
+                                           :invocation-stack [[action-kw iid]]
+                                           :scope            scope}}]]
       (case (if undo? (invert category) category)
         :create (try (data-editing/perform-bulk-action! :table.row/create user-id scope table-id rows opts)
                      (catch Exception e
