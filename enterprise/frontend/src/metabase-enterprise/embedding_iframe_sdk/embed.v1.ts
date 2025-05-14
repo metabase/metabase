@@ -31,7 +31,6 @@ class MetabaseEmbed {
     this._settings = settings;
     this._settings._isLocalhost = this._getIsLocalhost();
 
-    this._handleMessage = this._handleMessage.bind(this);
     this._setup();
   }
 
