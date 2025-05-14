@@ -59,8 +59,8 @@
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
   1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
-  2. the value of `public-settings/download-row-limit` if this is for a download
-  3. the value of `public-settings/attachment-row-limit` if this is for a dashboard subscription
+  2. the value of [[download-row-limit]] if this is for a download
+  3. the value of [[attachment-row-limit]] if this is for a dashboard subscription
 
   If those three values are not set we fall back to [[metabase.query-processor.limit/absolute-max-results]],
   which is also the maximum row count allowed for xlsx downloads due to Excel sheet constraints."
