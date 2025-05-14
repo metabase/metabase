@@ -135,10 +135,106 @@
   pointer-events: auto;
   margin-bottom: 0.25rem;
   position: relative;
+  max-width: 90%;
+  align-items: flex-start;
 }
 
 .responseMessage {
   flex-grow: 1;
+  line-height: 1.5;
+}
+
+/* Markdown specific styles */
+.responseMessage p {
+  margin: 0.5rem 0;
+}
+
+.responseMessage p:first-of-type {
+  margin-top: 0;
+}
+
+.responseMessage p:last-of-type {
+  margin-bottom: 0;
+}
+
+.responseMessage a {
+  color: white;
+  text-decoration: underline;
+}
+
+.responseMessage code {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.responseMessage pre {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.responseMessage pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.responseMessage ul,
+.responseMessage ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.responseMessage ul {
+  list-style-type: disc;
+}
+
+.responseMessage ol {
+  list-style-type: decimal;
+}
+
+.responseMessage li {
+  margin-bottom: 0.25rem;
+}
+
+.responseMessage table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.responseMessage th,
+.responseMessage td {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+}
+
+.responseMessage th {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.responseMessage h1,
+.responseMessage h2,
+.responseMessage h3,
+.responseMessage h4,
+.responseMessage h5,
+.responseMessage h6 {
+  margin: 0.5rem 0;
+  font-weight: bold;
+}
+
+.responseMessage blockquote {
+  border-left: 3px solid rgba(255, 255, 255, 0.5);
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  font-style: italic;
 }
 
 button.responseDismissBtn {
