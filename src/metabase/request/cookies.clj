@@ -4,8 +4,8 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.request.util :as request.util]
+   [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -202,7 +202,7 @@
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
   [request]
-  (if (public-settings/session-cookies)
+  (if (session.settings/session-cookies)
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
     ;; Otherwise check whether the user selected "remember me" during login

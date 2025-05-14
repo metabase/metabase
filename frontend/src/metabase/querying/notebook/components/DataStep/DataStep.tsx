@@ -22,7 +22,9 @@ export const DataStep = ({
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const table = tableId
+    ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
+    : undefined;
   const isMetric = question.type() === "metric";
 
   const isRaw = useMemo(() => {

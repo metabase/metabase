@@ -1,8 +1,8 @@
-(ns metabase.task.prometheus-test
+(ns metabase.analytics.quartz-test
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.prometheus-test :as prometheus-test]
-   [metabase.task.prometheus :as task.prometheus]
+   [metabase.analytics.quartz :as analytics.quartz]
    [metabase.test :as mt])
   (:import
    [org.quartz JobDetail JobExecutionContext JobExecutionException JobKey Scheduler TriggerKey Trigger$TriggerState]))
@@ -58,7 +58,7 @@
                            "PAUSED"    1
                            "BLOCKED"   1
                            "ERROR"     1}
-          actual-states (into {} (#'task.prometheus/get-quartz-task-states scheduler))]
+          actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states))))
 
   (testing "should return only executing count when no triggers exist"
@@ -68,7 +68,7 @@
                            "PAUSED"    0
                            "BLOCKED"   0
                            "ERROR"     0}
-          actual-states (into {} (#'task.prometheus/get-quartz-task-states scheduler))]
+          actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states))))
 
   (testing "should return empty map when no triggers and no executing jobs"
@@ -78,7 +78,7 @@
                            "PAUSED"    0
                            "BLOCKED"   0
                            "ERROR"     0}
-          actual-states (into {} (#'task.prometheus/get-quartz-task-states scheduler))]
+          actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states))))
 
   (testing "should handle only triggers without executing jobs"
@@ -88,13 +88,13 @@
                            "PAUSED"    1
                            "BLOCKED"   0
                            "ERROR"     0}
-          actual-states (into {} (#'task.prometheus/get-quartz-task-states scheduler))]
+          actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states)))))
 
 (deftest job-listener-test
   (testing "Job listener should record metrics with correct tags and values"
     (mt/with-prometheus-system! [_ system]
-      (let [listener (task.prometheus/create-job-execution-listener)
+      (let [listener (analytics.quartz/create-job-execution-listener)
             job-name "test-job"
             run-time 123]
         (testing "Successful execution"
@@ -138,7 +138,7 @@
                         Trigger$TriggerState/BLOCKED
                         Trigger$TriggerState/ERROR]
                        1) ; One executing job
-            listener (task.prometheus/create-trigger-listener scheduler)] ; Pass scheduler to listener
+            listener (analytics.quartz/create-trigger-listener scheduler)] ; Pass scheduler to listener
 
         (.triggerComplete listener nil nil nil)
 
