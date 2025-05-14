@@ -28,10 +28,6 @@ class MetabaseEmbed {
   private iframe: HTMLIFrameElement | null = null;
 
   constructor(settings: SdkIframeEmbedTagSettings) {
-    if (!settings.apiKey || !settings.instanceUrl) {
-      raiseError("api key and instance url must be provided");
-    }
-
     this._settings = settings;
     this._settings._isLocalhost = this._getIsLocalhost();
 
