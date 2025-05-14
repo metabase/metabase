@@ -104,6 +104,8 @@ function Search({
   const items = flatten(tree);
   const isEmpty = !isLoading && items.length === 0;
 
+  // search results need their own keypress handling logic
+  // because we want to keep the focus on the search input
   useKeyPressEvent("ArrowDown", (evt) => {
     setSelectedIndex((selectedIndex) => {
       const nextTableIndex = items.findIndex(
@@ -151,6 +153,7 @@ function Search({
       path={path}
       onItemClick={onChange}
       selectedIndex={selectedIndex}
+      onSelectedIndexChange={setSelectedIndex}
     />
   );
 }

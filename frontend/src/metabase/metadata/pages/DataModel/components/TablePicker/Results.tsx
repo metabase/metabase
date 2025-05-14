@@ -19,12 +19,14 @@ export function Results({
   path,
   onItemClick,
   selectedIndex,
+  onSelectedIndexChange,
 }: {
   items: FlatItem[];
   toggle?: (key: string, value?: boolean) => void;
   path: TreePath;
   onItemClick?: (path: TreePath) => void;
   selectedIndex?: number;
+  onSelectedIndexChange?: (index: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -66,6 +68,16 @@ export function Results({
     [items, virtual],
   );
 
+  useEffect(() => {
+    // sync the selected index by focusing the corresponding item,
+    // but only when the user is not currently typing in the search input
+    if (document.activeElement?.tagName !== "INPUT") {
+      document
+        .querySelector<HTMLDivElement>(`[data-index='${selectedIndex}']`)
+        ?.focus();
+    }
+  }, [selectedIndex]);
+
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
@@ -96,6 +108,9 @@ export function Results({
           };
 
           const handleKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
+            if (typeof selectedIndex === "number") {
+              return;
+            }
             if (evt.code === "ArrowDown") {
               ref.current
                 ?.querySelector<HTMLDivElement>(`[data-index='${index + 1}']`)
@@ -143,7 +158,11 @@ export function Results({
                 })}
                 data-index={index}
                 data-open={isExpanded}
-                tabIndex={selectedIndex === undefined ? 0 : undefined}
+                tabIndex={
+                  selectedIndex === undefined || type === "table"
+                    ? 0
+                    : undefined
+                }
                 style={{
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
@@ -152,6 +171,7 @@ export function Results({
                 data-type={type}
                 onKeyDown={handleKeyDown}
                 onClick={() => handleItemSelect()}
+                onFocus={() => onSelectedIndexChange?.(index)}
               >
                 <Flex align="center" gap="xs" py="xs" mih={ITEM_MIN_HEIGHT}>
                   {hasChildren(type) && (
