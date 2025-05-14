@@ -18,6 +18,7 @@
    [metabase.cloud-migration.api]
    [metabase.collections.api]
    [metabase.config.core :as config]
+   [metabase.content-translation.api]
    [metabase.dashboards.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
@@ -140,6 +141,7 @@
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
+   "/content-translation"  metabase.content-translation.api/routes
    "/dashboard"            (+auth 'metabase.dashboards.api)
    "/database"             (+auth 'metabase.warehouses.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
