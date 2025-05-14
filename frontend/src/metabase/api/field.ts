@@ -1,4 +1,3 @@
-import { PLUGIN_API } from "metabase/plugins";
 import type {
   CreateFieldDimensionRequest,
   Field,
@@ -36,7 +35,7 @@ export const fieldApi = Api.injectEndpoints({
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: (fieldId) => ({
         method: "GET",
-        url: PLUGIN_API.getFieldValuesUrl(fieldId),
+        url: `/api/field/${fieldId}/values`,
       }),
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
@@ -46,7 +45,7 @@ export const fieldApi = Api.injectEndpoints({
     >({
       query: ({ fieldId, remappedFieldId, ...params }) => ({
         method: "GET",
-        url: PLUGIN_API.getRemappedFieldValueUrl(fieldId, remappedFieldId),
+        url: `/api/field/${fieldId}/remapping/${remappedFieldId}`,
         params,
       }),
       providesTags: (_response, _error, { fieldId, remappedFieldId }) =>
@@ -55,7 +54,7 @@ export const fieldApi = Api.injectEndpoints({
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
       query: ({ fieldId, searchFieldId, ...params }) => ({
         method: "GET",
-        url: PLUGIN_API.getSearchFieldValuesUrl(fieldId, searchFieldId),
+        url: `/api/field/${fieldId}/search/${searchFieldId}`,
         params,
       }),
       providesTags: (_response, _error, { fieldId, searchFieldId }) =>
@@ -72,6 +71,7 @@ export const fieldApi = Api.injectEndpoints({
           listTag("field"),
           idTag("field", id),
           idTag("field-values", id),
+          tag("parameter-values"),
           tag("card"),
         ]),
     }),
@@ -82,7 +82,10 @@ export const fieldApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
       query: ({ id, ...body }) => ({
@@ -91,7 +94,11 @@ export const fieldApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("field", id), idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field", id),
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     deleteFieldDimension: builder.mutation<void, FieldId>({
       query: (id) => ({
@@ -99,7 +106,11 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/dimension`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("field", id), idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field", id),
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     rescanFieldValues: builder.mutation<void, FieldId>({
       query: (id) => ({
@@ -107,7 +118,10 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/rescan_values`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
     discardFieldValues: builder.mutation<void, FieldId>({
       query: (id) => ({
@@ -115,7 +129,10 @@ export const fieldApi = Api.injectEndpoints({
         url: `/api/field/${id}/discard_values`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("field-values", id)]),
+        invalidateTags(error, [
+          idTag("field-values", id),
+          tag("parameter-values"),
+        ]),
     }),
   }),
 });

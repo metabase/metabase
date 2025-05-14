@@ -28,7 +28,7 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByLabelText("Add a heading or text box").click();
       H.popover().findByText("Text").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_text_card_created",
       });
 
@@ -85,6 +85,13 @@ describe("scenarios > dashboard > text and headings", () => {
           cy.findByLabelText("Show visualization options").click();
         });
 
+      // should not render visualizer option
+      H.getDashboardCard(1)
+        .realHover()
+        .within(() => {
+          cy.findByLabelText("Visualize another way").should("not.exist");
+        });
+
       cy.findByRole("dialog").within(() => {
         cy.findByTestId("chartsettings-sidebar").within(() => {
           cy.findByText("Vertical Alignment").should("be.visible");
@@ -115,7 +122,7 @@ describe("scenarios > dashboard > text and headings", () => {
         { delay: 0.5 },
       );
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_text_card_created",
       });
 
@@ -160,7 +167,7 @@ describe("scenarios > dashboard > text and headings", () => {
       cy.findByLabelText("Add a heading or text box").click();
       H.popover().findByText("Heading").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_heading_card_created",
       });
 

@@ -6,12 +6,13 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.version.core :as version]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
@@ -148,8 +149,8 @@
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version :snowplow/instance))
        {"id"                           (analytics.settings/analytics-uuid)
-        "version"                      {"tag" (:tag (public-settings/version))}
-        "token_features"               (m/map-keys name (public-settings/token-features))
+        "version"                      {"tag" (:tag (version/version))}
+        "token_features"               (m/map-keys name (premium-features/token-features))
         "created_at"                   (instance-creation)
         "application_database"         (app-db-type)
         "application_database_version" (app-db-version)}))

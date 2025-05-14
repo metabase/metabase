@@ -28,7 +28,7 @@ H.describeWithSnowplow(
       // the example-dashboard-id is mocked, it's normal that we'll get to a permision error page
       H.main().findByText("Embed an example dashboard").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "embedding_homepage_example_dashboard_click",
       });
     });
@@ -39,7 +39,7 @@ H.describeWithSnowplow(
       H.main().findByText("Hide these").click();
       H.popover().findByText("Embedding done, all good").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "embedding_homepage_dismissed",
         dismiss_reason: "dismissed-done",
       });

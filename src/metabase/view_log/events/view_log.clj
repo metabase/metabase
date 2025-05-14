@@ -3,8 +3,8 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -76,7 +76,7 @@
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
   [& {:keys [model object-id object user-id has-access context]
       :or   {has-access true}}]
-  {:model      (u/lower-case-en (audit-log/model-name (or model object)))
+  {:model      (u/lower-case-en (audit/model-name (or model object)))
    :user_id    (or user-id api/*current-user-id*)
    :model_id   (or object-id (u/id object))
    :has_access has-access

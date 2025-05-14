@@ -5,12 +5,13 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
+   [metabase.version.core :as version]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)
@@ -101,8 +102,8 @@
       (analytics/track-event! :snowplow/account {:event :new-instance-created})
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
               :data {:id                           (analytics.settings/analytics-uuid)
-                     :version                      {:tag (:tag (public-settings/version))},
-                     :token_features               (public-settings/token-features)
+                     :version                      {:tag (:tag (version/version))}
+                     :token_features               (premium-features/token-features)
                      :created_at                   (analytics/instance-creation)
                      :application_database         (#'snowplow/app-db-type)
                      :application_database_version (#'snowplow/app-db-version)}}
