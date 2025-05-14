@@ -356,7 +356,7 @@
 ;;; |                                                WEEKDAYS                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; Background on weekdays in Metabase:
-;;; - Day 1 inside Metabase is defined by [[metabase.settings.deprecated-grab-bag/start-of-week]]; default `:sunday`.
+;;; - Day 1 inside Metabase is defined by [[metabase.lib-be.core/start-of-week]]; default `:sunday`.
 ;;; - Databases store this differently - 1 to 7, 0 to 6, hard-coded first day, based on the locale, ...
 ;;; - Drivers handle that variation, and always expect 1 to 7 where 1 is the `start-of-week` day.
 ;;; - Locales differ in what they consider the first day of the week; generally Sunday in the Americas, Monday in

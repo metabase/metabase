@@ -720,6 +720,9 @@ type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
   dispatch: Dispatch,
+  options?: {
+    withMetabot?: boolean;
+  },
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {

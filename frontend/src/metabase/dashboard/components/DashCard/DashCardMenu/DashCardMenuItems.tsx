@@ -49,6 +49,7 @@ export const DashCardMenuItems = ({
     customItems = [],
     withDownloads = true,
     withEditLink = true,
+    withMetabot = true,
   } = dashcardMenuItems ?? {};
 
   const menuItems = useMemo(() => {
@@ -56,38 +57,40 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (onEditVisualization) {
-      items.push({
-        key: "MB_EDIT_VISUALIZER_QUESTION",
-        iconName: "pencil",
-        label: t`Edit visualization`,
-        onClick: onEditVisualization,
-      });
-    } else if (withEditLink && canEditQuestion(question)) {
-      const type = question.type();
-      if (type === "question") {
+    if (withEditLink) {
+      if (onEditVisualization) {
         items.push({
-          key: "MB_EDIT_QUESTION",
+          key: "MB_EDIT_VISUALIZER_QUESTION",
           iconName: "pencil",
-          label: t`Edit question`,
-          onClick: () => onEditQuestion(question),
+          label: t`Edit visualization`,
+          onClick: onEditVisualization,
         });
-      }
-      if (type === "model") {
-        items.push({
-          key: "MB_EDIT_MODEL",
-          iconName: "pencil",
-          label: t`Edit model`,
-          onClick: () => onEditQuestion(question, "query"),
-        });
-      }
-      if (type === "metric") {
-        items.push({
-          key: "MB_EDIT_METRIC",
-          iconName: "pencil",
-          label: t`Edit metric`,
-          onClick: () => onEditQuestion(question, "query"),
-        });
+      } else if (canEditQuestion(question)) {
+        const type = question.type();
+        if (type === "question") {
+          items.push({
+            key: "MB_EDIT_QUESTION",
+            iconName: "pencil",
+            label: t`Edit question`,
+            onClick: () => onEditQuestion(question),
+          });
+        }
+        if (type === "model") {
+          items.push({
+            key: "MB_EDIT_MODEL",
+            iconName: "pencil",
+            label: t`Edit model`,
+            onClick: () => onEditQuestion(question, "query"),
+          });
+        }
+        if (type === "metric") {
+          items.push({
+            key: "MB_EDIT_METRIC",
+            iconName: "pencil",
+            label: t`Edit metric`,
+            onClick: () => onEditQuestion(question, "query"),
+          });
+        }
       }
     }
 
@@ -104,7 +107,9 @@ export const DashCardMenuItems = ({
 
     items.push(
       ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
-        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
+        .map((itemGetter) =>
+          itemGetter(question, dashcardId, dispatch, { withMetabot }),
+        )
         .filter(isNotNull),
     );
 
@@ -126,17 +131,18 @@ export const DashCardMenuItems = ({
 
     return items;
   }, [
+    withEditLink,
+    withDownloads,
+    result,
     customItems,
+    onEditVisualization,
+    question,
+    onEditQuestion,
     isDownloadingData,
     onDownload,
-    onEditQuestion,
-    question,
-    result,
-    withDownloads,
-    withEditLink,
-    onEditVisualization,
     dashcardId,
     dispatch,
+    withMetabot,
   ]);
 
   return menuItems.map((item) => {

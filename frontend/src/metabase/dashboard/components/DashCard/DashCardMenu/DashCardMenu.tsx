@@ -67,6 +67,7 @@ function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
   }
 
   return (
+    dashcardMenu?.withMetabot === false &&
     dashcardMenu?.withDownloads === false &&
     dashcardMenu?.withEditLink === false &&
     !dashcardMenu?.customItems?.length

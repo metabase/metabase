@@ -1,4 +1,5 @@
 import type { Query } from "history";
+import { assoc } from "icepick";
 import {
   type PropsWithChildren,
   createContext,
@@ -26,7 +27,9 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "../types";
+import { isActionDashCard } from "../utils";
 
+import type { DashboardModeProp } from "./DashboardMode";
 import { type ReduxProps, connector } from "./context.redux";
 
 export type DashboardContextErrorState = {
@@ -42,7 +45,7 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
-};
+} & DashboardModeProp;
 
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
@@ -77,6 +80,7 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
+  mode,
 
   children,
 
@@ -288,6 +292,11 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
+  // TODO: Create a Dashboard specific `Mode` class that will handle these properties.
+  const visibleDashcards = (dashboard?.dashcards ?? []).filter(
+    (dashcard) => !isActionDashCard(dashcard),
+  );
+
   return (
     <DashboardContext.Provider
       value={{
@@ -296,6 +305,7 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
+        mode,
 
         navigateToNewCardFromDashboard,
         isLoading: isLoading && !error,
@@ -326,7 +336,10 @@ const DashboardContextProviderInner = ({
         withFooter,
 
         // redux selectors
-        dashboard,
+        dashboard:
+          mode === "editable" && dashboard
+            ? assoc(dashboard, "dashcards", visibleDashcards)
+            : dashboard,
         selectedTabId,
         isEditing,
         isNavigatingBackToDashboard,

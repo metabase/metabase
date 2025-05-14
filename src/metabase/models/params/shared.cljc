@@ -28,6 +28,13 @@
   {:arglists '([tyype value locale])}
   (fn [tyype _value _locale] (keyword tyype)))
 
+(declare formatted-list)
+
+(defmethod formatted-value :string/contains
+  [_ values _]
+  (let [values (u/one-or-many values)]
+    (trs "contains {0}" (formatted-list values :conjunction (trs "or")))))
+
 ;; TODO: Refactor to use time/parse-unit and time/format-unit
 (defmethod formatted-value :date/single
   [_ value locale]
@@ -131,14 +138,15 @@
 
 (defn formatted-list
   "Given a seq of parameter values, returns them as a single comma-separated string. Does not do additional formatting
-  on the values."
-  [values]
+  on the values. The conjunction parameter determines whether to use 'and' or 'or' to join the last two items."
+  [values & {:keys [conjunction] :or {conjunction (trs "and")}}]
   (condp = (count values)
     1 (str (first values))
-    2 (trs "{0} and {1}" (first values) (second values))
-    (trs "{0}, {1}, and {2}"
+    2 (trs "{0} {1} {2}" (first values) conjunction (second values))
+    (trs "{0}, {1}, {2} {3}"
          (str/join ", " (drop-last 2 values))
          (nth values (- (count values) 2))
+         conjunction
          (last values))))
 
 (defmethod formatted-value :default
