@@ -21,7 +21,9 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
@@ -99,6 +101,7 @@ export const EditTableDataContainer = ({
 
   const {
     isInserting,
+    isDeleting,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -106,6 +109,7 @@ export const EditTableDataContainer = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
+    handleRowDeleteBulk,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
@@ -122,6 +126,17 @@ export const EditTableDataContainer = ({
 
   const { rowSelection, selectedRowIndices, setRowSelection } =
     useEditingTableRowSelection();
+
+  const {
+    isDeleteBulkRequested,
+    requestDeleteBulk,
+    cancelDeleteBulk,
+    onDeleteBulkConfirmation,
+  } = useTableBulkDeleteConfirmation({
+    handleRowDeleteBulk,
+    selectedRowIndices,
+    setRowSelection,
+  });
 
   useMount(() => {
     dispatch(closeNavbar());
@@ -155,6 +170,7 @@ export const EditTableDataContainer = ({
             refetchTableDataQuery={refetch}
             onUndo={undo}
             onRedo={redo}
+            onRequestDeleteBulk={requestDeleteBulk}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
@@ -210,6 +226,13 @@ export const EditTableDataContainer = ({
         fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
         hasDeleteAction
+      />
+      <DeleteBulkRowConfirmationModal
+        opened={isDeleteBulkRequested}
+        rowCount={selectedRowIndices.length}
+        isLoading={isDeleting}
+        onConfirm={onDeleteBulkConfirmation}
+        onClose={cancelDeleteBulk}
       />
     </>
   );

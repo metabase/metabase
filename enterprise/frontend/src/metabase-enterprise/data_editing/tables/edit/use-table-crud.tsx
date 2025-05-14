@@ -42,7 +42,8 @@ export const useTableCRUD = ({
     handleGenericUpdateError,
   } = useTableCrudOptimisticUpdate();
 
-  const [deleteTableRows] = useDeleteTableRowsMutation();
+  const [deleteTableRows, { isLoading: isDeleting }] =
+    useDeleteTableRowsMutation();
   const [updateTableRows] = useUpdateTableRowsMutation();
   const [insertTableRows, { isLoading: isInserting }] =
     useInsertTableRowsMutation();
@@ -191,8 +192,8 @@ export const useTableCRUD = ({
     ],
   );
 
-  const handleRowDelete = useCallback(
-    async (rowIndex: number) => {
+  const handleRowDeleteBulk = useCallback(
+    async (rowIndices: number[]) => {
       if (!datasetData) {
         console.warn(
           "Failed to update table data - no data is loaded for a table",
@@ -201,13 +202,16 @@ export const useTableCRUD = ({
       }
 
       const columns = datasetData.cols;
-      const rowData = datasetData.rows[rowIndex];
+      const rows = rowIndices.map((rowIndex) => {
+        const rowData = datasetData.rows[rowIndex];
 
-      const pkColumnIndex = columns.findIndex(isPK);
-      const pkColumn = columns[pkColumnIndex];
-      const rowPkValue = rowData[pkColumnIndex];
+        const pkColumnIndex = columns.findIndex(isPK);
+        const pkColumn = columns[pkColumnIndex];
+        const rowPkValue = rowData[pkColumnIndex];
 
-      const rows = [{ [pkColumn.name]: rowPkValue }];
+        return { [pkColumn.name]: rowPkValue };
+      });
+
       const response = await deleteTableRows({
         rows,
         tableId: tableId,
@@ -234,8 +238,16 @@ export const useTableCRUD = ({
     ],
   );
 
+  const handleRowDelete = useCallback(
+    async (rowIndex: number) => {
+      return handleRowDeleteBulk([rowIndex]);
+    },
+    [handleRowDeleteBulk],
+  );
+
   return {
     isInserting,
+    isDeleting,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -243,5 +255,6 @@ export const useTableCRUD = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
+    handleRowDeleteBulk,
   };
 };
