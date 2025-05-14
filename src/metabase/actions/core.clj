@@ -39,6 +39,9 @@
   apply-json-query]
  [metabase.actions.models
   dashcard->action
-  select-action]
+  select-action
+  select-actions
+  table-primitive-action
+  unpack-table-primitive-action-id]
  [metabase.actions.events
   publish-action-success!])
