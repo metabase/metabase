@@ -48,11 +48,11 @@ export const SearchButton = () => {
       >
         <Tooltip label={`${t`Metabot...`} (${METAKEY}+b)`}>
           <UnstyledButton
-            onClick={() => metabot.setVisible(true)}
+            onClick={() => metabot.setVisible(!metabot.visible)}
             h="1rem"
             pl="md"
             pr="xs"
-            aria-label={t`Open metabot`}
+            aria-label={t`Metabot`}
           >
             <Icon name="metabot" />
           </UnstyledButton>

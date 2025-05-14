@@ -5,10 +5,9 @@ import { useMetabotContext } from "metabase/metabot";
 import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
-  dismissUserMessage,
   getIsProcessing,
+  getMessages,
   getMetabotVisisble,
-  getUserMessages,
   resetConversation,
   setVisible,
   submitInput,
@@ -19,8 +18,8 @@ export const useMetabotAgent = () => {
   const { getChatContext } = useMetabotContext();
 
   // TODO: create an enterprise useSelector
-  const userMessages = useSelector(getUserMessages as any) as ReturnType<
-    typeof getUserMessages
+  const messages = useSelector(getMessages as any) as ReturnType<
+    typeof getMessages
   >;
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
@@ -38,9 +37,7 @@ export const useMetabotAgent = () => {
       (isVisible: boolean) => dispatch(setVisible(isVisible)),
       [dispatch],
     ),
-    userMessages,
-    dismissUserMessage: (messageIndex: number) =>
-      dispatch(dismissUserMessage(messageIndex)),
+    messages,
     resetConversation: () => dispatch(resetConversation()),
     submitInput: useCallback(
       (message: string, metabotId?: string) => {

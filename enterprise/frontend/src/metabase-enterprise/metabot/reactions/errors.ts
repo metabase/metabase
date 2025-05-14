@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { addUserMessage, clearUserMessages } from "../state";
+import { addAgentMessage, clearMessages } from "../state";
 
 import type { ReactionHandler } from "./types";
 
@@ -11,7 +11,7 @@ export const notifyUnknownReaction: ReactionHandler<UnknownReaction> = (
 ) => {
   return ({ dispatch }) => {
     console.error("Unknown reaction recieved", reaction);
-    dispatch(clearUserMessages());
-    dispatch(addUserMessage(t`Whoops, I actually can’t do this. Sorry.`));
+    dispatch(clearMessages());
+    dispatch(addAgentMessage(t`Whoops, I actually can’t do this. Sorry.`));
   };
 };

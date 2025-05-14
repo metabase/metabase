@@ -2,16 +2,15 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotChatContext, MetabotHistory } from "metabase-types/api";
+import type { MetabotChatContext } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
 
 export interface MetabotState {
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
-  lastHistoryValue: MetabotHistory | undefined;
   conversationId: string | undefined;
-  userMessages: string[];
+  messages: Array<{ actor: "user" | "agent"; message: string }>;
   visible: boolean;
   state: any;
 }
@@ -19,9 +18,8 @@ export interface MetabotState {
 export const metabotInitialState: MetabotState = {
   isProcessing: false,
   lastSentContext: undefined,
-  lastHistoryValue: undefined,
   conversationId: undefined,
-  userMessages: [],
+  messages: [],
   visible: false,
   state: {},
 };
@@ -31,13 +29,13 @@ export const metabot = createSlice({
   initialState: metabotInitialState,
   reducers: {
     addUserMessage: (state, action: PayloadAction<string>) => {
-      state.userMessages.push(action.payload);
+      state.messages.push({ actor: "user", message: action.payload });
     },
-    clearUserMessages: (state) => {
-      state.userMessages = [];
+    addAgentMessage: (state, action: PayloadAction<string>) => {
+      state.messages.push({ actor: "agent", message: action.payload });
     },
-    dismissUserMessage: (state, action: PayloadAction<number>) => {
-      state.userMessages.splice(action.payload, 1);
+    clearMessages: (state) => {
+      state.messages = [];
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -57,11 +55,8 @@ export const metabot = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(sendMessageRequest.pending, (state, action) => {
+        // @ts-expect-error -- infinitely deep type
         state.lastSentContext = action.meta.arg.context;
-        state.lastHistoryValue = action.meta.arg.history;
-      })
-      .addCase(sendMessageRequest.fulfilled, (state, action) => {
-        state.lastHistoryValue = action.payload?.data?.history;
       })
       .addCase(logout.pending, () => metabotInitialState);
   },
