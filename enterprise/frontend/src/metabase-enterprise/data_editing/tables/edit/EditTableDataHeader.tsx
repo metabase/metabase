@@ -34,6 +34,7 @@ interface EditTableDataHeaderProps {
   refetchTableDataQuery: () => void;
   onUndo: () => void;
   onRedo: () => void;
+  onRequestDeleteBulk: () => void;
 }
 
 export const EditTableDataHeader = ({
@@ -48,6 +49,7 @@ export const EditTableDataHeader = ({
   refetchTableDataQuery,
   onUndo,
   onRedo,
+  onRequestDeleteBulk,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -97,7 +99,7 @@ export const EditTableDataHeader = ({
             leftSection={<Icon name="trash" />}
             variant="filled"
             color="error"
-            onClick={() => alert("TODO")}
+            onClick={onRequestDeleteBulk}
             disabled={shouldDisableActions || !selectedRowIndices.length}
           >{t`Delete`}</Button>
           <Flex gap="xs">

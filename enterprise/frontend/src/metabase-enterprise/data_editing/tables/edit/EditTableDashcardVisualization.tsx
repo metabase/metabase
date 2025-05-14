@@ -33,7 +33,9 @@ import type {
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
@@ -124,6 +126,7 @@ export const EditTableDashcardVisualization = ({
 
   const {
     isInserting,
+    isDeleting,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -131,6 +134,7 @@ export const EditTableDashcardVisualization = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
+    handleRowDeleteBulk,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
@@ -163,6 +167,17 @@ export const EditTableDashcardVisualization = ({
 
   const { rowSelection, selectedRowIndices, setRowSelection } =
     useEditingTableRowSelection();
+
+  const {
+    isDeleteBulkRequested,
+    requestDeleteBulk,
+    cancelDeleteBulk,
+    onDeleteBulkConfirmation,
+  } = useTableBulkDeleteConfirmation({
+    handleRowDeleteBulk,
+    selectedRowIndices,
+    setRowSelection,
+  });
 
   const isActionExecuteModalOpen = !!activeActionState;
 
@@ -198,7 +213,7 @@ export const EditTableDashcardVisualization = ({
           </ActionIcon>
           <ActionIcon
             size="md"
-            onClick={() => alert("TODO")}
+            onClick={requestDeleteBulk}
             disabled={shouldDisableActions || !selectedRowIndices.length}
           >
             <Icon
@@ -323,6 +338,13 @@ export const EditTableDashcardVisualization = ({
           onClose={handleExecuteModalClose}
         />
       </Modal>
+      <DeleteBulkRowConfirmationModal
+        opened={isDeleteBulkRequested}
+        rowCount={selectedRowIndices.length}
+        isLoading={isDeleting}
+        onConfirm={onDeleteBulkConfirmation}
+        onClose={cancelDeleteBulk}
+      />
     </Stack>
   );
 };
