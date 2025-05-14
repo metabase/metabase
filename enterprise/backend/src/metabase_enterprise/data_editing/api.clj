@@ -319,6 +319,7 @@
     (actions/execute-action! action (merge row-params provided))))
 
 (api.macros/defendpoint :get "/tmp-action"
+  "Returns all actions across all tables and models"
   [_
    _
    _]
