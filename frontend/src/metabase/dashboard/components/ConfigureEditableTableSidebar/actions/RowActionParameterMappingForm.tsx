@@ -1,20 +1,27 @@
-import { type ChangeEvent, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ParameterFormLabel } from "metabase/actions/components/ActionViz/ActionParameterMapping.styled";
-import { isParameterRequired } from "metabase/actions/components/ActionViz/utils";
+import {
+  isParameterHidden,
+  isParameterRequired,
+} from "metabase/actions/components/ActionViz/utils";
 import { sortActionParams } from "metabase/actions/utils";
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Checkbox, Select } from "metabase/ui";
+import { Box, Select, TextInput } from "metabase/ui";
 import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
 import type {
   Field,
+  FieldId,
   RowActionFieldFieldSettingsMap,
   RowActionFieldSettings,
   RowActionFieldSourceType,
+  RowValue,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
+
+import { TableColumnsSelect } from "./TableColumnsSelect";
 
 interface ActionParameterMappingProps {
   action: WritebackAction;
@@ -105,10 +112,11 @@ export const ActionParameterMappingItem = ({
   action,
   actionParameter,
   parameterSettings,
-  // tableColumns,
+  tableColumns,
   onChange,
 }: ActionParameterMappingItemProps) => {
   const isRequired = isParameterRequired(action, actionParameter);
+  const isHidden = isParameterHidden(action, actionParameter);
 
   const name = actionParameter.name ?? actionParameter.id;
 
@@ -119,10 +127,17 @@ export const ActionParameterMappingItem = ({
     });
   };
 
-  const handleHiddenChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleValueChange = (newValue: RowValue) => {
     onChange({
       ...parameterSettings,
-      hidden: e.target.checked,
+      value: newValue,
+    });
+  };
+
+  const handleColumnChange = (newValue: FieldId) => {
+    onChange({
+      ...parameterSettings,
+      sourceValueTarget: newValue,
     });
   };
 
@@ -131,7 +146,7 @@ export const ActionParameterMappingItem = ({
   return (
     <Box data-testid={`parameter-form-section-${actionParameter.id}`} mt="1rem">
       <ParameterFormLabel error={false}>
-        <span>{`${name}${isRequired ? t`: required` : ""}`}</span>
+        <span>{`${name}${isRequired ? t`: required` : ""}${isHidden ? t`: hidden` : ""}`}</span>
       </ParameterFormLabel>
       <Select
         value={parameterSettings.sourceType}
@@ -139,12 +154,19 @@ export const ActionParameterMappingItem = ({
         onChange={handleSourceTypeChange}
       />
 
-      {(parameterSettings.sourceType === "row-data" ||
-        parameterSettings.sourceType === "constant") && (
-        <Checkbox
-          label={t`Is hidden`}
-          checked={parameterSettings.hidden}
-          onChange={handleHiddenChange}
+      {parameterSettings.sourceType === "row-data" && (
+        <TableColumnsSelect
+          value={parameterSettings.sourceValueTarget}
+          columns={tableColumns}
+          onChange={handleColumnChange}
+        />
+      )}
+
+      {parameterSettings.sourceType === "constant" && (
+        <TextInput
+          label={t`Value`}
+          value={parameterSettings.value}
+          onChange={(e) => handleValueChange(e.target.value)}
         />
       )}
     </Box>

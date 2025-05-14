@@ -47,8 +47,10 @@ export function RowActionSettingsModalContent({
     editedAction || null,
   );
 
+  const isEditMode = !!editedAction;
+
   const [actionName, setActionName] = useState<string | undefined>(
-    rowActionSettings?.name,
+    rowActionSettings?.name || selectedAction?.name,
   );
 
   const [parameterMappings, setParameterMappings] = useState(
@@ -85,6 +87,10 @@ export function RowActionSettingsModalContent({
   //     return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
   //   });
 
+  const handlePickAction = (action: WritebackAction) => {
+    setSelectedAction(action);
+  };
+
   const handleMappingsChange = (
     mappingsMap: RowActionFieldFieldSettingsMap,
   ) => {
@@ -106,15 +112,15 @@ export function RowActionSettingsModalContent({
   return (
     <ActionSettingsWrapper
       style={{
-        minWidth: editedAction ? "auto" : undefined,
+        minWidth: isEditMode ? "auto" : undefined,
       }}
     >
-      {!editedAction && (
+      {!isEditMode && (
         <ActionSettingsLeft>
           <h4 className={CS.pb2}>{t`Action Library`}</h4>
           <ConnectedActionPicker
             currentAction={selectedAction}
-            onClick={setSelectedAction}
+            onClick={handlePickAction}
           />
         </ActionSettingsLeft>
       )}
@@ -124,8 +130,7 @@ export function RowActionSettingsModalContent({
             <Box p="md">
               <TextInput
                 label={t`Row action name`}
-                value={actionName ?? ""}
-                placeholder={selectedAction.name}
+                value={actionName || selectedAction.name}
                 onChange={(e) => setActionName(e.target.value)}
               />
             </Box>

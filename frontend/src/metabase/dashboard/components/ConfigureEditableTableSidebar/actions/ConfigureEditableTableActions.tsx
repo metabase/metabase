@@ -233,7 +233,11 @@ export const ConfigureEditableTableActions = ({
       >{t`Add a new row action`}</Button>
 
       {dashboard && (
-        <Modal opened={isEditingModalOpen} onClose={cancelEditAction}>
+        <Modal
+          size={editingAction ? undefined : "60rem"}
+          opened={isEditingModalOpen}
+          onClose={cancelEditAction}
+        >
           <RowActionSettingsModalContent
             action={editingAction}
             rowActionSettings={editingActionSetting}

@@ -225,22 +225,16 @@ type RowActionFieldSettingsBase = {
 export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {
   sourceType: "ask-user"; // default - ask user, cannot be hidden
   value?: RowValue; // default placeholder value
-  hidden: false; // cannot be hidden
-  editable: true;
 };
 
 export type RowDataRowActionFieldSettings = RowActionFieldSettingsBase & {
   sourceType: "row-data"; // get data from row
   sourceValueTarget: FieldId;
-  hidden: boolean;
-  editable: boolean;
 };
 
 export type ConstantRowActionFieldSettings = RowActionFieldSettingsBase & {
   sourceType: "constant";
   value: RowValue;
-  hidden: boolean;
-  editable: false;
 };
 
 export type RowActionFieldSettings =

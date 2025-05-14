@@ -14,8 +14,6 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-const DISABLED_AUTOMATIC_MAPPING_IDS = ["id", "created_at", "updated_at"];
-
 export const useTableActions = ({
   visualizationSettings,
   datasetData,
@@ -30,6 +28,49 @@ export const useTableActions = ({
 
   const { data: actions } = useListActionsQuery({});
 
+  const {
+    hasCreateAction,
+    hasDeleteAction,
+    enabledRowActions,
+    enabledActionsVizSettingsSet,
+  } = useMemo(() => {
+    const enabledActionsVizSettingsSet = new Map<
+      EditableTableRowActionId,
+      EditableTableRowActionDisplaySettings
+    >();
+
+    visualizationSettings?.["editableTable.enabledActions"]?.forEach(
+      (action) => {
+        if (action.enabled) {
+          enabledActionsVizSettingsSet.set(action.id, action);
+        }
+      },
+    );
+
+    const hasCreateAction = enabledActionsVizSettingsSet.has("row/create");
+    const hasDeleteAction = enabledActionsVizSettingsSet.has("row/delete");
+
+    const enabledRowActions =
+      actions
+        ?.filter(({ id }) => enabledActionsVizSettingsSet.has(id))
+        .map((action) => {
+          const actionSettings = enabledActionsVizSettingsSet.get(action.id);
+
+          // remap to user defined custom action name
+          return {
+            ...action,
+            name: actionSettings?.name || action.name,
+          };
+        }) || [];
+
+    return {
+      hasCreateAction,
+      hasDeleteAction,
+      enabledRowActions,
+      enabledActionsVizSettingsSet,
+    };
+  }, [actions, visualizationSettings]);
+
   const handleRowActionRun = useCallback(
     (action: WritebackAction, row: Row<RowValues>) => {
       if (!datasetData) {
@@ -40,21 +81,29 @@ export const useTableActions = ({
       const rowIndex = row.index;
       const rowData = datasetData.rows[rowIndex];
 
+      const vizSettings = enabledActionsVizSettingsSet.get(action.id);
+
       const remappedInitialActionValues = action.parameters?.reduce(
         (result, parameter) => {
-          if (
-            parameter.slug &&
-            parameter.id &&
-            !DISABLED_AUTOMATIC_MAPPING_IDS.includes(
-              parameter.slug.toLowerCase(),
-            )
-          ) {
-            const targetColumnIndex = datasetData?.cols.findIndex((col) => {
-              return col.name.toLowerCase() === parameter.slug.toLowerCase();
-            });
+          if (parameter.id) {
+            const mappingSettings = vizSettings?.parameterMappings?.find(
+              ({ parameterId }) => parameterId === parameter.id,
+            );
 
-            if (targetColumnIndex > -1) {
-              result[parameter.id] = rowData[targetColumnIndex];
+            if (mappingSettings) {
+              if (mappingSettings.sourceType === "row-data") {
+                const targetColumnIndex = datasetData?.cols.findIndex((col) => {
+                  return col.id === mappingSettings.sourceValueTarget;
+                });
+
+                if (targetColumnIndex > -1) {
+                  result[parameter.id] = rowData[targetColumnIndex];
+                }
+              }
+
+              if (mappingSettings.sourceType === "constant") {
+                result[parameter.id] = mappingSettings.value;
+              }
             }
           }
 
@@ -68,50 +117,12 @@ export const useTableActions = ({
         rowData: remappedInitialActionValues || {},
       });
     },
-    [datasetData],
+    [datasetData, enabledActionsVizSettingsSet],
   );
 
   const handleExecuteModalClose = useCallback(() => {
     setActiveActionState(null);
   }, []);
-
-  const { hasCreateAction, hasDeleteAction, enabledRowActions } =
-    useMemo(() => {
-      const enabledActionsSet = new Map<
-        EditableTableRowActionId,
-        EditableTableRowActionDisplaySettings
-      >();
-
-      visualizationSettings?.["editableTable.enabledActions"]?.forEach(
-        (action) => {
-          if (action.enabled) {
-            enabledActionsSet.set(action.id, action);
-          }
-        },
-      );
-
-      const hasCreateAction = enabledActionsSet.has("row/create");
-      const hasDeleteAction = enabledActionsSet.has("row/delete");
-
-      const enabledRowActions =
-        actions
-          ?.filter(({ id }) => enabledActionsSet.has(id))
-          .map((action) => {
-            const actionSettings = enabledActionsSet.get(action.id);
-
-            // remap to user defined custom action name
-            return {
-              ...action,
-              name: actionSettings?.name || action.name,
-            };
-          }) || [];
-
-      return {
-        hasCreateAction,
-        hasDeleteAction,
-        enabledRowActions,
-      };
-    }, [actions, visualizationSettings]);
 
   return {
     hasCreateAction,
