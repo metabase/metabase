@@ -24,6 +24,7 @@ import {
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
+  type DashboardContextProps,
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
@@ -36,7 +37,6 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import type { DashboardModeProp } from "../../../../../../../frontend/src/metabase/dashboard/context/DashboardMode";
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 
@@ -75,7 +75,7 @@ export type SdkDashboardProps = {
    * Props for the drill-through question
    */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
-} & DashboardModeProp &
+} & Pick<DashboardContextProps, "mode"> &
   SdkDashboardDisplayProps &
   DashboardEventHandlersProps &
   Pick<DashboardCardCustomMenuItem, "withMetabot">;
