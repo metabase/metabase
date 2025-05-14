@@ -408,12 +408,13 @@ describe("issue 57398", () => {
       cy.findByLabelText("Add another filter").click();
     });
 
-    cy.log("assert we show the running state when navigating back");
+    cy.log("delay the response to be able to verify the running state");
     cy.intercept("POST", "/api/dataset", (req) => {
       req.on("response", (res) => {
         res.setDelay(5000);
       });
     });
+
     cy.go("back");
     H.queryBuilderMain().findByTestId("loading-indicator").should("be.visible");
     H.queryBuilderFiltersPanel().within(() => {
