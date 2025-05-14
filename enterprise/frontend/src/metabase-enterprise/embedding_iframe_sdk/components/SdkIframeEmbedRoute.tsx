@@ -46,7 +46,7 @@ export const SdkIframeEmbedRoute = () => {
   );
 };
 
-export const SdkIframeEmbedView = ({
+const SdkIframeEmbedView = ({
   settings,
 }: {
   settings: SdkIframeEmbedSettings;
