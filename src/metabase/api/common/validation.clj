@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.embedding.settings :as embed.settings]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]))
