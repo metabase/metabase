@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
 
 import { useMetabotAgent } from "../../hooks";
@@ -66,77 +67,84 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     : inputPlaceholder;
 
   return (
-    <Box
-      className={Styles.container}
-      style={{ animationDuration: `${ANIMATION_DURATION_MS}ms` }}
-      data-testid="metabot-chat"
+    <Sidebar
+      isOpen={metabot.visible}
+      side="right"
+      width="400px"
+      aria-hidden={!metabot.visible}
     >
-      {metabot.userMessages.length > 0 && (
-        <Box className={Styles.responses} data-testid="metabot-chat-messages">
-          {metabot.userMessages.map((msg, index) => (
-            <Box
-              className={Styles.response}
-              key={msg}
-              data-testid="metabot-chat-message"
-            >
-              <Box>{msg}</Box>
-              <UnstyledButton
-                className={Styles.responseDismissBtn}
-                onClick={() => metabot.dismissUserMessage(index)}
-              >
-                <Icon name="close" size="1rem" />
-              </UnstyledButton>
-            </Box>
-          ))}
-        </Box>
-      )}
-      <Flex
-        className={cx(
-          Styles.innerContainer,
-          metabot.isDoingScience && Styles.innerContainerLoading,
-          inputExpanded && Styles.innerContainerExpanded,
-        )}
-        gap="sm"
+      <Box
+        className={Styles.container}
+        style={{ animationDuration: `${ANIMATION_DURATION_MS}ms` }}
+        data-testid="metabot-chat"
       >
-        <Box w="33px" h="24px">
-          <MetabotIcon isLoading={metabot.isDoingScience} />
-        </Box>
-        <Textarea
-          data-testid="metabot-chat-input"
-          w="100%"
-          autosize
-          minRows={1}
-          maxRows={4}
-          ref={textareaRef}
-          autoFocus
-          value={input}
-          disabled={metabot.isDoingScience}
+        {metabot.userMessages.length > 0 && (
+          <Box className={Styles.responses} data-testid="metabot-chat-messages">
+            {metabot.userMessages.map((msg, index) => (
+              <Box
+                className={Styles.response}
+                key={msg}
+                data-testid="metabot-chat-message"
+              >
+                <Box>{msg}</Box>
+                <UnstyledButton
+                  className={Styles.responseDismissBtn}
+                  onClick={() => metabot.dismissUserMessage(index)}
+                >
+                  <Icon name="close" size="1rem" />
+                </UnstyledButton>
+              </Box>
+            ))}
+          </Box>
+        )}
+        <Flex
           className={cx(
-            Styles.textarea,
-            inputExpanded && Styles.textareaExpanded,
-            metabot.isDoingScience && Styles.textareaLoading,
+            Styles.innerContainer,
+            metabot.isDoingScience && Styles.innerContainerLoading,
+            inputExpanded && Styles.innerContainerExpanded,
           )}
-          placeholder={placeholder}
-          onChange={(e) => handleInputChange(e.target.value)}
-          // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
-          onHeightChange={handleMaybeExpandInput}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              // prevent event from inserting new line + interacting with other content
-              e.preventDefault();
-              e.stopPropagation();
-              handleSend();
-            }
-          }}
-        />
-        <UnstyledButton
-          h="1rem"
-          onClick={handleClose}
-          data-testid="metabot-close-chat"
+          gap="sm"
         >
-          <Icon name="close" c="text-light" size="1rem" />
-        </UnstyledButton>
-      </Flex>
-    </Box>
+          <Box w="33px" h="24px">
+            <MetabotIcon isLoading={metabot.isDoingScience} />
+          </Box>
+          <Textarea
+            data-testid="metabot-chat-input"
+            w="100%"
+            autosize
+            minRows={1}
+            maxRows={4}
+            ref={textareaRef}
+            autoFocus
+            value={input}
+            disabled={metabot.isDoingScience}
+            className={cx(
+              Styles.textarea,
+              inputExpanded && Styles.textareaExpanded,
+              metabot.isDoingScience && Styles.textareaLoading,
+            )}
+            placeholder={placeholder}
+            onChange={(e) => handleInputChange(e.target.value)}
+            // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
+            onHeightChange={handleMaybeExpandInput}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                // prevent event from inserting new line + interacting with other content
+                e.preventDefault();
+                e.stopPropagation();
+                handleSend();
+              }
+            }}
+          />
+          <UnstyledButton
+            h="1rem"
+            onClick={handleClose}
+            data-testid="metabot-close-chat"
+          >
+            <Icon name="close" c="text-light" size="1rem" />
+          </UnstyledButton>
+        </Flex>
+      </Box>
+    </Sidebar>
   );
 };
