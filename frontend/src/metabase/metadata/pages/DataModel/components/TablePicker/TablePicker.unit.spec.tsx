@@ -33,13 +33,6 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-async function clickNode(name: string) {
-  const node = await screen.findByText(name);
-  act(() => {
-    node.click();
-  });
-}
-
 const PUBLIC = createMockSchema({
   id: "PUBLIC",
   name: "PUBLIC",
@@ -154,33 +147,34 @@ describe("TablePicker", () => {
   it("renders databases and unfurls nested items", async () => {
     const { onChange } = setup({ path: {} });
 
-    expect(
-      await screen.findByText(DATABASE_WITH_MULTIPLE_SCHEMAS.name),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(DATABASE_WITH_MULTIPLE_SCHEMAS.name),
-    ).toBeInTheDocument();
-    await clickNode(DATABASE_WITH_MULTIPLE_SCHEMAS.name);
+    await waitLoading();
+
+    expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+    expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+
+    await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
+    await waitLoading();
 
     expect(onChange).toHaveBeenCalledWith({
       databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
     });
 
-    expect(await screen.findByText(PRIVATE.name)).toBeInTheDocument();
-    expect(await screen.findByText(PUBLIC.name)).toBeInTheDocument();
+    expect(item(PRIVATE)).toBeInTheDocument();
+    expect(item(PUBLIC)).toBeInTheDocument();
+    expect(item(PUBLIC)).toBeInTheDocument();
 
-    expect(await screen.findByText(PUBLIC.name)).toBeInTheDocument();
-    await clickNode(PUBLIC.name);
+    await clickItem(PUBLIC);
+    await waitLoading();
 
     expect(onChange).toHaveBeenCalledWith({
       databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
       schemaId: PUBLIC.id,
     });
 
-    expect(screen.queryByText(FOO.name)).not.toBeInTheDocument();
+    expect(item(FOO)).not.toBeInTheDocument();
+    expect(item(BAR)).toBeInTheDocument();
 
-    expect(await screen.findByText(BAR.name)).toBeInTheDocument();
-    await clickNode(BAR.name);
+    await clickItem(BAR);
 
     expect(onChange).toHaveBeenCalledWith({
       databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
@@ -188,60 +182,65 @@ describe("TablePicker", () => {
       tableId: BAR.id,
     });
 
-    await clickNode(PUBLIC.name);
+    await clickItem(PUBLIC);
+    await waitLoading();
 
-    expect(screen.queryByText(FOO.name)).not.toBeInTheDocument();
-    expect(screen.queryByText(BAR.name)).not.toBeInTheDocument();
+    expect(item(FOO)).not.toBeInTheDocument();
+    expect(item(BAR)).not.toBeInTheDocument();
 
-    await clickNode(DATABASE_WITH_MULTIPLE_SCHEMAS.name);
-    expect(screen.queryByText(PUBLIC.name)).not.toBeInTheDocument();
-    expect(screen.queryByText(PRIVATE.name)).not.toBeInTheDocument();
+    await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
+    await waitLoading();
+
+    expect(item(PUBLIC)).not.toBeInTheDocument();
+    expect(item(PRIVATE)).not.toBeInTheDocument();
   });
 
   it("flattens schemas with no names", async () => {
     const { onChange } = setup({ path: {} });
 
-    expect(
-      await screen.findByText(DATABASE_WITH_UNNAMED_SCHEMA.name),
-    ).toBeInTheDocument();
-    await clickNode(DATABASE_WITH_UNNAMED_SCHEMA.name);
+    await waitLoading();
+
+    expect(item(DATABASE_WITH_UNNAMED_SCHEMA)).toBeInTheDocument();
+    await clickItem(DATABASE_WITH_UNNAMED_SCHEMA);
 
     expect(onChange).toHaveBeenCalledWith({
       databaseId: DATABASE_WITH_UNNAMED_SCHEMA.id,
     });
 
+    // first for the schema
+    await waitLoading();
+
     // the schema does not render itself but it's children are rendered directly
-    expect(await screen.findByText(CORGE.name)).toBeInTheDocument();
-    expect(await screen.findByText(GRAULT.name)).toBeInTheDocument();
+    expect(item(CORGE)).toBeInTheDocument();
+    expect(item(GRAULT)).toBeInTheDocument();
 
     // Other schema's are still just rendered as normal
-    expect(await screen.findByText(NAMED_SCHEMA.name)).toBeInTheDocument();
-    expect(screen.queryByText(GLORP.name)).not.toBeInTheDocument();
+    expect(item(NAMED_SCHEMA)).toBeInTheDocument();
+    expect(item(GLORP)).not.toBeInTheDocument();
   });
 
   it("automatically opens schemas when there is only one schema", async () => {
     const { onChange } = setup({ path: {} });
 
-    expect(
-      await screen.findByText(DATABASE_WITH_SINGLE_SCHEMA.name),
-    ).toBeInTheDocument();
-    await clickNode(DATABASE_WITH_SINGLE_SCHEMA.name);
+    await waitLoading();
+
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
+    await clickItem(DATABASE_WITH_SINGLE_SCHEMA);
+    await waitLoading();
 
     expect(onChange).toHaveBeenCalledWith({
       databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
     });
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
-        schemaId: SINGLE_SCHEMA.name,
-      });
+    expect(onChange).toHaveBeenCalledWith({
+      databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
+      schemaId: SINGLE_SCHEMA.name,
     });
 
     // the schema is expanded and renders its children tables
-    expect(await screen.findByText(SINGLE_SCHEMA.name)).toBeInTheDocument();
-    expect(await screen.findByText(QUU.name)).toBeInTheDocument();
-    expect(await screen.findByText(QUX.name)).toBeInTheDocument();
+    expect(item(SINGLE_SCHEMA)).toBeInTheDocument();
+    expect(item(QUU)).toBeInTheDocument();
+    expect(item(QUX)).toBeInTheDocument();
   });
 
   it("should be possible to navigate with the keyboard", async () => {
@@ -251,34 +250,30 @@ describe("TablePicker", () => {
 
     // focus the first item
     await userEvent.keyboard("{Tab}");
-    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)).toHaveFocus();
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
 
     // arrow down moves focus down
     await userEvent.keyboard("{ArrowDown}");
-    expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS.name)).toHaveFocus();
+    expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toHaveFocus();
 
     // arrow up moves focus up
     await userEvent.keyboard("{ArrowUp}");
-    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)).toHaveFocus();
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
 
     // right arrow opens the node
     await userEvent.keyboard("{ArrowRight}");
-    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe("true");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
 
     // left arrow closes the node
     await userEvent.keyboard("{ArrowLeft}");
-    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe(
-      undefined,
-    );
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
 
     // space toggles the node
     await userEvent.keyboard(" ");
-    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe("true");
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
 
     await userEvent.keyboard(" ");
-    expect(item(DATABASE_WITH_SINGLE_SCHEMA.name)?.dataset.open).toBe(
-      undefined,
-    );
+    expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
 
     // enter selects the node
     await userEvent.keyboard("{Enter}");
@@ -288,8 +283,23 @@ describe("TablePicker", () => {
   });
 });
 
-function item(name: string) {
-  return screen.getByText(name)?.parentNode?.parentNode as
-    | HTMLDivElement
-    | undefined;
+async function clickItem({ name }: { name: string }) {
+  const node = await screen.findByText(name);
+  act(() => {
+    node.click();
+  });
+}
+
+async function waitLoading() {
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-placeholder")).not.toBeInTheDocument();
+  });
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-placeholder")).not.toBeInTheDocument();
+  });
+}
+
+function item({ name }: { name: string }) {
+  return (screen.queryByText(name)?.parentNode?.parentNode ??
+    null) as HTMLDivElement | null;
 }
