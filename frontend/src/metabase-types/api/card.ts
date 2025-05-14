@@ -192,10 +192,15 @@ export type ColumnNameAndBinning = {
   binning: BinningInfo | TemporalUnit | null;
 };
 
+export type PivotAggregation = {
+  aggregation: string;
+  column?: ColumnNameAndBinning;
+};
+
 export type ColumnNameAndBinningSplitSetting = {
   rows: ColumnNameAndBinning[];
   columns: ColumnNameAndBinning[];
-  values: ColumnNameAndBinning[];
+  values: PivotAggregation[];
 };
 
 // Pre-aggregated pivots use plain column names in split settings;
