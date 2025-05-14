@@ -239,7 +239,7 @@ class TagEditorParamInner extends Component<Props> {
     }
   };
 
-  getFilterWidgetTypeValue = (tag: TemplateTag, field: Field | null) => {
+  getFilterWidgetTypeValue = (tag: TemplateTag) => {
     // avoid `undefined` value because it makes the component "uncontrollable"
     // (see Uncontrollable.jsx, metabase#13825)
     const widgetType = tag["widget-type"] || "none";
@@ -251,10 +251,6 @@ class TagEditorParamInner extends Component<Props> {
     // dropdown is correctly populated with a set option
     if (isOldWidgetType) {
       return "string/=";
-    }
-
-    if (widgetType.startsWith("string") && field?.isBoolean()) {
-      return "boolean/=";
     }
 
     return widgetType;
@@ -315,7 +311,7 @@ class TagEditorParamInner extends Component<Props> {
         {hasSelectedDimensionField && (
           <FilterWidgetTypeSelect
             tag={tag}
-            value={this.getFilterWidgetTypeValue(tag, field)}
+            value={this.getFilterWidgetTypeValue(tag)}
             onChange={this.setWidgetType}
             options={widgetOptions}
           />
