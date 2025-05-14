@@ -380,40 +380,39 @@
             user    (u/lower-case-en (mt/random-name))
             schema  (sql.tx/session-schema :redshift)]
         (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
-          (try
-            (doseq [statement [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
-                               (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
-                               (format "CREATE TABLE \"%s\".table_with_access (x INTEGER NOT NULL, y INTEGER, z INTEGER);" schema)
-                               (format "CREATE TABLE \"%s\".table_without_access (y INTEGER NOT NULL);" schema)
-                               (format "INSERT INTO \"%s\".table_with_access (x, y, z) VALUES (1, 2, 3), (2, 4, 6);" schema)]]
-              (jdbc/execute! spec statement))
-            (tx/with-temp-roles! :redshift
-              details
-              {user {"table_with_access" {:columns ["x" "z"]}}}
-              user
-              (mt/with-db database
-                (sync/sync-database! database {:scan :schema})
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" user}}
-                  (is (= [[1 3] [2 6]]
-                         (-> {:query (format "SELECT * FROM \"%s\".table_with_access;" schema)}
-                             mt/native-query
-                             mt/process-query
-                             mt/rows)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"permission denied for relation table_with_access"
-                       (-> {:query (format "SELECT y FROM \"%s\".table_with_access;" schema)}
+          (doseq [statement [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
+                             (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
+                             (format "CREATE TABLE \"%s\".table_with_access (x INTEGER NOT NULL, y INTEGER, z INTEGER);" schema)
+                             (format "CREATE TABLE \"%s\".table_without_access (y INTEGER NOT NULL);" schema)
+                             (format "INSERT INTO \"%s\".table_with_access (x, y, z) VALUES (1, 2, 3), (2, 4, 6);" schema)]]
+            (jdbc/execute! spec statement))
+          (tx/with-temp-roles! :redshift
+            details
+            {user {"table_with_access" {:columns ["x" "z"]}}}
+            user
+            (mt/with-db database
+              (sync/sync-database! database {:scan :schema})
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" user}}
+                (is (= [[1 3] [2 6]]
+                       (-> {:query (format "SELECT * FROM \"%s\".table_with_access;" schema)}
                            mt/native-query
                            mt/process-query
                            mt/rows)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"permission denied for relation table_without_access"
-                       (-> {:query (format "SELECT * FROM \"%s\".table_without_access;" schema)}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows))))))))))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"permission denied for relation table_with_access"
+                     (-> {:query (format "SELECT y FROM \"%s\".table_with_access;" schema)}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"permission denied for relation table_without_access"
+                     (-> {:query (format "SELECT * FROM \"%s\".table_without_access;" schema)}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))))))))))
 
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
