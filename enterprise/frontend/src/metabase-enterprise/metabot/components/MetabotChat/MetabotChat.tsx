@@ -8,7 +8,6 @@ import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
-import { useAutoCloseMetabot } from "./useAutoCloseMetabot";
 
 const MIN_INPUT_HEIGHT = 42;
 const ANIMATION_DURATION_MS = 300;
@@ -41,10 +40,6 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     resetInput();
     onClose();
   }, [resetInput, onClose]);
-
-  useAutoCloseMetabot({
-    hasUserInput: !!input,
-  });
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
