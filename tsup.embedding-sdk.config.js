@@ -414,7 +414,7 @@ await build({
   minify: !isDevMode,
   clean: true,
   watch: isDevMode,
-  metafile: true,
+  metafile: false,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
   noExternal: [
