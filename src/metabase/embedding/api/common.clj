@@ -354,10 +354,10 @@
 (defn- get-embed-dashboard-context
   "If a certain export-format is given, return the correct embedded dashboard context."
   [export-format]
-  (case export-format
-    "csv"  :embedded-csv-download
-    "xlsx" :embedded-xlsx-download
-    "json" :embedded-json-download
+  (case (keyword export-format)
+    :csv  :embedded-csv-download
+    :xlsx :embedded-xlsx-download
+    :json :embedded-json-download
     :embedded-dashboard))
 
 (defn process-query-for-dashcard
