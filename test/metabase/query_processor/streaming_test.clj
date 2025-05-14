@@ -40,7 +40,7 @@
     (let [query (mt/mbql-query venues
                   {:order-by [[:asc $id]]
                    :limit    5})]
-      (doseq [export-format (qp.schema/export-formats)]
+      (doseq [export-format qp.schema/export-formats]
         (testing (u/colorize :yellow export-format)
           (case export-format
             :csv (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
@@ -132,7 +132,7 @@
 (deftest utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
-  (doseq [export-format (disj (qp.schema/export-formats) :xlsx :csv)]
+  (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]
     (testing (u/colorize :yellow export-format)
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
@@ -220,7 +220,7 @@
                            :order-by [[:asc $id]]
                            :limit    1}))
             col-names [:date :datetime :datetime-ltz :datetime-tz :datetime-tz-id :time :time-ltz :time-tz]]
-        (doseq [export-format (qp.schema/export-formats)]
+        (doseq [export-format qp.schema/export-formats]
           (letfn [(test-results [expected]
                     (testing (u/colorize :yellow export-format)
                       (is (= expected
