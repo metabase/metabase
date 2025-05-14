@@ -17,7 +17,8 @@
     :card-id      :card
     :model-id     :model
     :webhook-id   :webhook
-    :table-id     :table))
+    :table-id     :table
+    :unknown      :unknown))
 
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))

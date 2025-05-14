@@ -14,7 +14,8 @@
   ;; then need some way to tell legacy-action invocations apart.
    [:map [:model-id pos-int?]]
    [:map [:table-id pos-int?]]
-   [:map [:webhook-id pos-int?]]])
+   [:map [:webhook-id pos-int?]]
+   [:map [:unknown [:enum :legacy-action]]]])
 
 ;; Relaxed, as we support it being
 (mr/def ::scope.raw
@@ -78,4 +79,5 @@
      [:type        [:enum :webhook]]
      [:webhook-id  pos-int?]
      [:table-id    pos-int?]
-     [:database-id pos-int?]]]])
+     [:database-id pos-int?]]]
+   [:unknown any?]])
