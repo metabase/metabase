@@ -126,11 +126,6 @@ describe("scenarios > admin > localization > content translation of column names
 
             const assertColumnNamesAreTranslated = () =>
               columnsInChart.forEach((row) => {
-                // TODO: Somehow the column names are not getting translated anymore
-                console.log(
-                  "Expecting to see translated string row.msgstr",
-                  row.msgstr,
-                );
                 H.echartsContainer()
                   .get("text")
                   .should("contain", row.msgstr)
