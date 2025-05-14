@@ -60,7 +60,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   );
 
   if (timeDimensions.length > 0) {
-    const isCompatible = timeDimensions.some((dimension) => isDate(dimension));
+    const isCompatible = fields.some((field) => isDate(field));
     if (!isCompatible) {
       return false;
     }
