@@ -252,7 +252,7 @@ const embeddingSdkComponentTestConfig = {
   video: false,
   specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
   indexHtmlFile: "e2e/support/component-index.html",
-  supportFile: "e2e/support/component-cypress.js",
+  supportFile: "e2e/support/cypress.js",
 
   reporter: mainConfig.reporter,
   reporterOptions: mainConfig.reporterOptions,

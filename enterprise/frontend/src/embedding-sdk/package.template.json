@@ -18,7 +18,6 @@
       "require": "./dist/nextjs.cjs",
       "import": "./dist/nextjs.js"
     },
-    "./styles.css": "./dist/index.css",
     "./package.json": "./package.json"
   },
   "typesVersions": {

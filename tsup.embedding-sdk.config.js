@@ -4,9 +4,11 @@ import fs from "fs";
 
 import { NodeModulesPolyfillPlugin } from "@esbuild-plugins/node-modules-polyfill";
 import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
-import { transform } from "@svgr/core";
+import { transform as svgrTransform } from "@svgr/core";
+import { transform as esbuildTransform } from "esbuild";
 import babel from "esbuild-plugin-babel";
 import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
+import glob from "glob";
 import { minimatch } from "minimatch";
 import path from "path";
 import postcss from "postcss";
@@ -100,6 +102,64 @@ const aliases = {
   ),
 };
 
+const getCssModulesInjectCode = async () => {
+  const code = `
+    function mb_css(css, { insertAt } = {}) {
+      if (!css || typeof document === 'undefined') return
+
+      const head = document.head || document.getElementsByTagName('head')[0]
+      const style = document.createElement('style')
+      style.type = 'text/css'
+
+      if (insertAt === 'top') {
+        if (head.firstChild) {
+          head.insertBefore(style, head.firstChild)
+        } else {
+          head.appendChild(style)
+        }
+      } else {
+        head.appendChild(style)
+      }
+
+      if (style.styleSheet) {
+        style.styleSheet.cssText = css
+      } else {
+        style.appendChild(document.createTextNode(css))
+      }
+    }
+  `;
+
+  return (
+    await esbuildTransform(code, {
+      minify: true,
+      minifyIdentifiers: true,
+      minifySyntax: true,
+      minifyWhitespace: true,
+      loader: "js",
+    })
+  ).code;
+};
+
+const setupBanners = async () => {
+  const cssModulesInjectCode = await getCssModulesInjectCode();
+
+  await glob("./**/*.{js,mjs,cjs}", { cwd: BUILD_PATH }, (err, files) => {
+    files.forEach((file) => {
+      const content = fs.readFileSync(path.join(BUILD_PATH, file), "utf8");
+      const fileName = path.parse(file).name;
+
+      // Right now all css modules are in the main bundle
+      const isMainBundle = fileName === "index";
+      const shouldAppendCssModulesInjectCode = isMainBundle;
+
+      fs.writeFileSync(
+        path.join(BUILD_PATH, file),
+        `${LICENSE_BANNER}\n${shouldAppendCssModulesInjectCode ? `${cssModulesInjectCode}\n` : ""}${content}`,
+      );
+    });
+  });
+};
+
 const getFullPathFromResolvePath = ({ resolveDir, resolvePath, aliases }) => {
   let fullPath;
 
@@ -127,7 +187,7 @@ const getFullPathFromResolvePath = ({ resolveDir, resolvePath, aliases }) => {
 // Taken from https://github.com/rtivital/hash-css-selector
 // But generates hashes based on the full css module file path,
 const generateScopedName = (selector, fileName) => {
-  const prefix = "mb-sdk";
+  const prefix = "mb";
   const getFileName = (filePath) => {
     return filePath
       .replace(/\\/g, "/")
@@ -204,10 +264,25 @@ const cssModulesPlugin = ({
             }),
           ]).process(source, { from: fullPath });
 
+          // The same logic as done in `tsup`, but for `css modules`
+          const injectedCss = (
+            await esbuildTransform(result.css, {
+              minify: build.initialOptions.minify,
+              minifyIdentifiers: build.initialOptions.minifyIdentifiers,
+              minifySyntax: build.initialOptions.minifySyntax,
+              minifyWhitespace: build.initialOptions.minifyWhitespace,
+              logLevel: build.initialOptions.logLevel,
+              loader: "css",
+            })
+          ).code;
+
           return {
-            contents: `import "${fullPath}";\nexport default ${JSON.stringify(
-              json,
-            )};`,
+            // `mb_css` is the function added by `setupBanners` function
+            contents: `
+              import "${fullPath}";
+              export default ${JSON.stringify(json)};
+              mb_css(${JSON.stringify(injectedCss)});
+            `,
             pluginData: { css: result.css },
           };
         },
@@ -260,7 +335,7 @@ const svgrPlugin = () => ({
 
         const source = await fs.promises.readFile(fullPath, "utf8");
 
-        const contents = await transform(
+        const contents = await svgrTransform(
           source,
           {
             plugins: ["@svgr/plugin-jsx"],
@@ -345,10 +420,7 @@ await build({
   noExternal: [
     /^(?!(?:canvg(?:\/|$)|dompurify(?:\/|$)|react(?:\/|$)|react-dom(?:\/|$))).*/,
   ],
-  banner: {
-    js: LICENSE_BANNER,
-    css: LICENSE_BANNER,
-  },
+  injectStyle: true,
   env: {
     BUILD_TIME: JSON.stringify(new Date().toISOString()),
     EMBEDDING_SDK_VERSION: JSON.stringify(EMBEDDING_SDK_VERSION),
@@ -408,8 +480,10 @@ await build({
         "./enterprise/frontend/src/embedding-sdk/index.ts",
         // eslint-disable-next-line no-literal-metabase-strings -- build config
         "./enterprise/frontend/src/embedding-sdk/components/public/MetabaseProvider.tsx",
+        "./frontend/src/metabase/visualizations/components/LeafletChoropleth.jsx",
         "./frontend/src/metabase/visualizations/components/LeafletHeatMap.jsx",
         "./frontend/src/metabase/visualizations/components/LeafletMap.jsx",
+        "./frontend/src/metabase/dashboard/components/grid/GridLayout.tsx",
         "./e2e/**/**",
       ],
     }),
@@ -444,3 +518,8 @@ await build({
     return options;
   },
 });
+
+// Cleanup index.css file, styles are injected into .js file
+fs.rmSync(path.join(BUILD_PATH, "index.css"));
+
+await setupBanners();
