@@ -9,7 +9,7 @@
 
 (defmacro ^:private with-create-temp-failure! [& body]
   `(with-redefs [email.result-attachment/create-temp-file! (fn [~'_]
-                                                            (throw (IOException. "Failed to write file")))]
+                                                             (throw (IOException. "Failed to write file")))]
      ~@body))
 
 ;; Test that IOException bubbles up

@@ -7,6 +7,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -21,8 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.queries.schema :as queries.schema]))
+   [toucan2.core :as t2]))
 
 (def ^:private HoneySQLColumn
   [:or
