@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.specialization.postgres
   (:require
    [clojure.string :as str]
+   [metabase.db :as mdb]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
@@ -11,30 +12,32 @@
 (def ^:private available-tsv-languages
   "Mapping of our available locals to the names of the postgres tsvector languages.
   Queries the pg_ts_config table to find out which languages are actually available."
-  (let [default-mapping {:ar    :arabic
-                         :ar_SA :arabic
-                         :ca    :catalan
-                         :da    :danish
-                         :en    :english
-                         :fi    :finnish
-                         :fr    :french
-                         :de    :german
-                         :hu    :hungarian
-                         :id    :indonesian
-                         :it    :italian
-                         :nb    :norwegian
-                         :pt_BR :portuguese
-                         :ru    :russian
-                         :sr    :serbian
-                         :es    :spanish
-                         :sv    :swedish
-                         :tr    :turkish}
-        available-languages (->> (t2/query {:select [:cfgname]
-                                            :from   [:pg_ts_config]})
-                                 (map :cfgname)
-                                 (map keyword)
-                                 set)]
-    (into {} (filter (comp available-languages val) default-mapping))))
+  (if (= :postgres (mdb/db-type))
+    (let [default-mapping {:ar    :arabic
+                           :ar_SA :arabic
+                           :ca    :catalan
+                           :da    :danish
+                           :en    :english
+                           :fi    :finnish
+                           :fr    :french
+                           :de    :german
+                           :hu    :hungarian
+                           :id    :indonesian
+                           :it    :italian
+                           :nb    :norwegian
+                           :pt_BR :portuguese
+                           :ru    :russian
+                           :sr    :serbian
+                           :es    :spanish
+                           :sv    :swedish
+                           :tr    :turkish}
+          available-languages (->> (t2/query {:select [:cfgname]
+                                              :from   [:pg_ts_config]})
+                                   (map :cfgname)
+                                   (map keyword)
+                                   set)]
+      (into {} (filter (comp available-languages val) default-mapping)))
+    {}))
 
 (defn- tsv-language []
   (if-let [custom-language (search.settings/search-language)]
