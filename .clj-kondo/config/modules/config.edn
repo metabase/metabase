@@ -35,7 +35,8 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api
-           metabase.actions.core}
+           metabase.actions.core
+           metabase.actions.types}
    :uses #{analytics
            api
            collections

@@ -407,7 +407,9 @@
                                    :notification   {:payload_type :notification/system-event
                                                     :payload      {:event_name :event/row.created}}
                                    :custom_context {:context {:event_name :event/row.created
-                                                              :timestamp  "2023-01-01T10:00:00Z"}
+                                                              :timestamp  "2023-01-01T10:00:00Z"
+                                                              :scope      {:type       "table"
+                                                                           :origin_url "https://metabase.com/table/1"}}
                                                     :creator {:common_name "Meta Bot",
                                                               :email "bot@metabase.com",
                                                               :first_name "Meta",
@@ -420,9 +422,9 @@
                                                     :settings {},
                                                     :table {:id 1, :name "orders" :url "http://localhost:3000/table/1"}}}))))
   (testing "fail if the custom context does not match the schema"
-    (is (=? {:message "Value does not match schema"
-             :data    {:error (mt/malli=? :map)}}
-            (mt/user-http-request :crowberto :post 500 "notification/preview_template"
+    (is (=? {:errors          (mt/malli=? :map)
+             :specific-errors (mt/malli=? :map)}
+            (mt/user-http-request :crowberto :post 400 "notification/preview_template"
                                   {:template     {:channel_type :channel/email
                                                   :details {:type    :email/handlebars-text
                                                             :subject "{{editor.first_name}} {{editor.last_name}} has created a row for {{table.name}}"
