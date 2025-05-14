@@ -12,23 +12,28 @@ interface Props {
   tableId: TableId;
   fieldId: FieldId;
   field: Field;
+  previewType: PreviewType;
+  onPreviewTypeChange: (value: PreviewType) => void;
 }
 
 type PreviewType = ReturnType<typeof getTypeSelectorData>[number]["value"];
 
 export const PreviewSection = (props: Props) => {
-  const [previewType, setPreviewType] = useState<PreviewType>("table");
-
+  const { previewType, onPreviewTypeChange } = props;
   return (
     <Card bg="white" h="100%" px="lg" py="md" shadow="xs">
       <Text fw="bold">Field preview</Text>
-      <PreviewTypeSelector value={previewType} onChange={setPreviewType} />
+      <PreviewTypeSelector value={previewType} onChange={onPreviewTypeChange} />
 
       {previewType === "table" && <TablePreview {...props} />}
       {previewType === "detail" && <ObjectDetailPreview {...props} />}
     </Card>
   );
 };
+
+export function usePreviewType() {
+  return useState<PreviewType>("table");
+}
 
 function getTypeSelectorData() {
   return [

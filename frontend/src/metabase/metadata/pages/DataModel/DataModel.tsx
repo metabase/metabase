@@ -14,6 +14,7 @@ import {
   PreviewSection,
   RouterTablePicker,
   TableSection,
+  usePreviewType,
 } from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
@@ -42,6 +43,7 @@ export const DataModel = ({ params }: Props) => {
         },
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const [previewType, onPreviewTypeChange] = usePreviewType();
 
   return (
     <Flex
@@ -143,6 +145,8 @@ export const DataModel = ({ params }: Props) => {
                 tableId={tableId}
                 fieldId={fieldId}
                 field={field}
+                previewType={previewType}
+                onPreviewTypeChange={onPreviewTypeChange}
               />
             )}
           </Box>
