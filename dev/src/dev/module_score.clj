@@ -1,4 +1,63 @@
 (ns dev.module-score
+  "* exported vars
+
+     * 25 points
+
+     * `25 * (1 - (num-exported-vars / num-vars))`
+
+     * the percentage of vars in the module that are used outside of the module times 25, with 0 points being
+       everything in the module is used elsewhere and 25 points being nothing in the module is used elsewhere modules that
+       encapsulate more stuff get higher scores; this is relative to the size of the module
+
+  * API namespaces
+
+    * 25 points
+
+    * `25 * (1 - (num-unexpected-api-namespaces / total-num-namespaces))`
+
+    * the percentage of namespaces in the module that are used outside of the module times 25, with 0 points being
+      every namespace is used outside of the module and 25 points being no namespaces are used outside of the module. The
+      canonical API namespaces (.core, .init, and .api are excluded from this, so modules only lose points for having too
+      many API namespaces modules that have fewer API namespaces get higher scores, but larger modules get more leeway
+
+  * Direct deps score
+
+    * 15 points
+
+    * `max(0, (15 - num-direct-deps))`
+
+    * 1 point off for each direct dependency, capped at 15.
+
+    * e.g. 15 points = the module depends directly on no other modules, 10 points = this module depends on 5 other
+      modules, and 0 points = it depends directly on 15 or more other modules
+
+  * Indirect deps score
+
+    * 15 points
+
+    * `15 * (1 - (num-indirect-deps / total-num-modules))`
+
+    * 15 times the percentage of modules that this module does not depend on indirectly
+
+    * e.g. 15 points = this modules depends indirectly on nothing else, 10 points = this module depends indirectly on
+      one third of the other modules in the system (eg 20 out of 60)
+
+  * Circular deps score
+
+    * 10 points
+
+    * `10 * (1 - (num-circular-deps / num-deps))`
+
+    * points off for each direct dependencies that has a (circular) direct dependency on this module
+
+  * config score
+
+    * 10 points
+
+    * `10 - num-undeclared-module-deps - num-undeclared-api-namespaces`
+
+    * whether the module is configured correctly in the linter config. 1 point off for each undeclared dep on another
+      module and for each undeclared API namespace."
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
