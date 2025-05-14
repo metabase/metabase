@@ -253,6 +253,7 @@ export const ChartSettingFieldsPartition = ({
   };
 
   const updatedValue = useMemo(() => {
+    // Pre-aggregated pivots: just look up columns by name
     if (!canEditColumns) {
       return _.mapObject(value || {}, (columnNames) =>
         columnNames
@@ -261,19 +262,39 @@ export const ChartSettingFieldsPartition = ({
       );
     }
 
-    // Editable case
+    // Unaggregated pivots
     return _.mapObject(value || {}, (partitionValue, partition) => {
       if (partition === "values") {
-        // For values partition, extract columns from aggregations
+        // For the "values" partition, we want to return enriched aggregation objects
         const aggregations = partitionValue as PivotAggregation[];
+        const query = question.query();
+        const breakoutColumns = Lib.breakoutableColumns(query, -1);
+        const operators = Lib.availableAggregationOperators(query, 0);
         return aggregations
           .map((agg) => {
+            // Find the column being aggregated (if any)
+            let columnObj = undefined;
             if (agg.column) {
-              return columns.find((col) => col.name === agg.column?.name);
+              columnObj = breakoutColumns.find(
+                (col) =>
+                  Lib.displayInfo(query, -1, col).name === agg.column?.name,
+              );
             }
-            return null;
+
+            // Find the operator being used
+            const operator = operators.find((op) => {
+              return (
+                Lib.displayInfo(query, -1, op).shortName === agg.aggregation
+              );
+            });
+
+            if (operator) {
+              const clause = Lib.aggregationClause(operator, columnObj);
+              return clause;
+            }
           })
-          .filter((col): col is RemappingHydratedDatasetColumn => col != null);
+          .filter(Boolean);
+        //.filter(item => item.column !== null || !agg.column); // Keep items with columns or aggregations that don't need columns (like COUNT)
       } else {
         // For dimension partitions (rows, columns)
         const dimensionItems = partitionValue as (
@@ -288,7 +309,7 @@ export const ChartSettingFieldsPartition = ({
           .filter((col): col is RemappingHydratedDatasetColumn => col != null);
       }
     });
-  }, [canEditColumns, columns, value]);
+  }, [canEditColumns, columns, value, question]);
 
   const onAddBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -370,6 +391,7 @@ export const ChartSettingFieldsPartition = ({
               onAddBreakout={(column) => onAddBreakout(partitionName, column)}
             />
           );
+
         return (
           <Box py="sm" key={partitionName}>
             <Flex align="center" justify="space-between">
@@ -379,18 +401,20 @@ export const ChartSettingFieldsPartition = ({
             <Droppable
               droppableId={partitionName}
               type={partitionType}
-              renderClone={(provided, _snapshot, rubric) => (
+              renderClone={(provided, _snapshot, _rubric) => (
                 <Box
                   ref={provided.innerRef}
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
                   mb="0.5rem"
                 >
-                  <Column
-                    onEditFormatting={handleEditFormatting}
-                    column={updatedColumns[rubric.source.index]}
-                    title={getColumnTitle(updatedColumns[rubric.source.index])}
-                  />
+                  {
+                    //<Column
+                    //  onEditFormatting={handleEditFormatting}
+                    //  column={updatedColumns[rubric.source.index]}
+                    //  title={getColumnTitle(updatedColumns[rubric.source.index])}
+                    ///>
+                  }
                 </Box>
               )}
             >
@@ -418,32 +442,85 @@ export const ChartSettingFieldsPartition = ({
                       {emptyColumnMessage}
                     </Box>
                   ) : (
-                    updatedColumns.map((col, index: number) => (
-                      <Draggable
-                        key={`draggable-${col.name}-${index}`}
-                        draggableId={`draggable-${col.name}`}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <Box
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={CS.mb1}
+                    updatedColumns.map((val, index: number) => {
+                      const col = val as RemappingHydratedDatasetColumn;
+                      if (partitionType === "dimension") {
+                        return (
+                          <Draggable
+                            key={`draggable-${col.name}-${index}`}
+                            draggableId={`draggable-${col.name}`}
+                            index={index}
                           >
-                            <Column
-                              key={`${partitionName}-${col.name}`}
-                              column={col}
-                              onEditFormatting={handleEditFormatting}
-                              onRemove={() =>
-                                onRemoveBreakout(partitionName, index)
-                              }
-                              title={getColumnTitle(col)}
-                            />
-                          </Box>
-                        )}
-                      </Draggable>
-                    ))
+                            {(provided) => (
+                              <Box
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={CS.mb1}
+                              >
+                                <Column
+                                  key={`${partitionName}-${col.name}`}
+                                  column={col}
+                                  onEditFormatting={handleEditFormatting}
+                                  onRemove={() =>
+                                    onRemoveBreakout(partitionName, index)
+                                  }
+                                  title={getColumnTitle(col)}
+                                />
+                              </Box>
+                            )}
+                          </Draggable>
+                        );
+                      } else if (partitionType === "metric") {
+                        const col = Lib.aggregationColumn(
+                          query,
+                          -1,
+                          val as Lib.AggregationClause,
+                        );
+                        const colDisplay = Lib.displayInfo(
+                          query,
+                          -1,
+                          col as Lib.ColumnMetadata,
+                        );
+
+                        const aggName = Lib.displayInfo(
+                          query,
+                          -1,
+                          val as Lib.AggregationClause,
+                        ).displayName;
+                        const datasetCol = columns.find(
+                          (col) => col.name === colDisplay.name,
+                        );
+                        if (datasetCol) {
+                          return (
+                            <Draggable
+                              key={`draggable-${aggName}-${index}`}
+                              draggableId={`draggable-${aggName}`}
+                              index={index}
+                            >
+                              {(provided) => (
+                                <Box
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={CS.mb1}
+                                >
+                                  <Column
+                                    key={`${partitionName}-${aggName}`}
+                                    column={datasetCol}
+                                    onEditFormatting={handleEditFormatting}
+                                    onRemove={() =>
+                                      onRemoveBreakout(partitionName, index)
+                                    }
+                                    title={aggName}
+                                  />
+                                </Box>
+                              )}
+                            </Draggable>
+                          );
+                        }
+                      }
+                    })
                   )}
                   {provided.placeholder}
                 </Box>
