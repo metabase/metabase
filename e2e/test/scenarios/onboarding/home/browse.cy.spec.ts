@@ -82,7 +82,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
     H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "browse_data_model_clicked",
       model_id: ORDERS_MODEL_ID,
     });
@@ -96,7 +96,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.findByRole("button", { name: /Summarize/ });
     cy.findByRole("link", { name: /Sample Database/ }).click();
     H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
     });
@@ -110,7 +110,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
       .click();
     cy.location("pathname").should("eq", "/model/new");
     H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "plus_button_clicked",
       triggered_from: "model",
     });
@@ -125,7 +125,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.findByTestId("entity-picker-modal").should("be.visible");
 
     H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "plus_button_clicked",
       triggered_from: "metric",
     });

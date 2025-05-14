@@ -1285,10 +1285,10 @@
                                (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
                                (remove (fn [x] (and (= table-name :collection)
                                                     (= (:type x)
-                                                       ;; avoid requiring `metabase.models.collection` in this
-                                                       ;; namespace to deter others using it in migrations
+                                                       ;; avoid requiring [[metabase.collections.models.collection]] in
+                                                       ;; this namespace to deter others using it in migrations
                                                        #_{:clj-kondo/ignore [:unresolved-namespace]}
-                                                       metabase.models.collection/trash-collection-type))))
+                                                       metabase.collections.models.collection/trash-collection-type))))
                                (sort-by :id))]))))
 
   (pretty-spit (gather-sample-coll-edn-data)

@@ -12,12 +12,12 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
@@ -88,15 +88,15 @@
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
-  ([_model pk]
+  ([_model database-id]
    (cond
-     (should-read-audit-db? pk) false
-     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     (should-read-audit-db? database-id) false
+     (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (contains? #{:query-builder :query-builder-and-native}
                       (perms/most-permissive-database-permission-for-user
                        api/*current-user-id*
                        :perms/create-queries
-                       pk)))))
+                       database-id)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."

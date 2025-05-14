@@ -6,7 +6,6 @@
    [metabase.channel.email-test :as et :refer [inbox]]
    [metabase.premium-features.core :as premium-features]
    [metabase.product-feedback.task.creator-sentiment-emails :as creator-sentiment-emails]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -24,8 +23,10 @@
             (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
             (is (= (if enabled? 1 0)
                    (-> @inbox vals first count))
-                (str "error when enabled? is " enabled?))))))
+                (str "error when enabled? is " enabled?))))))))
 
+(deftest send-creator-sentiment-emails!-test-2
+  (mt/with-fake-inbox
     (mt/with-temporary-setting-values [surveys-enabled true]
       (testing "Make sure that send-creator-sentiment-emails! only sends emails to creators with the correct week hash."
         (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}   ;; mods to 45
@@ -34,8 +35,10 @@
 
           (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
           (is (= 1
-                 (-> @inbox vals first count))))))
+                 (-> @inbox vals first count))))))))
 
+(deftest send-creator-sentiment-emails!-test-3
+  (mt/with-fake-inbox
     (testing "Make sure context is included when anon tracking is enabled"
       (doseq [tracking-enabled? [true false]]
         (mt/reset-inbox!)
@@ -65,18 +68,20 @@
                                        "num_dashboards" 4
                                        "num_questions"  7
                                        "num_models"     2}}
-                          decoded)))))))))
+                          decoded)))))))))))
 
+(deftest send-creator-sentiment-emails!-test-4
+  (mt/with-fake-inbox
     (testing "Make sure external services message is included when is self hosted"
       (doseq [hosted? [true false]]
         (mt/reset-inbox!)
         (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
-                     ;; can't use mt/with-temporary-setting-values because of a custom :getter
-                      premium-features/is-hosted?             (constantly hosted?)
-                      public-settings/site-url                (constantly "http://metabase.com")]
-          (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
-          (is (= (if hosted? 0 1)
-                 (count (et/regex-email-bodies #"external services")))))))))
+                      ;; can't use mt/with-temporary-setting-values because of a custom :getter
+                      premium-features/is-hosted?             (constantly hosted?)]
+          (mt/with-temporary-setting-values [site-url "http://metabase.com"]
+            (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
+            (is (= (if hosted? 0 1)
+                   (count (et/regex-email-bodies #"external services"))))))))))
 
 (deftest fetch-creators-test
   (let [creator-id 33

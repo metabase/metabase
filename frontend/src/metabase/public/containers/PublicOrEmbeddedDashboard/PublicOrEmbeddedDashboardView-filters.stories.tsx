@@ -8,7 +8,7 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getUnsavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
@@ -233,13 +233,13 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
   }
 
   const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
-    text: getDashboardUiParameters(
+    text: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({}),
       {},
     ),
-    number: getDashboardUiParameters(
+    number: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -253,7 +253,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    dropdown_multiple: getDashboardUiParameters(
+    dropdown_multiple: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({
@@ -261,7 +261,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       }),
       {},
     ),
-    dropdown_single: getDashboardUiParameters(
+    dropdown_single: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_SINGLE_FILTER],
       createMockMetadata({
@@ -269,7 +269,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       }),
       {},
     ),
-    search: getDashboardUiParameters(
+    search: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({
@@ -277,7 +277,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       }),
       {},
     ),
-    date_all_options: getDashboardUiParameters(
+    date_all_options: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -291,7 +291,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_month_year: getDashboardUiParameters(
+    date_month_year: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -305,7 +305,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_quarter_year: getDashboardUiParameters(
+    date_quarter_year: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -319,7 +319,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_single: getDashboardUiParameters(
+    date_single: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -333,7 +333,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_range: getDashboardUiParameters(
+    date_range: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -347,7 +347,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_relative: getDashboardUiParameters(
+    date_relative: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -361,7 +361,7 @@ const Template: StoryFn<MockDashboardContextProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    temporal_unit: getDashboardUiParameters(
+    temporal_unit: getUnsavedDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
