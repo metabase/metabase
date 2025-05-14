@@ -20,7 +20,9 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
       >({
         query: (params) => ({
           method: "GET",
-          url: "/api/ee/content-translation/dictionary",
+          // This route is not prefixed with /api/ee/, because it is
+          // not authenticated
+          url: "/api/content-translation/dictionary",
           params,
         }),
         providesTags: () => [listTag("content-translation")],
