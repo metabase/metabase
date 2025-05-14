@@ -148,10 +148,6 @@
   [join-alias]
   (some->> join-alias (str "join_alias_")))
 
-(defn- get-mongo-version []
-  (qp.store/cached ::version
-    (driver/dbms-version :mongo (lib.metadata/database (qp.store/metadata-provider)))))
-
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
   name"
@@ -332,17 +328,12 @@
   [field unit]
   (if (= unit :default)
     field
-    (let [supports-dateTrunc? (-> (get-mongo-version)
-                                  :semantic-version
-                                  (driver.u/semantic-version-gte [5]))
-          column field]
+    (let [column field]
       (letfn [(truncate [unit]
-                (if supports-dateTrunc?
-                  {:$dateTrunc {:date column
-                                :unit (name unit)
-                                :timezone (qp.timezone/results-timezone-id)
-                                :startOfWeek (name (lib-be/start-of-week))}}
-                  (truncate-to-resolution column unit)))]
+                {:$dateTrunc {:date column
+                              :unit (name unit)
+                              :timezone (qp.timezone/results-timezone-id)
+                              :startOfWeek (name (lib-be/start-of-week))}})]
         (case unit
           :default          column
           :second-of-minute (extract $second column)
@@ -356,12 +347,8 @@
                               (day-of-week column))
           :day-of-month     (extract $dayOfMonth column)
           :day-of-year      (extract $dayOfYear column)
-          :week             (if supports-dateTrunc?
-                              (truncate :week)
-                              (truncate-to-resolution (week column) :day))
-          :week-of-year     (let [week-start (if supports-dateTrunc?
-                                               (truncate :week)
-                                               (week column))]
+          :week             (truncate :week)
+          :week-of-year     (let [week-start (truncate :week)]
                               {:$ceil {$divide [{$dayOfYear week-start}
                                                 7.0]}})
           :week-of-year-iso (extract :$isoWeek column)
@@ -372,15 +359,7 @@
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
-          :quarter
-          (if supports-dateTrunc?
-            (truncate :quarter)
-            (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (qp.timezone/results-timezone-id)}}]
-              {:$dateFromParts {:year  :$$parts.year
-                                :month {$subtract [:$$parts.month
-                                                   {$mod [{$add [:$$parts.month 2]}
-                                                          3]}]}
-                                :timezone (qp.timezone/results-timezone-id)}}))
+          :quarter (truncate :quarter)
 
           :quarter-of-year
           {:$toInt {:$ceil {$divide [(extract $month column) 3.0]}}}
@@ -557,12 +536,8 @@
 
 (defmethod ->rvalue :replace
   [[_ & args]]
-  (let [version (get-mongo-version)]
-    (if (driver.u/semantic-version-gte (:semantic-version version) [4 4])
-      (let [[expr fnd replacement] (mapv ->rvalue args)]
-        {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}})
-      (throw (ex-info "Replace requires MongoDB 4.4 or above"
-                      {:database-version version})))))
+  (let [[expr fnd replacement] (mapv ->rvalue args)]
+    {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}}))
 
 (defmethod ->rvalue :substring
   [[_ & [expr idx cnt]]]
@@ -602,20 +577,6 @@
       {"$cond" [{"$or" non-literal-nil-checks} nil
                 division]})))
 
-;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
-;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
-;;; Also, date arithmetic with intervals was first implemented in version 5. (Before that only
-;;; ordinary addition could be used: one of the operands of the addition could be a date, their
-;;; rest of the operands had to be integers and would be treated as milliseconds.)
-;;; Because of this, whenever we translate date arithmetic with intervals, we check the major
-;;; version of the database and throw a nice exception if it's less than 5.
-
-(defn- check-date-operations-supported []
-  (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
-    (when (and major-version (< major-version 5))
-      (throw (ex-info "Date arithmetic not supported in versions before 5"
-                      {:database-version mongo-version})))))
-
 (defn- interval? [expr]
   (and (vector? expr) (= (first expr) :interval)))
 
@@ -642,9 +603,7 @@
   ;; If none of the args is an interval, we shortcut with a simple addition.
   (if (some interval? args)
     (if-let [[arg others] (u/pick-first (complement interval?) args)]
-      (do
-        (check-date-operations-supported)
-        (reduce (num-or-interval-reducer :+) (->rvalue arg) others))
+      (reduce (num-or-interval-reducer :+) (->rvalue arg) others)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     {"$add" (mapv ->rvalue args)}))
 
@@ -652,9 +611,7 @@
   ;; Subtraction is not commutative so `arg` cannot be an interval.
   ;; If none of the args is an interval, we shortcut with a simple subtraction.
   (if (some interval? others)
-    (do
-      (check-date-operations-supported)
-      (reduce (num-or-interval-reducer :-) (->rvalue arg) others))
+    (reduce (num-or-interval-reducer :-) (->rvalue arg) others)
     {"$subtract" (mapv ->rvalue args)}))
 
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
@@ -662,20 +619,15 @@
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :now [[_]]
-  (if (driver/database-supports? :mongo :now (lib.metadata/database (qp.store/metadata-provider)))
-    "$$NOW"
-    (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
-                    {:database-version (:version (get-mongo-version))}))))
+  "$$NOW")
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
-  (check-date-operations-supported)
   {"$dateAdd" {:startDate (->rvalue inp)
                :unit      unit
                :amount    amount}})
 
 (defmethod ->rvalue :datetime-subtract
   [[_ inp amount unit]]
-  (check-date-operations-supported)
   {"$dateSubtract" {:startDate (->rvalue inp)
                     :unit      unit
                     :amount    amount}})
@@ -726,7 +678,6 @@
             3600000]})
 
 (defmethod ->rvalue :datetime-diff [[_ x y unit]]
-  (check-date-operations-supported)
   (datetime-diff (->rvalue x) (->rvalue y) unit))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
