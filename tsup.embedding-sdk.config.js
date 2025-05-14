@@ -119,6 +119,30 @@ const processPolyfillPlugin = () => ({
   },
 });
 
+const getFullPathFromResolvePath = ({ resolveDir, resolvePath, aliases }) => {
+  let fullPath;
+
+  if (resolvePath.startsWith(".")) {
+    fullPath = path.resolve(resolveDir, resolvePath);
+  } else {
+    const alias = Object.keys(aliases).find((alias) =>
+      resolvePath.startsWith(`${alias}/`),
+    );
+
+    if (alias) {
+      fullPath = path.resolve(
+        path.join(aliases[alias], resolvePath.replace(alias, "")),
+      );
+    } else {
+      fullPath = path.resolve(
+        path.join(import.meta.dirname, "node_modules", resolvePath),
+      );
+    }
+  }
+
+  return fullPath;
+};
+
 // Taken from https://github.com/rtivital/hash-css-selector
 // But generates hashes based on the full css module file path,
 const generateScopedName = (selector, fileName) => {
@@ -155,30 +179,6 @@ const cssModulesPlugin = ({
   const filter = new RegExp(
     `(${additionalCssModuleRegexp.source}$|\\.module\\.css$)`,
   );
-
-  const getFullPathFromResolvePath = ({ resolveDir, resolvePath, aliases }) => {
-    let fullPath;
-
-    if (resolvePath.startsWith(".")) {
-      fullPath = path.resolve(resolveDir, resolvePath);
-    } else {
-      const alias = Object.keys(aliases).find((alias) =>
-        resolvePath.startsWith(`${alias}/`),
-      );
-
-      if (alias) {
-        fullPath = path.resolve(
-          path.join(aliases[alias], resolvePath.replace(alias, "")),
-        );
-      } else {
-        fullPath = path.resolve(
-          path.join(import.meta.dirname, "node_modules", resolvePath),
-        );
-      }
-    }
-
-    return fullPath;
-  };
 
   return {
     name: "css-modules",
@@ -267,13 +267,17 @@ const svgrPlugin = () => ({
 
     build.onLoad(
       { filter: /.*/, namespace: "svg-component" },
-      async ({ path: importPath, pluginData }) => {
+      async ({ path: importPath, resolvePath, pluginData }) => {
         const resolveDir = pluginData.resolveDir;
         const svgPath = importPath.replace(/\?component$/, "");
-        const realPath = path.isAbsolute(svgPath)
-          ? svgPath
-          : path.join(resolveDir, svgPath);
-        const source = await fs.promises.readFile(realPath, "utf8");
+
+        const fullPath = getFullPathFromResolvePath({
+          resolveDir,
+          resolvePath: svgPath,
+          aliases,
+        });
+
+        const source = await fs.promises.readFile(fullPath, "utf8");
 
         const contents = await transform(
           source,
@@ -282,7 +286,7 @@ const svgrPlugin = () => ({
             ref: true,
           },
           {
-            filePath: realPath,
+            filePath: fullPath,
           },
         );
 
