@@ -23,12 +23,7 @@ module.exports = {
     extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".svg"],
     alias: {
       ...mainConfig.resolve.alias,
-      ...(embeddingSdkPath
-        ? {
-            [`${SDK_PACKAGE_NAME}/styles.css`]: `${embeddingSdkPath}/dist/index.css`,
-            [SDK_PACKAGE_NAME]: embeddingSdkPath,
-          }
-        : null),
+      ...(embeddingSdkPath ? { [SDK_PACKAGE_NAME]: embeddingSdkPath } : null),
     },
     fallback: { path: false, fs: false }, // FIXME: this might break file download tests, we might need to implement this properly
   },
