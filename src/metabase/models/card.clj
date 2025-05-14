@@ -2,8 +2,6 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [clojure.core.cache :as cache]
-   [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,10 +9,13 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
+   [metabase.cache.core :as cache]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
+   [metabase.content-verification.core :as moderation]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
@@ -22,19 +23,14 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.models.audit-log :as audit-log]
-   [metabase.models.cache-config :as cache-config]
    [metabase.models.card.metadata :as card.metadata]
-   [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.serialization :as serdes]
-   [metabase.moderation :as moderation]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -78,7 +74,7 @@
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
   and including [[current-schema-version]]."
-  21)
+  22)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
@@ -371,9 +367,6 @@
                               {:order-by [[:name :asc]]})
                    (filter mi/can-read?)))
    :id))
-
-;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
-(comment moderation/keep-me)
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -803,82 +796,22 @@
        @hashed-eid (assoc :entity_id @entity-id)))))
 
 ;; Schema upgrade: 20 to 21 ==========================================================================================
-;; 21 begins storing `:ident`s on all columns in `:result_metadata`.
+;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
+;; However, that caused performance problems since it's often recursive, and the caching was ineffective.
+;; Now this upgrade is a no-op.
+(defmethod upgrade-card-schema-to 21 [card _schema-version]
+  card)
 
-;; On reading an old card and upgrading it to 21, the idents are inferred from the query and filled in.
-;; Since this operation is expensive (and recursive when cards depend on cards!), a bounded cache is used to prevent
-;; too much repeated work being performed.
-(defn- backfill-result-metadata-idents*
-  [result-metadata {query :dataset_query, eid :entity_id, :as card}]
-  (case (:type query)
-    ;; For native queries, the `:ident`s are always based directly on the column names.
-    :native (if eid
-              ;; NOTE: Deliberately prefer the field_ref name over :name here! :name is sometimes not unique, if the
-              ;; SQL contains duplicate names. Instead, using the string name from the `:field_ref`, which is
-              ;; disambiguated properly. Fall back to the :name if the :field_ref isn't provided.
-              (mapv (fn [{column-name :name, [_field ref-name] :field_ref, :as col}]
-                      (cond-> (assoc col :ident (lib/native-ident (or ref-name column-name)
-                                                                  eid))
-                        (= (:type card) :model) (lib/add-model-ident eid)))
-                    result-metadata)
-              (throw (ex-info (str "Cannot backfill result_metadata for a native card without an entity_id! "
-                                   "Include :entity_id in your query.")
-                              {:card card})))
-
-    ;; For MBQL queries, re-run the inference, which will include correct idents.
-    :query  (let [inferred (card.metadata/infer-metadata-with-model-overrides query card) ; These already have [[lib/model-ident]] applied.
-                  by-ref   (group-by :field_ref inferred)
-                  by-name  (group-by :name inferred)]
-              (mapv (fn [original]
-                      (let [matches (or (get by-ref (:field_ref original))
-                                        (get by-name (:name original)))]
-                        (when (empty? matches)
-                          (log/warn "No match of saved result_metadata with inferred metadata."
-                                    {:column original}))
-                        (when (next matches)
-                          (log/warn "Ambiguous match of saved result_metadata with inferred metadata."
-                                    {:column original
-                                     :candidates matches}))
-                        (or (first matches)
-                            original)))
-                    result-metadata))
-    ;; Fallback: Do nothing.
-    result-metadata))
-
-;; NOTE: This is safe to cache even with horizontal scaling, since the cache is only used when old cards are read.
-;; If any Metabase instance updates the card, it will be at version 21+ and already have :idents, so the cache will
-;; never be checked.
-(def ^:private backfill-result-metadata-idents-cache
-  "Using LIRS caching for a balance of recently-used and often-reused, with the default limits for now.
-
-  Since `:result_metadata` is written out after each card gets (directly) executed, the often-executed cards will
-  rapidly get updated to schema 21 and no longer need to run this inference.
-
-  The bad case is widely used cards/models that are never executed directly but often referenced."
-  ;; TODO: Consider feeding this cache's misses to a queue for a background job to populate often-referenced,
-  ;; never-executed cards with the results.
-  (atom (cache/lirs-cache-factory {})))
-
-(defn- backfill-result-metadata-idents
-  "Cache wrapper for [[backfill-result-metadata-idents**]]; bounded caching on the card ID."
-  [result-metadata card]
-  (cache.wrapped/lookup-or-miss backfill-result-metadata-idents-cache (:id card)
-                                (fn [_]
-                                  (backfill-result-metadata-idents* result-metadata card))))
-
-(defmethod upgrade-card-schema-to 21
-  ;; If we're fetching this card's `:result_metadata`, and it has a `:dataset_query`, we can compute the
-  ;; idents and fill them in.
-  ;; If we fetched non-empty `:result_metadata` without `:ident`s in it, but didn't fetch the `:dataset_query`,
-  ;; then throw - that query needs to be fixed.
-  [{query :dataset_query, cols :result_metadata, :as card} _schema-version]
-  (let [needs-idents? (and (seq cols) (some (complement :ident) cols))]
-    (when (and needs-idents? (not query))
-      (throw (ex-info "Cannot backfill :result_metadata without :dataset_query" {:card (:id card)})))
-    (cond-> card
-      ;; Have the query and result_metadata, and the idents are not already filled in.
-      (and query needs-idents?)
-      (update :result_metadata backfill-result-metadata-idents card))))
+;; Schema upgrade: 21 to 22 ==========================================================================================
+;; Two bugs during development of the field refs overhaul resulted in bad `:ident`s being saved into
+;; `:result_metadata` in certain cases.
+;; - Early on, some old "field__Database__Schema__TableName__FieldName" idents got saved for models.
+;; - A bug in #56244 computed bad idents given a fresh column (like an aggregation) while the source was a model.
+;; To avoid both of these issues, the upgrade to 22 simply discards any old idents.
+(defmethod upgrade-card-schema-to 22
+  [card _schema-version]
+  (update card :result_metadata (fn [cols]
+                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
 (defn- upgrade-card-schema-to-latest [card]
   (if (and (:id card)
@@ -1318,13 +1251,13 @@
                (changed? card-compare-keys card-before-update card-updates))
       ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
       ;; to remove it regardless if enterprise edition is present at the moment.
-      (moderation-review/create-review! {:moderated_item_id   (:id card-before-update)
-                                         :moderated_item_type "card"
-                                         :moderator_id        (:id actor)
-                                         :status              nil
-                                         :text                (tru "Unverified due to edit")}))
+      (moderation/create-review! {:moderated_item_id   (:id card-before-update)
+                                  :moderated_item_type "card"
+                                  :moderator_id        (:id actor)
+                                  :status              nil
+                                  :text                (tru "Unverified due to edit")}))
     ;; Invalidate the cache for card
-    (cache-config/invalidate! {:questions [(:id card-before-update)]
+    (cache/invalidate-config! {:questions [(:id card-before-update)]
                                :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)
@@ -1470,14 +1403,6 @@
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
-;;; ------------------------------------------------ Audit Log --------------------------------------------------------
-
-(defmethod audit-log/model-details :model/Card
-  [{card-type :type, :as card} _event-type]
-  (merge (select-keys card [:name :description :database_id :table_id])
-          ;; Use `model` instead of `dataset` to mirror product terminology
-         {:model? (= (keyword card-type) :model)}))
-
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (def ^:private base-search-spec
@@ -1490,6 +1415,7 @@
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
+                  :entity-id           true
                   :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]

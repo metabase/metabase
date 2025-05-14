@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.request.settings :as request.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
@@ -78,12 +78,12 @@
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
 
 (defn ip-address
-  "The IP address a Ring `request` came from. Looks at the `public-settings/source-address-header` header (by default
+  "The IP address a Ring `request` came from. Looks at the `request.settings/source-address-header` header (by default
   `X-Forwarded-For`, or the `(:remote-addr request)` if not set, or if disabled via MB_NOT_BEHIND_PROXY=true."
   [{:keys [headers remote-addr]}]
-  (let [header-ip-address (some->> (public-settings/source-address-header)
+  (let [header-ip-address (some->> (request.settings/source-address-header)
                                    (get headers))
-        source-address    (if (or (public-settings/not-behind-proxy)
+        source-address    (if (or (request.settings/not-behind-proxy)
                                   (not header-ip-address))
                             remote-addr
                             header-ip-address)]

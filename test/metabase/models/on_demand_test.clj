@@ -31,6 +31,7 @@
    :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
               :template-tags {:category {:name         "category"
                                          :display-name "Category"
+                                         :id           "_category_"
                                          :type         "dimension"
                                          :dimension    [:field (u/the-id field-or-id) nil]
                                          :widget-type  "category"
@@ -59,8 +60,8 @@
 (deftest newly-created-card-test
   (testing "Newly created Card with param referencing Field"
     (testing "in On-Demand DB should get updated FieldValues"
-      (is (= true
-             (field-values-were-updated-for-new-card?! {:db {:is_on_demand true}}))))
+      (is (true?
+           (field-values-were-updated-for-new-card?! {:db {:is_on_demand true}}))))
 
     (testing "in non-On-Demand DB should *not* get updated FieldValues"
       (is (= false
@@ -165,6 +166,7 @@
 
 (defn- parameter-mappings-for-card-and-field [card-or-id field-or-id]
   [{:card_id (u/the-id card-or-id)
+    :parameter_id "12121212"
     :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]

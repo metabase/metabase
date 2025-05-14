@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.audit :as audit]
+   [metabase.audit-app.impl :as audit]
    [metabase.config :as config]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -511,11 +511,11 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (let [now #t "2022-09-01T12:34:56"]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
                      :model/Card card {:name "the card" :collection_id (:id coll) :created_at now}]
         (is (= "5199edf0"
-               (serdes/raw-hash ["the card" (serdes/identity-hash coll) now])
+               (serdes/raw-hash ["the card" (serdes/identity-hash coll) (:created_at card)])
                (serdes/identity-hash card)))))))
 
 (deftest parameter-card-test

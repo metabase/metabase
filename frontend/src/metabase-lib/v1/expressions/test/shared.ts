@@ -105,6 +105,16 @@ export const query = createQueryWithClauses({
       operator: "concat",
       args: ["foo", "bar"],
     },
+    {
+      name: "bar",
+      operator: "+",
+      args: [1, 2],
+    },
+    {
+      name: "BAR",
+      operator: "+",
+      args: [1, 2],
+    },
   ],
 });
 export const stageIndex = -1;
@@ -169,6 +179,8 @@ export const expressions = {
   NAME_WITH_BRACKETS: findField("name with [brackets]"),
   NAME_WITH_SLASH: findField("name with \\ slash"),
   STRINGLY: findField("stringly"),
+  BAR_UPPER: findField("BAR"),
+  BAR_LOWER: findField("bar"),
 };
 
 export const segments = {

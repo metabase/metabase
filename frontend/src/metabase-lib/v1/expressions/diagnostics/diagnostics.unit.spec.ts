@@ -35,24 +35,31 @@ describe("diagnostics", () => {
       return setup({ expression, expressionMode, metadata })?.message;
     }
 
-    it("should catch mismatched parentheses", () => {
+    it("should catch mismatched parentheses after function", () => {
       expect(err("FLOOR [Price]/2)")).toBe(
         "Expecting an opening parenthesis after function FLOOR",
       );
-    });
-
-    it("should catch missing parentheses", () => {
       expect(err("LOWER [Vendor]")).toBe(
         "Expecting an opening parenthesis after function LOWER",
       );
     });
 
+    it("should catch missing parentheses", () => {
+      expect(err("(")).toBe("Expecting a closing parenthesis");
+      expect(err("(()")).toBe("Expecting a closing parenthesis");
+      expect(err("((()")).toBe("Expecting a closing parenthesis");
+
+      expect(err(")")).toBe("Expecting an opening parenthesis");
+      expect(err("())")).toBe("Expecting an opening parenthesis");
+      expect(err("()))")).toBe("Expecting an opening parenthesis");
+    });
+
     it("should catch invalid characters", () => {
-      expect(err("[Price] / #")).toBe("Invalid character: #");
+      expect(err("[Price] / #")).toBe("Unexpected character: #");
     });
 
     it("should catch unterminated string literals", () => {
-      expect(err('[Category] = "widget')).toBe("Missing closing quotes");
+      expect(err('[Category] = "widget')).toBe("Missing closing string quote");
     });
 
     it("should catch unterminated field reference", () => {
@@ -69,10 +76,38 @@ describe("diagnostics", () => {
       );
     });
 
-    it("should catch missing comma in function arguments", () => {
-      expect(err('concat([Tax] "test")')).toBe(
-        'Expecting operator but got "test" instead',
-      );
+    describe("sibling tokens validation", () => {
+      const left = ["[Total]", '"string"', "42", "(10 + 5)", "true"];
+      const right = [
+        ["[Total]", "[Total]"],
+        ['"string"', '"string"'],
+        ["42", "42"],
+        ["(10 + 5)", "("],
+        ["tax", "tax"],
+        ["ceil(10.5)", "ceil"],
+      ];
+
+      for (const leftToken of left) {
+        for (const [rightToken, errToken] of right) {
+          it(`should catch mismatched adjecent tokens in: ${leftToken} ${rightToken}`, () => {
+            expect(err(`${leftToken} ${rightToken}`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+
+          it(`should catch mismatched adjecent tokens in: concat(${leftToken} ${rightToken})`, () => {
+            expect(err(`concat(${leftToken} ${rightToken})`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+
+          it(`should catch mismatched adjecent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
+            expect(err(`2 * (${leftToken} ${rightToken})`)).toBe(
+              `Expecting operator but got ${errToken} instead`,
+            );
+          });
+        }
+      }
     });
 
     it("should catch unknown functions", () => {
@@ -280,6 +315,97 @@ describe("diagnostics", () => {
       expect(err(`1`)).toBeUndefined();
       expect(err(`"foo"`)).toBeUndefined();
       expect(err(`true`)).toBeUndefined();
+    });
+
+    describe("mathematical notation", () => {
+      it.each([
+        "1E",
+        "1e",
+        "1.2E",
+        "1.2e",
+        "1E+",
+        "1e+",
+        "1.2E+",
+        "1.2e+",
+        "1E-",
+        "1e-",
+        "1.2E-",
+        "1.2e-",
+        "1.2e-",
+        ".1E",
+        ".1e",
+        ".1E+",
+        ".1e+",
+        ".1E-",
+        ".1e-",
+        ".1E-",
+        "2e",
+        "3e+",
+        "4E-",
+        "4E-",
+      ])("handles missing exponents for %s", (expression) => {
+        expect(err(expression)).toBe("Missing exponent");
+      });
+    });
+
+    describe("string quotes", () => {
+      it.each([`"single`, `'double`, `"foo\\"`, `'foo\\'`])(
+        "reject missing string quotes for %s",
+        (expression) => {
+          expect(err(expression)).toBe("Missing closing string quote");
+        },
+      );
+    });
+
+    describe("field quotes", () => {
+      it.each([
+        `[foo`,
+        `[foo \\[`,
+        `[foo \\]`,
+        `[foo \\] bar`,
+        `[foo \\[ bar`,
+        `[foo \\[ bar \\]`,
+      ])("reject missing closing field quotes for %s", (expression) => {
+        expect(err(expression)).toBe("Missing a closing bracket");
+      });
+
+      it("should reject missing field quotes for foo]", () => {
+        expect(err("foo]")).toMatch(/^Missing an opening bracket for /);
+      });
+
+      it.each([`[`, `[]`])("reject missing field name for %s", (expression) => {
+        expect(err(expression)).toBe("Expected a field name");
+      });
+    });
+
+    describe("bad tokens", () => {
+      it.each([`.`, `1°`, `@`, `#`, `%`, `@`, `(])`])(
+        "should reject bad tokens like %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Unexpected character/);
+        },
+      );
+
+      it.each([`$#`, `$#@`, `$#@$`, `$#@$#`])(
+        "should reject bad tokens like %s",
+        (expression) => {
+          expect(err(expression)).toMatch(/^Invalid expression/);
+        },
+      );
+    });
+
+    describe("double commas", () => {
+      it("should reject repeated commas", () => {
+        expect(err(`concat("foo",, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo", , "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+        expect(err(`concat("foo",,, "bar")`)).toBe(
+          "Expected expression but got: ,",
+        );
+      });
     });
   });
 

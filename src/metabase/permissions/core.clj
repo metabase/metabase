@@ -2,6 +2,7 @@
   "`permissions` module API namespace."
   (:require
    [metabase.permissions.models.data-permissions]
+   [metabase.permissions.models.data-permissions.sql]
    [metabase.permissions.models.permissions]
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
@@ -10,6 +11,7 @@
 
 (comment
   metabase.permissions.models.data-permissions/keep-me
+  metabase.permissions.models.data-permissions.sql/keep-me
   metabase.permissions.models.permissions/keep-me
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
@@ -32,6 +34,10 @@
   user-has-permission-for-database?
   user-has-permission-for-table?
   with-relevant-permissions-for-user]
+ [metabase.permissions.models.data-permissions.sql
+  UserInfo
+  PermissionMapping
+  visible-table-filter-select]
  [metabase.permissions.models.permissions
   application-perms-path
   audit-namespace-clause
@@ -50,9 +56,15 @@
  [metabase.permissions.models.permissions-group
   non-magic-groups]
  [metabase.permissions.models.permissions-group-membership
+  add-users-to-groups!
+  add-user-to-groups!
+  add-user-to-group!
   allow-changing-all-users-group-members
   fail-to-remove-last-admin-msg
-  throw-if-last-admin!]
+  remove-user-from-group!
+  remove-user-from-groups!
+  throw-if-last-admin!
+  without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

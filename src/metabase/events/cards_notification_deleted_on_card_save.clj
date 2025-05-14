@@ -1,7 +1,7 @@
 (ns metabase.events.cards-notification-deleted-on-card-save
   (:require
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -12,7 +12,7 @@
 (methodical/defmethod events/publish-event! ::event
   "When a Card is saved and associated Alerts are deleted send email notifications to recipients of that alert. At the
   time of this writing this is triggered by [[metabase.models.card/delete-alerts-if-needed!]] and
-  by [[metabase.api.collection/maybe-send-archived-notifications!]]."
+  by [[metabase.collections.api/maybe-send-archived-notifications!]]."
   [topic {:keys [notifications card actor], :as _event}]
   (try
     (let [send-message! (case topic

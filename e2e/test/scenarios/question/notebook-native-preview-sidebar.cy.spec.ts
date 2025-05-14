@@ -140,7 +140,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options").should("be.visible");
 
     resizeScreen("small");
@@ -468,24 +468,21 @@ H.describeWithSnowplow(
     it("should track `notebook_native_preview_shown|hidden` events", () => {
       cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
       H.openReviewsTable({ mode: "notebook", limit: 1 });
-      H.expectGoodSnowplowEvents(1); // page view
 
       cy.findByLabelText("View SQL").click();
       cy.wait("@nativeDataset");
       cy.findByTestId("native-query-preview-sidebar").should("exist");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "notebook_native_preview_shown",
       });
 
       cy.findByLabelText("Hide SQL").click();
       cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "notebook_native_preview_hidden",
       });
-
-      H.expectGoodSnowplowEvents(3);
     });
   },
 );

@@ -8,7 +8,6 @@ import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/sa
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 export const ActionSchema = new schema.Entity("actions");
-export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
 export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
@@ -98,6 +97,7 @@ FieldSchema.define({
   target: FieldSchema,
   table: TableSchema,
   name_field: FieldSchema,
+  dimensions: [{ human_readable_field: FieldSchema }],
 });
 
 SegmentSchema.define({

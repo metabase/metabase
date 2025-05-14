@@ -3,6 +3,7 @@
   (:require
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
@@ -14,11 +15,8 @@
 (def ^:private cluster-lock-timeout-seconds 1)
 
 (defn- is-canceled-statement?
-  [err]
-  (let [msg (ex-message err)]
-    (boolean (or (re-find #"ERROR: canceling statement due to user request" msg) ;; error text on postgres
-                 (re-find #"Query timed out" msg) ;; error text on mysql
-                 (re-find #"Query execution was interrupted" msg))))) ;; error text on mariadb
+  [e]
+  (driver/query-canceled? (mdb/db-type) e))
 
 (def ^:private default-retry-config
   {:max-attempts 5

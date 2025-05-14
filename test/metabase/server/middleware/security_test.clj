@@ -4,10 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.embed.app-origins-sdk :as aos]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
+   [metabase.embedding.app-origins-sdk :as aos]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
@@ -56,7 +56,7 @@
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (mt/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
       (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
                   "https://metabase.com https://*.metabase.com https://www.metabase.com "
                   "https://clojure.org https://*.clojure.org")
@@ -213,11 +213,20 @@
                  (get (mw.security/access-control-headers "https://example.com"
                                                           (embed.settings/enable-embedding-sdk)
                                                           (aos/embedding-app-origins-sdk))
-                      "Access-Control-Allow-Origin"))))))))
+                      "Access-Control-Allow-Origin"))))))
+    (testing "Should set Access-Control-Max-Age to 60"
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         embedding-app-origins-sdk "https://example.com"]
+        (let [headers (mw.security/access-control-headers
+                       "https://example.com"
+                       (embed.settings/enable-embedding-sdk)
+                       (aos/embedding-app-origins-sdk))]
+          (is (= "60" (get headers "Access-Control-Max-Age"))
+              "Expected Access-Control-Max-Age header to be set to 60"))))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
-    (let [default-hosts @#'public-settings/default-allowed-iframe-hosts]
+    (let [default-hosts @#'server.settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"
         (is (= ["'self'"
                 "youtube.com"

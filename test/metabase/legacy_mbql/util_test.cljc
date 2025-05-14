@@ -522,6 +522,11 @@
               [:= [:field 1 {:base-type :type/Text}] nil]
               [:= [:field 1 {:base-type :type/Text}] ""]]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/Text}]]))))
+  (t/testing "desugaring :is-empty of string expression #41265"
+    (t/is (= [:or
+              [:= [:regex-match-first "foo" "bar"] nil]
+              [:= [:regex-match-first "foo" "bar"] ""]]
+             (mbql.u/desugar-filter-clause [:is-empty [:regex-match-first "foo" "bar"]]))))
   (t/testing "desugaring :is-empty of not emptyable base-type :type/DateTime"
     (t/is (= [:= [:field 1 {:base-type :type/DateTime}] nil]
              (mbql.u/desugar-filter-clause [:is-empty [:field 1 {:base-type :type/DateTime}]]))))
@@ -536,6 +541,11 @@
               [:!= [:field 1 {:base-type :type/Text}] nil]
               [:!= [:field 1 {:base-type :type/Text}] ""]]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))
+  (t/testing "desugaring :not-empty of string expression #41265"
+    (t/is (= [:and
+              [:!= [:regex-match-first "foo" "bar"] nil]
+              [:!= [:regex-match-first "foo" "bar"] ""]]
+             (mbql.u/desugar-filter-clause [:not-empty [:regex-match-first "foo" "bar"]]))))
   (t/testing "desugaring :not-empty of not emptyable base-type"
     (t/is (= [:!= [:field 1 {:base-type :type/DateTime}] nil]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]]))))

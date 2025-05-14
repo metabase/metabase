@@ -313,11 +313,6 @@
       (:hour :minute :second)
       [:date_diff (h2x/literal unit) (h2x/->timestamp x) (h2x/->timestamp y)])))
 
-;; fix to allow integer division to be cast as double (float is not supported by athena)
-(defmethod sql.qp/->float :athena
-  [_ value]
-  (h2x/cast :double value))
-
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
   [driver [_ arg]]

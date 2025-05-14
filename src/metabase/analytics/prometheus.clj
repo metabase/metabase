@@ -11,6 +11,7 @@
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
+   [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics.settings :refer [prometheus-server-port]]
@@ -22,9 +23,12 @@
    [potemkin.types :as p.types]
    [ring.adapter.jetty :as ring-jetty])
   (:import
-   (io.prometheus.client Collector
-                         GaugeMetricFamily)
-   (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
+   (io.prometheus.client Collector GaugeMetricFamily SimpleCollector)
+   (io.prometheus.client.hotspot
+    GarbageCollectorExports
+    MemoryPoolsExports
+    StandardExports
+    ThreadExports)
    (java.util ArrayList List)
    (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
@@ -247,12 +251,9 @@
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
                         :labels      [:model]})
-   (prometheus/counter :metabase-database/healthy
-                       {:description "Does a given database using driver pass a health check."
-                        :labels [:driver]})
-   (prometheus/counter :metabase-database/unhealthy
-                       {:description "Does a given database using driver fail a health check."
-                        :labels [:driver]})
+   (prometheus/gauge :metabase-database/status
+                     {:description "Does a given database using driver pass a health check."
+                      :labels [:driver :healthy :reason]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
@@ -305,19 +306,31 @@
                      {:description "Number of concurrent notification sends."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
-   (prometheus/counter :metabase-gsheets/connection-creation-ok
-                       {:description "How many times the instance has created a Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
                        {:description "How many failures there were when creating a Google Sheets connection."
                         :labels [:reason]})
-   (prometheus/counter :metabase-gsheets/connection-deleted
-                       {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-sdk/response
                        {:description "Number of SDK embedding responses by status code."
                         :labels [:status]})
    (prometheus/counter :metabase-embedding-iframe/response
                        {:description "Number of iframe embedding responses by status code."
-                        :labels [:status]})])
+                        :labels [:status]})
+   (prometheus/counter :metabase-gsheets/connection-deleted
+                       {:description "How many times the instance has deleted their Google Sheets connection."})
+   (prometheus/counter :metabase-gsheets/connection-manually-synced
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
+
+(defn- quartz-collectors
+  []
+  [(prometheus/counter :metabase-tasks/quartz-tasks-executed
+                       {:description "How many tasks this metabase instance has executed by job-name and status"
+                        :labels [:status :job-name]})
+   (prometheus/histogram :metabase-tasks/quartz-tasks-execution-time-ms
+                         {:description "How long a task took to execute in ms by job-name and status"
+                          :labels [:status :job-name]})
+   (prometheus/gauge :metabase-tasks/quartz-tasks-states
+                     {:description "How many tasks are in a given state in the entire quartz cluster"
+                      :labels [:state]})])
 
 (defmulti known-labels
   "Implement this for a given metric to initialize it for the given set of label values."
@@ -360,7 +373,8 @@
                         (concat (jvm-collectors)
                                 (jetty-collectors)
                                 [@c3p0-collector]
-                                (product-collectors)))]
+                                (product-collectors)
+                                (quartz-collectors)))]
     (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric (qualified-vals labels) value))
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))
@@ -470,6 +484,13 @@
    (when-not system
      (setup!))
    (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
+
+(defn clear!
+  "Call Collector.clear() on given metric."
+  [metric]
+  (when-not system
+    (setup!))
+  (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil))))
 
 (comment
   ;; want to see what's in the registry?

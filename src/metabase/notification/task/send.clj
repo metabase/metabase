@@ -6,10 +6,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.task-history :as task-history]
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import

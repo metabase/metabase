@@ -383,6 +383,10 @@
   (is (= (mt/id :venues :name)
          (#'chain-filter/remapped-field-id (mt/id :venues :id)))))
 
+(deftest fk-field-to-pk-field-to-name-field-remapped-field-id-test
+  (is (= (mt/id :people :name)
+         (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
+
 (deftest field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"
@@ -626,8 +630,8 @@
                    (:has_more_values (chain-filter categories.name {})))))
 
           (testing "`true` if the limit option is less than the count of values of fieldvalues"
-            (is (= true
-                   (:has_more_values (chain-filter categories.name {} :limit 1)))))
+            (is (true?
+                 (:has_more_values (chain-filter categories.name {} :limit 1)))))
           (testing "`false` if the limit option is greater the count of values of fieldvalues"
             (is (= false
                    (:has_more_values (chain-filter categories.name {} :limit Integer/MAX_VALUE))))))
@@ -635,8 +639,8 @@
         (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
           (with-clean-field-values-for-field! (mt/id :categories :name)
             (binding [field-values/*total-max-length* 10]
-              (is (= true
-                     (:has_more_values (chain-filter categories.name {}))))))))
+              (is (true?
+                   (:has_more_values (chain-filter categories.name {}))))))))
 
       (testing "with contraints"
         (with-clean-field-values-for-field! (mt/id :categories :name)
@@ -645,8 +649,8 @@
                    (:has_more_values (chain-filter categories.name {venues.price 4})))))
 
           (testing "`true` if the limit option is less than the count of values of fieldvalues"
-            (is (= true
-                   (:has_more_values (chain-filter categories.name {venues.price 4} :limit 1)))))
+            (is (true?
+                 (:has_more_values (chain-filter categories.name {venues.price 4} :limit 1)))))
           (testing "`false` if the limit option is greater the count of values of fieldvalues"
             (is (= false
                    (:has_more_values (chain-filter categories.name {venues.price 4} :limit Integer/MAX_VALUE))))))
@@ -654,8 +658,8 @@
         (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
             (binding [field-values/*total-max-length* 10]
-              (is (= true
-                     (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
+              (is (true?
+                   (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
 
     (testing "for non-cached fields"
       (testing "with contraints"
@@ -665,8 +669,8 @@
                    (:has_more_values (chain-filter venues.latitude {venues.price 4})))))
 
           (testing "`true` if the limit is less than the number of values the field has"
-            (is (= true
-                   (:has_more_values (chain-filter venues.latitude {venues.price 4} :limit 1))))))))))
+            (is (true?
+                 (:has_more_values (chain-filter venues.latitude {venues.price 4} :limit 1))))))))))
 
 ;; TODO: make this test parallel, but clj-kondo complains about t2/update! being destructive and no amount of
 ;; :clj-kondo/ignore convinces it.

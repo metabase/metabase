@@ -39,11 +39,12 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
 };
 
 Object.assign(Funnel, {
-  uiName: t`Funnel`,
+  getUiName: () => t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
   noHeader: true,
   minSize: getMinSize("funnel"),
+  supportsVisualizer: true,
   defaultSize: getDefaultSize("funnel"),
   isSensible({ cols }: DatasetData) {
     return cols.length === 2;
@@ -78,7 +79,9 @@ Object.assign(Funnel, {
   settings: {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Data`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
@@ -91,6 +94,7 @@ Object.assign(Funnel, {
       readDependencies: ["funnel.rows"],
     },
     "funnel.rows": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
@@ -147,19 +151,29 @@ Object.assign(Funnel, {
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Data`,
+
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Measure`,
+
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
     }),
     "funnel.type": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       title: t`Funnel type`,
+
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
       section: t`Display`,
+
       widget: "select",
       props: {
         options: [
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Funnel`, value: "funnel" },
+          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#5504
           { name: t`Bar chart`, value: "bar" },
         ],
       },
@@ -175,6 +189,7 @@ export function Funnel(props: VisualizationProps) {
     headerIcon,
     settings,
     showTitle,
+    isVisualizerViz,
     actionButtons,
     className,
     onChangeCardAndRun,
@@ -204,6 +219,10 @@ export function Funnel(props: VisualizationProps) {
     );
   }
 
+  // We can't navigate a user to a particular card from a visualizer viz,
+  // so title selection is disabled in this case
+  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
@@ -211,10 +230,10 @@ export function Funnel(props: VisualizationProps) {
           series={groupedRawSeries}
           settings={settings}
           icon={headerIcon}
-          getHref={getHref}
+          getHref={canSelectTitle ? getHref : undefined}
           actionButtons={actionButtons}
           hasInfoTooltip={!isDashboard || !isEditing}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
         />
       )}
       <FunnelNormal

@@ -9,6 +9,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -19,8 +20,8 @@
    [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.secrets.core :as secret]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -30,7 +31,7 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
-   (java.sql Connection DatabaseMetaData ResultSet Types)
+   (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
    (java.time Instant OffsetDateTime ZonedDateTime LocalDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
@@ -291,6 +292,10 @@
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
+(defmethod sql.qp/integer-dbtype :oracle
+  [_]
+  "NUMBER(19)")
+
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)
@@ -372,6 +377,14 @@
   [_driver _unit field-or-value]
   (h2x/+ [:raw "timestamp '1970-01-01 00:00:00 UTC'"]
          (num-to-ds-interval :second field-or-value)))
+
+(defmethod sql.qp/float-dbtype :oracle
+  [_]
+  :BINARY_DOUBLE)
+
+(defmethod sql.qp/->date :oracle
+  [_ value]
+  (trunc :dd value))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
@@ -675,3 +688,6 @@
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod sql-jdbc/impl-query-canceled? :oracle [_ ^SQLException e]
+  (= (.getErrorCode e) 1013))

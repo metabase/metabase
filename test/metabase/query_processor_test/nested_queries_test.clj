@@ -7,6 +7,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
@@ -17,7 +18,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -805,8 +805,8 @@
                                                 "Card 1"     card-1
                                                 "Card 2"     card-2}]
                     (testing object-name
-                      (is (= true
-                             (mi/can-read? object)))))
+                      (is (true?
+                           (mi/can-read? object)))))
 
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]

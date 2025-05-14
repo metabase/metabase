@@ -13,9 +13,9 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.random :as random]
@@ -738,7 +738,7 @@
                                                                card-id
                                                                model-id
                                                                dashboard-id]}]
-        (let [site-url (public-settings/site-url)]
+        (let [site-url (system/site-url)]
           (testing "should returns all link cards and name are newly fetched"
             (doseq [[model id] [[:model/Card card-id]
                                 [:model/Table table-id]
@@ -789,7 +789,7 @@
                                                                card-id
                                                                model-id
                                                                dashboard-id]}]
-        (let [site-url (public-settings/site-url)]
+        (let [site-url (system/site-url)]
           (testing "should returns all link cards and name are newly fetched"
             (doseq [[model id] [[:model/Card card-id]
                                 [:model/Table table-id]

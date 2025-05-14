@@ -6,11 +6,12 @@
    [medley.core :as m]
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.models.setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -148,7 +149,7 @@
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  request.settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -169,7 +170,7 @@
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  request.settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -241,8 +242,8 @@
                    (mt/user-http-request :rasta :post 204 "session/forgot_password"
                                          {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
-            (is (= true
-                   (reset-fields-set?))
+            (is (true?
+                 (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
             (is (mt/received-email-subject? :rasta #"Password Reset")))))
       (testing "We use `site-url` in the email"
@@ -479,7 +480,7 @@
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
@@ -521,6 +522,14 @@
       (is (= nil
              (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
                  keys #{:premium-embedding-token}))))))
+
+(deftest properties-skip-include-in-list?=false
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the version-info property"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:version-info}))))))
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 

@@ -1,12 +1,14 @@
 import { t } from "ttag";
 
+import { ELLIPSIS } from "../constants";
+
 export const dashboardShortcuts = {
   "dashboard-bookmark": {
     get name() {
       return t`Bookmark Dashboard`;
     },
     shortcut: ["o"],
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When viewing`;
     },
@@ -16,7 +18,17 @@ export const dashboardShortcuts = {
       return t`Add Filter`;
     },
     shortcut: ["f"],
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When editing`;
+    },
+  },
+  "dashboard-toggle-add-question-sidepanel": {
+    get name() {
+      return t`Open Add Question Side Sheet`;
+    },
+    shortcut: ["a"],
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When editing`;
     },
@@ -25,8 +37,8 @@ export const dashboardShortcuts = {
     get name() {
       return t`Add Notebook Question`;
     },
-    shortcut: ["a q"],
-    shortcutGroup: "dashboard",
+    shortcut: ["q"],
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When editing`;
     },
@@ -35,8 +47,8 @@ export const dashboardShortcuts = {
     get name() {
       return t`Add Native Question`;
     },
-    shortcut: ["a n"],
-    shortcutGroup: "dashboard",
+    shortcut: ["n"],
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When editing`;
     },
@@ -46,7 +58,7 @@ export const dashboardShortcuts = {
       return t`Cancel Edit Dashboard`;
     },
     shortcut: ["e"],
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When editing`;
     },
@@ -56,7 +68,7 @@ export const dashboardShortcuts = {
       return t`Send tashboard to trash`;
     },
     shortcut: ["$mod+backspace"],
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When viewing`;
     },
@@ -66,7 +78,7 @@ export const dashboardShortcuts = {
       return t`Toggle Dashboard Info`;
     },
     shortcut: ["]"],
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When viewing`;
     },
@@ -75,7 +87,7 @@ export const dashboardShortcuts = {
     get name() {
       return t`Edit Dashboard`;
     },
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
     shortcut: ["e"],
     get shortcutContext() {
       return t`When viewing`;
@@ -86,9 +98,20 @@ export const dashboardShortcuts = {
       return t`Save Dashboard`;
     },
     shortcut: ["s"],
-    shortcutGroup: "dashboard",
+    shortcutGroup: "dashboard" as const,
     get shortcutContext() {
       return t`When editing`;
+    },
+  },
+  "dashboard-change-tab": {
+    get name() {
+      return t`Change dashboard tab`;
+    },
+    shortcut: ["([1-9])"],
+    shortcutDisplay: ["1", "2", "3", ELLIPSIS],
+    shortcutGroup: "dashboard" as const,
+    get shortcutContext() {
+      return t`When viewing`;
     },
   },
 };

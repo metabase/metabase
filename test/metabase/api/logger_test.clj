@@ -1,6 +1,7 @@
 (ns metabase.api.logger-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.logger :as logger]
    [metabase.test :as mt]))
 
@@ -11,8 +12,14 @@
     (mt/user-http-request :lucky :get 403 "logger/presets"))
   (testing "admins have access"
     (is (=? [{:id "sync"
-              :display_name "Sync issue"
-              :loggers #(every? (every-pred :name :level) %)}]
+              :display_name "Sync issue troubleshooting"
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}
+             {:id "linkedfilters"
+              :display_name "Linked filters troubleshooting"
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}
+             {:id "serialization"
+              :display_name "Serialization troubleshooting"
+              :loggers #(every? (every-pred :name (comp #{"debug"} :level)) %)}]
             (mt/user-http-request :crowberto :get 200 "logger/presets")))))
 
 (deftest ^:parallel adjust-invocation-error-test
@@ -116,3 +123,53 @@
       (finally
         (logger/remove-ns-logger! trace-ns)
         (logger/remove-ns-logger! fatal-ns)))))
+
+(deftest ^:sequential invalid-adjustment-test
+  (testing "invalid level"
+    (is (= {:specific-errors
+            {:log_levels
+             {:my.namespace
+              ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"ok\""],
+              :my.other.namespace
+              ["should be either \"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\" or \"off\", received: \"catastophic\""]}}
+            :errors
+            {:_error
+             "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:
+{
+  \"namespace\": \"trace\" | \"debug\" | \"info\" | \"warn\" | \"error\" | \"fatal\" | \"off\"
+}"}}
+           (mt/user-http-request :crowberto :post 400 "logger/adjustment"
+                                 {:duration 1, :duration_unit :hours, :log_levels {"my.namespace" :ok
+                                                                                   "my.other.namespace" :catastophic}}))))
+  (testing "invalid log_levels type"
+    (are [value json-type] (= {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
+                               :errors {:_error (format "Log levels should be an object, %s received" json-type)}}
+                              (mt/user-http-request :crowberto :post 400 "logger/adjustment"
+                                                    {:duration 1, :duration_unit :hours, :log_levels value}))
+      []    "array"
+      4.2   "number"
+      false "boolean"
+      "ll"  "string"
+      nil   "null")))
+
+(deftest ^:synchronized analytic-events-test
+  (snowplow-test/with-fake-snowplow-collector
+    (testing "Logger adjustments trigger snowplow events"
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 10000
+                             :duration_unit :milliseconds
+                             :log_levels {"metabase.sync" :debug}})
+      (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 1
+                             :duration_unit :hours
+                             :log_levels {"metabase.sync" :debug}})
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 1
+                             :duration_unit :hours
+                             :log_levels {}})
+      (is (=? [{:data {"event" "log_adjustments_set", "event_detail" "10"}}
+               {:data {"event" "log_adjustments_reset"}}
+               {:data {"event" "log_adjustments_set", "event_detail" "3600"}}
+               {:data {"event" "log_adjustments_reset"}}]
+              (take-last 4 (snowplow-test/pop-event-data-and-user-id!)))))))

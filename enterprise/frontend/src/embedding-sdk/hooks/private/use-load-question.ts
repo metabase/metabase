@@ -88,28 +88,38 @@ export function useLoadQuestion({
     if (shouldLoadQuestion) {
       setIsQuestionLoading(true);
     }
-    const questionState = await dispatch(
-      loadQuestionSdk({
-        options,
-        deserializedCard,
-        questionId: questionId,
-        initialSqlParameters,
-      }),
-    ).finally(() => {
+    try {
+      const questionState = await dispatch(
+        loadQuestionSdk({
+          options,
+          deserializedCard,
+          questionId: questionId,
+          initialSqlParameters,
+        }),
+      );
+
+      mergeQuestionState(questionState);
+
+      const results = await runQuestionQuerySdk({
+        question: questionState.question,
+        originalQuestion: questionState.originalQuestion,
+        cancelDeferred: deferred(),
+      });
+
+      mergeQuestionState(results);
+
       setIsQuestionLoading(false);
-    });
+      return { ...results, originalQuestion };
+    } catch (err) {
+      mergeQuestionState({
+        question: undefined,
+        originalQuestion: undefined,
+        queryResults: undefined,
+      });
 
-    mergeQuestionState(questionState);
-
-    const results = await runQuestionQuerySdk({
-      question: questionState.question,
-      originalQuestion: questionState.originalQuestion,
-      cancelDeferred: deferred(),
-    });
-
-    mergeQuestionState(results);
-
-    return { ...results, originalQuestion };
+      setIsQuestionLoading(false);
+      return {};
+    }
   }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
@@ -163,7 +173,6 @@ export function useLoadQuestion({
             mergeQuestionState({ queryResults: [null] }),
         }),
       );
-
       if (!state) {
         return;
       }

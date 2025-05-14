@@ -42,7 +42,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
@@ -635,8 +635,7 @@
   x NumericExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :expressions/integer}} integer
-  x [:or NumericExpressionArg
-     StringExpressionArg])
+  x [:or NumericExpressionArg StringExpressionArg])
 
 (defclause ^{:requires-features #{:expressions :expressions/float}} float
   x StringExpressionArg)
@@ -712,7 +711,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
-  string StringExpressionArg)
+  string [:or StringExpressionArg DateTimeExpressionArg])
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date))
@@ -822,7 +821,8 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
-(def ^:private Emptyable
+(def Emptyable
+  "Schema for a valid is-empty or not-empty argument."
   [:or StringExpressionArg Field])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
@@ -1046,10 +1046,9 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
+;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
-  metric-id ::lib.schema.id/metric)
+  metric-id ::lib.schema.id/card)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

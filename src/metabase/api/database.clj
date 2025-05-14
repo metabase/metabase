@@ -7,6 +7,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
+   [metabase.classloader.core :as classloader]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.db :as mdb]
@@ -14,27 +16,24 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
-   [metabase.sample-data :as sample-data]
-   [metabase.server.streaming-response]
+   [metabase.sample-data.core :as sample-data]
+   [metabase.secrets.core :as secret]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
@@ -192,7 +191,7 @@
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::card/type
    & {:keys [include-tables? include-fields?]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
@@ -403,9 +402,10 @@
 
 (api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
+  belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the
+  DB
    (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
-   returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
+   returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
    Passing include_editable_data_model will only return tables for which the current user has data model editing
    permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
@@ -530,6 +530,9 @@
         (update :tables (fn [tables]
                           (for [table tables]
                             (update table :segments (partial filter mi/can-read?)))))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (update table :schema str))))
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))
@@ -1013,6 +1016,7 @@
   (api/let-404 [db (t2/select-one :model/Database :id id)]
     (api/check-403 (mi/can-write? db))
     (t2/delete! :model/Database :router_database_id id)
+    (database-routing/delete-associated-database-router! id)
     (t2/delete! :model/Database :id id)
     (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
   api/generic-204-no-content)
@@ -1177,7 +1181,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
@@ -1187,7 +1191,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
@@ -1249,7 +1253,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [{:keys [schema]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
@@ -1271,7 +1275,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [{:keys [schema]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))

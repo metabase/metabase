@@ -341,6 +341,10 @@ export const dashboardParametersContainer = () => {
   return cy.findByTestId("dashboard-parameters-widget-container");
 };
 
+export const editingDashboardParametersContainer = () => {
+  return cy.findByTestId("edit-dashboard-parameters-widget-container");
+};
+
 export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };
@@ -445,8 +449,8 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover() {
-  return popover({ testId: "click-actions-popover" });
+export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
+  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
 export function segmentEditorPopover() {

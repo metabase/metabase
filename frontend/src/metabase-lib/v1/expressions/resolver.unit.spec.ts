@@ -1,438 +1,469 @@
-import type * as Lib from "metabase-lib";
+import { resolver as makeResolver } from "./resolver";
+import {
+  expressions,
+  fields,
+  metrics,
+  query,
+  segments,
+  stageIndex,
+} from "./test/shared";
 
-import { compileExpression } from "./compiler";
-import { query } from "./test/shared";
+describe("resolver", () => {
+  describe.each(["expression", "filter"] as const)(
+    "expressionMode = %s",
+    (expressionMode) => {
+      const resolve = makeResolver({
+        query,
+        stageIndex,
+        expressionMode,
+      });
 
-describe("resolve", () => {
-  function collect(
-    source: string,
-    expressionMode: Lib.ExpressionMode = "expression",
-  ) {
-    const fields: string[] = [];
-    const segments: string[] = [];
-    const metrics: string[] = [];
+      describe("type = boolean", () => {
+        const boolean = (name: string) => resolve("boolean", name);
 
-    const stageIndex = -1;
+        it("should resolve segments", () => {
+          expect(boolean("Expensive Things")).toEqual(
+            segments.EXPENSIVE_THINGS,
+          );
+          expect(boolean("expensive things")).toEqual(
+            segments.EXPENSIVE_THINGS,
+          );
+        });
 
-    const res = compileExpression({
-      source,
-      expressionMode,
+        it("should resolve columns of type: boolean", () => {
+          expect(boolean("bool")).toEqual(expressions.BOOL);
+          expect(boolean("Bool")).toEqual(expressions.BOOL);
+        });
+
+        it("should not resolve unknown segments", () => {
+          expect(() => boolean("Unknown")).toThrow(
+            "Unknown Segment or boolean column: Unknown",
+          );
+        });
+
+        it("should not resolve fields with non-boolean types", () => {
+          expect(() => boolean("stringly")).toThrow(
+            "Unknown Segment or boolean column: stringly",
+          );
+          expect(() => boolean("Total")).toThrow(
+            "Unknown Segment or boolean column: Total",
+          );
+        });
+
+        it("should not resolve metrics", () => {
+          expect(() => boolean("Foo Metric")).toThrow(
+            "Unknown Segment or boolean column: Foo Metric",
+          );
+        });
+      });
+
+      describe("type = string", () => {
+        const string = (name: string) => resolve("string", name);
+
+        it("should resolve dimensions of type: string", () => {
+          expect(string("Product → Category")).toEqual(
+            fields.products.CATEGORY,
+          );
+          expect(string("product → Category")).toEqual(
+            fields.products.CATEGORY,
+          );
+          expect(string("User → Address")).toEqual(fields.people.ADDRESS);
+          expect(string("User → address")).toEqual(fields.people.ADDRESS);
+          expect(string("User.Address")).toEqual(fields.people.ADDRESS);
+          expect(string("User.address")).toEqual(fields.people.ADDRESS);
+          expect(string("stringly")).toEqual(expressions.STRINGLY);
+          expect(string("Stringly")).toEqual(expressions.STRINGLY);
+        });
+
+        it("should resolve dimensions of types that can be stringly typed", () => {
+          expect(string("Total")).toEqual(fields.orders.TOTAL);
+          expect(string("total")).toEqual(fields.orders.TOTAL);
+          expect(string("Product → Price")).toEqual(fields.products.PRICE);
+        });
+
+        it("should not resolve unknown fields", () => {
+          expect(() => string("Unknown")).toThrow("Unknown column: Unknown");
+        });
+
+        it("should not resolve segments", () => {
+          expect(() => string("Expensive Things")).toThrow(
+            "Unknown column: Expensive Things",
+          );
+        });
+
+        it("should not resolve metrics", () => {
+          expect(() => string("Foo Metric")).toThrow(
+            "Unknown column: Foo Metric",
+          );
+        });
+      });
+
+      describe("type = number", () => {
+        const number = (name: string) => resolve("number", name);
+
+        it("should resolve dimensions of type: number", () => {
+          expect(number("ID")).toEqual(fields.orders.ID);
+          expect(number("id")).toEqual(fields.orders.ID);
+          expect(number("Total")).toEqual(fields.orders.TOTAL);
+          expect(number("total")).toEqual(fields.orders.TOTAL);
+          expect(number("Product → Price")).toEqual(fields.products.PRICE);
+          expect(number("Product.Price")).toEqual(fields.products.PRICE);
+          expect(number("foo")).toEqual(expressions.FOO);
+          expect(number("Foo")).toEqual(expressions.FOO);
+        });
+
+        it("should not resolve unknown fields", () => {
+          expect(() => number("Unknown")).toThrow("Unknown column: Unknown");
+        });
+
+        it("should not resolve segments", () => {
+          expect(() => number("Expensive Things")).toThrow(
+            "Unknown column: Expensive Things",
+          );
+        });
+
+        it("should not resolve metrics", () => {
+          expect(() => number("Foo Metric")).toThrow(
+            "Unknown column: Foo Metric",
+          );
+        });
+      });
+
+      describe("type = datetime", () => {
+        const datetime = (name: string) => resolve("datetime", name);
+
+        it("should resolve dimensions of type: datetime", () => {
+          expect(datetime("Created At")).toEqual(fields.orders.CREATED_AT);
+        });
+
+        it("should not resolve unknown fields", () => {
+          expect(() => datetime("Unknown")).toThrow("Unknown column: Unknown");
+        });
+
+        it("should not resolve segments", () => {
+          expect(() => datetime("Expensive Things")).toThrow(
+            "Unknown column: Expensive Things",
+          );
+        });
+
+        it("should not resolve metrics", () => {
+          expect(() => datetime("Foo Metric")).toThrow(
+            "Unknown column: Foo Metric",
+          );
+        });
+      });
+
+      describe("type = any", () => {
+        const any = (name: string) => resolve("any", name);
+
+        it("should resolve dimensions of type: any", () => {
+          expect(any("Created At")).toEqual(fields.orders.CREATED_AT);
+          expect(any("ID")).toEqual(fields.orders.ID);
+          expect(any("Product → Price")).toEqual(fields.products.PRICE);
+          expect(any("bool")).toEqual(expressions.BOOL);
+        });
+
+        it("should not resolve unknown fields", () => {
+          expect(() => any("Unknown")).toThrow("Unknown column: Unknown");
+        });
+
+        it("should not resolve segments", () => {
+          expect(() => any("Expensive Things")).toThrow(
+            "Unknown column: Expensive Things",
+          );
+        });
+
+        it("should not resolve metrics", () => {
+          expect(() => any("Foo Metric")).toThrow("Unknown column: Foo Metric");
+        });
+      });
+
+      describe("type = expression", () => {
+        const expression = (name: string) => resolve("expression", name);
+
+        it("should resolve dimensions of type: expression", () => {
+          expect(expression("Created At")).toEqual(fields.orders.CREATED_AT);
+          expect(expression("ID")).toEqual(fields.orders.ID);
+          expect(expression("Product → Price")).toEqual(fields.products.PRICE);
+          expect(expression("bool")).toEqual(expressions.BOOL);
+        });
+
+        it("should not resolve unknown fields", () => {
+          expect(() => expression("Unknown")).toThrow(
+            "Unknown column: Unknown",
+          );
+        });
+
+        it("should not resolve segments", () => {
+          expect(() => expression("Expensive Things")).toThrow(
+            "Unknown column: Expensive Things",
+          );
+        });
+
+        it("should not resolve metrics", () => {
+          expect(() => expression("Foo Metric")).toThrow(
+            "Unknown column: Foo Metric",
+          );
+        });
+      });
+
+      describe("type = aggregation", () => {
+        const aggregation = (name: string) => resolve("aggregation", name);
+
+        it("should not resolve fields", () => {
+          expect(() => aggregation("Unknown")).toThrow(
+            "Unknown Metric: Unknown",
+          );
+          expect(() => aggregation("Created At")).toThrow(
+            "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
+          );
+          expect(() => aggregation("Product → Price")).toThrow(
+            "No aggregation found in: Product → Price. Use functions like Sum() or custom Metrics",
+          );
+          expect(() => aggregation("bool")).toThrow(
+            "No aggregation found in: bool. Use functions like Sum() or custom Metrics",
+          );
+        });
+
+        it("should not resolve unknown fields", () => {
+          expect(() => aggregation("Unknown")).toThrow(
+            "Unknown Metric: Unknown",
+          );
+        });
+
+        it("should not resolve segments", () => {
+          expect(() => aggregation("Expensive Things")).toThrow(
+            "Unknown Metric: Expensive Things",
+          );
+        });
+
+        it("should resolve metrics", () => {
+          expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
+          expect(aggregation("foo metric")).toEqual(metrics.FOO);
+        });
+      });
+
+      it("should allow resolving field with exact case matches first", () => {
+        expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
+        expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
+      });
+    },
+  );
+
+  describe("expressionMode = aggregation", () => {
+    const resolve = makeResolver({
       query,
       stageIndex,
-      resolver(kind: string, name: string) {
-        switch (kind) {
-          case "field":
-            fields.push(name);
-            break;
-          case "segment":
-            segments.push(name);
-            break;
-          case "metric":
-            metrics.push(name);
-            break;
-        }
-        return {
-          operator: kind,
-          options: {},
-          args: [name],
-        } as any;
-      },
+      expressionMode: "aggregation",
     });
 
-    if (res.error) {
-      throw res.error;
-    }
+    describe("type = boolean", () => {
+      const boolean = (name: string) => resolve("boolean", name);
 
-    return {
-      fields,
-      segments,
-      metrics,
-      expression: res.expressionParts,
-    };
-  }
-
-  const expression = (expr: string) => collect(expr, "expression");
-  const filter = (expr: string) => collect(expr, "filter");
-  const aggregation = (expr: string) => collect(expr, "aggregation");
-
-  describe("for filters", () => {
-    it("should resolve segments correctly", () => {
-      expect(filter(`[A]`).segments).toEqual(["A"]);
-      expect(filter(`not [B]`).segments).toEqual(["B"]);
-      expect(filter(`not not [C]`).segments).toEqual(["C"]);
-      expect(filter(`[P] > 3`).segments).toEqual([]);
-      expect(filter(`Q < 1 and [R]`).segments).toEqual(["R"]);
-      expect(filter(`isNull([S])`).segments).toEqual([]);
-      expect(filter(`notEmpty([S])`).segments).toEqual([]);
-      expect(filter(`lower([A]) > "X"`).segments).toEqual([]);
-      expect(filter(`sqrt([B]) < 1`).segments).toEqual([]);
-      expect(filter(`contains([C], "SomeString")`).segments).toEqual([]);
-      expect(filter(`doesNotContain([C], "somestring")`).segments).toEqual([]);
-      expect(filter(`[P] or [Q] > 3`).segments).toEqual(["P"]);
-    });
-
-    it("should resolve fields correctly", () => {
-      expect(filter(`[A]`).fields).toEqual([]);
-      expect(filter(`not [B]`).fields).toEqual([]);
-      expect(filter(`not not [C]`).fields).toEqual([]);
-      expect(filter(`[P] > 3`).fields).toEqual(["P"]);
-      expect(filter(`Q < 1 and [R]`).fields).toEqual(["Q"]);
-      expect(filter(`isNull([S])`).fields).toEqual(["S"]);
-      expect(filter(`notEmpty([S])`).fields).toEqual(["S"]);
-      expect(filter(`lower([A]) > "X"`).fields).toEqual(["A"]);
-      expect(filter(`sqrt([B]) < 1`).fields).toEqual(["B"]);
-      expect(filter(`contains([C], "SomeString")`).fields).toEqual(["C"]);
-      expect(filter(`[P] or [Q] > 3`).fields).toEqual(["Q"]);
-      expect(filter(`contains([C], "somestring")`).fields).toEqual(["C"]);
-      expect(filter(`doesNotContain([C], "somestring")`).fields).toEqual(["C"]);
-    });
-
-    it("should work on functions with optional flag", () => {
-      expect(() =>
-        filter(`interval([A], 3, "day", "include-current")`),
-      ).not.toThrow();
-    });
-  });
-
-  describe("for expressions (for custom columns)", () => {
-    it("should resolve segments correctly", () => {
-      expect(expression(`trim([A])`).segments).toEqual([]);
-      expect(expression(`round([B])`).segments).toEqual([]);
-      expect(expression(`concat([S])`).segments).toEqual([]);
-      expect(expression(`concat([A], [B])`).segments).toEqual([]);
-      expect(expression(`coalesce([P])`).segments).toEqual([]);
-      expect(expression(`coalesce([P], [Q], [R])`).segments).toEqual([]);
-      expect(expression(`notNull([A])`).segments).toEqual([]);
-      expect(expression(`notEmpty([A])`).segments).toEqual([]);
-    });
-
-    it("should resolve fields correctly", () => {
-      expect(expression(`trim([A])`).fields).toEqual([`A`]);
-      expect(expression(`round([B])`).fields).toEqual(["B"]);
-      expect(expression(`concat([S])`).fields).toEqual(["S"]);
-      expect(expression(`concat([A], [B])`).fields).toEqual(["A", "B"]);
-      expect(expression(`coalesce([P])`).fields).toEqual(["P"]);
-      expect(expression(`coalesce([P], [Q], [R])`).fields).toEqual([
-        "P",
-        "Q",
-        "R",
-      ]);
-      expect(expression(`in([A], [B], [C])`).fields).toEqual(["A", "B", "C"]);
-      expect(expression(`text([A])`).fields).toEqual(["A"]);
-      expect(expression(`integer([A])`).fields).toEqual(["A"]);
-      expect(expression(`doesNotContain([A], "SomeString")`).fields).toEqual([
-        "A",
-      ]);
-      expect(expression(`notNull([A])`).fields).toEqual(["A"]);
-      expect(expression(`notEmpty([A])`).fields).toEqual(["A"]);
-    });
-
-    it("should allow nested datetime expressions", () => {
-      expect(() => expression(`year(now)`)).not.toThrow();
-    });
-
-    describe("datetime functions", () => {
-      it("should resolve unchained functions", () => {
-        expect(() => expression(`week("2022-01-01")`)).not.toThrow();
-        expect(() =>
-          expression(`datetimeAdd("2022-01-01", 1, "month")`),
-        ).not.toThrow();
-
-        // TODO: Implementation should be fine-tuned so that these throw
-        // as they are not really datetime
-        expect(() => expression(`day([A])`)).not.toThrow();
-        expect(() => expression(`day("a")`)).not.toThrow();
-        expect(() => expression(`weekday([A])`)).not.toThrow();
-        expect(() => expression(`weekday("a")`)).not.toThrow();
-        expect(() => expression(`week([A])`)).not.toThrow();
-        expect(() => expression(`week("a")`)).not.toThrow();
-        expect(() => expression(`month([A])`)).not.toThrow();
-        expect(() => expression(`month("a")`)).not.toThrow();
-        expect(() => expression(`quarter([A])`)).not.toThrow();
-        expect(() => expression(`quarter("a")`)).not.toThrow();
-        expect(() => expression(`year([A])`)).not.toThrow();
-        expect(() => expression(`year("a")`)).not.toThrow();
+      it("should resolve segments", () => {
+        expect(boolean("Expensive Things")).toEqual(segments.EXPENSIVE_THINGS);
       });
 
-      it("should resolve chained commmands", () => {
-        expect(() =>
-          expression(
-            `datetimeSubtract(datetimeAdd("2022-01-01", 1, "month"), 2,"minute")`,
-          ),
-        ).not.toThrow();
+      it("should resolve columns of type: boolean", () => {
+        expect(boolean("bool")).toEqual(expressions.BOOL);
       });
 
-      it("should chain datetime functions onto functions of compatible types", () => {
-        expect(() =>
-          expression(
-            `concat(datetimeAdd("2022-01-01", 1, "month"), "a string")`,
-          ),
-        ).not.toThrow();
+      it("should not resolve unknown fields", () => {
+        expect(() => boolean("Unknown")).toThrow(
+          "Unknown Segment or boolean column: Unknown",
+        );
       });
-    });
-  });
 
-  describe("for aggregations", () => {
-    it("should resolve fields correctly", () => {
-      expect(aggregation(`[A]`).fields).toEqual([]);
-      expect(aggregation(`CumulativeSum([B])`).fields).toEqual(["B"]);
-      expect(aggregation(`5 - Average([C])`).fields).toEqual(["C"]);
-      expect(aggregation(`Share([P] > 3)`).fields).toEqual(["P"]);
-      expect(aggregation(`Max(4 * [Q])`).fields).toEqual(["Q"]);
-      expect(aggregation(`[R] + Median([S])`).fields).toEqual(["S"]);
-      expect(aggregation(`CountIf(notNull([A]))`).fields).toEqual(["A"]);
-      expect(aggregation(`CountIf(notEmpty([A]))`).fields).toEqual(["A"]);
-    });
+      it("should not resolve fields with non-boolean types", () => {
+        expect(() => boolean("stringly")).toThrow(
+          "Unknown Segment or boolean column: stringly",
+        );
+        expect(() => boolean("Total")).toThrow(
+          "Unknown Segment or boolean column: Total",
+        );
+      });
 
-    it("should resolve metrics correctly", () => {
-      expect(aggregation(`[A]`).metrics).toEqual(["A"]);
-      expect(aggregation(`CumulativeSum([B])`).metrics).toEqual([]);
-      expect(aggregation(`5 - Average([C])`).metrics).toEqual([]);
-      expect(aggregation(`Share([P] > 3)`).metrics).toEqual([]);
-      expect(aggregation(`Max(4 * [Q])`).metrics).toEqual([]);
-      expect(aggregation(`[R] + Median([S])`).metrics).toEqual(["R"]);
-      expect(aggregation(`CountIf(notNull([A]))`).metrics).toEqual([]);
-      expect(aggregation(`CountIf(notEmpty([A]))`).metrics).toEqual([]);
-    });
-
-    it("should accept PERCENTILE with two arguments", () => {
-      expect(() => aggregation(`Percentile([A], 0.5)`)).not.toThrow();
-    });
-
-    it("should handle Distinct/Min/Max aggregating over non-numbers", () => {
-      expect(() => aggregation(`Distinct(coalesce("F"))`)).not.toThrow();
-      expect(() => aggregation(`Min(coalesce("F"))`)).not.toThrow();
-      expect(() => aggregation(`Max(coalesce("F"))`)).not.toThrow();
-    });
-  });
-
-  describe("for CASE expressions", () => {
-    it("should handle CASE with two arguments", () => {
-      expect(expression(`case([A], [B])`)).toEqual({
-        fields: ["B"],
-        segments: ["A"],
-        metrics: [],
-        expression: expect.any(Object),
+      it("should not resolve metrics", () => {
+        expect(() => boolean("Foo Metric")).toThrow(
+          "Unknown Segment or boolean column: Foo Metric",
+        );
       });
     });
 
-    it("should handle CASE with three arguments", () => {
-      expect(expression(`case([P], [Q], [R])`)).toEqual({
-        fields: ["Q", "R"],
-        segments: ["P"],
-        metrics: [],
-        expression: expect.any(Object),
+    describe("type = string", () => {
+      const string = (name: string) => resolve("string", name);
+
+      it("should resolve dimensions of type: string", () => {
+        expect(string("Product → Category")).toEqual(fields.products.CATEGORY);
+        expect(string("User → Address")).toEqual(fields.people.ADDRESS);
+        expect(string("User.Address")).toEqual(fields.people.ADDRESS);
+        expect(string("stringly")).toEqual(expressions.STRINGLY);
+      });
+
+      it("should resolve dimensions of types that can be stringly typed", () => {
+        expect(string("Total")).toEqual(fields.orders.TOTAL);
+        expect(string("Product → Price")).toEqual(fields.products.PRICE);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => string("Unknown")).toThrow(
+          "Unknown column or Metric: Unknown",
+        );
+      });
+
+      it("should not resolve segments", () => {
+        expect(() => string("Expensive Things")).toThrow(
+          "Unknown column or Metric: Expensive Things",
+        );
+      });
+
+      it("should resolve metrics", () => {
+        expect(string("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
-    it("should handle CASE with four arguments", () => {
-      expect(expression(`case([A], [B], [P], [Q])`)).toEqual({
-        fields: ["B", "Q"],
-        segments: ["A", "P"],
-        metrics: [],
-        expression: expect.any(Object),
+    describe("type = number", () => {
+      const number = (name: string) => resolve("number", name);
+
+      it("should resolve dimensions of type: number", () => {
+        expect(number("ID")).toEqual(fields.orders.ID);
+        expect(number("Total")).toEqual(fields.orders.TOTAL);
+        expect(number("Product → Price")).toEqual(fields.products.PRICE);
+        expect(number("Product.Price")).toEqual(fields.products.PRICE);
+        expect(number("foo")).toEqual(expressions.FOO);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => number("Unknown")).toThrow(
+          "Unknown column or Metric: Unknown",
+        );
+      });
+
+      it("should not resolve segments", () => {
+        expect(() => number("Expensive Things")).toThrow(
+          "Unknown column or Metric: Expensive Things",
+        );
+      });
+
+      it("should resolve metrics", () => {
+        expect(number("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
-    it("should handle CASE with five arguments", () => {
-      expect(expression(`case([A], [B], [P], [Q], [R])`)).toEqual({
-        fields: ["B", "Q", "R"],
-        segments: ["A", "P"],
-        metrics: [],
-        expression: expect.any(Object),
+    describe("type = datetime", () => {
+      const datetime = (name: string) => resolve("datetime", name);
+
+      it("should resolve dimensions of type: datetime", () => {
+        expect(datetime("Created At")).toEqual(fields.orders.CREATED_AT);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => datetime("Unknown")).toThrow(
+          "Unknown column or Metric: Unknown",
+        );
+      });
+
+      it("should not resolve segments", () => {
+        expect(() => datetime("Expensive Things")).toThrow(
+          "Unknown column or Metric: Expensive Things",
+        );
+      });
+
+      it("should resolve metrics", () => {
+        expect(datetime("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
-    it("should handle CASE with two complex arguments", () => {
-      expect(expression(`case([P] < 2, [Q])`)).toEqual({
-        fields: ["P", "Q"],
-        segments: [],
-        metrics: [],
-        expression: expect.any(Object),
+    describe("type = any", () => {
+      const any = (name: string) => resolve("any", name);
+
+      it("should resolve dimensions of type: any", () => {
+        expect(any("Created At")).toEqual(fields.orders.CREATED_AT);
+        expect(any("ID")).toEqual(fields.orders.ID);
+        expect(any("Product → Price")).toEqual(fields.products.PRICE);
+        expect(any("bool")).toEqual(expressions.BOOL);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => any("Unknown")).toThrow(
+          "Unknown column or Metric: Unknown",
+        );
+      });
+
+      it("should not resolve segments", () => {
+        // We do not resolve segments here since any is only used in offset
+        // and offset only works in aggregations.
+        expect(() => any("Expensive Things")).toThrow(
+          "Unknown column or Metric: Expensive Things",
+        );
+      });
+
+      it("should resolve metrics", () => {
+        expect(any("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
-    it("should handle nested CASE", () => {
-      expect(expression(`case([P], [Q], case([A], [B]))`)).toEqual({
-        fields: ["Q", "B"],
-        segments: ["P", "A"],
-        metrics: [],
-        expression: expect.any(Object),
+    describe("type = expression", () => {
+      const expression = (name: string) => resolve("expression", name);
+
+      it("should resolve dimensions of type: expression", () => {
+        expect(expression("Created At")).toEqual(fields.orders.CREATED_AT);
+        expect(expression("ID")).toEqual(fields.orders.ID);
+        expect(expression("Product → Price")).toEqual(fields.products.PRICE);
+        expect(expression("bool")).toEqual(expressions.BOOL);
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => expression("Unknown")).toThrow(
+          "Unknown column or Metric: Unknown",
+        );
+      });
+
+      it("should not resolve segments", () => {
+        expect(() => expression("Expensive Things")).toThrow(
+          "Unknown column or Metric: Expensive Things",
+        );
+      });
+
+      it("should resolve metrics", () => {
+        expect(expression("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
-    it("should handle CASE inside COALESCE", () => {
-      expect(expression(`coalesce(case([A], [B]))`)).toEqual({
-        fields: ["B"],
-        segments: ["A"],
-        metrics: [],
-        expression: expect.any(Object),
+    describe("type = aggregation", () => {
+      const aggregation = (name: string) => resolve("aggregation", name);
+
+      it("should not resolve fields", () => {
+        expect(() => aggregation("Unknown")).toThrow("Unknown Metric: Unknown");
+        expect(() => aggregation("Created At")).toThrow(
+          "No aggregation found in: Created At. Use functions like Sum() or custom Metrics",
+        );
+        expect(() => aggregation("Product → Price")).toThrow(
+          "No aggregation found in: Product → Price. Use functions like Sum() or custom Metrics",
+        );
+        expect(() => aggregation("bool")).toThrow(
+          "No aggregation found in: bool. Use functions like Sum() or custom Metrics",
+        );
+      });
+
+      it("should not resolve unknown fields", () => {
+        expect(() => aggregation("Unknown")).toThrow("Unknown Metric: Unknown");
+      });
+
+      it("should not resolve segments", () => {
+        expect(() => aggregation("Expensive Things")).toThrow(
+          "Unknown Metric: Expensive Things",
+        );
+      });
+
+      it("should resolve metrics", () => {
+        expect(aggregation("Foo Metric")).toEqual(metrics.FOO);
       });
     });
 
-    it("should accept a CASE expression with complex arguments", () => {
-      expect(() => expression(`case([X], 0.5 * [Y], [A] - [B])`)).not.toThrow();
-    });
-
-    it("should allow sum inside expression in aggregation", () => {
-      expect(() => expression(`case(Sum([A] > 10), [B])`)).not.toThrow();
-    });
-
-    it("should accept IF as an alias for CASE", () => {
-      expect(expression(`if([A], [B])`)).toEqual({
-        fields: ["B"],
-        segments: ["A"],
-        metrics: [],
-        expression: expect.any(Object),
-      });
-    });
-
-    it("should not fail on literal 0", () => {
-      expect(expression(`case([A], 0)`).expression).toEqual({
-        operator: "case",
-        options: {},
-        args: [expect.any(Object), 0],
-      });
-
-      expect(expression(`case([A], 0, 0)`).expression).toEqual({
-        operator: "case",
-        options: {},
-        args: [expect.any(Object), 0, 0],
-      });
-    });
-  });
-
-  it("should reject unknown function", () => {
-    expect(() => expression(`foobar(42)`)).toThrow();
-  });
-
-  describe("coalesce", () => {
-    it("should resolve coalesce correctly", () => {
-      expect(expression(`coalesce([A])`)).toEqual({
-        fields: ["A"],
-        segments: [],
-        metrics: [],
-        expression: expect.any(Object),
-      });
-      expect(filter(`coalesce([A])`)).toEqual({
-        fields: [],
-        segments: ["A"],
-        metrics: [],
-        expression: expect.any(Object),
-      });
-      expect(aggregation(`coalesce([A])`)).toEqual({
-        fields: [],
-        segments: [],
-        metrics: ["A"],
-        expression: expect.any(Object),
-      });
-      expect(aggregation(`trim(coalesce([A]))`)).toEqual({
-        fields: ["A"],
-        segments: [],
-        metrics: [],
-        expression: expect.any(Object),
-      });
-    });
-
-    it("should accept COALESCE for number", () => {
-      expect(() => expression(`round(coalesce(0))`)).not.toThrow();
-    });
-
-    it("should accept COALESCE for string", () => {
-      expect(() => expression(`trim(coalesce("B"))`)).not.toThrow();
-    });
-
-    it("should honor CONCAT's implicit casting", () => {
-      expect(() => expression(`concat(coalesce("B"), 1)`)).not.toThrow();
-    });
-  });
-
-  describe("comparison operators", () => {
-    const operators = ["<", "<=", ">", ">="] as const;
-    operators.forEach((operator) => {
-      it(`should resolve both args to ${operator}`, () => {
-        const source = `[A] ${operator} [B]`;
-        expect(expression(source).fields).toEqual(["A", "B"]);
-        expect(filter(source).fields).toEqual(["A", "B"]);
-        expect(aggregation(source).fields).toEqual(["A", "B"]);
-        expect(aggregation(`CountIf(${source})`).fields).toEqual(["A", "B"]);
-      });
-    });
-  });
-
-  describe("number operators", () => {
-    const operators = ["+", "-", "*", "/"] as const;
-    operators.forEach((operator) => {
-      it(`should resolve all ${operator} args correctly`, () => {
-        const source = `[A] ${operator} [B] ${operator} [C]`;
-        expect(expression(source)).toEqual({
-          fields: ["A", "B", "C"],
-          segments: [],
-          metrics: [],
-          expression: expect.any(Object),
-        });
-        expect(filter(source)).toEqual({
-          fields: ["A", "B", "C"],
-          segments: [],
-          metrics: [],
-          expression: expect.any(Object),
-        });
-        expect(aggregation(source)).toEqual({
-          fields: [],
-          segments: [],
-          metrics: ["A", "B", "C"],
-          expression: expect.any(Object),
-        });
-      });
-    });
-  });
-
-  describe("logic operators", () => {
-    const operators = ["and", "or"] as const;
-    operators.forEach((operator) => {
-      it(`should resolve all args to ${operator} correctly`, () => {
-        const source = `[A] ${operator} [B] ${operator} [C]`;
-        expect(expression(source)).toEqual({
-          fields: [],
-          metrics: [],
-          segments: ["A", "B", "C"],
-          expression: expect.any(Object),
-        });
-        expect(filter(source)).toEqual({
-          fields: [],
-          metrics: [],
-          segments: ["A", "B", "C"],
-          expression: expect.any(Object),
-        });
-        expect(aggregation(source)).toEqual({
-          fields: [],
-          metrics: [],
-          segments: ["A", "B", "C"],
-          expression: expect.any(Object),
-        });
-      });
-    });
-
-    it("should resolve not args correctly", () => {
-      const source = `not [A]`;
-      expect(expression(source)).toEqual({
-        fields: [],
-        metrics: [],
-        segments: ["A"],
-        expression: expect.any(Object),
-      });
-      expect(filter(source)).toEqual({
-        fields: [],
-        metrics: [],
-        segments: ["A"],
-        expression: expect.any(Object),
-      });
-      expect(aggregation(source)).toEqual({
-        fields: [],
-        metrics: [],
-        segments: ["A"],
-        expression: expect.any(Object),
-      });
+    it("should allow resolving field with exact case matches first", () => {
+      expect(resolve("number", "BAR")).toEqual(expressions.BAR_UPPER);
+      expect(resolve("number", "bar")).toEqual(expressions.BAR_LOWER);
     });
   });
 });

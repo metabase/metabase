@@ -398,12 +398,12 @@ describe("old recursive-parser tests", () => {
     );
 
     // functions without argument, hence no "()"
-    expect(aggregation("Count")).toEqual(op("count"));
-    expect(aggregation("CumulativeCount")).toEqual(op("cum-count"));
+    expect(aggregation("Count()")).toEqual(op("count"));
+    expect(aggregation("CumulativeCount()")).toEqual(op("cum-count"));
 
     // mixed them in some arithmetic
-    expect(aggregation("COUNT / 2")).toEqual(op("/", op("count"), 2));
-    expect(aggregation("1+CumulativeCount")).toEqual(
+    expect(aggregation("COUNT() / 2")).toEqual(op("/", op("count"), 2));
+    expect(aggregation("1+CumulativeCount()")).toEqual(
       op("+", 1, op("cum-count")),
     );
   });
@@ -444,6 +444,18 @@ describe("Specific expressions", () => {
     expect(expr(`-3.1415`)).toEqual(value(-3.1415, "type/Float"));
     expect(expr(`-9223372036854775809`)).toEqual(
       value("-9223372036854775809", "type/BigInteger"),
+    );
+  });
+
+  it("should render a custom error message for unresolved fields that used to resolver to a function invocation", () => {
+    expect(() => expr("now")).toThrow(
+      "Unknown column: now. Use now() instead.",
+    );
+    expect(() => expr("Count")).toThrow(
+      "Unknown column: Count. Use Count() instead.",
+    );
+    expect(() => expr("CumulativeCount")).toThrow(
+      "Unknown column: CumulativeCount. Use CumulativeCount() instead.",
     );
   });
 });

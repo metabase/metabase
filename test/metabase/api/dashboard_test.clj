@@ -11,6 +11,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
@@ -18,12 +19,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.collection :as collection]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -47,6 +46,34 @@
    [toucan2.protocols :as t2.protocols]))
 
 (set! *warn-on-reflection* true)
+
+(deftest update-colvalmap-setting-test
+  (testing "update-colvalmap-setting function with regex matching"
+    (let [id->new-card {123 {:id 456}
+                        789 {:id 987}}
+          col->val-source {:COLUMN_1 [{:sourceId "card:123" :originalName "sum" :name "COLUMN_1"}]
+                           :COLUMN_2 [{:sourceId "card:789" :originalName "count" :name "COLUMN_2"}]
+                           :COLUMN_3 [{:sourceId "card:999" :originalName "avg" :name "COLUMN_3"}]
+                           :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
+                           :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
+                           :COLUMN_6 [{:name "No source ID"}]}
+          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
+
+      (testing "should update valid card IDs that exist in the map"
+        (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
+        (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
+
+      (testing "should not modify card IDs that don't exist in the map"
+        (is (= "card:999" (-> result :COLUMN_3 first :sourceId))))
+
+      (testing "should not modify non-card sourceIds"
+        (is (= "not-a-card" (-> result :COLUMN_4 first :sourceId))))
+
+      (testing "should not modify invalid card IDs (non-numeric)"
+        (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
+
+      (testing "should handle items without sourceId"
+        (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
 
 (use-fixtures
   :once
@@ -91,9 +118,7 @@
                         :updated_at (boolean updated_at))
                  (update :entity_id boolean)
                  (update :collection_id boolean)
-                 (update :collection boolean)
-                 (cond-> (:param_values dashboard)
-                   (update :param_values not-empty)))]
+                 (update :collection boolean))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
@@ -323,24 +348,28 @@
                                                                  :template-tags
                                                                  {"id"      {:name         "id"
                                                                              :display-name "Id"
+                                                                             :id           "_id_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :id) nil]
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
+                                                                             :id           "_name_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :name) nil]
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
+                                                                             :id           "_source_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :source) nil]
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
+                                                                             :id           "_user_id_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :orders :user_id) nil]
                                                                              :widget-type  :id
@@ -366,10 +395,10 @@
                                            :parameter_mappings [{:parameter_id "__ID__"
                                                                  :card_id      orders-card-id
                                                                  :target       [:dimension (mt/$ids orders $product_id)]}]}]
-      (is (=? {(mt/id :orders :product_id) {:id                 (mt/id :orders :product_id)
-                                            :semantic_type      :type/FK
-                                            :fk_target_field_id (mt/id :products :id)
-                                            :target             {:id (mt/id :products :id)}}}
+      (is (=? {"__ID__" [{:id                 (mt/id :orders :product_id)
+                          :semantic_type      :type/FK
+                          :fk_target_field_id (mt/id :products :id)
+                          :target             {:id (mt/id :products :id)}}]}
               (:param_fields (mt/with-test-user :crowberto
                                (#'api.dashboard/get-dashboard dash-id))))))))
 
@@ -396,6 +425,7 @@
                                                                      :template-tags
                                                                      {"name" {:name         "Name"
                                                                               :display-name "name"
+                                                                              :id           "_name_"
                                                                               :type         :dimension
                                                                               :dimension    [:field (mt/id :people :name) nil]
                                                                               :widget-type  :string/contains}}}
@@ -454,8 +484,7 @@
                      :collection_id              true
                      :collection_authority_level nil
                      :can_write                  false
-                     :param_fields               nil
-                     :param_values               nil
+                     :param_fields               {}
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                      :tabs                       [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
                      :dashcards                  [{:size_x                     4
@@ -542,15 +571,14 @@
                      :collection_id              true
                      :collection_authority_level nil
                      :can_write                  false
-                     :param_values               nil
-                     :param_fields               {field-id {:id               field-id
-                                                            :table_id         table-id
-                                                            :display_name     display-name
-                                                            :base_type        "type/Text"
-                                                            :semantic_type    nil
-                                                            :has_field_values "search"
-                                                            :name_field       nil
-                                                            :dimensions       []}}
+                     :param_fields               {:foo [{:id               field-id
+                                                         :table_id         table-id
+                                                         :display_name     display-name
+                                                         :base_type        "type/Text"
+                                                         :semantic_type    nil
+                                                         :has_field_values "search"
+                                                         :name_field       nil
+                                                         :dimensions       []}]}
                      :tabs                       []
                      :dashcards                  [{:size_x                     4
                                                    :size_y                     4
@@ -620,35 +648,6 @@
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
 
-(deftest param-values-test
-  (testing "Don't return `param_values` for Fields for which the current User has no data perms."
-    (mt/with-temp-copy-of-db
-      (perms.test-util/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
-                       :model/Card          {card-id :id}      {:name "Dashboard Test Card"}
-                       :model/DashboardCard {_ :id}            {:dashboard_id       dashboard-id
-                                                                :card_id            card-id
-                                                                :parameter_mappings [{:card_id      card-id
-                                                                                      :parameter_id "foo"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :venues :name) nil]]}
-                                                                                     {:card_id      card-id
-                                                                                      :parameter_id "bar"
-                                                                                      :target       [:dimension
-                                                                                                     [:field (mt/id :categories :name) nil]]}]}]
-          ;; Manually activate Field values since they are not created during sync (#53387)
-          (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-          (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                                 "25°"
-                                                                 "33 Taps"]
-                                         :field_id              (mt/id :venues :name)
-                                         :human_readable_values []}}
-                 (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                   (into {} (for [[field-id m] response]
-                              [field-id (update m :values (partial take 3))]))))))))))
-
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
@@ -669,37 +668,9 @@
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
       (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
-        (is (=? (repeat 2 {:level   :error
-                           :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"})
+        (is (=? [{:level   :error
+                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
                 (messages)))))))
-
-(deftest param-values-not-fetched-on-load-test
-  (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"
-    (mt/with-temp
-      [:model/Dashboard {dashboard-id :id} {:name       "Test Dashboard"
-                                            :parameters [{:name      "FOO"
-                                                          :id        "foo"
-                                                          :type      :string/=
-                                                          :sectionId "string"}]}
-       :model/Card {card-id :id} {:name "Dashboard Test Card"}
-       :model/DashboardCard _ {:dashboard_id       dashboard-id
-                               :card_id            card-id
-                               :parameter_mappings [{:card_id      card-id
-                                                     :parameter_id "foo"
-                                                     :target       [:dimension
-                                                                    [:field (mt/id :venues :name) nil]]}]}]
-      ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-      (let [dashboard-load-a (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
-            _                (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
-            dashboard-load-b (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
-            param-values     (mt/user-http-request :rasta :get 200 (format "dashboard/%s/params/%s/values" dashboard-id "foo"))]
-        (testing "The initial dashboard-load fetches parameter values only if they already exist (#38826)"
-          (is (seq (:param_values dashboard-load-a)))
-          (is (nil? (:param_values dashboard-load-b))))
-        (testing "Request to values endpoint triggers computation of field values if missing."
-          (is (= ["20th Century Cafe" "25°" "33 Taps"]
-                 (take 3 (apply concat (:values param-values))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -2750,16 +2721,19 @@
                                                              :template-tags
                                                              {"name"     {:name         "name"
                                                                           :display-name "Name"
+                                                                          :id           "_CARD_ID_"
                                                                           :type         :dimension
                                                                           :dimension    [:field (mt/id :categories :name) nil]
                                                                           :widget-type  :string/=}
                                                               "notname"  {:name         "notname"
                                                                           :display-name "Not Name"
+                                                                          :id           "_CARD_NOTNAME_"
                                                                           :type         :dimension
                                                                           :dimension    [:field (mt/id :categories :name) nil]
                                                                           :widget-type  :string/!=}
                                                               "contains" {:name         "contains"
                                                                           :display-name "Name Contains"
+                                                                          :id           "_CARD_CONTAINS_"
                                                                           :type         :dimension
                                                                           :dimension    [:field (mt/id :categories :name) nil]
                                                                           :widget-type  :string/contains
@@ -4262,6 +4236,45 @@
                      (mt/user-http-request :rasta :get 403
                                            (str "dashboard/" (:id dashboard) "/params/" (:category-name param-keys) "/values")))))))))))
 
+(deftest param-value-remapping-test
+  (let [id-param-id   "id-param-id"
+        list-param-id "static-labeled-list"]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name      "ID"
+                                                                      :id        id-param-id
+                                                                      :type      :id}
+                                                                     {:name                 "Static Category label"
+                                                                      :id                   list-param-id
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values [["A frican" "Af"]
+                                                                                                      ["American" "Am"]
+                                                                                                      ["A   sian" "As"]]}}]}
+                   :model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Card {people-card-id :id} {:dataset_query (mt/mbql-query people)}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            orders-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :orders :user_id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}
+                   :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                           :card_id            people-card-id
+                                           :parameter_mappings [{:parameter_id id-param-id
+                                                                 :card_id      people-card-id
+                                                                 :target       [:dimension [:field
+                                                                                            (mt/id :people :id)
+                                                                                            {:base-type :type/Integer}]
+                                                                                {:stage-number 0}]}]}]
+      (let [url #(str "dashboard/" dashboard-id "/params/" %1 "/remapping?value=" %2)]
+        (is (= [1 "Hudson Borer"]
+               (mt/user-http-request :crowberto :get 200 (url id-param-id 1))))
+        (is (= [(str Integer/MAX_VALUE)]
+               (mt/user-http-request :crowberto :get 200 (url id-param-id Integer/MAX_VALUE))))
+        (is (= ["A   sian" "As"]
+               (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
+
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
     (let [{param-id :id :as param} {:name "Source"
@@ -4559,24 +4572,28 @@
                                                                  :template-tags
                                                                  {"id"      {:name         "id"
                                                                              :display-name "Id"
+                                                                             :id           "_id_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :id) nil]
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
+                                                                             :id           "_name_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :name) nil]
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
+                                                                             :id           "_source_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :source) nil]
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
+                                                                             :id           "_user_id_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :orders :user_id) nil]
                                                                              :widget-type  :id
@@ -4644,24 +4661,28 @@
                                                                  :template-tags
                                                                  {"id"      {:name         "id"
                                                                              :display-name "Id"
+                                                                             :id           "_id_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :id) nil]
                                                                              :widget-type  :id
                                                                              :default      nil}
                                                                   "name"    {:name         "name"
                                                                              :display-name "Name"
+                                                                             :id           "_name_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :name) nil]
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "source"  {:name         "source"
                                                                              :display-name "Source"
+                                                                             :id           "_source_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :people :source) nil]
                                                                              :widget-type  :category
                                                                              :default      nil}
                                                                   "user_id" {:name         "user_id"
                                                                              :display-name "User"
+                                                                             :id           "_user_id_"
                                                                              :type         :dimension
                                                                              :dimension    [:field (mt/id :orders :user_id) nil]
                                                                              :widget-type  :id
@@ -4754,18 +4775,18 @@
                                      :card_id            (:id card)
                                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                            :target       [:dimension (mt/$ids *categories.name)]}]}]
-    (is (=? {:param_fields {(mt/id :categories :name)
-                            {:semantic_type "type/Name",
-                             :table_id (mt/id :categories)
-                             :name "NAME",
-                             :has_field_values "list",
-                             :fk_target_field_id nil,
-                             :dimensions (),
-                             :id (mt/id :categories :name)
-                             :target nil,
-                             :display_name "Name",
-                             :name_field nil,
-                             :base_type "type/Text"}}}
+    (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
+                            [{:semantic_type "type/Name",
+                              :table_id (mt/id :categories)
+                              :name "NAME",
+                              :has_field_values "list",
+                              :fk_target_field_id nil,
+                              :dimensions (),
+                              :id (mt/id :categories :name)
+                              :target nil,
+                              :display_name "Name",
+                              :name_field nil,
+                              :base_type "type/Text"}]}}
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dash)))))
     (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
@@ -4885,83 +4906,6 @@
             (mt/user-http-request :crowberto :post 202
                                   (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
           (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
-
-;; This test is same as [[metabase.public-sharing.api-test/dashboard-param-values-param-fields-hydration-test]]
-;; adjusted to run with NORMAL dashboard.
-(deftest ^:synchronized dashboard-param-values-param-fields-hydration-test
-  (mt/with-temp
-    [:model/Dashboard     d   {:name "D"
-                               :parameters [{:name      "State filter param 1"
-                                             :slug      "p1"
-                                             :id        "p1"
-                                             :type      "location"}
-                                            {:name      "State filter param 2"
-                                             :slug      "p2"
-                                             :id        "p2"
-                                             :type      "text"}
-                                            {:name      "State filter param 3"
-                                             :slug      "p3"
-                                             :id        "p3"
-                                             :type      "text"}]}
-     :model/Card          c1  (mt/card-with-updated-metadata
-                               {:name          "C1"
-                                :type          :model
-                                :dataset_query (mt/native-query {:query "select * from people"})}
-                               (fn [{col-name :name :as meta} _card]
-                                 ;; Map model's metadata to corresponding field id
-                                 (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name))))))
-
-     :model/Card          c2 (let [query (mt/mbql-query nil
-                                           {:source-table (str "card__" (:id c1))
-                                            :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]})]
-                               (mt/card-with-metadata
-                                {:name "C2"
-                                 :dataset_query query}))
-     :model/DashboardCard _dc1 {:dashboard_id       (:id d)
-                                :card_id            (:id c2)
-                                :parameter_mappings
-                                [{:parameter_id "p1"
-                                  :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
-                                 {:parameter_id "p2"
-                                  :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
-                                 {:parameter_id "p3"
-                                  :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}
-     :model/DashboardCard _dc2 {:dashboard_id       (:id d)
-                                :card_id            (:id c2)
-                                :parameter_mappings
-                                [{:parameter_id "p1"
-                                  :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
-                                 {:parameter_id "p2"
-                                  :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
-                                 {:parameter_id "p3"
-                                  :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
-    (let [call-count (volatile! 0)
-          orig-filterable-columns-for-query params/filterable-columns-for-query]
-      ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :people :state)))
-      (with-redefs [params/filterable-columns-for-query
-                    (fn [& args]
-                      (vswap! call-count inc)
-                      (apply orig-filterable-columns-for-query args))]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d?dashboard_load_id=%s"
-                                                                         (:id d) (str (random-uuid))))]
-          (testing "Baseline: expected :param_fields (#42829)"
-            (is (=? {(mt/id :people :name)  {:name "NAME"}
-                     (mt/id :people :state) {:name "STATE"}
-                     (mt/id :people :city)  {:name "CITY"}}
-                    (get response :param_fields))))
-          (testing "Baseline: expected :param_values (#42829)"
-            (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
-                    (-> (get response :param_values)
-                        ;; Take just first 2 values for testing purposes
-                        (update-in [(mt/id :people :state) :values] (partial take 2))))))
-          (testing "Reasonable amount of `filterable-columns` calls performed during dashboard load"
-            ;; Current implementation of [[metabase.models.params/dashcards->param-field-ids]] is supposed
-            ;; to compute `filterable-columns` only once per card per dashboard load, thanks to use of (1) context
-            ;; sharing of it between :param_fields and :param_values hydration. This test defines multiple
-            ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
-            ;; of things working as described.
-            (is (= 1 @call-count))))))))
 
 ;; Exception during scheduled (grouper) update of UserParameterValue is thrown. It is not relevant in context
 ;; of tested functionality.
@@ -5158,3 +5102,75 @@
            (set (keys (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
     (is (= (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
            (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))))))
+
+(deftest ^:parallel previous-stage-test
+  (testing "binding parameters to different stages is handled correctly"
+    (let [mp     (mt/metadata-provider)
+          ;; Two stages, both with aggregations
+          base   (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                     (lib/expression "tax rate" (lib// (lib.metadata/field mp (mt/id :orders :tax))
+                                                       (lib.metadata/field mp (mt/id :orders :subtotal))))
+                     (lib/aggregate (lib/count))
+                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :subtotal))))
+                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity))))
+                     (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                     (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                     :month))
+                     lib/append-stage)
+          [category created-at _count subtotal quantity] (lib/filterable-columns base)
+          ;; Second stage: filtering to those categoies and months where a category sold 100 total units;
+          ;; *then* aggregating on the avg subtotal per category.
+          query  (-> base
+                     (lib/filter (lib/>= quantity 100))
+                     (lib/aggregate (lib/avg subtotal))
+                     (lib/breakout category))]
+      (mt/with-temp [:model/Card          card      {:dataset_query (lib/->legacy-MBQL query)}
+                     :model/Dashboard     dashboard {:parameters [{:name      "Category"
+                                                                   :slug      "category"
+                                                                   :id        "_CATEGORY_"
+                                                                   :type      "string/="
+                                                                   :sectionId "string"
+                                                                   :default   ["Doohickey"]}
+                                                                  {:name      "Max Tax"
+                                                                   :slug      "max_tax"
+                                                                   :id        "_MAX_TAX_"
+                                                                   :type      "number/<="
+                                                                   :sectionId "number"}
+                                                                  {:name      "Quarter"
+                                                                   :slug      "quarter"
+                                                                   :id        "_CREATED_AT_"
+                                                                   :type      "date/quarter-year"
+                                                                   :sectionId "date"}]}
+                     :model/DashboardCard _         {:dashboard_id (:id dashboard)
+                                                     :card_id      (:id card)
+                                                     :parameter_mappings
+                                                     [;; Binding to something on stage 0.
+                                                      {:parameter_id "_MAX_TAX_"
+                                                       :card_id      (:id card)
+                                                       :target       [:dimension
+                                                                      [:field (mt/id :orders :tax) nil]
+                                                                      {:stage-number 0}]}
+                                                      ;; Binding explicitly to stage 1.
+                                                      {:parameter_id "_CREATED_AT_"
+                                                       :card_id      (:id card)
+                                                       :target       [:dimension
+                                                                      [:field (:name created-at) {:base-type :type/DateTime
+                                                                                                  :inherited-temporal-unit :month}]
+                                                                      {:stage-number 1}]}
+                                                      ;; No stage number; binds implicitly to the last stage.
+                                                      {:parameter_id "_CATEGORY_"
+                                                       :card_id      (:id card)
+                                                       :target       [:dimension
+                                                                      [:field (:name category) {:base-type :type/Text}]]}]}]
+        (is (=? {;; Explicit stage 0
+                 "_MAX_TAX_"      [{:name      "TAX"
+                                    :id        (mt/id :orders :tax)
+                                    :base_type :type/Float}]
+                 ;; Explicit stage 1
+                 "_CREATED_AT_"   [{:name      (:name created-at)
+                                    :base_type #(isa? % :type/DateTime)}]
+                 ;; Implicit last stage
+                 "_CATEGORY_"     [{:name      (:name category)
+                                    :base_type :type/Text}]}
+                (:param_fields (mt/with-test-user :crowberto
+                                 (#'api.dashboard/get-dashboard (:id dashboard))))))))))
