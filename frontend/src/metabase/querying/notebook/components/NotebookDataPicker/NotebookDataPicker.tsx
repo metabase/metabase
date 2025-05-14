@@ -63,7 +63,9 @@ export function NotebookDataPicker({
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    onChangeRef.current?.(table, metadataProvider);
+    if (table) {
+      onChangeRef.current?.(table, metadataProvider);
+    }
   };
 
   if (isEmbedding) {
