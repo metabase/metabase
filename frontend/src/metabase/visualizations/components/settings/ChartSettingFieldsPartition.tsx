@@ -20,12 +20,16 @@ import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ColumnNameAndBinning,
+  ColumnNameAndBinningSplitSetting,
   DatasetColumn,
   FieldReference,
+  PivotAggregation,
   PivotTableColumnSplitSetting,
 } from "metabase-types/api";
 
 import { ColumnItem } from "./ColumnItem";
+
+type PartitionName = keyof PivotTableColumnSplitSetting;
 
 type AddBreakoutPopoverProps = {
   query: Lib.Query;
@@ -75,9 +79,13 @@ const AddBreakoutPopover = ({
 
 type AddAggregationPopoverProps = {
   query: Lib.Query;
+  onAddAggregation: (query: Lib.Query) => void;
 };
 
-const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
+const AddAggregationPopover = ({
+  query,
+  onAddAggregation,
+}: AddAggregationPopoverProps) => {
   const [opened, { close, toggle }] = useDisclosure();
   const operators = useMemo(() => {
     const baseOperators = Lib.availableAggregationOperators(query, -1);
@@ -112,7 +120,7 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
           onClose={close}
           allowCustomExpressions={false}
           allowMetrics={false}
-          onQueryChange={() => {}}
+          onQueryChange={onAddAggregation}
         />
       </Popover.Dropdown>
     </Popover>
@@ -122,6 +130,7 @@ const AddAggregationPopover = ({ query }: AddAggregationPopoverProps) => {
 type PartitionedColumn =
   | string
   | ColumnNameAndBinning
+  | PivotAggregation
   | (FieldReference | null);
 
 const columnMove = (
@@ -196,9 +205,7 @@ export const ChartSettingFieldsPartition = ({
     }
   };
 
-  const getPartitionType = (
-    partitionName: keyof PivotTableColumnSplitSetting,
-  ) => {
+  const getPartitionType = (partitionName: PartitionName) => {
     switch (partitionName) {
       case "rows":
       case "columns":
@@ -222,25 +229,22 @@ export const ChartSettingFieldsPartition = ({
       onChange({
         ...value,
         [sourcePartition]: columnMove(
-          value[sourcePartition as keyof PivotTableColumnSplitSetting],
+          value[sourcePartition as PartitionName],
           sourceIndex,
           destinationIndex,
         ),
       });
     } else if (sourcePartition !== destinationPartition) {
-      const column =
-        value[sourcePartition as keyof PivotTableColumnSplitSetting][
-          sourceIndex
-        ];
+      const column = value[sourcePartition as PartitionName][sourceIndex];
 
       onChange({
         ...value,
         [sourcePartition]: columnRemove(
-          value[sourcePartition as keyof PivotTableColumnSplitSetting],
+          value[sourcePartition as PartitionName],
           sourceIndex,
         ),
         [destinationPartition]: columnAdd(
-          value[destinationPartition as keyof PivotTableColumnSplitSetting],
+          value[destinationPartition as PartitionName],
           destinationIndex,
           column,
         ),
@@ -249,19 +253,42 @@ export const ChartSettingFieldsPartition = ({
   };
 
   const updatedValue = useMemo(() => {
-    return _.mapObject(
-      value || {},
-      (columnsOrNames: string[] | ColumnNameAndBinning[]) => {
-        const columnNames = columnsOrNames.map((col) => {
-          return typeof col === "string" ? col : col.name;
-        });
-
-        return columnNames
+    if (!canEditColumns) {
+      return _.mapObject(value || {}, (columnNames) =>
+        columnNames
           .map((columnName) => columns.find((col) => col.name === columnName))
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null),
+      );
+    }
+
+    // Editable case
+    return _.mapObject(value || {}, (partitionValue, partition) => {
+      if (partition === "values") {
+        // For values partition, extract columns from aggregations
+        const aggregations = partitionValue as PivotAggregation[];
+        return aggregations
+          .map((agg) => {
+            if (agg.column) {
+              return columns.find((col) => col.name === agg.column?.name);
+            }
+            return null;
+          })
           .filter((col): col is RemappingHydratedDatasetColumn => col != null);
-      },
-    );
-  }, [columns, value]);
+      } else {
+        // For dimension partitions (rows, columns)
+        const dimensionItems = partitionValue as (
+          | string
+          | ColumnNameAndBinning
+        )[];
+        return dimensionItems
+          .map((item) => {
+            const columnName = typeof item === "string" ? item : item.name;
+            return columns.find((col) => col.name === columnName);
+          })
+          .filter((col): col is RemappingHydratedDatasetColumn => col != null);
+      }
+    });
+  }, [canEditColumns, columns, value]);
 
   const onAddBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -273,13 +300,41 @@ export const ChartSettingFieldsPartition = ({
     const bucketName = bucket
       ? Lib.displayInfo(query, 0, bucket).shortName
       : null;
+    const columnName = Lib.displayInfo(question.query(), -1, column).name;
     onChange({
       ...value,
       [partition]: columnAdd(value[partition], -1, {
-        name: Lib.displayInfo(question.query(), -1, column).name,
+        name: columnName,
         binning: binningInfo || bucketName,
       }),
     });
+  };
+
+  const onAddAggregation = (query: Lib.Query) => {
+    const aggs = Lib.aggregations(query, -1);
+    const aggDetails = aggs.map((agg) => {
+      const aggDisplay = Lib.displayInfo(query, -1, agg);
+      const column = Lib.aggregationColumn(query, -1, agg);
+      const bucket = column && Lib.temporalBucket(column);
+      const bucketName = bucket
+        ? Lib.displayInfo(query, 0, bucket).shortName
+        : null;
+      const columnDetails = column && {
+        name: Lib.displayInfo(query, -1, column).name,
+        binning: bucketName,
+      };
+
+      return {
+        aggregation: aggDisplay.name,
+        //displayName: aggDisplay.longDisplayName,
+        column: columnDetails,
+      };
+    });
+
+    onChange({
+      ...value,
+      values: aggDetails,
+    } as ColumnNameAndBinningSplitSetting);
   };
 
   const onRemoveBreakout = (
@@ -305,7 +360,10 @@ export const ChartSettingFieldsPartition = ({
         const partitionType = getPartitionType(partitionName);
         const AggregationOrBreakoutPopover =
           partitionType === "metric" ? (
-            <AddAggregationPopover query={query} />
+            <AddAggregationPopover
+              query={query}
+              onAddAggregation={onAddAggregation}
+            />
           ) : (
             <AddBreakoutPopover
               query={query}
@@ -360,7 +418,7 @@ export const ChartSettingFieldsPartition = ({
                       {emptyColumnMessage}
                     </Box>
                   ) : (
-                    updatedColumns.map((col, index) => (
+                    updatedColumns.map((col, index: number) => (
                       <Draggable
                         key={`draggable-${col.name}-${index}`}
                         draggableId={`draggable-${col.name}`}
