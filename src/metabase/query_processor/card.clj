@@ -12,6 +12,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.card :as card]
    [metabase.models.query :as query]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
@@ -241,6 +242,27 @@
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
       (qp (update query :info merge info) rff))))
 
+(defn combined-parameters-and-template-tags
+  "Enrich `card.parameters` to include parameters from template-tags.
+
+  On native queries parameters exists in 2 forms:
+  - parameters
+  - dataset_query.native.template-tags
+
+  In most cases, these 2 are sync, meaning, if you have a template-tag, there will be a parameter.
+  However, since card.parameters is a recently added feature, there may be instances where a template-tag
+  is not present in the parameters.
+  This function ensures that all template-tags are converted to parameters and added to card.parameters."
+  [{:keys [parameters] :as card}]
+  (let [template-tag-parameters     (card/template-tag-parameters card)
+        id->template-tags-parameter (m/index-by :id template-tag-parameters)
+        id->parameter               (m/index-by :id parameters)]
+    (vals (reduce-kv (fn [acc id parameter]
+                       ;; order importance: we want the info from `template-tag` to be merged last
+                       (update acc id #(merge % parameter)))
+                     id->parameter
+                     id->template-tags-parameter))))
+
 (defn- enrich-parameters-from-card
   "Allow the FE to omit type and target for parameters by adding them from the card."
   [parameters card-parameters]
@@ -281,7 +303,7 @@
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
                                                    :parameters]
                                                   :id card-id))
-        parameters (enrich-parameters-from-card parameters (:parameters card))
+        parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)
                      (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))

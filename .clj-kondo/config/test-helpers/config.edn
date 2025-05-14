@@ -70,10 +70,10 @@
      metabase.model-persistence.task.persist-refresh/job-init!
      metabase.model-persistence.task.persist-refresh/refresh-tables!
      metabase.model-persistence.task.persist-refresh/schedule-persistence-for-database!
-     metabase.models.collection.graph-test/clear-graph-revisions!
-     metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
      metabase.models.field-values/create-or-update-full-field-values!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
+     metabase.permissions.models.collection.graph-test/clear-graph-revisions!
+     metabase.permissions.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
      metabase.permissions.models.permissions/grant-application-permissions!
      metabase.permissions.models.permissions/grant-collection-read-permissions!
      metabase.permissions.models.permissions/grant-collection-readwrite-permissions!
