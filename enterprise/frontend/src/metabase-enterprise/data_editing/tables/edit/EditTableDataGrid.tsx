@@ -72,7 +72,7 @@ export const EditTableDataGrid = ({
 
   const columnOrder = useMemo(
     () =>
-      columnsConfig
+      columnsConfig?.columnOrder.length
         ? [ROW_SELECT_COLUMN_ID, ...columnsConfig.columnOrder]
         : [ROW_SELECT_COLUMN_ID, ...cols.map(({ name }) => name)],
     [cols, columnsConfig],
