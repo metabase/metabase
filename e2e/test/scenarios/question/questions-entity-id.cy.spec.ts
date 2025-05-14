@@ -34,7 +34,9 @@ describe("scenarios > questions > entity id support", () => {
     // this is a request that could be made by mistake if some paths of the code think that the entity id is a slug of a question
     cy.intercept("GET", "/api/card/12").as("wrongCardRequest");
 
-    cy.intercept("POST", "/api/util/entity_id").as("entityIdRequest");
+    cy.intercept("POST", "/api/eid-translation/translate").as(
+      "entityIdRequest",
+    );
 
     cy.visit(`/question/entity/${entityId}`);
 

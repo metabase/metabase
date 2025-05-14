@@ -1,6 +1,7 @@
 (ns metabase.api.logger-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.logger :as logger]
    [metabase.test :as mt]))
 
@@ -150,3 +151,25 @@
       false "boolean"
       "ll"  "string"
       nil   "null")))
+
+(deftest ^:synchronized analytic-events-test
+  (snowplow-test/with-fake-snowplow-collector
+    (testing "Logger adjustments trigger snowplow events"
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 10000
+                             :duration_unit :milliseconds
+                             :log_levels {"metabase.sync" :debug}})
+      (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 1
+                             :duration_unit :hours
+                             :log_levels {"metabase.sync" :debug}})
+      (mt/user-http-request :crowberto :post 204 "logger/adjustment"
+                            {:duration 1
+                             :duration_unit :hours
+                             :log_levels {}})
+      (is (=? [{:data {"event" "log_adjustments_set", "event_detail" "10"}}
+               {:data {"event" "log_adjustments_reset"}}
+               {:data {"event" "log_adjustments_set", "event_detail" "3600"}}
+               {:data {"event" "log_adjustments_reset"}}]
+              (take-last 4 (snowplow-test/pop-event-data-and-user-id!)))))))

@@ -7,7 +7,7 @@
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
@@ -56,7 +56,7 @@
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (mt/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
       (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
                   "https://metabase.com https://*.metabase.com https://www.metabase.com "
                   "https://clojure.org https://*.clojure.org")
@@ -226,7 +226,7 @@
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
-    (let [default-hosts @#'public-settings/default-allowed-iframe-hosts]
+    (let [default-hosts @#'server.settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"
         (is (= ["'self'"
                 "youtube.com"

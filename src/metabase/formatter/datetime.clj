@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
    [metabase.util.log :as log])
@@ -42,7 +42,7 @@
 (defn- x-of-y
   "Format an integer as x-th of y, for example, 2nd week of year."
   [n]
-  (let [nf (RuleBasedNumberFormat. (Locale. (public-settings/site-locale)) RuleBasedNumberFormat/ORDINAL)]
+  (let [nf (RuleBasedNumberFormat. (Locale. (system/site-locale)) RuleBasedNumberFormat/ORDINAL)]
     (.format nf n)))
 
 (defn- hour-of-day
@@ -240,7 +240,7 @@
   "Return a formatter which, given a temporal literal string, reformats it by combining time zone, column, and viz
   setting information to create a final desired output format."
   [timezone-id col viz-settings]
-  (Locale/setDefault (Locale. (public-settings/site-locale)))
+  (Locale/setDefault (Locale. (system/site-locale)))
   (let [merged-viz-settings (streaming.common/normalize-keys
                              (streaming.common/viz-settings-for-col col viz-settings))]
     (fn [temporal-str]

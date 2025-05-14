@@ -7,9 +7,10 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.appearance.core :as appearance]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.events.core :as events]
-   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
@@ -17,7 +18,6 @@
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -328,8 +328,8 @@
 (defn add-custom-homepage-info
   "Adds custom homepage dashboard information to the current user."
   [user]
-  (let [enabled? (public-settings/custom-homepage)
-        id       (public-settings/custom-homepage-dashboard)
+  (let [enabled? (appearance/custom-homepage)
+        id       (appearance/custom-homepage-dashboard)
         dash     (t2/select-one :model/Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
