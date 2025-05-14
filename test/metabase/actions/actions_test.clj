@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-scope {:test-ns (ns-name *ns*)})
+(def ^:private test-scope {:unknown :legacy-action})
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled!
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
