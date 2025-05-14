@@ -1,4 +1,4 @@
-(ns metabase.parameters.field-test
+(ns ^:mb/driver-tests metabase.parameters.field-test
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.field :as parameters.field]
