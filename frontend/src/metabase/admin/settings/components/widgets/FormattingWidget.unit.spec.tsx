@@ -104,7 +104,7 @@ describe("PublicSharingSettingsPage", () => {
       await userEvent.click(elementOutside); // blur
     };
 
-    const dateStyleInput = await screen.findByDisplayValue("January 31, 2018");
+    const dateStyleInput = await screen.findByLabelText("Date style");
     dateStyleInput.click();
     await userEvent.click(await screen.findByText("31/1/2018"));
     blur();
@@ -117,12 +117,12 @@ describe("PublicSharingSettingsPage", () => {
     timeStyle24HourRadio.click();
     blur();
 
-    const seperatorStyleInput = await screen.findByDisplayValue("100,000.00");
+    const seperatorStyleInput = await screen.findByLabelText("Separator style");
     await userEvent.click(seperatorStyleInput);
     await userEvent.click(await screen.findByText("100000.00"));
     blur();
 
-    const currencyInput = await screen.findByDisplayValue("US Dollar");
+    const currencyInput = await screen.findByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
     blur();

@@ -72,19 +72,20 @@ describe("PublicSharingSettingsPage", () => {
       const elementOutside = screen.getByText("Dates and Times");
       await userEvent.click(elementOutside); // blur
     };
-
-    const timezoneInput = await screen.findByDisplayValue("Database Default");
+    const timezoneInput = await screen.findByLabelText("Report Timezone");
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));
     blur();
 
-    const startOfWeekInput = await screen.findByDisplayValue("Monday");
+    const startOfWeekInput = await screen.findByLabelText(
+      "First day of the week",
+    );
     await userEvent.click(startOfWeekInput);
     await userEvent.click(await screen.findByText("Tuesday"));
     blur();
 
-    const currencyInput = await screen.findByDisplayValue("US Dollar");
+    const currencyInput = await screen.findByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
     blur();
