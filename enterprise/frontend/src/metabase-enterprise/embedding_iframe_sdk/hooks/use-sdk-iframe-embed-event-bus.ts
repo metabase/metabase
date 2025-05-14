@@ -36,7 +36,7 @@ export function useSdkIframeEmbedEventBus(): {
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  });
+  }, []);
 
   return { embedSettings };
 }

@@ -32,9 +32,8 @@ class MetabaseEmbed {
       raiseError("api key and instance url must be provided");
     }
 
-    this._validateEmbedSettings(settings);
     this._settings = settings;
-    this._settings._isLocalhost = this.getIsLocalhost();
+    this._settings._isLocalhost = this._getIsLocalhost();
 
     this._handleMessage = this._handleMessage.bind(this);
     this._setup();
@@ -53,7 +52,6 @@ class MetabaseEmbed {
       raiseError("instanceUrl cannot be updated after the embed is created");
     }
 
-    this._validateEmbedSettings(settings);
     this._setEmbedSettings(settings);
   }
 
@@ -74,10 +72,14 @@ class MetabaseEmbed {
     );
 
     this._settings = { ...this._settings, ...allowedSettings };
+
+    this._validateEmbedSettings(this._settings);
     this._sendMessage("metabase.embed.setSettings", this._settings);
   }
 
   private _setup() {
+    this._validateEmbedSettings(this._settings);
+
     const { instanceUrl, target, iframeClassName } = this._settings;
 
     this.iframe = document.createElement("iframe");
@@ -108,13 +110,17 @@ class MetabaseEmbed {
     parentContainer.appendChild(this.iframe);
   }
 
-  private getIsLocalhost() {
+  private _getIsLocalhost() {
     const { hostname } = window.location;
 
     return hostname === "localhost" || hostname === "127.0.0.1";
   }
 
-  private _validateEmbedSettings(settings: Partial<SdkIframeEmbedSettings>) {
+  private _validateEmbedSettings(settings: SdkIframeEmbedTagSettings) {
+    if (!settings.apiKey || !settings.instanceUrl) {
+      raiseError("api key and instance url must be provided");
+    }
+
     if (
       settings.template === "exploration" &&
       (settings.dashboardId || settings.questionId)
