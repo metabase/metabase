@@ -1,29 +1,7 @@
 /* TODO: rtl support */
 
-@keyframes chat-bar-slide-in {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 2rem);
-    transform-origin: top;
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-    transform-origin: top;
-  }
-}
-
 .container {
-  width: 30rem;
-  position: absolute;
-  left: 50%;
-  bottom: 1.5rem;
-  box-shadow: 0 2px 13.8px -1px #1871bf52;
-  border-radius: 22px;
-  z-index: 199; /* -1 of the default 200 for modals */
-  animation: chat-bar-slide-in 300ms ease forwards;
-  transition-property: transform, opacity;
+  width: 100%;
 }
 
 .innerContainer {
@@ -36,19 +14,6 @@
   transition: background 150ms ease;
 }
 
-.innerContainer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to right, #2e96f1, #d932f4);
-  z-index: -1;
-  margin: -1.5px;
-  border-radius: 24px;
-}
-
 .innerContainerLoading {
   background: var(--mb-color-bg-light);
 }
@@ -57,6 +22,14 @@
   padding: 1rem;
   align-items: flex-start;
   height: 8rem;
+}
+
+.header {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .input {
@@ -100,28 +73,8 @@
   color: var(--mb-color-brand);
 }
 
-@keyframes responses-slide-in {
-  0% {
-    opacity: 0;
-    transform: translate(0, 0.5rem);
-    transform-origin: top;
-  }
-
-  100% {
-    opacity: 1;
-    transform: translate(0, 0);
-    transform-origin: top;
-  }
-}
-
 .responses {
-  position: absolute;
-  left: 0;
-  bottom: 100%;
-  margin-bottom: 0.25rem;
-  pointer-events: none; /* allow user to click through transparent area behind repsonses */
-  animation: responses-slide-in 150ms ease forwards;
-  transition-property: transform, opacity;
+  padding: 1rem;
 }
 
 .response {

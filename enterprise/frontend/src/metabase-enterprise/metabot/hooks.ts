@@ -9,6 +9,7 @@ import {
   getIsProcessing,
   getMetabotVisisble,
   getUserMessages,
+  resetConversation,
   setVisible,
   submitInput,
 } from "./state";
@@ -40,6 +41,7 @@ export const useMetabotAgent = () => {
     userMessages,
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
+    resetConversation: () => dispatch(resetConversation()),
     submitInput: useCallback(
       (message: string, metabotId?: string) => {
         const context = getChatContext();

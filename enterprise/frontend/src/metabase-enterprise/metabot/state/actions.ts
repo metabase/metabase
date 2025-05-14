@@ -130,6 +130,17 @@ export const sendMessageRequest = createAsyncThunk(
   },
 );
 
+export const resetConversation = () => (dispatch: Dispatch, getState: any) => {
+  // TODO: figure out how to cancel current request... for now just ignore the reset
+  const isProcessing = getIsProcessing(getState() as any);
+  if (isProcessing) {
+    return console.error("Metabot is actively serving a request");
+  }
+
+  dispatch(clearUserMessages());
+  dispatch(resetConversationId());
+};
+
 export const processMetabotReactions = createAsyncThunk(
   "metabase-enterprise/metabot/processMetabotReactions",
   async (reactions: MetabotReaction[], { dispatch, getState }) => {
