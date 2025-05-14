@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.types :as types]
    [metabase.util :as u]))
@@ -646,17 +647,29 @@
               (is (string? casted-value)))))))))
 
 (deftest ^:parallel text-cast-nested-native-query
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/text)
-                                     ;; because this requires a native sql query
-                                     (-> metabase.driver.impl/hierarchy :descendants :sql))
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/text)
     (let [mp (mt/metadata-provider)]
-      (doseq [[_table expressions] [[:people [{:expression 1 :db-type "INTEGER"}
-                                              {:expression "''" :db-type "TEXT"}
-                                              {:expression "'abc'" :db-type "TEXT"}
-                                              {:expression 4.5 :db-type "DECIMAL"}]]]
-              {:keys [expression db-type]} expressions]
+      ;; we're using expressions like + and concat to generate values but I'd rather them be simple literals. When I
+      ;; wrote this, literal numbers did not work.
+      (doseq [[table expressions] [[:people [{:expression (lib/+ 0 2)
+                                              :db-type "INTEGER"
+                                              :expected "2"}
+                                             {:expression (lib/concat "" "")
+                                              :db-type "TEXT"
+                                              :expected ""}
+                                             {:expression (lib/concat "abc" "")
+                                              :db-type "TEXT"
+                                              :expected "abc"}
+                                             {:expression (lib/+ 0 4.5)
+                                              :db-type "DECIMAL"
+                                              :expected "4.5"}]]]
+              {:keys [expression db-type expected]} expressions]
         (testing (str "Casting " db-type " to text from native query")
-          (let [native-query (mt/native-query {:query (str "SELECT " expression " AS UNCASTED FROM PEOPLE LIMIT 1")})]
+          (let [sql (qp.compile/compile (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                                            (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
+                                            (lib/expression "UNCASTED" expression)
+                                            (lib/limit 1)))
+                native-query (mt/native-query sql)]
             (mt/with-temp
               [:model/Card
                {card-id :id}
@@ -668,8 +681,9 @@
                     cols (mt/cols result)
                     rows (mt/rows result)]
                 (is (types/field-is-type? :type/Text (last cols)))
-                (doseq [[_expression casted-value] rows]
-                  (is (string? casted-value)))))))))))
+                (doseq [[_id _expression casted-value] rows]
+                  (is (string? casted-value))
+                  (is (= expected casted-value)))))))))))
 
 (deftest ^:parallel text-cast-nested-query
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/text)
