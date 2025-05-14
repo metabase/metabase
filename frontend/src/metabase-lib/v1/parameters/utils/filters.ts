@@ -98,8 +98,7 @@ export function columnFilterForParameter(
 export function dimensionFilterForParameter(parameter: Parameter | string) {
   const fieldFilter = fieldFilterForParameter(parameter);
   return (dimension: TemplateTagDimension) => {
-    const isTemporalUnit = dimension.isTemporalUnitType();
-    if (isTemporalUnit) {
+    if (dimension.isTemporalUnitType()) {
       return getParameterType(parameter) === "temporal-unit";
     }
     const field = dimension.field();
