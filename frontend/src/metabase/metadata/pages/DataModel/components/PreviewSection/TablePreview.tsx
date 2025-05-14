@@ -112,7 +112,7 @@ function useDataSample({
   const { cols, rows } = data.data;
 
   if (cols.length === 0) {
-    return { ...rest, rawSeries: undefined };
+    return { ...rest, error: undefined, rawSeries: undefined };
   }
 
   const stub: DatasetColumn = {
