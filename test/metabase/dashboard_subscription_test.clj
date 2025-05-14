@@ -974,7 +974,7 @@
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-2"}}]}]}
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
-(defn- result-attachment
+(defn- result-attachment!
   [part]
   (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
@@ -1012,7 +1012,7 @@
                            :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
-              (with-redefs [email.result-attachment/result-attachment result-attachment]
+              (with-redefs [email.result-attachment/result-attachment result-attachment!]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
                        (-> @mt/inbox

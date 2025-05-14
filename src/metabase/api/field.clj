@@ -289,10 +289,10 @@
         search-field (api/check-404 (t2/select-one :model/Field :id search-id))]
     (api/check-403 (mi/can-read? field))
     (api/check-403 (mi/can-read? search-field))
-    (parameters.field/search-values field search-field value (request/limit)))
+    (parameters.field/search-values field search-field value (request/limit))))
 
-  (defn remapped-value
-    "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
+(defn remapped-value
+  "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
 
       [<value-of-field> <value-of-remapped-field>]
 
@@ -302,23 +302,23 @@
 
       (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
       ;; -> [20 \"Peter Watsica\"]"
-    [field remapped-field value]
-    (try
-      (let [field   (parameters.field/follow-fks field)
-            results (qp/process-query
-                     {:database (db-id field)
-                      :type     :query
-                      :query    {:source-table (table-id field)
-                                 :filter       [:= [:field (u/the-id field) nil] value]
-                                 :fields       [[:field (u/the-id field) nil]
-                                                [:field (u/the-id remapped-field) nil]]
-                                 :limit        1}})]
+  [field remapped-field value]
+  (try
+    (let [field   (parameters.field/follow-fks field)
+          results (qp/process-query
+                   {:database (db-id field)
+                    :type     :query
+                    :query    {:source-table (table-id field)
+                               :filter       [:= [:field (u/the-id field) nil] value]
+                               :fields       [[:field (u/the-id field) nil]
+                                              [:field (u/the-id remapped-field) nil]]
+                               :limit        1}})]
       ;; return first row if it exists
-        (first (get-in results [:data :rows])))
+      (first (get-in results [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
-      (catch Throwable e
-        (log/debug e "Error searching for remapping")
-        nil))))
+    (catch Throwable e
+      (log/debug e "Error searching for remapping")
+      nil)))
 
 (defn parse-query-param-value-for-field
   "Parse a `value` passed as a URL query param in a way appropriate for the `field` it belongs to. E.g. for text Fields
