@@ -213,10 +213,9 @@ export function findColumnSlotForCartesianChart(
       return "scatter.bubble";
     }
   } else {
-    // Filtering out nulls as 'graph.dimensions' can be `[null]` sometimes
-    const ownDimensions = settings["graph.dimensions"]?.filter(Boolean) ?? [];
-
     if (isDimension(column) && !isMetric(column)) {
+      // Filtering out nulls as 'graph.dimensions' can be `[null]` sometimes
+      const ownDimensions = settings["graph.dimensions"]?.filter(Boolean) ?? [];
       if (ownDimensions.length === 0) {
         return "graph.dimensions";
       } else {
