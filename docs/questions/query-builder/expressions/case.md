@@ -102,13 +102,13 @@ For example, if we want to count the unique number of orders for each order date
 
 All of the outputs must have the same data type.
 
-**Avoid:**:
+**Avoid**:
 
 ```
 case(condition1, "string", condition2, TRUE, condition3, 1)
 ```
 
-**Do:**:
+**Do**:
 
 ```
 case(condition1, "string", condition2, "TRUE", condition3, "1")
