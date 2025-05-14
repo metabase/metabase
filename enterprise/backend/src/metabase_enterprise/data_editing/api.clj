@@ -318,6 +318,44 @@
         provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
     (actions/execute-action! action (merge row-params provided))))
 
+(api.macros/defendpoint :get "/tmp-action"
+  "Returns all actions across all tables and models"
+  [_
+   _
+   _]
+  (api/check-superuser)
+  (let [databases          (t2/select [:model/Database :id :settings])
+        editable-database? (comp boolean :database-enable-table-editing :settings)
+        editable-databases (filter editable-database? databases)
+
+        editable-tables
+        (when (seq editable-databases)
+          (t2/select :model/Table :db_id [:in (map :id editable-databases)]))
+
+        fields
+        (when (seq editable-tables)
+          (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
+
+        fields-by-table
+        (group-by :table_id fields)
+
+        table-actions
+        (for [t editable-tables
+              op [:table.row/create :table.row/update :table.row/delete]
+              :let [fields (fields-by-table (:id t))]]
+          (actions/table-primitive-action t fields op))
+
+        model-actions
+        (for [a (actions/select-actions nil :archived false)]
+          (select-keys a [:name
+                          :model_id
+                          :type
+                          :database_id
+                          :id
+                          :visualization_settings
+                          :parameters]))]
+    {:actions (vec (concat model-actions table-actions))}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))
