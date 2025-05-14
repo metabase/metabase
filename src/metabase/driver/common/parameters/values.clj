@@ -89,7 +89,6 @@
   [tag :- mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
                       :dimension     :dimension
-                      :temporal-unit :dimension
                       :variable)]
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
