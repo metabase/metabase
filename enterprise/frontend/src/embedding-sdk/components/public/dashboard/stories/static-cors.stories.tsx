@@ -7,7 +7,7 @@ import { StaticDashboard } from "../SdkDashboard";
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
 
 export default {
-  title: "EmbeddingSDK/CypressStaticDashboardWithCors",
+  title: "EmbeddingSDK/dashboard/CypressStaticDashboardWithCors",
   component: StaticDashboard,
   parameters: {
     layout: "fullscreen",

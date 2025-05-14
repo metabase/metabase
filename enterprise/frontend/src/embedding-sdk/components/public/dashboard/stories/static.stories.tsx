@@ -11,7 +11,7 @@ import { StaticDashboard, type StaticDashboardProps } from "../SdkDashboard";
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
-  title: "EmbeddingSDK/StaticDashboard",
+  title: "EmbeddingSDK/dashboard/StaticDashboard",
   component: StaticDashboard,
   parameters: {
     layout: "fullscreen",

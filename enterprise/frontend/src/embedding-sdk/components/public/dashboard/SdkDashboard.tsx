@@ -30,9 +30,11 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 
 import { StyledPublicComponentWrapper } from "./SdkDashboard.styled";
 import {
@@ -119,6 +121,7 @@ const SdkDashboardInner = ({
  * @param props
  */
 export const SdkDashboard = ({
+  mode,
   dashboardId: initialDashboardId,
   initialParameters = {},
   withTitle = true,
@@ -178,9 +181,10 @@ export const SdkDashboard = ({
     ({ question }) =>
       getEmbeddingMode({
         question,
+        queryMode: mode === "static" ? StaticQuestionSdkMode : EmbeddingSdkMode,
         plugins: plugins as InternalMetabasePluginsConfig,
       }),
-    [plugins],
+    [mode, plugins],
   );
 
   const errorPage = useSdkSelector(getErrorPage);
