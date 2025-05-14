@@ -1,3 +1,5 @@
+import type { InputType } from "@storybook/csf";
+
 const QUESTION_ENTITY_ID = "_GiVL6zYmsnBb1oqLCp4u";
 const DASHBOARD_ENTITY_ID = "xBLdW9FsgRuB2HGhWiBa_";
 const COLLECTION_ENTITY_ID = "HyB3nRtqb7pBPhFG26evI";
@@ -24,7 +26,7 @@ export const questionIdArgType = {
 };
 
 export const dashboardIds = generateIds(DASHBOARD_ENTITY_ID);
-export const dashboardIdArgType = {
+export const dashboardIdArgType: InputType = {
   options: [
     dashboardIds.entityId,
     dashboardIds.oneToManyEntityId,
