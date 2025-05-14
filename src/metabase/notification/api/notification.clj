@@ -3,6 +3,7 @@
   (:require
    [clojure.data :refer [diff]]
    [honey.sql.helpers :as sql.helpers]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -220,7 +221,10 @@
                                                       [:payload {:optional true} :any]]]
   (api/create-check :model/Notification notification)
   (let [sample-notification-context (if custom_context
-                                      (mu/validate-throw (notification/notification-payload-schema notification) custom_context)
+                                      (api.macros/decode-and-validate-params
+                                       :body
+                                       (notification/notification-payload-schema notification)
+                                       custom_context)
                                       (sample-payload notification (:channel_type template)))]
     {:context  sample-notification-context
      :rendered (first (channel/render-notification

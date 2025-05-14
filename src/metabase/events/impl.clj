@@ -106,7 +106,7 @@
           (format "Invalid event %s: event must be a map." (pr-str event)))
   (try
     (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/event-schema topic))]
-      (mu/validate-throw schema #p event))
+      (mu/validate-throw schema event))
     (next-method topic event)
     (catch Throwable e
       (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))

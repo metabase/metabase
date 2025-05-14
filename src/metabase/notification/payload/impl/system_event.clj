@@ -238,7 +238,7 @@
 
 (defn- scope->origin-url
   [{:keys [dashboard_id database_id table_id] :as scope}]
-  (case (:type scope)
+  (case (keyword (:type scope))
     (:dashcard :dashboard) (urls/dashboard-url dashboard_id)
     (urls/table-url database_id table_id)))
 
