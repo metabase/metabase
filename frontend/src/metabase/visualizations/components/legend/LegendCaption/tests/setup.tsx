@@ -18,7 +18,7 @@ export interface SetupOpts {
   locale?: string;
   translations?: RetrievedDictionaryArrayRow[];
   tokenFeatures?: Partial<TokenFeatures>;
-  enterprisePlugins?: boolean;
+  hasEnterprisePlugins?: boolean;
 }
 
 export const sampleSpanishDictionary: RetrievedDictionaryArrayRow[] = [
@@ -42,12 +42,12 @@ export function setup({
   locale,
   translations,
   tokenFeatures,
-  enterprisePlugins = false,
+  hasEnterprisePlugins = false,
 }: SetupOpts) {
-  if (enterprisePlugins) {
+  if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
-  
+
   if (translations) {
     setupContentTranslationEndpoints({ dictionary: translations });
   }

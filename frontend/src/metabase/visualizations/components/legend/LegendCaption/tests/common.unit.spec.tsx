@@ -26,7 +26,8 @@ describe("LegendCaption (OSS)", () => {
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
         "Chart Title",
       );
-      expect(screen.getByText("info")).toBeInTheDocument(); // Description icon
     });
+
+    expect(await screen.findByText("info")).toBeInTheDocument(); // Description icon
   });
 });
