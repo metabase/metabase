@@ -1,4 +1,4 @@
-(ns metabase.models.params.field-values
+(ns metabase.parameters.field-values
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
@@ -103,8 +103,8 @@
   [field constraints]
   (if (seq constraints)
     (do
-      (classloader/require 'metabase.models.params.chain-filter)
-      (let [{:keys [values has_more_values]} ((resolve 'metabase.models.params.chain-filter/unremapped-chain-filter)
+      (classloader/require 'metabase.parameters.chain-filter)
+      (let [{:keys [values has_more_values]} ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
                                               (:id field) constraints {})
             ;; we have a hard limit for how many values we want to store in FieldValues,
             ;; let's make sure we respect that limit here.
@@ -163,7 +163,7 @@
   "Fetch FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
-  [[metabase.models.params.chain-filter]] for an explanation of what this means), values are returned in the format
+  [[metabase.parameters.chain-filter]] for an explanation of what this means), values are returned in the format
     {:values           [[original-value human-readable-value]]
      :field_id         field-id
      :has_field_values boolean}
@@ -179,7 +179,7 @@
   "Fetch linked-filter FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
-  [[metabase.models.params.chain-filter]] for an explanation of what this means), values are returned in the format
+  [[metabase.parameters.chain-filter]] for an explanation of what this means), values are returned in the format
     {:values           [[original-value human-readable-value]]
      :field_id         field-id
      :has_field_values boolean}

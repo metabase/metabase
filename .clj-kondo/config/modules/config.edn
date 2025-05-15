@@ -238,6 +238,7 @@
            lib-be
            models
            notification
+           parameters
            permissions
            premium-features
            system
@@ -579,11 +580,6 @@
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
-          metabase.models.params
-          metabase.models.params.chain-filter
-          metabase.models.params.custom-values
-          metabase.models.params.field-values
-          metabase.models.params.shared
           metabase.models.resolution
           metabase.models.serialization
           metabase.models.user
@@ -606,6 +602,7 @@
            premium-features
            secrets
            settings
+           parameters
            public-sharing
            pulse
            queries
@@ -614,7 +611,6 @@
            setup
            sync
            system
-           types
            util
            warehouse-schema}}
 
@@ -642,6 +638,7 @@
            driver
            events
            models
+           parameters
            permissions
            premium-features
            query-processor
@@ -654,17 +651,26 @@
            task-history
            util}}
 
+  ;; TODO -- too many API namespaces
   parameters
-  {:api  #{metabase.parameters.dashboard
+  {:api  #{metabase.parameters.chain-filter
+           metabase.parameters.custom-values
+           metabase.parameters.dashboard
            metabase.parameters.field
-           metabase.parameters.init}
+           metabase.parameters.init
+           metabase.parameters.params
+           metabase.parameters.shared}
    :uses #{api
+           classloader
+           db
+           driver
            legacy-mbql
            lib
            models
            query-processor
-           warehouse-schema
-           util}}
+           types
+           util
+           warehouse-schema}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -1164,6 +1170,7 @@
            legacy-mbql
            lib
            models
+           parameters
            settings
            system}}
 
@@ -1434,7 +1441,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql

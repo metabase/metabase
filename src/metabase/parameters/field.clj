@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.field-values :as params.field-values]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

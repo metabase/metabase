@@ -50,7 +50,7 @@
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
-;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.models.params.chain-filter]],
+;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.parameters.chain-filter]],
 ;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 

@@ -1,4 +1,4 @@
-(ns metabase.models.params.chain-filter.dedupe-joins
+(ns metabase.parameters.chain-filter.dedupe-joins
   (:require
    [clojure.set :as set]
    [medley.core :as m]))
