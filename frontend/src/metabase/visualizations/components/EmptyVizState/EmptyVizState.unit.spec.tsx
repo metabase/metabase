@@ -125,6 +125,26 @@ describe("EmptyVizState", () => {
       screen.queryByLabelText("Open summarize sidebar"),
     ).not.toBeInTheDocument();
   });
+
+  it("should render an empty-state svg image when is the Main App", async () => {
+    setup({ chartType: "line", onEditSummary: undefined });
+
+    expect(
+      screen.getByTestId("visualization-placeholder-image"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not render an empty-state svg image when is the Embedding SDK", async () => {
+    process.env.IS_EMBEDDING_SDK = "true";
+
+    setup({ chartType: "line", onEditSummary: undefined });
+
+    expect(
+      screen.queryByTestId("visualization-placeholder-image"),
+    ).not.toBeInTheDocument();
+
+    delete process.env.IS_EMBEDDING_SDK;
+  });
 });
 
 const assertEmptyStateDidNotRender = () => {
