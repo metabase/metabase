@@ -98,7 +98,7 @@
     (catch Exception _
       (-> s java.time.LocalDate/parse))))
 
-(deftest date-to-datetime-coercion-test
+(deftest datetime-to-date-coercion-test
   (mt/test-drivers (mt/normal-drivers)
     (doseq [[human-col table col] [["orders created_at (timestamptz)" :orders :created_at]
                                    ["users last_login (timestamp)"    :users  :last_login]]]
