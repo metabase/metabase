@@ -2,10 +2,10 @@
   (:require
    [medley.core :as m]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.params :as params]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.custom-values :as custom-values]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
+   [metabase.parameters.params :as params]
    [metabase.queries.models.card :as card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

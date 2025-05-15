@@ -271,7 +271,7 @@
                       (assoc :field_id (get new-field-name->id field-name))
             ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
             ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
-            ;; NULL like [[metabase.models.params.chain-filter/search-cached-field-values?]]
+            ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
                       (update :human_readable_values not-empty))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]

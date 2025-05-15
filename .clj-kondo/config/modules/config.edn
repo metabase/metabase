@@ -238,6 +238,7 @@
            lib-be
            models
            notification
+           parameters
            permissions
            premium-features
            system
@@ -586,11 +587,6 @@
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
-          metabase.models.params
-          metabase.models.params.chain-filter
-          metabase.models.params.custom-values
-          metabase.models.params.field-values
-          metabase.models.params.shared
           metabase.models.resolution
           metabase.models.serialization
           metabase.models.table
@@ -612,15 +608,14 @@
            premium-features
            secrets
            settings
+           parameters
            public-sharing
            pulse
            queries
            query-processor
            search
            sync
-           types
-           util
-           warehouse-schema}}
+           util}}
 
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
@@ -646,6 +641,7 @@
            driver
            events
            models
+           parameters
            permissions
            premium-features
            query-processor
@@ -659,17 +655,26 @@
            users
            util}}
 
+  ;; TODO -- too many API namespaces
   parameters
-  {:api  #{metabase.parameters.dashboard
+  {:api  #{metabase.parameters.chain-filter
+           metabase.parameters.custom-values
+           metabase.parameters.dashboard
            metabase.parameters.field
-           metabase.parameters.init}
+           metabase.parameters.init
+           metabase.parameters.params
+           metabase.parameters.shared}
    :uses #{api
+           classloader
            db
+           driver
            legacy-mbql
            lib
            models
            query-processor
-           util}}
+           types
+           util
+           warehouse-schema}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -1194,6 +1199,7 @@
            legacy-mbql
            lib
            models
+           parameters
            settings
            system}}
 

@@ -1,4 +1,4 @@
-(ns metabase.models.params.shared
+(ns metabase.parameters.shared
   "Util functions for dealing with parameters. Primarily used for substituting parameters into variables in Markdown
   dashboard cards."
   (:require

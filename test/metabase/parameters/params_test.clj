@@ -1,9 +1,9 @@
-(ns metabase.models.params-test
-  "Tests for the utility functions for dealing with parameters in `metabase.models.params`."
+(ns metabase.parameters.params-test
+  "Tests for the utility functions for dealing with parameters in `metabase.parameters.params`."
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.params :as params]
+   [metabase.parameters.params :as params]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
