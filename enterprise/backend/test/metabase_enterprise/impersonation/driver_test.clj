@@ -421,18 +421,10 @@
             spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
         (doseq [statement ["DROP ROLE IF EXISTS TEST_ROLE_2;"
                            "CREATE ROLE TEST_ROLE_2;"
-                           #_"GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE TEST_ROLE_2;"
-                           #_"GRANT USAGE ON DATABASE \"v3_sample-dataset\" TO ROLE TEST_ROLE_2;"
-                           #_(format "GRANT USAGE ON DATABASE \"%s\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
-                           #_"USE DATABASE \"v3_sample-dataset\";"
-                           #_(format "GRANT USAGE ON SCHEMA \"v3_sample-dataset\".\"%s\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
-                           #_(format "GRANT USAGE ON SCHEMA \"%s\".\"PUBLIC\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
-                           #_(format "GRANT SELECT ON ALL TABLES IN SCHEMA \"%s\".\"PUBLIC\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
-                           #_(format "GRANT SELECT ON TABLE  \"%s\".\"PUBLIC\".\"venues\" TO ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
                            (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\".\"PUBLIC\" FROM ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
-                           "GRANT ROLE TEST_ROLE_2 TO ROLE ACCOUNTADMIN;"
-                           #_"GRANT ROLE TEST_ROLE_2 TO USER SNOWFLAKE_DEVELOPER;"
-                           #_"DROP ROLE IF EXISTS TEST_ROLE_2;"]]
+                           (format "REVOKE SELECT ON ALL TABLES IN SCHEMA \"%s\".\"PUBLIC\" FROM ROLE TEST_ROLE_2;" (-> (first (t2/select :model/Database :engine :snowflake)) :details :db))
+                           #_"GRANT ROLE TEST_ROLE_2 TO ROLE ACCOUNTADMIN;"
+                           "GRANT ROLE TEST_ROLE_2 TO USER SNOWFLAKE_DEVELOPER;"]]
           (tap> {:stmt statement})
           (jdbc/execute! spec [statement]))
         (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
