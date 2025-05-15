@@ -6,13 +6,20 @@
    [clojure.string :as str]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private http-status-unprocessable 422)
 
 (def ^:private max-string-length 255)
+
+;; Maximum file size: 1.5MB
+;; This should equal the maxFileSizeInMiB variable in
+;; enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration.tsx
+(def ^:private max-file-size (* 1.5 1024 1024))
 
 (defn- row-has-correct-number-of-fields
   "Checks if a row has the expected format with exactly 3 columns."
@@ -58,6 +65,16 @@
                       {:status-code http-status-unprocessable
                        :errors [(tru "Invalid CSV format: {0}" (.getMessage e))]})))))
 
+(defn- check-file-size
+  "Check if the file size is within the maximum allowed size."
+  [^File file]
+  (let [file-size (.length file)]
+    (when (> file-size max-file-size)
+      (throw (ex-info (tru "The file could not be uploaded because it is larger than {0}MB, which is the maximum." (/ max-file-size (* 1024 1024)))
+                      {:status-code http-status-content-too-large
+                       :file-size file-size
+                       :max-size max-file-size})))))
+
 (defn is-msgstr-usable
   "Check if the translation string is usable. It should not be blank or contain only commas, whitespace, or semicolons."
   [msgstr]
@@ -93,6 +110,7 @@
   "Import translations from CSV and insert or update rows in the content_translation table."
   [{:keys [file]}]
   (with-open [reader (io/reader file)]
+    (check-file-size file)
     (let [csv-data (read-csv-file reader)]
 
       ; Validate all rows before proceeding
