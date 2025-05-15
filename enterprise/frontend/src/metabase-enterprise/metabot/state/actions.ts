@@ -34,15 +34,6 @@ export const setVisible =
       return;
     }
 
-    if (!isVisible) {
-      // reset the conversation history when closing metabot
-      dispatch(
-        EnterpriseApi.internalActions.removeMutationResult({
-          fixedCacheKey: METABOT_TAG,
-        }),
-      );
-    }
-
     dispatch(metabot.actions.setVisible(isVisible));
   };
 
@@ -137,6 +128,11 @@ export const resetConversation = () => (dispatch: Dispatch, getState: any) => {
     return console.error("Metabot is actively serving a request");
   }
 
+  dispatch(
+    EnterpriseApi.internalActions.removeMutationResult({
+      fixedCacheKey: METABOT_TAG,
+    }),
+  );
   dispatch(clearMessages());
   dispatch(resetConversationId());
 };

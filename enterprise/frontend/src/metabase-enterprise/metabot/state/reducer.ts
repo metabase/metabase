@@ -43,13 +43,8 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
-    setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
-      if (visible) {
-        state.visible = true;
-        state.conversationId = uuid();
-      } else {
-        return metabotInitialState;
-      }
+    setVisible: (state, action: PayloadAction<boolean>) => {
+      state.visible = action.payload;
     },
   },
   extraReducers: (builder) => {

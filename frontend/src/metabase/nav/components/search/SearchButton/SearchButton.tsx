@@ -8,6 +8,8 @@ import { Button, Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 /* eslint-disable no-restricted-imports */
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
+import S from "./SearchButton.module.css";
+
 // TODO: make the changes to this file EE only
 export const SearchButton = () => {
   const kbar = useKBar();
@@ -46,19 +48,21 @@ export const SearchButton = () => {
           border: "1px solid var(--mb-color-border)",
         }}
       >
-        <Tooltip label={`${t`Metabot...`} (${METAKEY}+b)`}>
+        <Tooltip label={`${t`Metabot`}... (${METAKEY}+b)`}>
           <UnstyledButton
-            onClick={() => metabot.setVisible(!metabot.visible)}
-            h="1rem"
-            pl="md"
-            pr="xs"
+            className={S.iconButton}
             aria-label={t`Metabot`}
+            onClick={() => metabot.setVisible(!metabot.visible)}
           >
-            <Icon name="metabot" />
+            <Icon name="metabot" h="1rem" />
           </UnstyledButton>
         </Tooltip>
         <Tooltip label={`${t`Search...`} (${METAKEY}+k)`}>
-          <UnstyledButton pl="xs" onClick={handleClick} aria-label={label}>
+          <UnstyledButton
+            className={S.searchTextButton}
+            aria-label={label}
+            onClick={handleClick}
+          >
             {label}
           </UnstyledButton>
         </Tooltip>

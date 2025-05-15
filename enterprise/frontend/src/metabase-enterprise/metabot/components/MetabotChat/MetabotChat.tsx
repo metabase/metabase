@@ -10,6 +10,7 @@ import {
   Button,
   Flex,
   Icon,
+  Loader,
   Paper,
   Stack,
   Text,
@@ -88,12 +89,6 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     setMessage(value);
   };
 
-  const promptSuggestions = [
-    t`Top performing products`,
-    t`Customers over time in the pacific northwest`,
-    t`Accounts in Europe that are still in trial`,
-  ];
-
   return (
     <Sidebar
       isOpen={metabot.visible}
@@ -124,29 +119,35 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           </Flex>
         </Box>
 
-        {/* chat messages */}
+        {/* chat messages - TODO: rename the container css class */}
         <Box
           className={Styles.messagesContainer}
           ref={messagesRef}
           data-testid="metabot-chat-messages"
         >
           <Box className={Styles.messages}>
-            {metabot.messages.length === 0 && (
-              <Stack gap="sm">
-                <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
-                {promptSuggestions.map((suggestion, index) => (
-                  <Box key={index}>
-                    <Button
-                      fz="sm"
-                      size="xs"
-                      onClick={() => handleSend(suggestion)}
-                    >
-                      {suggestion}
-                    </Button>
-                  </Box>
-                ))}
-              </Stack>
-            )}
+            {metabot.messages.length === 0 &&
+              !metabot.suggestedPrompts.error && (
+                <Stack gap="sm">
+                  <>
+                    <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
+                    {metabot.suggestedPrompts.isLoading && <Loader />}
+                    {metabot.suggestedPrompts.data?.prompts.map(
+                      ({ prompt }, index) => (
+                        <Box key={index}>
+                          <Button
+                            fz="sm"
+                            size="xs"
+                            onClick={() => handleSend(prompt)}
+                          >
+                            {prompt}
+                          </Button>
+                        </Box>
+                      ),
+                    )}
+                  </>
+                </Stack>
+              )}
 
             {metabot.messages.map(({ actor, message }, index) => (
               <Message
@@ -271,13 +272,13 @@ const Message = ({
       {...props}
     >
       <Box className={cx(shimmer && Styles.textShimmer)}>{message}</Box>
-      <Flex justify="flex-end">
-        {copyable && (
+      {copyable && (
+        <Flex justify="flex-end">
           <UnstyledButton onClick={() => clipboard.copy(message)} h="md">
             <Icon name="copy" size="1rem" />
           </UnstyledButton>
-        )}
-      </Flex>
+        </Flex>
+      )}
     </Box>
   );
 };

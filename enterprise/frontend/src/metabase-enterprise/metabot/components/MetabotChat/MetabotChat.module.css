@@ -96,6 +96,7 @@
   width: fit-content;
   max-width: 80%;
   min-width: 6rem;
+  line-height: 1.5;
 }
 
 .messageAgent {
@@ -122,7 +123,7 @@ button.responseDismissBtn {
 .textShimmer {
   --spread: 36px;
   --base-gradient-color: var(--mb-color-bg-medium);
-  --base-color: var(--mb-color-text-medium);
+  --base-color: var(--mb-color-text-light);
   --bg: linear-gradient(
     90deg,
     #0000 calc(50% - var(--spread)),
@@ -137,5 +138,15 @@ button.responseDismissBtn {
     auto;
   background-image: var(--bg),
     linear-gradient(var(--base-color), var(--base-color));
-  background-position: 50%;
+  animation: rotate-background 1400ms ease infinite;
+}
+
+@keyframes rotate-background {
+  0% {
+    background-position: 120%;
+  }
+
+  100% {
+    background-position: -20%;
+  }
 }
