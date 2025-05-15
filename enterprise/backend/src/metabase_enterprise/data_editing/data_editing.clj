@@ -101,7 +101,7 @@
                                                  :field field-name
                                                  :coercion_strategy coercion_strategy})))])
                          (into {}))
-        coerce      (fn [k v] (some-> v ((coerce-fn k identity))))]
+        coerce      (fn [k v] (some-> v ((coerce-fn (keyword k) identity))))]
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 
