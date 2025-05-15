@@ -172,13 +172,12 @@
                                 :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
-                         :fields (cond->
-                                  [{:type "mrkdwn"
-                                    :text (mkdwn-link-text
-                                           (urls/dashboard-url (:id dashboard) parameters)
-                                           (format "*Sent from %s by %s*"
-                                                   (appearance/site-name)
-                                                   creator-name))}]
+                         :fields (cond-> [{:type "mrkdwn"
+                                           :text (mkdwn-link-text
+                                                  (urls/dashboard-url (:id dashboard) parameters)
+                                                  (format "*Sent from %s by %s*"
+                                                          (appearance/site-name)
+                                                          creator-name))}]
                                    (include-branding?)
                                    (conj
                                     {:type "mrkdwn"
