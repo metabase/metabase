@@ -15,7 +15,6 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.table]
-   [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
@@ -54,6 +53,7 @@
    [metabase.timeline.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
+   [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.xrays.api]))
 
@@ -67,7 +67,6 @@
          metabase.api.field/keep-me
          metabase.api.logger/keep-me
          metabase.api.table/keep-me
-         metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
          metabase.bug-reporting.api/keep-me
@@ -91,7 +90,8 @@
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
-         metabase.user-key-value.api/keep-me)
+         metabase.user-key-value.api/keep-me
+         metabase.users.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -181,7 +181,7 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/upload"               (+auth 'metabase.upload.api)
-   "/user"                 (+auth 'metabase.api.user)
+   "/user"                 (+auth 'metabase.users.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑

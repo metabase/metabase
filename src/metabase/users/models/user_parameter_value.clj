@@ -1,4 +1,4 @@
-(ns metabase.models.user-parameter-value
+(ns metabase.users.models.user-parameter-value
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]

@@ -79,9 +79,9 @@
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
-    :model/User                              metabase.models.user
+    :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
-    :model/UserParameterValue                metabase.models.user-parameter-value
+    :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

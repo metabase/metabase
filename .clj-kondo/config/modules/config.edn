@@ -109,13 +109,11 @@
           metabase.api.open-api
           metabase.api.routes.common
           metabase.api.table
-          metabase.api.user
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{actions
            analytics
            api-routes
-           appearance
            channel
            classloader
            collections
@@ -142,9 +140,7 @@
            sample-data
            secrets
            server
-           session
            settings
-           sso
            sync
            types
            upload
@@ -161,6 +157,7 @@
            events
            models
            permissions
+           users
            util}}
 
   api-routes
@@ -291,6 +288,7 @@
            query-processor
            search
            settings
+           users
            util}}
 
   collections
@@ -596,15 +594,12 @@
           metabase.models.resolution
           metabase.models.serialization
           metabase.models.table
-          metabase.models.user
-          metabase.models.user-parameter-value
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
    :uses #{analytics
            analyze
            api
            audit-app
-           channel
            classloader
            collections
            config
@@ -622,9 +617,7 @@
            queries
            query-processor
            search
-           setup
            sync
-           system
            types
            util
            warehouse-schema}}
@@ -663,6 +656,7 @@
            system
            task
            task-history
+           users
            util}}
 
   parameters
@@ -888,6 +882,7 @@
            system
            server
            types
+           users
            util}}
 
   request
@@ -895,10 +890,10 @@
            metabase.request.init}
    :uses #{api
            config
-           models
            permissions
            session
            settings
+           users
            util}}
 
   revisions
@@ -978,13 +973,13 @@
            db
            driver
            embedding
-           models
            premium-features
            query-processor
            request
            session
            settings
            system
+           users
            util
            enterprise/sso}}
 
@@ -1001,12 +996,12 @@
            driver
            events
            login-history
-           models
            settings
            request
            sso
            system
            task
+           users
            util}}
 
   settings
@@ -1023,7 +1018,8 @@
            enterprise/advanced-permissions}}
 
   setup
-  {:api  #{metabase.setup.api metabase.setup.core}
+  {:api  #{metabase.setup.api
+           metabase.setup.core}
    :uses #{analytics
            api
            appearance
@@ -1031,12 +1027,12 @@
            config
            db
            events
-           models
            permissions
            request
            session
            settings
            system
+           users
            util}}
 
   sso
@@ -1045,10 +1041,10 @@
            metabase.sso.init}
    :uses #{api
            config
-           models
            permissions
            premium-features
            settings
+           users
            util}}
 
   startup
@@ -1163,6 +1159,31 @@
            lib
            util}}
 
+  users
+  {:api  #{metabase.users.api
+           metabase.users.init
+           metabase.users.models.user
+           metabase.users.models.user-parameter-value}
+   :uses #{analytics
+           api
+           appearance
+           channel
+           collections
+           config
+           db
+           events
+           models
+           permissions
+           premium-features
+           request
+           session
+           settings
+           setup
+           sso
+           system
+           util
+           enterprise/advanced-permissions}}
+
   util
   {:api :any
    :uses #{classloader
@@ -1242,12 +1263,12 @@
            api-keys
            db
            driver
-           models
            permissions
            premium-features
            setup
            settings
            sync
+           users
            util}}
 
   enterprise/advanced-permissions
@@ -1265,9 +1286,9 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-  :uses #{api
-          premium-features
-          enterprise/metabot-v3}}
+   :uses #{api
+           premium-features
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -1314,6 +1335,7 @@
            query-processor
            settings
            sync
+           users
            util
            enterprise/serialization}}
 
@@ -1371,11 +1393,12 @@
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
-   :uses #{models
-           premium-features
+   :uses #{premium-features
            settings
            sso
-           util enterprise/sso}}
+           users
+           util
+           enterprise/sso}}
 
   enterprise/gsheets
   {:api  #{metabase-enterprise.gsheets.api}
@@ -1422,7 +1445,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql
@@ -1434,6 +1456,7 @@
            query-processor
            request
            system
+           users
            util}}
 
   enterprise/premium-features
@@ -1464,6 +1487,7 @@
            premium-features
            query-processor
            request
+           users
            util
            warehouse-schema
            enterprise/api}}
@@ -1480,6 +1504,7 @@
            settings
            server
            system
+           users
            util
            enterprise/serialization}}
 
