@@ -150,3 +150,18 @@ button.responseDismissBtn {
     background-position: -20%;
   }
 }
+
+.markdown {
+  ol,
+  ul {
+    list-style-type: auto;
+    list-style-position: inside;
+    padding: 0;
+
+    ol,
+    ul {
+      padding-left: revert;
+      padding-right: revert;
+    }
+  }
+}

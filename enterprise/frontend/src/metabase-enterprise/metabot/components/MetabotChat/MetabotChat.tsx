@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
+import Markdown from "metabase/core/components/Markdown";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   Box,
@@ -22,6 +23,7 @@ import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
+import { testMarkdown } from "./utils";
 
 const MIN_INPUT_HEIGHT = 42;
 
@@ -157,6 +159,8 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
                 message={message}
               />
             ))}
+            {/* TODO: remove */}
+            {false && <Message actor="agent" message={testMarkdown} />}
             {metabot.isDoingScience && (
               <Message
                 key="thinkin"
@@ -271,7 +275,9 @@ const Message = ({
       )}
       {...props}
     >
-      <Box className={cx(shimmer && Styles.textShimmer)}>{message}</Box>
+      <Markdown className={cx(Styles.markdown, shimmer && Styles.textShimmer)}>
+        {message}
+      </Markdown>
       {copyable && (
         <Flex justify="flex-end">
           <UnstyledButton onClick={() => clipboard.copy(message)} h="md">
