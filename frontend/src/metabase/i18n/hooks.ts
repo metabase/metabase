@@ -7,3 +7,12 @@ import type { ContentTranslationFunction } from "./types";
 export const useTranslateContent = (): ContentTranslationFunction => {
   return PLUGIN_CONTENT_TRANSLATION.useTranslateContent();
 };
+
+/** In EE, translate displayName fields in the object. Otherwise return the
+ * object unchanged. */
+export const maybeTranslateDisplayNames = <T extends object>(
+  obj: T,
+  tc: ContentTranslationFunction,
+) => {
+  return PLUGIN_CONTENT_TRANSLATION.translateDisplayNames(obj, tc);
+};
