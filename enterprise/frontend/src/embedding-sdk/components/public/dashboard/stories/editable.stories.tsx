@@ -33,7 +33,7 @@ export const Default = {
 export const WithCustomGridColor = {
   args: {
     ...editableDashboardDefaultArgs(),
-    metabaseTheme: defineMetabaseTheme({
+    theme: defineMetabaseTheme({
       components: { dashboard: { gridBorderColor: "#95A5A6" } },
     }),
   },
@@ -43,7 +43,7 @@ export const WithCustomGridColor = {
 export const WithDarkTheme = {
   args: {
     ...editableDashboardDefaultArgs(),
-    metabaseTheme: darkTheme,
+    theme: darkTheme,
   },
   render: DefaultDashboardStory,
 };
