@@ -103,10 +103,12 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
-              // We reverted the dashboard to the state prior to adding any cards to it
+              cy.log(
+                "We reverted the dashboard to the state prior to adding any cards to it",
+              );
               cy.findByTestId("dashboard-empty-state").should("exist");
 
-              // Should be able to revert back again
+              cy.log("Should be able to revert back again");
               cy.findByTestId("dashboard-history-list").should(
                 "contain",
                 "You reverted to an earlier version.",
