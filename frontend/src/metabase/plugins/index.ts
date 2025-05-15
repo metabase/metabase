@@ -75,6 +75,7 @@ import type {
   Revision,
   TableId,
   Timeline,
+  TimelineEvent,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
@@ -679,6 +680,7 @@ export interface AIQuestionAnalysisSidebarProps {
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
 }
 
 export type PluginAIEntityAnalysis = {
