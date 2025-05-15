@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.api
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -11,7 +10,6 @@
    [metabase.driver :as driver]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
