@@ -257,7 +257,7 @@
   give it a `has-field-values` value of `:search`."
   [{:keys [base-type effective-type]}]
   ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
-  ;; filter that powers the search queries (see [[metabase.api.field/search-values]]) doesn't work on anything else
+  ;; filter that powers the search queries (see [[metabase.parameters.field/search-values]]) doesn't work on anything else
   (let [column-type (or effective-type base-type)]
     (or (clojure.core/isa? column-type :type/Text)
         (clojure.core/isa? column-type :type/TextLike))))

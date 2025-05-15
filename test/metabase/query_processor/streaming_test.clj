@@ -8,6 +8,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -39,7 +40,7 @@
     (let [query (mt/mbql-query venues
                   {:order-by [[:asc $id]]
                    :limit    5})]
-      (doseq [export-format (qp.streaming/export-formats)]
+      (doseq [export-format qp.schema/export-formats]
         (testing (u/colorize :yellow export-format)
           (case export-format
             :csv (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
@@ -131,7 +132,7 @@
 (deftest utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
-  (doseq [export-format (disj (qp.streaming/export-formats) :xlsx :csv)]
+  (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]
     (testing (u/colorize :yellow export-format)
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
@@ -219,7 +220,7 @@
                            :order-by [[:asc $id]]
                            :limit    1}))
             col-names [:date :datetime :datetime-ltz :datetime-tz :datetime-tz-id :time :time-ltz :time-tz]]
-        (doseq [export-format (qp.streaming/export-formats)]
+        (doseq [export-format qp.schema/export-formats]
           (letfn [(test-results [expected]
                     (testing (u/colorize :yellow export-format)
                       (is (= expected
@@ -580,7 +581,7 @@
 ;;; |                                        Streaming logic unit tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest export-column-order-test
+(deftest ^:parallel export-column-order-test
   (testing "correlation of columns by field ref"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
@@ -591,8 +592,9 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-2
   (testing "correlation of columns by name"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
@@ -603,8 +605,9 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
             [{::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-3
   (testing "correlation of columns by field ref"
     (is (= [0]
            (@#'qp.streaming/export-column-order
@@ -615,15 +618,17 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled false}
-             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-4
   (testing "remapped columns use the index of the new column"
     (is (= [1]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1", :remapped_to "Col2", :field_ref ["field" 0 nil]},
              {:id 1, :name "Col2", :remapped_from "Col1", :field_ref ["field" 1 nil]}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-5
   (testing "if table-columns contains a column without a corresponding entry in cols, table-columns is ignored and
            cols is used as the source of truth for column order (#19465)"
     (is (= [0]
@@ -635,8 +640,9 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
             [{::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-6
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
@@ -645,8 +651,9 @@
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
             [{:name "Col1"}, {:name "Col2"}]
-            nil))))
+            nil)))))
 
+(deftest ^:parallel export-column-order-test-7
   (testing "if table-columns is nil, remapped columns are still respected"
     (is (= [1]
            (@#'qp.streaming/export-column-order
