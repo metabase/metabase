@@ -25,8 +25,6 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import { translateDisplayNames } from "metabase-enterprise/content_translation/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
