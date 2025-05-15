@@ -26,6 +26,7 @@
   prime-db-cache
   schema-permission-for-user
   set-database-permission!
+  set-external-group-permissions!
   set-new-database-permissions!
   set-new-table-permissions!
   user-has-any-perms-of-type?

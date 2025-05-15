@@ -106,7 +106,9 @@
   [group]
   (t2/with-transaction [_conn]
     (doseq [db-id (t2/select-pks-vec :model/Database)]
-      (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
+      (if (:is_tenant_group group)
+        (data-perms/set-external-group-permissions! group db-id)
+        (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users)))))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]

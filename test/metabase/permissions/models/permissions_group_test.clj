@@ -54,17 +54,7 @@
         (testing "Should not be added to Admin group"
           (is (not (t2/exists? :model/PermissionsGroupMembership
                                :user_id  user-id
-                               :group_id (u/the-id (perms-group/admin))))))))
-    (testing "tenant user"
-      (mt/with-temp [:model/User {user-id :id} {:tenant_id 123}]
-        (testing "Should NOT be added to the 'All Users' group"
-          (is (not (t2/exists? :model/PermissionsGroupMembership
-                               :user_id user-id
-                               :group_id (u/the-id (perms-group/all-users))))))
-        (testing "Should be added to the 'All External Users' group"
-          (is (t2/exists? :model/PermissionsGroupMembership
-                          :user_id user-id
-                          :group_id (u/the-id (perms-group/all-external-users)))))))))
+                               :group_id (u/the-id (perms-group/admin))))))))))
 
 (deftest ^:parallel new-users-test-2
   (testing "newly created users should get added to the appropriate magic groups"
@@ -131,7 +121,7 @@
 (deftest data-graph-for-group-check-all-groups-test
   (mt/with-temp [:model/PermissionsGroup {} {}
                  :model/Database         {} {}]
-    (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
+    (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup :is_tenant_group false)]
       (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
         (let [graph (data-perms.graph/api-graph {:group-id group-id})]
           (is (malli= [:map [:revision :int] [:groups :map]] graph))

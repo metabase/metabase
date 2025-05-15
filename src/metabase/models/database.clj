@@ -72,6 +72,9 @@
     (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
     (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
     (perms/set-database-permission! (perms/all-users-group) temp-object :perms/download-results :one-million-rows)
+    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/view-data :blocked)
+    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/create-queries :no)
+    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no)
     (f temp-object)))
 
 (defn- should-read-audit-db?
@@ -239,18 +242,29 @@
   [database]
   (when-not (is-destination? database)
     (t2/with-transaction [_conn]
-      (let [all-users-group  (perms/all-users-group)
-            non-magic-groups (perms/non-magic-groups)
-            non-admin-groups (conj non-magic-groups all-users-group)]
+      (let [all-users-group          (perms/all-users-group)
+            all-external-users-group (perms/all-external-users-group)
+            non-magic-groups         (perms/non-magic-groups)
+            non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
         (if (:is_audit database)
           (doseq [group non-admin-groups]
-            (perms/set-database-permission! group database :perms/view-data :unrestricted)
-            (perms/set-database-permission! group database :perms/create-queries :no)
-            (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-            (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-            (perms/set-database-permission! group database :perms/manage-database :no))
+            (if-not (:is_tenant_group group)
+              (do
+                (perms/set-database-permission! group database :perms/view-data :unrestricted)
+                (perms/set-database-permission! group database :perms/create-queries :no)
+                (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+                (perms/set-database-permission! group database :perms/manage-database :no))
+              (do
+                (perms/set-database-permission! group database :perms/view-data :no)
+                (perms/set-database-permission! group database :perms/create-queries :no)
+                (perms/set-database-permission! group database :perms/download-results :no)
+                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+                (perms/set-database-permission! group database :perms/manage-database :no))))
           (doseq [group non-admin-groups]
-            (perms/set-new-database-permissions! group database)))))))
+            (if-not (:is_tenant_group group)
+              (perms/set-new-database-permissions! group database)
+              (perms/set-external-group-permissions! group database))))))))
 
 (t2/define-after-insert :model/Database
   [database]
