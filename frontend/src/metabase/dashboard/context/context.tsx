@@ -82,7 +82,6 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
-  mode,
 
   children,
 

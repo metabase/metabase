@@ -20,6 +20,8 @@ export {
   type InteractiveDashboardProps,
   SdkDashboard,
   type SdkDashboardProps,
+  StaticDashboard,
+  type StaticDashboardProps,
 } from "./dashboard";
 export {
   InteractiveQuestion,
@@ -50,7 +52,6 @@ export {
   type MetabaseProviderProps,
 } from "./MetabaseProvider";
 export { ModifyQuestion } from "./ModifyQuestion";
-export { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
 export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 
 // These functions looks useless but it's a trick to have a way to type the config
