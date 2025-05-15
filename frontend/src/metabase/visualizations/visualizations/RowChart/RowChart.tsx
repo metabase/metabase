@@ -4,10 +4,6 @@ import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import {
-  maybeTranslateDisplayNames,
-  useTranslateContent,
-} from "metabase/i18n/hooks";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
@@ -119,18 +115,7 @@ const RowChartVisualization = ({
     return getColumnValueFormatter();
   }, []);
 
-  const tc = useTranslateContent();
-
-  /** The rawMultipleSeries, but with displayName fields translated in EE.
-   *
-   * NOTE: We sometimes use 'raw' to mean 'untranslated', but the use of 'raw'
-   * in this variable name does not have to do with translation. */
-  const maybeTranslatedRawMultipleSeries = maybeTranslateDisplayNames(
-    rawMultipleSeries,
-    tc,
-  );
-
-  const [chartSeries] = maybeTranslatedRawMultipleSeries;
+  const [chartSeries] = rawMultipleSeries;
 
   const data = useMemo(
     () =>
