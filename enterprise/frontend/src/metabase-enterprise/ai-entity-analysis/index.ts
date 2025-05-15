@@ -31,8 +31,11 @@ PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeDashboard = (dashboard: Dashboard) => {
 };
 
 PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters.push(
-  (question, dashcardId, dispatch) => {
-    if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
+  (question, dashcardId, dispatch, { withMetabot } = {}) => {
+    if (
+      withMetabot === false ||
+      !PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)
+    ) {
       return null;
     }
 

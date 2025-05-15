@@ -94,6 +94,7 @@ export const useSdkDashboardParams = ({
         hideDownloadButton,
         hideParameters: hiddenParameters?.join(",") ?? null,
         withFooter,
+        downloadsEnabled: { pdf: withDownloads, results: withDownloads },
       },
       isNotNull,
     ),

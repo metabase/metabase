@@ -16,13 +16,11 @@ export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
 export {
   EditableDashboard,
   type EditableDashboardProps,
+  InteractiveDashboard,
+  type InteractiveDashboardProps,
   SdkDashboard,
   type SdkDashboardProps,
 } from "./dashboard";
-export {
-  InteractiveDashboard,
-  type InteractiveDashboardProps,
-} from "./InteractiveDashboard";
 export {
   InteractiveQuestion,
   type BaseInteractiveQuestionProps,

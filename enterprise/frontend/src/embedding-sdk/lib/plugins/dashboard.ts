@@ -9,6 +9,7 @@ const DEFAULT_DASHCARD_MENU_ITEMS: MetabaseDashboardPluginsConfig = {
   dashboardCardMenu: {
     withDownloads: true,
     withEditLink: true,
+    withMetabot: true,
     customItems: [],
   },
 } as const;

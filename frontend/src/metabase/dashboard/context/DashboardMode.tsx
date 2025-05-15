@@ -1,4 +1,4 @@
-export type DashboardMode = "editable";
+export type DashboardMode = "editable" | "interactive";
 
 /**
  * @internal
