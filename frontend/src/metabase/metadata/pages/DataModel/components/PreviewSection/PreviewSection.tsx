@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { DatabaseId, Field, FieldId, TableId } from "metabase-types/api";
 
+import { ObjectDetailPreview } from "./ObjectDetail";
 import { TablePreview } from "./TablePreview";
 import { type PreviewType, getTypeSelectorData } from "./utils";
 
@@ -36,7 +37,13 @@ export const PreviewSection = ({
           field={field}
         />
       )}
-      {previewType === "detail" && <Box>DETAIL</Box>}
+      {previewType === "detail" && (
+        <ObjectDetailPreview
+          databaseId={databaseId}
+          tableId={tableId}
+          fieldId={fieldId}
+        />
+      )}
       {previewType === "filtering" && <Box>FILTERING</Box>}
     </Card>
   );
