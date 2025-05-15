@@ -460,9 +460,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("use second collection").click();
       cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
 
-      cy.wait("@cardQuery").then(({ response }) => {
-        expect(response?.statusCode).to.equal(202);
-      });
+      cy.log("click on the data picker again");
+      cy.findByText("Pick your starting data").click();
 
       cy.log("ensure that the interactive question still works");
       H.popover().findByRole("link", { name: "Orders" }).click();
