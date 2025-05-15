@@ -12,7 +12,7 @@
    [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
-                                            $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
+                                            $minute $mod $month $ne $not $or $project $regexMatch $second
                                             $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year
                                             $setWindowFields]]
    [metabase.legacy-mbql.schema :as mbql.s]
