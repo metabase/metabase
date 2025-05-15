@@ -332,15 +332,16 @@
                (categories-row-count)))
         (is (= [{:id 75}
                 {:id 74}]
-               (:outputs
-                (actions/perform-action! :table.row/delete
-                                         test-scope
-                                         [{:database (mt/id)
-                                           :table-id (mt/id :categories)
-                                           :arg      {(format-field-name :id) 75}}
-                                          {:database (mt/id)
-                                           :table-id (mt/id :categories)
-                                           :arg      {(format-field-name :id) 74}}]))))
+               (map u/lower-case-map-keys
+                    (:outputs
+                     (actions/perform-action! :table.row/delete
+                                              test-scope
+                                              [{:database (mt/id)
+                                                :table-id (mt/id :categories)
+                                                :arg      {(format-field-name :id) 75}}
+                                               {:database (mt/id)
+                                                :table-id (mt/id :categories)
+                                                :arg      {(format-field-name :id) 74}}])))))
         (is (= 73
                (categories-row-count)))))))
 

@@ -628,7 +628,13 @@
                        :results     results})))
     {:context (record-mutations context results)
      :outputs (for [diff results]
-                (select-keys (:before diff) (table-id->pk-keys (:table-id diff))))}))
+                (select-keys
+                 (let [row (:before diff)]
+                   ;; Hideous workaround for QP and direct JDBC disagreeing on case
+                   (merge (update-keys row (comp keyword u/upper-case-en name))
+                          (u/lower-case-map-keys row)
+                          row))
+                 (table-id->pk-keys (:table-id diff))))}))
 
 ;;;; `bulk/update`
 
