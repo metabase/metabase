@@ -20,7 +20,10 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { QuestionActions } from "./QuestionActions";
 
@@ -64,6 +67,9 @@ function setup({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
       tables: [createMockTable({ id: `card__${card.id}` })],
       questions: [card],
+    }),
+    qb: createMockQueryBuilderState({
+      card,
     }),
   });
 
@@ -205,10 +211,9 @@ describe("QuestionActions", () => {
     });
 
     it("should allow to turn into a question with write data & collection permissions", async () => {
-      const turnModelIntoQuestionSpy = jest.spyOn(
-        modelActions,
-        "turnModelIntoQuestion",
-      );
+      const turnModelIntoQuestionSpy = jest
+        .spyOn(modelActions, "turnModelIntoQuestion")
+        .mockImplementation(() => () => Promise.resolve());
       setup({
         card: createMockCard({
           type: "model",
@@ -266,10 +271,9 @@ describe("QuestionActions", () => {
     });
 
     it("should allow to turn into a question without data permissions", async () => {
-      const turnModelIntoQuestionSpy = jest.spyOn(
-        modelActions,
-        "turnModelIntoQuestion",
-      );
+      const turnModelIntoQuestionSpy = jest
+        .spyOn(modelActions, "turnModelIntoQuestion")
+        .mockImplementation(() => () => Promise.resolve());
       setup({
         card: createMockCard({
           type: "model",
