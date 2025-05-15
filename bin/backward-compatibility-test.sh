@@ -11,6 +11,13 @@ FE_FOLDER="$TMP_FOLDER/metabase-fe"
 BE_FOLDER="$TMP_FOLDER/metabase-be"
 JAR_PATH="$BE_FOLDER/target/uberjar/metabase.jar"
 
+declare -a TEST_TO_RUN=(
+  "e2e/test/scenarios/dashboard/dashboard.cy.spec.js"
+  "e2e/test/scenarios/question/caching.cy.spec.js"
+  "e2e/test/scenarios/question/column-compare.cy.spec.ts"
+)
+COMMA_SEPARATED_TESTS_TO_RUN=$(IFS=,; echo "${TEST_TO_RUN[*]}")
+
 echo "Using frontend from $FE_GIT_REF"
 echo "Using backend from $BE_GIT_REF"
 echo "---"
@@ -21,6 +28,7 @@ echo "TMP_FOLDER: $TMP_FOLDER"
 echo "FE_FOLDER: $FE_FOLDER"
 echo "BE_FOLDER: $BE_FOLDER"
 echo "JAR_PATH: $JAR_PATH"
+echo "COMMA_SEPARATED_TESTS_TO_RUN: $COMMA_SEPARATED_TESTS_TO_RUN"
 
 
 function print_step() {
@@ -81,7 +89,7 @@ function test() {
   node e2e/runner/run_cypress_ci.js snapshot
 
   print_step "Running tests..."
-  BACKEND_PORT=4000 TEST_SUITE="e2e" node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "e2e/test/scenarios/dashboard/dashboard.cy.spec.js,e2e/test/scenarios/question/caching.cy.spec.js,e2e/test/scenarios/question/column-compare.cy.spec.ts"
+  BACKEND_PORT=4000 TEST_SUITE="e2e" node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "$COMMA_SEPARATED_TESTS_TO_RUN"
 }
 
 if [ "$#" -ne 3 ]; then
