@@ -270,3 +270,9 @@
         (dec threshold)
         threshold
         (inc threshold)))))
+
+(deftest classify-bool-values
+  (testing "Make sure Boolean fields are not classified as Category"
+    (let [field (mi/instance :model/Field {:base_type :type/Boolean})]
+      (is (not= :type/Category
+                (:semantic_type (classifiers.category/infer-is-category field {})))))))
