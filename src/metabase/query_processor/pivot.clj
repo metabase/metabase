@@ -96,57 +96,59 @@
    pivot-cols         :- [:maybe ::pivot-cols]
    show-row-totals    :- [:maybe :boolean]
    show-column-totals :- [:maybe :boolean]]
-  ;; validate pivot-rows/pivot-cols
-  (doseq [[k pivots] [[:pivot-rows pivot-rows]
-                      [:pivot-cols pivot-cols]]
-          i          pivots]
-    (when (>= i num-breakouts)
-      (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
-                           (name k) i num-breakouts)
-                      {:type          qp.error-type/invalid-query
-                       :num-breakouts num-breakouts
-                       :pivot-rows    pivot-rows
-                       :pivot-cols    pivot-cols}))))
-  (sort-by
-   (partial group-bitmask num-breakouts)
-   (m/distinct-by
-    (partial group-bitmask num-breakouts)
-    (map
-     (comp vec sort)
-     ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
-     ;; we'll just generate everything
-     (if (empty? (concat pivot-rows pivot-cols))
-       (powerset (range 0 num-breakouts))
-       (concat
-        ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
-        ;; primary data: return all breakouts
-        ;; => [0 1 2 3] => 0000 => Group #15
-        [(range num-breakouts)]
-        ;; subtotal rows
-        ;; _.range(1, pivotRows.length).map(i => [...pivotRow.slice(0, i), ...pivotCols])
-        ;;  => [0 _ _ 3] [0 1 _ 3] => 0110 0100 => Group #6, #4
-        (when show-column-totals
-          (for [i (range 1 (count pivot-rows))]
-            (concat (take i pivot-rows) pivot-cols)))
-        ;; "row totals" on the right
-        ;; pivotRows
-        ;; => [0 1 2 _] => 1000 => Group #8
-        (when show-row-totals
-          [pivot-rows])
-        ;; subtotal rows within "row totals"
-        ;; _.range(1, pivotRows.length).map(i => pivotRow.slice(0, i))
-        ;; => [0 _ _ _] [0 1 _ _] => 1110 1100 => Group #14, #12
-        (when (and show-row-totals show-column-totals)
-          (for [i (range 1 (count pivot-rows))]
-            (take i pivot-rows)))
-        ;; "grand totals" row
-        ;; pivotCols
-        ;; => [_ _ _ 3] => 0111 => Group #7
-        (when show-column-totals
-          [pivot-cols])
-        ;; bottom right corner [_ _ _ _] => 1111 => Group #15
-        (when (and show-row-totals show-column-totals)
-          [[]])))))))
+  (let [row-totals (if (nil? show-row-totals)    true show-row-totals)
+        col-totals (if (nil? show-column-totals) true show-column-totals)]
+    ;; validate pivot-rows/pivot-cols
+    (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                        [:pivot-cols pivot-cols]]
+            i          pivots]
+      (when (>= i num-breakouts)
+        (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
+                             (name k) i num-breakouts)
+                        {:type          qp.error-type/invalid-query
+                         :num-breakouts num-breakouts
+                         :pivot-rows    pivot-rows
+                         :pivot-cols    pivot-cols}))))
+    (sort-by
+     (partial group-bitmask num-breakouts)
+     (m/distinct-by
+      (partial group-bitmask num-breakouts)
+      (map
+       (comp vec sort)
+       ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
+       ;; we'll just generate everything
+       (if (empty? (concat pivot-rows pivot-cols))
+         (powerset (range 0 num-breakouts))
+         (concat
+          ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
+          ;; primary data: return all breakouts
+          ;; => [0 1 2 3] => 0000 => Group #15
+          [(range num-breakouts)]
+          ;; subtotal rows
+          ;; _.range(1, pivotRows.length).map(i => [...pivotRow.slice(0, i), ...pivotCols])
+          ;;  => [0 _ _ 3] [0 1 _ 3] => 0110 0100 => Group #6, #4
+          (when col-totals
+            (for [i (range 1 (count pivot-rows))]
+              (concat (take i pivot-rows) pivot-cols)))
+          ;; "row totals" on the right
+          ;; pivotRows
+          ;; => [0 1 2 _] => 1000 => Group #8
+          (when row-totals
+            [pivot-rows])
+          ;; subtotal rows within "row totals"
+          ;; _.range(1, pivotRows.length).map(i => pivotRow.slice(0, i))
+          ;; => [0 _ _ _] [0 1 _ _] => 1110 1100 => Group #14, #12
+          (when (and row-totals col-totals)
+            (for [i (range 1 (count pivot-rows))]
+              (take i pivot-rows)))
+          ;; "grand totals" row
+          ;; pivotCols
+          ;; => [_ _ _ 3] => 0111 => Group #7
+          (when col-totals
+            [pivot-cols])
+          ;; bottom right corner [_ _ _ _] => 1111 => Group #15
+          (when (and row-totals col-totals)
+            [[]]))))))))
 
 (mu/defn- keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
@@ -597,7 +599,8 @@
                                      qp.add-dimension-projections/add-remapped-columns
                                      (lib.query/query (qp.store/metadata-provider)))
         remap                   (remapped-indexes (lib/breakouts remapped-query))
-        canonical-cols          (lib/returned-columns remapped-query)
+        canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
+        canonical-cols          (lib/returned-columns canonical-query)
         num-canonical-cols      (count canonical-cols)
         num-canonical-breakouts (count (filter #(= (:lib/source %) :source/breakouts)
                                                canonical-cols))]
@@ -625,7 +628,7 @@
                                 (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
              query             (-> query
                                    (assoc-in [:middleware :pivot-options] pivot-opts)
-                                   (add-pivot-group-breakout 0))
+                                   #_(add-pivot-group-breakout 0))
              all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)
              res               (process-multiple-queries all-queries rff column-mapping-fn)]
