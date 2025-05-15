@@ -182,10 +182,12 @@
       [{:model "card"      :id 1 :name "view card"      :view_count 0}
        {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
        {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-      (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
-               {:model "card",      :id 1, :name "view card"}
-               {:model "dataset",   :id 3, :name "view dataset"}]
-              (search-results** "view" {}))))))
+      ;; fix some test flakes where dataset 3 exists and has some sort of recent views
+      (with-weights {:user-recency 0}
+        (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
+                 {:model "card",      :id 1, :name "view card"}
+                 {:model "dataset",   :id 3, :name "view dataset"}]
+                (search-results** "view" {})))))))
 
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
