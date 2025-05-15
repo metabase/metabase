@@ -6,7 +6,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.slack :as slack]
-   [metabase.models.params.shared :as shared.params]
+   [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]

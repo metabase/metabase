@@ -1,4 +1,4 @@
-(ns metabase.models.params.custom-values
+(ns metabase.parameters.custom-values
   "Custom values for Parameters.
 
   A parameter with custom values will need to define a source:

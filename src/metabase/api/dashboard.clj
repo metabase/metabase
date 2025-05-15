@@ -23,9 +23,9 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
-   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
