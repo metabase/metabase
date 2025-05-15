@@ -21,7 +21,7 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated.
 
   There is also more written about how these are used for remapping in the docstrings
-  for [[metabase.models.params.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
+  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]

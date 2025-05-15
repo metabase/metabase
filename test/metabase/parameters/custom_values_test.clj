@@ -1,7 +1,7 @@
-(ns metabase.models.params.custom-values-test
+(ns metabase.parameters.custom-values-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.params.custom-values :as custom-values]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

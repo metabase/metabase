@@ -764,9 +764,9 @@
    metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
    metabase.lib.common/defop                                                               macros.metabase.lib.common/defop
    metabase.lib.filter/deffilter                                                           macros.metabase.lib.filter/deffilter
-   metabase.models.params.chain-filter-test/chain-filter                                   macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.params.chain-filter-test/chain-filter-search                            macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.user-test/with-groups!                                                  macros.metabase.models.user-test/with-groups!
+   metabase.parameters.chain-filter-test/chain-filter                                      macros.metabase.parameters.chain-filter-test/chain-filter
+   metabase.parameters.chain-filter-test/chain-filter-search                               macros.metabase.parameters.chain-filter-test/chain-filter
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
    metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
    metabase.queries.api.card-test/with-ordered-items                                       macros.metabase.queries.api.card-test/with-ordered-items
