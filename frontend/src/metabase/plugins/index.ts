@@ -731,6 +731,11 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
 };
 
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  ContentTranslationConfiguration: PluginPlaceholder,
+};
+
 export const PLUGIN_DB_ROUTING = {
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;

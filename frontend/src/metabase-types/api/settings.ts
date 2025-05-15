@@ -220,6 +220,7 @@ export const tokenFeatures = [
   "cache_granular_controls",
   "disable_password_login",
   "content_verification",
+  "content_translation",
   "embedding",
   "embedding_sdk",
   "hosting",
