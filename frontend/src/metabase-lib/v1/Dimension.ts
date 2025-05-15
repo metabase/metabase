@@ -45,11 +45,6 @@ export class TemplateTagDimension {
     return maybeTag?.type === "dimension";
   }
 
-  isTemporalUnitType() {
-    const maybeTag = this.tag();
-    return maybeTag?.type === "temporal-unit";
-  }
-
   isVariableType() {
     const maybeTag = this.tag();
     return ["text", "number", "date"].includes(maybeTag?.type);
