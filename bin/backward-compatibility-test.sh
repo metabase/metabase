@@ -14,7 +14,7 @@ JAR_PATH="$BE_FOLDER/target/uberjar/metabase.jar"
 declare -a TEST_TO_RUN=(
   "e2e/test/scenarios/dashboard/dashboard.cy.spec.js"
   "e2e/test/scenarios/question/caching.cy.spec.js"
-  "e2e/test/scenarios/question/column-compare.cy.spec.ts"
+  "e2e/test/scenarios/question/native-query-drill.cy.spec.ts"
 )
 COMMA_SEPARATED_TESTS_TO_RUN=$(IFS=,; echo "${TEST_TO_RUN[*]}")
 
