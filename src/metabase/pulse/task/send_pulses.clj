@@ -172,8 +172,7 @@
   Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (let [trigger-slot->pc-ids (as-> (active-dashsub-pcs)
-                                   results
+  (let [trigger-slot->pc-ids (as-> (active-dashsub-pcs) results
                                (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                                (update-vals results #(map :id %)))]
     (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]

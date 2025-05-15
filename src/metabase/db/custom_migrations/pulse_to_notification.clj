@@ -1,7 +1,6 @@
 (ns metabase.db.custom-migrations.pulse-to-notification
   (:require
    [clojure.string :as str]
-   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.custom-migrations.util :as custom-migrations.util]
