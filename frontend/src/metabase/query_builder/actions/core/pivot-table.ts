@@ -1,6 +1,10 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
+import {
+  PREAGG_COLUMN_SPLIT_SETTING,
+  UNAGG_COLUMN_SPLIT_SETTING,
+} from "metabase/lib/data_grid";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
@@ -46,6 +50,7 @@ export function computeQuestionPivotTable(options: Options) {
     shouldRun = checkShouldRerunPivotTableQuestion({
       isPivot,
       wasPivot,
+      hasBreakouts,
       currentQuestion,
       question,
     });
@@ -57,34 +62,42 @@ export function computeQuestionPivotTable(options: Options) {
 function checkShouldRerunPivotTableQuestion({
   isPivot,
   wasPivot,
+  hasBreakouts,
   currentQuestion,
   question,
 }: {
   isPivot: boolean;
   wasPivot: boolean;
+  hasBreakouts: boolean;
   currentQuestion?: Question;
   question: Question;
 }) {
   const currentSettings = question?.settings();
 
-  const isValidPivotTable =
-    isPivot &&
-    currentSettings["pivot.rows"]?.length > 0 &&
-    currentSettings["pivot.cols"]?.length > 0;
-
-  const displayChange =
-    (!wasPivot && isValidPivotTable) || (wasPivot && !isPivot);
-
+  const displayChange = (!wasPivot && isPivot) || (wasPivot && !isPivot);
   if (displayChange) {
     return true;
   }
 
-  const pivotSettings = ["pivot.rows", "pivot.cols"];
-  const currentPivotSettings = _.pick(currentSettings, pivotSettings);
-  const prevSettings = currentQuestion?.settings();
-  const prevPivotSettings = _.pick(prevSettings, pivotSettings);
+  const isUnaggregatedData = !hasBreakouts;
 
-  return (
-    isValidPivotTable && !_.isEqual(currentPivotSettings, prevPivotSettings)
-  );
+  const prevSettings = currentQuestion?.settings();
+  if (isUnaggregatedData) {
+    const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
+    const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
+    const areCurrentSettingsValid =
+      (currentPivotSettings.rows?.length > 0 ||
+        currentPivotSettings.cols?.length > 0) &&
+      currentPivotSettings.values?.length > 0;
+
+    return (
+      areCurrentSettingsValid &&
+      !_.isEqual(currentPivotSettings, prevPivotSettings)
+    );
+  } else {
+    const currentPivotSettings = currentSettings[PREAGG_COLUMN_SPLIT_SETTING];
+    const prevPivotSettings = prevSettings?.[PREAGG_COLUMN_SPLIT_SETTING];
+
+    return !_.isEqual(currentPivotSettings, prevPivotSettings);
+  }
 }
