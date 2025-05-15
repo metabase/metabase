@@ -33,11 +33,14 @@ import type {
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
+import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
@@ -123,6 +126,7 @@ export const EditTableDashcardVisualization = ({
 
   const {
     isInserting,
+    isDeleting,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -130,6 +134,7 @@ export const EditTableDashcardVisualization = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
+    handleRowDeleteBulk,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
@@ -160,6 +165,20 @@ export const EditTableDashcardVisualization = ({
     datasetData: data,
   });
 
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
+
+  const {
+    isDeleteBulkRequested,
+    requestDeleteBulk,
+    cancelDeleteBulk,
+    onDeleteBulkConfirmation,
+  } = useTableBulkDeleteConfirmation({
+    handleRowDeleteBulk,
+    selectedRowIndices,
+    setRowSelection,
+  });
+
   const isActionExecuteModalOpen = !!activeActionState;
 
   const { getColumnSortDirection } = useTableSorting({
@@ -180,6 +199,35 @@ export const EditTableDashcardVisualization = ({
         <Text fw="bold">{title}</Text>
 
         <Group gap="sm" align="center">
+          <ActionIcon
+            size="md"
+            onClick={() => alert("TODO")}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >
+            <Icon
+              name="pencil"
+              tooltip={
+                selectedRowIndices.length ? t`Edit` : t`Select rows for editing`
+              }
+            />
+          </ActionIcon>
+          <ActionIcon
+            size="md"
+            onClick={requestDeleteBulk}
+            disabled={shouldDisableActions || !selectedRowIndices.length}
+          >
+            <Icon
+              name="trash"
+              tooltip={
+                selectedRowIndices.length
+                  ? t`Delete`
+                  : t`Select rows for deletion`
+              }
+            />
+          </ActionIcon>
+          <Box h={rem(16)}>
+            <Divider orientation="vertical" h="100%" />
+          </Box>
           <ActionIcon
             size="md"
             onClick={undo}
@@ -245,6 +293,8 @@ export const EditTableDashcardVisualization = ({
               getColumnSortDirection={getColumnSortDirection}
               rowActions={enabledRowActions}
               onActionRun={handleRowActionRun}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
             />
           </Box>
 
@@ -288,6 +338,13 @@ export const EditTableDashcardVisualization = ({
           onClose={handleExecuteModalClose}
         />
       </Modal>
+      <DeleteBulkRowConfirmationModal
+        opened={isDeleteBulkRequested}
+        rowCount={selectedRowIndices.length}
+        isLoading={isDeleting}
+        onConfirm={onDeleteBulkConfirmation}
+        onClose={cancelDeleteBulk}
+      />
     </Stack>
   );
 };

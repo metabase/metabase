@@ -24,16 +24,10 @@ export function useEditableTableColumnConfigFromVisualizationSettings(
     const editableColumns =
       visualizationSettings["table.editableColumns"] ?? [];
 
-    if (columnSettings.length === 0) {
-      return undefined;
-    }
-
-    const isAllColumnsEditable = editableColumns.length === 0;
     const editableColumnSet = new Set(editableColumns);
 
     const columnOrder: string[] = [];
     const columnVisibilityMap: Record<string, boolean> = {};
-    const readonlyColumnSet = new Set<string>();
     const hiddenColumnSet = new Set<string>();
 
     for (const column of columnSettings) {
@@ -43,10 +37,6 @@ export function useEditableTableColumnConfigFromVisualizationSettings(
       if (!column.enabled) {
         hiddenColumnSet.add(column.name);
       }
-
-      if (!isAllColumnsEditable && !editableColumnSet.has(column.name)) {
-        readonlyColumnSet.add(column.name);
-      }
     }
 
     return {
@@ -54,7 +44,8 @@ export function useEditableTableColumnConfigFromVisualizationSettings(
       columnVisibilityMap,
       isColumnHidden: (columnName: string) => hiddenColumnSet.has(columnName),
       isColumnReadonly: (columnName: string) =>
-        readonlyColumnSet.has(columnName),
+        // If there are no editable columns settings, all columns are editable
+        editableColumnSet.size > 0 && !editableColumnSet.has(columnName),
     };
   }, [visualizationSettings]);
 }

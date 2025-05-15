@@ -3,11 +3,13 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.actions.types :as actions.types]
    [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.send :as notification.send]
    [metabase.task-history.core :as task-history]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -145,8 +147,11 @@
    [:before [:maybe :map]]
    [:after  [:maybe :map]]])
 
+(mr/def ::snake-keyed-scope (mu/snake-keyed-schema (mr/resolve-schema ::actions.types/scope.hydrated)))
+
 (def ^:private single-row-schema
   [:map {:closed true}
+   [:scope ::snake-keyed-scope]
    [:args (into [:map
                  [:db_id pos-int?]
                  [:timestamp [:fn t/zoned-date-time?]]]
@@ -155,6 +160,7 @@
 
 (def ^:private table-row-schema
   [:map {:closed true}
+   [:scope ::snake-keyed-scope]
    [:args (into [:map
                  [:db_id pos-int?]
                  [:timestamp [:fn t/zoned-date-time?]]] table-id-hydrate-schemas)]

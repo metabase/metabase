@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -24,12 +25,18 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(defn- nested-sort
+  "Sort every map within the data structure."
+  [x]
+  (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %))) x))
+
 (defn- serialize-scope
   "Convert the scope map or string into a stable string we can do example matches on in the database. Idempotent."
   [scope]
   (if (string? scope)
     scope
-    (->> (or scope "unknown") (walk/postwalk #(if-not (map? %) % (apply sorted-map (apply concat %)))) pr-str)))
+    ;; For now :type is ignored for undo scope, but once the FE starts passing it in, we'll probably change that.
+    (or (some-> scope actions/normalize-scope (dissoc :type) nested-sort pr-str) "unknown")))
 
 (defn- next-batch [undo? user-id scope]
   ;; For now, we assume all the changes are to the same table.
@@ -181,7 +188,8 @@
             :let [rows (batch->rows undo? sub-batch)
                   iid  (nano-id/nano-id)
                   opts {:existing-context {:invocation_id    iid
-                                           :invocation-stack [[action-kw iid]]}}]]
+                                           :invocation-stack [[action-kw iid]]
+                                           :scope            scope}}]]
       (case (if undo? (invert category) category)
         :create (try (data-editing/perform-bulk-action! :table.row/create user-id scope table-id rows opts)
                      (catch Exception e
@@ -215,11 +223,11 @@
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})
-          (->> (for [[table-id sub-batch] (u/group-by :table_id batch)]
-                 [table-id (map vector
-                                (map (comp (if undo? invert identity) categorize) sub-batch)
-                                (batch->rows undo? sub-batch))])
-               (into {}))))))
+          (for [[table-id sub-batch] (u/group-by :table_id batch)
+                :let [rows (batch->rows undo? sub-batch)]
+                [delta row] (map vector sub-batch rows)
+                :let [action-type ((if undo? invert identity) (categorize delta))]]
+            {:table-id table-id, :action-type action-type, :row row})))))
 
 (defn undo!
   "Rollback the given user's last change to the given table."

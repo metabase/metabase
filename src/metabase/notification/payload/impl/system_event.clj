@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.table :as table]
@@ -11,7 +12,9 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.sample :as payload.sample]
    [metabase.notification.send :as notification.send]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.session.core :as session]
+   [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
@@ -25,10 +28,10 @@
   [user-id]
   ;; TODO: the reset token should come from the event-info, not generated here!
   (let [reset-token               (user/set-password-reset-token! user-id)
-        should-link-to-login-page (and (public-settings/sso-enabled?)
-                                       (not (public-settings/enable-password-login)))]
+        should-link-to-login-page (and (sso/sso-enabled?)
+                                       (not (session/enable-password-login)))]
     (if should-link-to-login-page
-      (str (public-settings/site-url) "/auth/login")
+      (str (system/site-url) "/auth/login")
       ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
       (str (user/form-password-reset-url reset-token) "#new"))))
 
@@ -61,7 +64,13 @@
                    ordered-fields))))
 
 (def ^:private timestamp-schema
-  [:timestamp  {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
+  [:timestamp {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
+
+(def ^:private scope-schema
+  [:scope [:map {:gen/return {:type       "dashboard"
+                              :origin_url (urls/dashboard-url 1337)}}
+           [:type :keyword]
+           [:origin_url :string]]])
 
 (def ^{:dynamic true
        :doc "Dynamic variable used to control the value of sampling example for row schema"}
@@ -95,7 +104,7 @@
                                    :url  (urls/table-url db_id *sample-table-id*)})
                                 {:id    1
                                  :name "orders"
-                                 :url  "https://metabase.com/databases/1337/table/1"}))}
+                                 :url  (urls/table-url 1337 1)}))}
             [:id :int]
             [:name :string]
             [:url :string]]]
@@ -109,9 +118,10 @@
   [:merge
    ::row.mutate
    [:map
-    [:context [:map  {:closed true}
+    [:context [:map {:closed true}
                [:event_name [:enum :event/row.created "event/row.created"]]
-               timestamp-schema]]
+               timestamp-schema
+               scope-schema]]
     [:record {:description "The newly created row with all its field values"
               :gen/fmap    (fn [_]
                              (if *sample-table-id*
@@ -128,7 +138,8 @@
    [:map
     [:context [:map {:closed true}
                [:event_name [:enum :event/row.updated "event/row.updated"]]
-               timestamp-schema]]
+               timestamp-schema
+               scope-schema]]
     [:record {:description "The row after updates were applied, containing all fields"
               :gen/fmap    (fn [_]
                              (if *sample-table-id*
@@ -156,7 +167,8 @@
    [:map {:closed true}
     [:context [:map {:closed true}
                [:event_name [:enum :event/row.deleted "event/row.deleted"]]
-               timestamp-schema]]
+               timestamp-schema
+               scope-schema]]
     [:record {:description "The row that was deleted, showing all field values before deletion"
               :gen/fmap    (fn [_]
                              (if *sample-table-id*
@@ -224,6 +236,12 @@
    [:event/row.updated ::row.updated]
    [:event/row.deleted ::row.deleted]])
 
+(defn- scope->origin-url
+  [{:keys [dashboard_id database_id table_id] :as scope}]
+  (case (keyword (:type scope))
+    (:dashcard :dashboard) (urls/dashboard-url dashboard_id)
+    (urls/table-url database_id table_id)))
+
 (mu/defn- bulk-row-transformation :- ::row.mutate.all
   [notification-info]
   (or (lib.util.match/match-one
@@ -231,6 +249,7 @@
         {:payload    {:event_name ?event_name}
          :creator    ?creator
          :event_info {:actor       ?actor
+                      :scope       ?scope
                       :args        {:table_id  ?table_id
                                     :db_id     ?db_id
                                     :table     {:name ?table_name
@@ -242,7 +261,9 @@
         (let [ordered-fields (table/ordered-fields ?table_id ?field_order)]
           (merge
            {:context  {:event_name ?event_name
-                       :timestamp  (u.date/format ?timestamp)}
+                       :timestamp  (u.date/format ?timestamp)
+                       :scope      {:type       (:type ?scope)
+                                    :origin_url (scope->origin-url ?scope)}}
             :editor   (select-keys ?actor [:first_name :last_name :email :common_name])
             :creator  (select-keys ?creator [:first_name :last_name :email :common_name])
             :table    {:id   ?table_id
@@ -289,7 +310,7 @@
   (let [default-payload ((get-method transform-event-info :default) notification-info)]
     (assoc-in default-payload
               [:payload :custom]
-              {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
+              {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
                :user_invited_join_url      (-> notification-info :event_info :object :id join-url)})))
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event :- :map

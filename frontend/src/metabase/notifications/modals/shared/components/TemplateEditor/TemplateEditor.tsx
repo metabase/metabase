@@ -89,7 +89,7 @@ export const TemplateEditor = ({
   defaultValue = "",
   onChange,
   minHeight = "5rem",
-  language = "html",
+  language = "text/plain",
   placeholder,
   className,
   variant = "textarea",

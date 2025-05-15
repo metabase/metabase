@@ -567,7 +567,7 @@ export const CreateOrEditTableNotificationModal = ({
             }}
           >
             <NotificationChannelsPicker
-              enableTemplates
+              enableTemplates={{ email: true, slack: true }}
               notificationHandlers={requestBody.handlers}
               channels={channelSpec ? channelSpec.channels : undefined}
               onChange={handleChannelHandlersChange}

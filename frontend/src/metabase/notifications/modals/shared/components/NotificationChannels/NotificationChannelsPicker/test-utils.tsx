@@ -38,7 +38,10 @@ export interface SetupOpts {
       };
     }
   > | null;
-  enableTemplates?: boolean;
+  enableTemplates?: {
+    email?: boolean;
+    slack?: boolean;
+  };
 }
 
 export const setup = ({
@@ -51,7 +54,7 @@ export const setup = ({
   notificationHandlers = [],
   onChange = jest.fn(),
   defaultTemplates = null,
-  enableTemplates = false,
+  enableTemplates,
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({

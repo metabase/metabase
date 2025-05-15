@@ -162,19 +162,21 @@
 
 (defn- execute-implicit-action!
   [action request-parameters]
-  (let [implicit-action (parse-implicit-action action)
+  (let [model-id        (:model_id action)
+        implicit-action (parse-implicit-action action)
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
-        _ (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
-                     400
-                     (tru "Implicit parameters must be provided."))
-        arg-map (cond-> query
-                  (= implicit-action :model.row/create)
-                  (assoc :create-row row-parameters)
+        _               (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
+                                   400
+                                   (tru "Implicit parameters must be provided."))
+        arg-map         (cond-> query
+                          (= implicit-action :model.row/create)
+                          (assoc :create-row row-parameters)
 
-                  (= implicit-action :model.row/update)
-                  (assoc :update-row row-parameters))]
-    (binding [qp.perms/*card-id* (:model_id action)]
-      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:policy :model-action}))))
+                          (= implicit-action :model.row/update)
+                          (assoc :update-row row-parameters))]
+    (binding [qp.perms/*card-id* model-id]
+      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:scope  {:model-id model-id}
+                                                                                    :policy :model-action}))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
@@ -203,22 +205,40 @@
       (execute-custom-action! action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
+(defn- execute-table-action!
+  [kind table-id request-parameters]
+  (let [args
+        {:table-id table-id
+         :database (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
+         :arg      request-parameters}
+
+        opts
+        {:policy :data-editing}]
+    (actions/perform-action-with-single-input-and-output kind args opts)))
+
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
   [dashboard-id       :- ::lib.schema.id/dashboard
    dashcard-id        :- ::lib.schema.id/dashcard
    request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (analytics/track-event! :snowplow/action
-                            {:event     :action-executed
-                             :source    :dashboard
-                             :type      (:type action)
-                             :action_id (:id action)})
-    (execute-action! action request-parameters)))
+  (let [dashcard     (api/check-404 (t2/select-one :model/DashboardCard
+                                                   :id dashcard-id
+                                                   :dashboard_id dashboard-id))
+        action-id    (:action_id dashcard)
+        table-action (-> dashcard :visualization_settings :table_action)]
+    (api/check-404 (or action-id table-action))
+    (if table-action
+      (let [{:keys [kind table_id]} table-action]
+        ;; avoiding snowplow for now, to avoid adding new actions into schema
+        (execute-table-action! (keyword kind) table_id request-parameters))
+      (let [action (api/check-404 (action/select-action :id action-id))]
+        (analytics/track-event! :snowplow/action
+                                {:event     :action-executed
+                                 :source    :dashboard
+                                 :type      (:type action)
+                                 :action_id (:id action)})
+        (execute-action! action request-parameters)))))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]

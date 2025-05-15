@@ -21,11 +21,14 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useTableCRUD } from "./use-table-crud";
+import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateApiUpdateStrategy } from "./use-table-state-api-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -57,7 +60,10 @@ export const EditTableDataContainer = ({
     isFetching,
     isLoading,
     refetch,
-  } = useGetAdhocQueryQuery(fakeTableQuery || skipToken);
+  } = useGetAdhocQueryQuery(fakeTableQuery || skipToken, {
+    // Invalidates cache when filter changes (some records might be updated)
+    refetchOnMountOrArgChange: true,
+  });
 
   const datasetData = useMemo(() => {
     return rawDatasetResult
@@ -98,6 +104,7 @@ export const EditTableDataContainer = ({
 
   const {
     isInserting,
+    isDeleting,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -105,6 +112,7 @@ export const EditTableDataContainer = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
+    handleRowDeleteBulk,
   } = useTableCRUD({
     tableId,
     scope: editingScope,
@@ -118,6 +126,20 @@ export const EditTableDataContainer = ({
       scope: editingScope,
       stateUpdateStrategy,
     });
+
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
+
+  const {
+    isDeleteBulkRequested,
+    requestDeleteBulk,
+    cancelDeleteBulk,
+    onDeleteBulkConfirmation,
+  } = useTableBulkDeleteConfirmation({
+    handleRowDeleteBulk,
+    selectedRowIndices,
+    setRowSelection,
+  });
 
   useMount(() => {
     dispatch(closeNavbar());
@@ -145,11 +167,13 @@ export const EditTableDataContainer = ({
             isLoading={isFetching}
             isUndoLoading={isUndoLoading}
             isRedoLoading={isRedoLoading}
+            selectedRowIndices={selectedRowIndices}
             onCreate={openCreateRowModal}
             onQuestionChange={handleQuestionChange}
             refetchTableDataQuery={refetch}
             onUndo={undo}
             onRedo={redo}
+            onRequestDeleteBulk={requestDeleteBulk}
           />
         )}
         {isDatabaseTableEditingEnabled(database) ? (
@@ -165,6 +189,8 @@ export const EditTableDataContainer = ({
                 cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
                 onCellValueUpdate={handleCellValueUpdate}
                 onRowExpandClick={openEditRowModal}
+                onRowSelectionChange={setRowSelection}
+                rowSelection={rowSelection}
               />
             </Box>
             <Flex
@@ -203,6 +229,13 @@ export const EditTableDataContainer = ({
         fieldMetadataMap={tableFieldMetadataMap}
         isLoading={isInserting}
         hasDeleteAction
+      />
+      <DeleteBulkRowConfirmationModal
+        opened={isDeleteBulkRequested}
+        rowCount={selectedRowIndices.length}
+        isLoading={isDeleting}
+        onConfirm={onDeleteBulkConfirmation}
+        onClose={cancelDeleteBulk}
       />
     </>
   );

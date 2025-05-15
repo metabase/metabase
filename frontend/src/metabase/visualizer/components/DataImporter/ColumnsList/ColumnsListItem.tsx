@@ -54,8 +54,19 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
         }
       >
         <Flex align="center" miw={0}>
-          <Icon className={S.grabber} name="grabber" mr={4} size={16} />
-          <Icon name={getIconForField(column) as IconName} mr={4} size={16} />
+          <Icon
+            className={S.grabber}
+            name="grabber"
+            mr={4}
+            size={16}
+            miw={16}
+          />
+          <Icon
+            name={getIconForField(column) as IconName}
+            mr={4}
+            size={16}
+            miw={16}
+          />
           <Ellipsified>{displayNameForColumn(column)}</Ellipsified>
         </Flex>
         {!!onRemove && (

@@ -40,6 +40,10 @@
     /* Draggable hover highlight for `SortableHeader` */
     box-shadow: none;
   }
+
+  &[data-row-selected="true"] .tableBodyCell {
+    background-color: var(--mb-base-color-blue-10);
+  }
 }
 
 .tableHeaderContainer {
@@ -51,6 +55,10 @@
 
 .tableHeaderCell {
   border-right: 1px solid var(--mb-color-border);
+
+  &[data-column-id="__MB_ROW_SELECT"] {
+    border-right: none;
+  }
 }
 
 .tableBodyContainer {
@@ -60,6 +68,10 @@
 .tableBodyCell {
   background-color: var(--mb-color-bg-white);
   border-right: 1px solid var(--mb-color-border-alpha-30);
+
+  &[data-column-id="__MB_ROW_SELECT"] {
+    border-right: none;
+  }
 }
 
 .headerCellContainer {

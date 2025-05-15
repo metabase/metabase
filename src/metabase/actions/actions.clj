@@ -3,6 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase.actions.events :as actions.events]
+   [metabase.actions.scope :as actions.scope]
    [metabase.api.common :as api] [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -63,7 +64,10 @@
   validation, and binds Database-local values."
   {:arglists '([action context inputs]), :added "0.44.0"}
   (fn [action {:keys [driver]} _inputs]
-    [(driver/dispatch-on-initialized-driver driver)
+    [(if driver
+       (driver/dispatch-on-initialized-driver driver)
+       ;; For now, all actions have this as the lowest common denominator, and use it even where the db is irrelevant.
+       :sql-jdbc)
      (keyword action)])
   :hierarchy #'driver/hierarchy)
 
@@ -173,10 +177,7 @@
     (doseq [[event-type payloads] (u/group-by first second effects)]
       (handle-effects!* event-type sans-effects payloads))))
 
-(mu/defn perform-action-internal!
-  "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
-   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
-   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+(mu/defn- perform-action-internal!
   [action-kw :- qualified-keyword?
    ctx       :- :map
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
@@ -205,6 +206,16 @@
           (actions.events/publish-action-failure! action-kw context-before msg info)
           (throw e))))))
 
+(defn perform-nested-action!
+  "Similar to [[perform-action!]] but taking an existing context.
+   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
+   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+  [action-kw context inputs]
+  ;; For now, we are handling effects whenever we "pop" an action, but in future we may want them to propagate.
+  ;; The rationale for this is that it would allow us batch things more atomically (e.g., for notifications)
+  {:context context #_(update context :effects into (:effects context-after))
+   :outputs (:outputs (perform-action-internal! action-kw context inputs))})
+
 (defn cached-database
   "Uses cache to prevent redundant look-ups with an action call chain."
   [db-id]
@@ -227,10 +238,16 @@
   [action
    scope
    arg-map-or-maps
-   & {:keys [policy existing-context]
-      :or   {policy :ad-hoc-action-invocation}}]
+   & {:keys [policy existing-context]}]
   (let [action-kw (keyword action)
+        scope     (actions.scope/hydrate-scope scope)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
+        policy    (or policy
+                      (cond
+                        (:model-id scope)                        :model-action
+                        (= "data-grid" (namespace action-kw))    :data-editing
+                        (= "data-editing" (namespace action-kw)) :data-editing
+                        :else                                    :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
@@ -240,7 +257,10 @@
         _         (when (seq errors)
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
-        dbs       (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps)))
+        dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
+                      ;; for data-grid actions that use their scope, rather than arguments
+                      ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
+                      (some-> scope :database-id cached-database vector))
         _         (when (> (count dbs) 1)
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400
@@ -253,17 +273,18 @@
     ;; The action might not be database-centric (e.g., call a webhook)
     (when db
       (case policy
-        :ad-hoc-action-invocation
+        :ad-hoc-invocation
         (check-actions-enabled-for-database! db)
         :model-action
         (check-actions-enabled-for-database! db)
         :data-editing
         (check-data-editing-enabled-for-database! db)))
+
     (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
       (when (= :model-action policy)
         (doseq [arg-map arg-maps]
           (qp.perms/check-query-action-permissions* arg-map)))
-      (when (= :ad-hoc-action-invocation policy)
+      (when (= :ad-hoc-invocation policy)
         (doseq [arg-map arg-maps]
           (cond
             (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
@@ -273,8 +294,8 @@
                                   :query {:source-table (:table-id arg-map)}}))))
 
       ;; TODO fix tons of tests which execute without user scope
-      (let [result (let [context (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)
-                                                       :scope   scope})]
+      (let [result (let [context (-> (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})
+                                     (u/assoc-default :scope scope))]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
                        (driver/with-driver driver
@@ -289,9 +310,9 @@
 
 (mu/defn perform-action-with-single-input-and-output
   "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
-  [action arg-map & {:as opts}]
-  (try (let [scope             {:non-undoable-scope :execute-implicit-action}
-             {:keys [outputs]} (perform-action! action scope [arg-map] opts)]
+  [action arg-map & {:keys [scope] :as opts}]
+  (try (let [scope             (or scope {:unknown :legacy-action})
+             {:keys [outputs]} (perform-action! action scope [arg-map] (dissoc opts :scope))]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
          (first outputs))
        (catch ExceptionInfo e

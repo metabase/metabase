@@ -181,7 +181,7 @@ export function describeTemporalUnit(
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   tableID: TableId,
-): CardMetadata | TableMetadata {
+): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
 export function visibleColumns(

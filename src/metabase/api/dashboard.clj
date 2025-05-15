@@ -8,13 +8,15 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
-   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.channel.email.messages :as messages]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -25,8 +27,6 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
@@ -1010,7 +1010,22 @@
                                                                (map (fn [card]
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                                         (assoc card :dashboard_tab_id real-tab-id)
-                                                                        card))))
+                                                                        card)))
+                                                               true
+                                                               (map (fn [dashcard]
+                                                                      (cond
+                                                                        (pos-int? (:action_id dashcard))
+                                                                        (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
+                                                                        (neg-int? (:action_id dashcard))
+                                                                        (let [[op table-id] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
+                                                                          (-> dashcard
+                                                                              (assoc-in [:visualization_settings :table_action]
+                                                                                        {:kind (u/qualified-name op)
+                                                                                         :table_id table-id})
+                                                                              (dissoc :action_id)))
+                                                                        :else
+                                                                        dashcard))))
+
                    new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                (reset! changes-stats
@@ -1191,6 +1206,9 @@
     (keyword (name type))
     :=))
 
+;; TODO needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
+;; TODO duplicates code in params.clj
+;; TODO needs to wrap models and metrics properly!
 (mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (let [cards (into {}

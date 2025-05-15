@@ -7,6 +7,7 @@
    [metabase.actions.execution]
    [metabase.actions.http-action]
    [metabase.actions.models]
+   [metabase.actions.scope]
    [potemkin :as p]))
 
 (comment
@@ -14,7 +15,8 @@
   metabase.actions.error/keep-me
   metabase.actions.execution/keep-me
   metabase.actions.http-action/keep-me
-  metabase.actions.models/keep-me)
+  metabase.actions.models/keep-me
+  metabase.actions.scope/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
@@ -25,7 +27,11 @@
   cached-database-via-table-id
   handle-effects!*
   perform-action!
-  perform-action!*]
+  ;; allow actions to be defined in the data-editing module
+  perform-action!*
+  perform-nested-action!
+  action-arg-map-spec
+  normalize-action-arg-map]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint
@@ -39,6 +45,12 @@
   apply-json-query]
  [metabase.actions.models
   dashcard->action
-  select-action]
+  select-action
+  select-actions
+  table-primitive-action
+  unpack-table-primitive-action-id]
  [metabase.actions.events
-  publish-action-success!])
+  publish-action-success!]
+ [metabase.actions.scope
+  hydrate-scope
+  normalize-scope])

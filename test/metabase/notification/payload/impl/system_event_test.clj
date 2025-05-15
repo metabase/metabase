@@ -4,7 +4,8 @@
    [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.session.settings :as session.settings]
+   [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.urls :as urls]
@@ -130,8 +131,8 @@
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"])
 
       (testing "with sso enabled"
-        (with-redefs [public-settings/sso-enabled? (constantly true)
-                      public-settings/enable-password-login (constantly false)]
+        (with-redefs [sso.settings/sso-enabled? (constantly true)
+                      session.settings/enable-password-login (constantly false)]
           (check false
                  "You're invited to join SuperStar's Metabase"
                  [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]))))

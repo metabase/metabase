@@ -39,8 +39,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -109,7 +109,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- acs-url []
-  (str (public-settings/site-url) "/auth/sso"))
+  (str (system/site-url) "/auth/sso"))
 
 (defn sp-cert-keystore-details
   "Build a certificate store map usable by the saml20-clj library."
@@ -135,9 +135,9 @@
         redirect-url (if (nil? redirect)
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
-                         (public-settings/site-url))
+                         (system/site-url))
                        (if (sso-utils/relative-uri? redirect)
-                         (str (public-settings/site-url) redirect)
+                         (str (system/site-url) redirect)
                          redirect))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
@@ -221,7 +221,7 @@
                             :group-names     groups
                             :user-attributes attrs
                             :device-info     (request/device-info request)})
-            response      (response/redirect (or continue-url (public-settings/site-url)))]
+            response      (response/redirect (or continue-url (system/site-url)))]
         (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))
       (catch Throwable e
         (log/error e "SAML response validation failed")

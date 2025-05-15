@@ -17,7 +17,6 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -220,7 +219,10 @@
                                                       [:payload {:optional true} :any]]]
   (api/create-check :model/Notification notification)
   (let [sample-notification-context (if custom_context
-                                      (mu/validate-throw (notification/notification-payload-schema notification) custom_context)
+                                      (api.macros/decode-and-validate-params
+                                       :body
+                                       (notification/notification-payload-schema notification)
+                                       custom_context)
                                       (sample-payload notification (:channel_type template)))]
     {:context  sample-notification-context
      :rendered (first (channel/render-notification

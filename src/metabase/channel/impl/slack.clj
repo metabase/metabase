@@ -1,6 +1,7 @@
 (ns metabase.channel.impl.slack
   (:require
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
@@ -8,7 +9,7 @@
    [metabase.channel.template.core :as channel.template]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.params.shared :as shared.params]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.markdown :as markdown]
@@ -166,7 +167,7 @@
 (defn- filter-text
   [filter]
   (truncate
-   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
+   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (system/site-locale)))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
@@ -182,7 +183,7 @@
                                    :text (mkdwn-link-text
                                           (urls/dashboard-url (:id dashboard) parameters)
                                           (format "*Sent from %s by %s*"
-                                                  (public-settings/site-name)
+                                                  (appearance/site-name)
                                                   creator-name))}]}
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
