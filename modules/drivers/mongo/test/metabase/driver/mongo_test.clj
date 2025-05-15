@@ -832,7 +832,7 @@
                    {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type nil}
                    {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]

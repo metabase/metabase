@@ -51,7 +51,7 @@
     ;; fields *SHOULD* have semantic types now
     (is (= #{{:name "LATITUDE", :semantic_type :type/Latitude, :last_analyzed true}
              {:name "ID", :semantic_type :type/PK, :last_analyzed false}
-             {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
+             {:name "PRICE", :semantic_type nil, :last_analyzed true}
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
