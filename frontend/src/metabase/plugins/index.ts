@@ -34,6 +34,7 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
+import EditableText from "metabase/core/components/EditableText/EditableText";
 import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
@@ -748,6 +749,7 @@ export const PLUGIN_CONTENT_TRANSLATION = {
       [],
     );
   },
+  LocalizableEditableText: EditableText,
 };
 
 export const PLUGIN_DB_ROUTING = {
