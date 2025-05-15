@@ -63,7 +63,10 @@
   validation, and binds Database-local values."
   {:arglists '([action context inputs]), :added "0.44.0"}
   (fn [action {:keys [driver]} _inputs]
-    [(driver/dispatch-on-initialized-driver driver)
+    [(if driver
+       (driver/dispatch-on-initialized-driver driver)
+       ;; For now, all actions have this as the lowest common denominator, and use it even where the db is irrelevant.
+       :sql-jdbc)
      (keyword action)])
   :hierarchy #'driver/hierarchy)
 
@@ -230,7 +233,11 @@
    & {:keys [policy existing-context]}]
   (let [action-kw (keyword action)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
-        policy    (or policy (when (:model-id scope) :model-action) :ad-hoc-invocation)
+        policy    (or policy
+                      (cond
+                        (:model-id scope)                     :model-action
+                        (= "data-grid" (namespace action-kw)) :data-editing
+                        :else                                 :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
@@ -240,7 +247,12 @@
         _         (when (seq errors)
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
-        dbs       (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps)))
+        dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
+                      ;; for data-grid actions that use their scope, rather than arguments
+                      ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
+                      (some-> scope :database-id cached-database vector)
+                      ;; TODO won't need this if we hydrate scope before reaching this, which is probably a good idea.
+                      (some-> scope :table-id cached-database-via-table-id vector))
         _         (when (> (count dbs) 1)
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400

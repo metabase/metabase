@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.data-editing
   (:require
+   [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
@@ -9,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -99,7 +101,7 @@
                                                  :field field-name
                                                  :coercion_strategy coercion_strategy})))])
                          (into {}))
-        coerce      (fn [k v] (some-> v ((coerce-fn k identity))))]
+        coerce      (fn [k v] (some-> v ((coerce-fn (keyword k) identity))))]
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 
@@ -127,15 +129,6 @@
            :effects
            (filter (comp #{:effect/row.modified} first))
            (map second)))))
-
-(defn insert!
-  "Inserts rows into the table, recording their creation as an event. Returns the inserted records.
-  Expects rows that are acceptable directly by [[actions/perform-action!]]. If casts or reversing coercion strategy
-  are required, that work must be done before calling this function."
-  [user-id scope table-id rows]
-  (api/check-500 user-id)
-  (let [res (perform-bulk-action! :table.row/create user-id scope table-id rows)]
-    {:created-rows (map :after res)}))
 
 (defn- row-update-event
   "Given a :effect/row.modified diff, figure out what kind of mutation it was."
@@ -192,3 +185,46 @@
                                         :args       {:table_id  table-id
                                                      :db_id     db-id
                                                      :timestamp (t/zoned-date-time (t/zone-id "UTC"))}}))))))
+
+(defn- invalidate-field-values! [table-id rows]
+  ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
+  (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))
+        lower-names (keys ln->values)
+        ln->ids     (when (seq lower-names)
+                      (u/group-by
+                       :lower_name :id
+                       (t2/query {:select [:id [[:lower :name] :lower_name]]
+                                  :from   [(t2/table-name :model/Field)]
+                                  :where  [:and
+                                           [:= :table_id table-id]
+                                           [:in [:lower :name] lower-names]
+                                           [:in :has_field_values ["list" "auto-list"]]
+                                           [:= :semantic_type "type/Category"]]})))
+        stale-fields (->> (for [[lower-name field-ids] ln->ids
+                                :let [new-values (into #{} (filter some?) (ln->values lower-name))
+                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
+                                                                                 :field_id [:in field-ids]))]]
+                            (when (seq (set/difference new-values old-values))
+                              field-ids))
+                          (apply concat))]
+    ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
+    (when (seq stale-fields)
+      ;; Using a future is not ideal, it would be better to use a queue and a single worker, to avoid tying up threads.
+      (future
+        (->> (t2/select :model/Field :id [:in stale-fields])
+             (run! field-values/create-or-update-full-field-values!))))))
+
+(defn invalidate-and-present!
+  "We invalidate the field-values, in case any new category values were added.
+  The FE also expects data to be formatted according to PQ logic, e.g. considering semantic types.
+  Actions, however, return raw values, since lossy coercions would limit composition.
+  So, we apply the coercions here."
+  [table-id rows]
+  ;; We could optimize this significantly:
+  ;; 1. Skip if no category fields were changes on update.
+  ;; 2. Check whether all corresponding categorical field values are already in the database.
+  (invalidate-field-values! table-id rows)
+  ;; right now the FE works off qp outputs, which coerce output row data
+  ;; still feels messy, revisit this
+  (let [pk-fields (select-table-pk-fields table-id)]
+    (query-db-rows table-id pk-fields rows)))

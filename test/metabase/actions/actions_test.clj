@@ -19,6 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [thunk] (mt/with-test-user :rasta (thunk))))
+
 (def ^:private test-scope {:unknown :legacy-action})
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled!
