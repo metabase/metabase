@@ -175,6 +175,7 @@ type ChartSettingFieldPartitionProps = {
   question: Question;
   partitions: Partition[];
   columns: RemappingHydratedDatasetColumn[];
+  aggregatedColumns: RemappingHydratedDatasetColumn[];
   canEditColumns: boolean;
 };
 
@@ -186,6 +187,7 @@ export const ChartSettingFieldsPartition = ({
   question,
   partitions,
   columns,
+  aggregatedColumns,
   canEditColumns,
 }: ChartSettingFieldPartitionProps) => {
   const handleEditFormatting = (
@@ -265,7 +267,6 @@ export const ChartSettingFieldsPartition = ({
     // Unaggregated pivots
     return _.mapObject(value || {}, (partitionValue, partition) => {
       if (partition === "values") {
-        // For the "values" partition, we want to return enriched aggregation objects
         const aggregations = partitionValue as PivotAggregation[];
         const query = question.query();
         const breakoutColumns = Lib.breakoutableColumns(query, -1);
@@ -302,12 +303,14 @@ export const ChartSettingFieldsPartition = ({
         return dimensionItems
           .map((item) => {
             const columnName = typeof item === "string" ? item : item.name;
-            return columns.find((col) => col.name === columnName);
+            return (aggregatedColumns || columns).find(
+              (col) => col.name === columnName,
+            );
           })
           .filter((col): col is RemappingHydratedDatasetColumn => col != null);
       }
     });
-  }, [canEditColumns, columns, value, question]);
+  }, [canEditColumns, columns, aggregatedColumns, value, question]);
 
   const onAddBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -371,7 +374,9 @@ export const ChartSettingFieldsPartition = ({
 
   const query = question.query();
 
-  // If we're in unaggregated pivot mode, build up the aggregated version of the query from the viz settings
+  // If we're in unaggregated pivot mode, build up the aggregated version of
+  // the query from the viz settings to pass into the aggregation selection
+  // popover
   const aggregatedQuery = useMemo(() => {
     if (!canEditColumns) {
       return query;
