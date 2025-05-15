@@ -158,6 +158,11 @@
     :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
     e))
 
+(defn- perform-and-group-undo! [action-kw scope]
+  (->> (actions/perform-action! action-kw scope [{}])
+       :outputs
+       (u/group-by :table-id (juxt :action-type :row))))
+
 (api.macros/defendpoint :post "/undo"
   "Undo the last change you made.
   For now only supports tables, but in the future will support editables for sure.
@@ -175,10 +180,9 @@
         scope  (or scope {:table-id table-id})]
     (if no-op
       {:batch_num (undo/next-batch-num :undo user-id scope)}
-      ;; IDEA encapsulate this in an action
       ;; IDEA use generic action calling API instead of having this endpoint
       (try
-        {:result (undo/undo! user-id scope)}
+        {:result (perform-and-group-undo! :data-editing/undo scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 
@@ -195,15 +199,12 @@
                                        [:scope ::types/scope.raw]
                                        [:no-op {:optional true} ms/BooleanValue]]
   (check-permissions)
-  (let [user-id api/*current-user-id*
-        scope   (or scope {:table-id table-id})]
+  (let [scope (or scope {:table-id table-id})]
     (if no-op
-      {:batch_num (undo/next-batch-num :redo user-id scope)}
-      ;; IDEA encapsulate this in an action
+      {:batch_num (undo/next-batch-num :redo api/*current-user-id* scope)}
       ;; IDEA use generic action calling API instead of having this endpoint
-      ;; TODO translate errors to http codes
       (try
-        {:result (undo/redo! user-id scope)}
+        {:result (perform-and-group-undo! :data-editing/redo scope)}
         (catch ExceptionInfo e
           (throw (translate-undo-error e)))))))
 

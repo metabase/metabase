@@ -2,10 +2,12 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (derive :data-grid/create :data-grid/common)
 (derive :data-grid/update :data-grid/common)
@@ -42,6 +44,7 @@
   ;; We could enhance this in future to work more richly with multi-table editable models.
   (let [table-id     (scope->table-id context)
         next-inputs  (map-inputs table-id inputs)
+        ;; this shape feels wrong; we should nest it as `{:table-id, :row}` to be more composable.
         rows->output (partial data-editing/invalidate-and-present! table-id)]
     (perform-table-row-action! action-kw context next-inputs rows->output)))
 
@@ -56,3 +59,25 @@
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/delete]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   (perform! :table.row/delete context inputs))
+
+;; undo
+
+(s/def :actions.args/none map?)
+
+(defmethod actions/action-arg-map-spec :data-editing/undo [_action] :actions.args/none)
+(defmethod actions/action-arg-map-spec :data-editing/redo [_action] :actions.args/none)
+
+(defmethod actions/normalize-action-arg-map :data-editing/undo [_action _input] {})
+(defmethod actions/normalize-action-arg-map :data-editing/redo [_action _input] {})
+
+(mr/def ::lib.schema.actions/nothing [:map {:closed true}])
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
+  [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
+  {:context context
+   :outputs (undo/undo! (:user-id context) (:scope context))})
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
+  [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
+  {:context context
+   :outputs (undo/redo! (:user-id context) (:scope context))})
