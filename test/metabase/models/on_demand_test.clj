@@ -31,7 +31,6 @@
    :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
               :template-tags {:category {:name         "category"
                                          :display-name "Category"
-                                         :id           "_category_"
                                          :type         "dimension"
                                          :dimension    [:field (u/the-id field-or-id) nil]
                                          :widget-type  "category"
@@ -166,7 +165,6 @@
 
 (defn- parameter-mappings-for-card-and-field [card-or-id field-or-id]
   [{:card_id (u/the-id card-or-id)
-    :parameter_id "12121212"
     :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]

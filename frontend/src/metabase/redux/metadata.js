@@ -96,9 +96,9 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
 };
 
 export { ADD_FIELDS } from "metabase/entities/fields";
-export const addFields = (fields) => {
+export const addFields = (fieldMaps) => {
   deprecated("metabase/redux/metadata addFields");
-  return Fields.actions.addFields(fields);
+  return Fields.actions.addFields(fieldMaps);
 };
 
 export const updateField = (field) => {
