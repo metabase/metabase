@@ -27,7 +27,11 @@
   cached-database-via-table-id
   handle-effects!*
   perform-action!
-  perform-action!*]
+  ;; allow actions to be defined in the data-editing module
+  perform-action!*
+  perform-nested-action!
+  action-arg-map-spec
+  normalize-action-arg-map]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint

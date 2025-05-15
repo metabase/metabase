@@ -177,10 +177,7 @@
     (doseq [[event-type payloads] (u/group-by first second effects)]
       (handle-effects!* event-type sans-effects payloads))))
 
-(mu/defn perform-action-internal!
-  "A more modern version of [[perform-action!]] that takes an existing context, and multiple arg-maps.
-   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
-   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+(mu/defn- perform-action-internal!
   [action-kw :- qualified-keyword?
    ctx       :- :map
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
@@ -208,6 +205,16 @@
           ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
           (actions.events/publish-action-failure! action-kw context-before msg info)
           (throw e))))))
+
+(defn perform-nested-action!
+  "Similar to [[perform-action!]] but taking an existing context.
+   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
+   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+  [action-kw context inputs]
+  ;; For now, we are handling effects whenever we "pop" an action, but in future we may want them to propagate.
+  ;; The rationale for this is that it would allow us batch things more atomically (e.g., for notifications)
+  {:context context #_(update context :effects into (:effects context-after))
+   :outputs (:outputs (perform-action-internal! action-kw context inputs))})
 
 (defn cached-database
   "Uses cache to prevent redundant look-ups with an action call chain."

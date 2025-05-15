@@ -128,30 +128,35 @@
 (deftest normalize-test
   (mt/with-premium-features #{:table-data-editing}
     (testing "normalize with various scopes"
-      (is (= {:dashcard-id 2}
-             (actions.scope/normalize-scope {:dashboard-id 1
-                                             :dashcard-id        2
-                                             :card-id            3
-                                             :table-id           4
-                                             :collection-id      5
-                                             :database-id        6})))
-
-      (is (= {:dashboard-id 1}
-             (actions.scope/normalize-scope {:dashboard-id 1
-                                             :collection-id      5})))
-
-      (is (= {:card-id 3}
-             (actions.scope/normalize-scope {:card-id 3
+      (is (= {:type        :dashcard
+              :dashcard-id 2}
+             (actions.scope/normalize-scope {:dashboard-id  1
+                                             :dashcard-id   2
+                                             :card-id       3
                                              :table-id      4
                                              :collection-id 5
                                              :database-id   6})))
 
-      (is (= {:model-id 7}
-             (actions.scope/normalize-scope {:model-id 7
-                                             :table-id       4
-                                             :collection-id  5
-                                             :database-id    6})))
+      (is (= {:type         :dashboard
+              :dashboard-id 1}
+             (actions.scope/normalize-scope {:dashboard-id  1
+                                             :collection-id 5})))
 
-      (is (= {:table-id 4}
-             (actions.scope/normalize-scope {:table-id 4
-                                             :database-id    6}))))))
+      (is (= {:type    :card
+              :card-id 3}
+             (actions.scope/normalize-scope {:card-id       3
+                                             :table-id      4
+                                             :collection-id 5
+                                             :database-id   6})))
+
+      (is (= {:type     :model
+              :model-id 7}
+             (actions.scope/normalize-scope {:model-id      7
+                                             :table-id      4
+                                             :collection-id 5
+                                             :database-id   6})))
+
+      (is (= {:type     :table
+              :table-id 4}
+             (actions.scope/normalize-scope {:table-id    4
+                                             :database-id 6}))))))
