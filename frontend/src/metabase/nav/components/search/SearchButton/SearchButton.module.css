@@ -10,5 +10,20 @@
 .searchTextButton {
   height: 100%;
   width: 100%;
-  padding-left: 0.25rem;
+  padding: 0 0.5rem 0 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: bold;
+
+  &:hover .shortcutText {
+    color: var(--mb-color-text-light);
+    transition: color 100ms ease;
+  }
+}
+
+.shortcutText {
+  color: transparent;
+  user-select: none;
+  transition: color 350ms ease;
 }

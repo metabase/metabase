@@ -13,10 +13,9 @@ import {
   Flex,
   Icon,
   Loader,
-  Paper,
   Stack,
   Text,
-  Textarea,
+  TextInput,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -29,7 +28,7 @@ import { testMarkdown } from "./utils";
 
 const MIN_INPUT_HEIGHT = 42;
 
-export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
+export const MetabotChat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isMessagesScrollable = useIsScrollable(messagesRef);
@@ -55,10 +54,11 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
       .finally(() => textareaRef.current?.focus());
   };
 
+  const { setVisible } = metabot;
   const handleClose = useCallback(() => {
     resetInput();
-    onClose();
-  }, [resetInput, onClose]);
+    setVisible(false);
+  }, [resetInput, setVisible]);
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -110,7 +110,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
             <ActionIcon onClick={() => metabot.resetConversation()}>
               <Icon c="text-primary" name="refresh" />
             </ActionIcon>
-            <ActionIcon onClick={() => metabot.setVisible(false)}>
+            <ActionIcon onClick={handleClose}>
               <Icon c="text-primary" name="close" />
             </ActionIcon>
           </Flex>
@@ -194,51 +194,26 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           </Text>
         )}
 
-        <Box px="md" py="md">
-          <Paper
-            className={cx(
-              Styles.inputContainer,
-              metabot.isDoingScience && Styles.inputContainerLoading,
-              inputExpanded && Styles.inputContainerExpanded,
-            )}
-            withBorder
-          >
-            <Textarea
-              data-testid="metabot-chat-input"
-              w="100%"
-              autosize
-              minRows={1}
-              maxRows={4}
-              ref={textareaRef}
-              autoFocus
-              value={input}
-              disabled={metabot.isDoingScience}
-              className={cx(
-                Styles.textarea,
-                inputExpanded && Styles.textareaExpanded,
-                metabot.isDoingScience && Styles.textareaLoading,
-              )}
-              placeholder={t`Tell me to do something, or ask a question`}
-              onChange={(e) => handleInputChange(e.target.value)}
-              // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
-              onHeightChange={handleMaybeExpandInput}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  // prevent event from inserting new line + interacting with other content
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSubmitInput(input);
-                }
-              }}
-            />
-            <UnstyledButton
-              h="1rem"
-              onClick={handleClose}
-              data-testid="metabot-close-chat"
-            >
-              <Icon name="close" c="text-light" size="1rem" />
-            </UnstyledButton>
-          </Paper>
+        <Box px="md" my="md">
+          <TextInput
+            data-testid="metabot-chat-input"
+            className={Styles.input}
+            autoFocus
+            value={input}
+            disabled={metabot.isDoingScience}
+            placeholder={t`Tell me to do something, or ask a question`}
+            onChange={(e) => handleInputChange(e.target.value)}
+            // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
+            onHeightChange={handleMaybeExpandInput}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                // prevent event from inserting new line + interacting with other content
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmitInput(input);
+              }
+            }}
+          />
         </Box>
       </Box>
     </Sidebar>
