@@ -120,6 +120,7 @@
            api-routes
            appearance
            channel
+           classloader
            collections
            config
            database-routing
@@ -134,7 +135,6 @@
            model-persistence
            models
            permissions
-           plugins
            premium-features
            pulse
            query-processor
@@ -142,6 +142,7 @@
            revisions
            sample-data
            search
+           secrets
            server
            session
            settings
@@ -251,6 +252,11 @@
            types
            util}}
 
+  classloader
+  {:api  #{metabase.classloader.core
+           metabase.classloader.init}
+   :uses #{util}}
+
   cloud-migration
   {:api  #{metabase.cloud-migration.api
            metabase.cloud-migration.core
@@ -278,11 +284,11 @@
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
+           classloader
            config
            db
            legacy-mbql
            models
-           plugins
            query-processor
            search
            settings
@@ -334,12 +340,12 @@
            metabase.db.query
            metabase.db.setup}
    :uses #{auth-provider
+           classloader
            config
            connection-pool
            driver
            legacy-mbql
            lib
-           plugins
            query-processor
            task
            util}}
@@ -372,6 +378,7 @@
            api
            appearance
            auth-provider
+           classloader
            config
            connection-pool
            database-routing
@@ -382,10 +389,10 @@
            logger
            models
            notification
-           plugins
            premium-features
            pulse
            query-processor
+           secrets
            settings
            sync
            system
@@ -531,8 +538,8 @@
   logger
   {:api  #{metabase.logger
            metabase.logger.init}
-   :uses #{config
-           plugins}}
+   :uses #{classloader
+           config}}
 
   login-history
   {:api #{metabase.login-history.api
@@ -587,7 +594,6 @@
           metabase.models.query
           metabase.models.query.permissions
           metabase.models.resolution
-          metabase.models.secret
           metabase.models.serialization
           metabase.models.table
           metabase.models.user
@@ -600,6 +606,7 @@
            audit-app
            cache
            channel
+           classloader
            collections
            config
            content-verification
@@ -610,8 +617,8 @@
            lib
            notification
            permissions
-           plugins
            premium-features
+           secrets
            settings
            public-sharing
            pulse
@@ -688,9 +695,9 @@
            util}}
 
   plugins
-  {:api  #{metabase.plugins
-           metabase.plugins.classloader}
-   :uses #{config
+  {:api  #{metabase.plugins.core}
+   :uses #{classloader
+           config
            driver
            util}}
 
@@ -699,10 +706,10 @@
            metabase.premium-features.core
            metabase.premium-features.init}
    :uses #{api
+           classloader
            config
            db
            internal-stats
-           plugins
            settings
            util}}
 
@@ -743,6 +750,7 @@
            metabase.pulse.task.send-pulses}
    :uses #{api
            channel
+           classloader
            collections
            config
            db
@@ -751,7 +759,6 @@
            models
            notification
            permissions
-           plugins
            premium-features
            query-processor
            request
@@ -888,6 +895,10 @@
            task
            util}}
 
+  secrets
+  {:api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}}
+
   segments
   {:api  #{metabase.segments.api}
    :uses #{api
@@ -903,7 +914,6 @@
   server
   {:api #{metabase.server.core
           metabase.server.init
-          metabase.server.middleware.json
           metabase.server.middleware.session
           metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
@@ -956,7 +966,6 @@
            events
            models
            premium-features
-           server
            util
            enterprise/advanced-permissions}}
 
@@ -1023,8 +1032,8 @@
   task
   {:api #{metabase.task.bootstrap
           metabase.task.core}
-   :uses #{db
-           plugins
+   :uses #{classloader
+           db
            util}}
 
   task-history
@@ -1102,14 +1111,14 @@
 
   util
   {:api :any
-   :uses #{channel
+   :uses #{classloader
+           channel
            config
            db
            driver
            legacy-mbql
            lib
            models
-           plugins
            settings
            system}}
 
@@ -1188,9 +1197,9 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-   :uses #{api
-           enterprise/metabot-v3
-           premium-features}}
+  :uses #{api
+          premium-features
+          enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -1226,6 +1235,7 @@
   {:api  #{metabase-enterprise.audit-app.api.routes}
    :uses #{api
            audit-app
+           classloader
            db
            driver
            lib
@@ -1376,13 +1386,13 @@
           metabase-enterprise.sandbox.api.util}
    :uses #{api
            audit-app
+           classloader
            db
            driver
            legacy-mbql
            lib
            models
            permissions
-           plugins
            premium-features
            query-processor
            request

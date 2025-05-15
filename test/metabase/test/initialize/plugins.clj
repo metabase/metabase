@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.reader.edn :as edn]
-   [metabase.plugins :as plugins]
+   [metabase.plugins.core :as plugins]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.test.data.env.impl :as tx.env.impl]
    [metabase.util :as u]
