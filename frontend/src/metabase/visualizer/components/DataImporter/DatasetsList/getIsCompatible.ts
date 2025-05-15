@@ -2,7 +2,12 @@ import _ from "underscore";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
-import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isDate,
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
@@ -17,9 +22,8 @@ interface CompatibilityParameters {
     columns: DatasetColumn[];
     settings: VisualizationSettings;
   };
-  targetDataset?: {
-    display?: VisualizationDisplay;
-    fields?: Field[];
+  targetDataset: {
+    fields: Field[];
   };
   datasets: Record<string, Dataset>;
 }
@@ -28,29 +32,26 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   const { currentDataset, targetDataset, datasets } = parameters;
 
   const { display: currentDisplay, columns } = currentDataset;
+  const { fields } = targetDataset;
+
   const ownDimensions = columns.filter(
     (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
   );
-
-  const fields = targetDataset?.fields ?? [];
 
   if (fields.length === 0) {
     return false;
   }
 
-  if (fields.length === 1 && currentDisplay === "funnel") {
-    return true; // ?
+  if (
+    currentDisplay === "funnel" &&
+    fields.length === 1 &&
+    isNumeric(fields[0])
+  ) {
+    return true;
   }
 
   if (currentDisplay === "pie") {
     return false;
-  }
-
-  if (currentDisplay === "scalar") {
-    return (
-      targetDataset?.display === "scalar" &&
-      fields?.some((field) => compareIdAndName(ownDimensions, field))
-    );
   }
 
   if (!targetDataset || ownDimensions.length === 0) {
@@ -82,10 +83,4 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     fields,
   );
   return Object.keys(columnSettingMapping).length > 0;
-}
-
-function compareIdAndName(dimensions: DatasetColumn[], field: Field): boolean {
-  return dimensions.some(
-    (column) => column.id === field.id && column.name === field.name,
-  );
 }

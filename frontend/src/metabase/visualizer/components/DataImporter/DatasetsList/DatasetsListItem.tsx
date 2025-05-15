@@ -47,7 +47,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   );
 
   const isCompatible = useMemo(() => {
-    const { display, fields } = metadata;
+    const { fields } = metadata;
 
     return getIsCompatible({
       currentDataset: {
@@ -56,8 +56,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         settings,
       },
       targetDataset: {
-        display,
-        fields,
+        fields: fields ?? [],
       },
       datasets,
     });
