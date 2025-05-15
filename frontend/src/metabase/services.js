@@ -217,10 +217,6 @@ export const SlackApi = {
   updateSettings: PUT("/api/slack/settings"),
 };
 
-export const SamlApi = {
-  updateSettings: PUT("/api/saml/settings"),
-};
-
 export const MetabaseApi = {
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {

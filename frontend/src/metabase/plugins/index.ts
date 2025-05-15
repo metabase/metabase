@@ -205,6 +205,7 @@ export const PLUGIN_AUTH_PROVIDERS = {
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder,
   UserProvisioningSettings: PluginPlaceholder,
+  SettingsSAMLForm: PluginPlaceholder,
   providers: [] as GetAuthProviders[],
 };
 
