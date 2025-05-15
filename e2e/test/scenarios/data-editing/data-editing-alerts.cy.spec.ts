@@ -5,11 +5,12 @@ import { setupAlert } from "./helpers/setup";
 const { H } = cy;
 
 const TABLE_NAME = "colors27745";
-const TABLE_ID = 22;
 const ADMIN_NAME = `${USERS.admin.first_name} ${USERS.admin.last_name}`;
 
 describe("scenarios > data editing > setting alerts", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/notification").as("createNotification");
+
     cy.log("Setting up writable PostgresDB");
     H.restore("postgres-writable");
     H.resetTestTable({
@@ -90,8 +91,8 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.modal().within(() => {
-          // Focus on 1st input, no other way to select it currently.
-          cy.findByPlaceholderText("Required").type("10003");
+          // Focus on second input, omitting "ID" field which is auto-populated.
+          cy.get("input").eq(1).type("black");
 
           cy.findByRole("button", { name: "Create new record" }).click();
         });
@@ -107,6 +108,8 @@ describe("scenarios > data editing > setting alerts", () => {
       });
 
       it("should create an alert for 'row created' events with custom template", () => {
+        const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
+        const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -120,16 +123,25 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.findByTestId("email-template-subject")
             .findByRole("textbox")
             .click({ force: true })
-            .invoke("text", "My custom subject for {{table.name}}")
+            .invoke("text", CUSTOM_SUBJECT)
             .blur();
 
           cy.findByTestId("email-template-body")
             .findByRole("textbox")
             .click({ force: true })
-            .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
+            .invoke("text", CUSTOM_BODY)
             .blur();
 
           cy.findByRole("button", { name: "Done" }).click();
+        });
+
+        cy.wait("@createNotification").then(({ response }) => {
+          expect(response?.statusCode).to.equal(200);
+          const stringifiedTemplate = JSON.stringify(
+            response?.body?.handlers?.[0]?.template,
+          );
+          expect(stringifiedTemplate).to.contain(CUSTOM_SUBJECT);
+          expect(stringifiedTemplate).to.contain(CUSTOM_BODY);
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
@@ -147,8 +159,8 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.modal().within(() => {
-          // Focus on 1st input, no other way to select it currently.
-          cy.findByPlaceholderText("Required").type("10003");
+          // Focus on second input, omitting "ID" field which is auto-populated.
+          cy.get("input").eq(1).type("black");
 
           cy.findByRole("button", { name: "Create new record" }).click();
         });
@@ -159,7 +171,7 @@ describe("scenarios > data editing > setting alerts", () => {
 
         H.checkEmailContent(`My custom subject for ${TABLE_NAME}`, [
           "id",
-          "10003",
+          "black",
         ]);
       });
     });
@@ -384,9 +396,13 @@ describe("scenarios > data editing > setting alerts", () => {
         cy.findByTestId("table-data-view-header").within(() => {
           // TODO: Uncomment when button is working and delete request & wait
           // cy.findByText("Delete").click();
-          cy.request("POST", `/api/ee/data-editing/table/${TABLE_ID}/delete`, {
-            rows: [{ id: 1 }],
-            scope: { "table-id": TABLE_ID },
+          H.getTableId({
+            name: TABLE_NAME,
+          }).then((tableId) => {
+            cy.request("POST", `/api/ee/data-editing/table/${tableId}/delete`, {
+              rows: [{ id: 1 }],
+              scope: { "table-id": tableId },
+            });
           });
         });
 
@@ -445,9 +461,13 @@ describe("scenarios > data editing > setting alerts", () => {
         cy.findByTestId("table-data-view-header").within(() => {
           // TODO: Uncomment when button is working and delete request & wait
           // cy.findByText("Delete").click();
-          cy.request("POST", `/api/ee/data-editing/table/${TABLE_ID}/delete`, {
-            rows: [{ id: 1 }],
-            scope: { "table-id": TABLE_ID },
+          H.getTableId({
+            name: TABLE_NAME,
+          }).then((tableId) => {
+            cy.request("POST", `/api/ee/data-editing/table/${tableId}/delete`, {
+              rows: [{ id: 1 }],
+              scope: { "table-id": tableId },
+            });
           });
         });
 
@@ -585,66 +605,10 @@ describe("scenarios > data editing > setting alerts", () => {
         cy.findByTestId("preview-template-panel").should("be.visible");
         cy.findByTestId("preview-template-panel").within(() => {
           cy.root().contains(`My custom subject for ${TABLE_NAME}`);
+          cy.root().should("not.contain", "a new record was created");
           cy.root().contains(/id.*name/);
         });
       });
-    });
-
-    it("should create an alert for 'row created' events with custom template", () => {
-      cy.findByTestId("table-notifications-trigger").click();
-
-      cy.findByTestId("table-notification-create").within(() => {
-        cy.findByTestId("notification-event-select").click();
-        cy.document()
-          .findByRole("option", {
-            name: /when new records are created/i,
-          })
-          .click();
-
-        cy.findByTestId("email-template-subject")
-          .findByRole("textbox")
-          .click({ force: true })
-          .invoke("text", "My custom subject for {{table.name}}")
-          .blur();
-
-        cy.findByTestId("email-template-body")
-          .findByRole("textbox")
-          .click({ force: true })
-          .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
-          .blur();
-
-        cy.findByRole("button", { name: "Done" }).click();
-      });
-
-      cy.findByTestId("table-notification-create").should("not.exist");
-
-      cy.findByTestId("toast-undo").within(() => {
-        cy.findByText("Alert created.").should("be.visible");
-      });
-
-      H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
-        expect(body[0].subject).to.include("You set up an alert");
-      });
-
-      cy.findByTestId("table-data-view-header").within(() => {
-        cy.findByText("New record").click();
-      });
-
-      H.modal().within(() => {
-        // Focus on 1st input, no other way to select it currently.
-        cy.findByPlaceholderText("Required").type("10003");
-
-        cy.findByRole("button", { name: "Create new record" }).click();
-      });
-
-      cy.wait(1000);
-
-      cy.log("Testing default email template");
-
-      H.checkEmailContent(`My custom subject for ${TABLE_NAME}`, [
-        "id",
-        "10003",
-      ]);
     });
   });
 });
