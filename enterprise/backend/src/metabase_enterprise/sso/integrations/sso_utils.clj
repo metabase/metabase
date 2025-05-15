@@ -64,7 +64,7 @@
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       ;; skip sending user invited emails for sso users
-      (binding [notification/*skip-sending-notification?* true]
+      (notification/with-skip-sending-notification true
         (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
       (when (sso/send-new-sso-user-admin-email?)

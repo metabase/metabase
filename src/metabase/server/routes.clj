@@ -5,11 +5,11 @@
    [compojure.core :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
    [compojure.route :as route]
    [metabase.api-routes.core :as api]
-   [metabase.api.dataset :as api.dataset]
    [metabase.appearance.core :as appearance]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
    [metabase.system.core :as system]
@@ -27,7 +27,7 @@
 ;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} public-routes
-  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format api.dataset/export-format-regex]
+  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format qp.schema/export-formats-regex]
     [uuid export-format]
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
@@ -35,7 +35,7 @@
 ;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
-  (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
+  (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
   (GET "*" [] index/embed))
