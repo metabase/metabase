@@ -14,16 +14,17 @@
   (testing "I can create a tenant with a unique name"
     (mt/with-model-cleanup [:model/Tenant]
       (mt/user-http-request :crowberto :post 200 "ee/tenants/"
-                            {:name "My Tenant"})
+                            {:name "My Tenant"
+                             :slug "my-tenant"})
       (is (t2/exists? :model/Tenant :name "My Tenant"))))
   (testing "Duplicate names results in an error"
     (mt/with-model-cleanup [:model/Tenant]
       (mt/user-http-request :crowberto :post 200 "ee/tenants/"
-                            {:name "My Tenant"})
+                            {:name "My Tenant" :slug "my-tenant"})
       (is (t2/exists? :model/Tenant :name "My Tenant"))
-      (is (= "This tenant name is already taken."
+      (is (= "This tenant name or slug is already taken."
              (mt/user-http-request :crowberto :post 400 "ee/tenants/"
-                                   {:name "My Tenant"})))
-      (is (= "This tenant name is already taken."
+                                   {:name "My Tenant" :slug "foo"})))
+      (is (= "This tenant name or slug is already taken."
              (mt/user-http-request :crowberto :post 400 "ee/tenants/"
-                                   {:name "my tenant"}))))))
+                                   {:name "Foo" :slug "my-tenant"}))))))

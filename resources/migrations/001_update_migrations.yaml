@@ -11305,7 +11305,17 @@ databaseChangeLog:
                     unique: true
 
   - changeSet:
-      id: v55.2025-05-12T09:43:32
+      id: v55.2025-05-16T06:21:36
+      author: johnswanson
+      comment: add an index for `core_user.tenant_id`
+      changes:
+        - addUniqueConstraint:
+            tableName: core_user
+            constraintName: idx_unique_core_user_tenant_id
+            columnNames: tenant_id
+
+  - changeSet:
+      id: v55.2025-05-16T07:15:37
       author: johnswanson
       comment: Add foreign key for `core_user.tenant_id`
       preConditions: # not needed
@@ -11317,6 +11327,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_core_user_tenant_id
             onDelete: RESTRICT
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -79,7 +79,7 @@
               (delete-group user 204 true)
 
               (testing "admins could view all groups"
-                (is (= (t2/select-fn-set :name :model/PermissionsGroup)
+                (is (= (t2/select-fn-set :name :model/PermissionsGroup :is_tenant_group false)
                        (set (map :name (get-groups :crowberto 200)))))))))))))
 
 (defn- get-membership [user status]
