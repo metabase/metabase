@@ -193,7 +193,7 @@ export type ColumnNameAndBinning = {
 };
 
 export type PivotAggregation = {
-  aggregation: string;
+  name: string;
   column?: ColumnNameAndBinning;
 };
 
