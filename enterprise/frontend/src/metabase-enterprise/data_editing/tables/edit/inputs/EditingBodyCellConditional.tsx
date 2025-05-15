@@ -15,10 +15,10 @@ export const EditingBodyCellConditional = (
 
   const disabled = !canEditField(field);
   const placeholder = field?.database_default
-    ? `<${field.database_default}>`
+    ? t`Auto populated`
     : field?.database_is_nullable
       ? t`Optional`
-      : t`Required`;
+      : props.inputProps?.placeholder;
 
   if (
     column.semantic_type === "type/State" ||
