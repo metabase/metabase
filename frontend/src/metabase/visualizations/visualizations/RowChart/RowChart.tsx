@@ -71,6 +71,8 @@ import {
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
 import { getChartWarnings } from "./utils/warnings";
+import { translateDisplayNames } from "metabase-enterprise/content_translation/utils";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
   className?: string;
@@ -114,7 +116,17 @@ const RowChartVisualization = ({
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
-  const [chartSeries] = rawMultipleSeries;
+
+  const tc = useTranslateContent();
+
+  // NOTE: We sometimes use 'raw' to mean 'untranslated', but the use of 'raw' in
+  // this variable name does not have to do with translation.
+  const translatedRawMultipleSeries = translateDisplayNames(
+    rawMultipleSeries,
+    tc,
+  );
+
+  const [chartSeries] = translatedRawMultipleSeries;
 
   const data = useMemo(
     () =>
