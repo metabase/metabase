@@ -60,7 +60,7 @@ describe("scenarios > data editing > setting alerts", () => {
     });
   });
 
-  describe("Create an alert for each event type", () => {
+  describe("Trigger an alert for each event type", () => {
     describe("create event", () => {
       it("should create an alert for 'row created' events with default template", () => {
         cy.findByTestId("table-notifications-trigger").click();
@@ -165,7 +165,7 @@ describe("scenarios > data editing > setting alerts", () => {
     });
 
     describe("update event", () => {
-      it("should create an alert for 'row updated' events with default template", () => {
+      it("should trigger an alert for 'row updated' events with default template", () => {
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -203,7 +203,7 @@ describe("scenarios > data editing > setting alerts", () => {
         );
       });
 
-      it("should create an alert for 'row updated' events with custom template", () => {
+      it("should trigger an alert for 'row updated' events with custom template", () => {
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -254,10 +254,105 @@ describe("scenarios > data editing > setting alerts", () => {
           "redblue",
         ]);
       });
+
+      it("should trigger an alert for 'row updated' events when condition is met", () => {
+        cy.findByTestId("table-notifications-trigger").click();
+
+        cy.findByTestId("table-notification-create").within(() => {
+          cy.findByTestId("notification-event-select").click();
+          cy.document()
+            .findByRole("option", {
+              name: /when any cell changes it's value/i,
+            })
+            .click();
+
+          cy.findByText("Add conditions for alerts").click();
+          cy.findByPlaceholderText("Select column").click();
+          cy.document()
+            .findByRole("option", {
+              name: /name/i,
+            })
+            .click();
+          cy.findByPlaceholderText("Select value").click().type("white").blur();
+
+          cy.findByRole("button", { name: "Done" }).click();
+        });
+
+        cy.findByTestId("table-notification-create").should("not.exist");
+
+        cy.findByTestId("toast-undo").within(() => {
+          cy.findByText("Alert created.").should("be.visible");
+        });
+
+        H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
+          expect(body[0].subject).to.include("You set up an alert");
+        });
+
+        cy.findByTestId("table-body").within(() => {
+          cy.findByText("red").click();
+          cy.focused().type("{selectall}{backspace}white").blur();
+        });
+
+        cy.wait(1000);
+
+        cy.log("Testing custom email template");
+
+        H.checkEmailContent(
+          `A record was updated in "${TABLE_NAME}" by ${ADMIN_NAME}`,
+          [`A record was updated in Table ${TABLE_NAME}`, "white"],
+        );
+      });
+
+      it("should not trigger an alert for 'row updated' events when condition is not met", () => {
+        cy.findByTestId("table-notifications-trigger").click();
+
+        cy.findByTestId("table-notification-create").within(() => {
+          cy.findByTestId("notification-event-select").click();
+          cy.document()
+            .findByRole("option", {
+              name: /when any cell changes it's value/i,
+            })
+            .click();
+
+          cy.findByText("Add conditions for alerts").click();
+          cy.findByPlaceholderText("Select column").click();
+          cy.document()
+            .findByRole("option", {
+              name: /name/i,
+            })
+            .click();
+          cy.findByPlaceholderText("Select value").click().type("white").blur();
+
+          cy.findByRole("button", { name: "Done" }).click();
+        });
+
+        cy.findByTestId("table-notification-create").should("not.exist");
+
+        cy.findByTestId("toast-undo").within(() => {
+          cy.findByText("Alert created.").should("be.visible");
+        });
+
+        H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
+          expect(body[0].subject).to.include("You set up an alert");
+        });
+
+        cy.findByTestId("table-body").within(() => {
+          cy.findByText("red").click();
+          cy.focused().type("{selectall}{backspace}black").blur();
+        });
+
+        cy.wait(1000);
+
+        // Alert on updated value was not sent, since it didn't meet the condition.
+        H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
+          expect(body.length).to.equal(1);
+          expect(body[0].subject).to.include("You set up an alert");
+        });
+      });
     });
 
     describe("delete event", () => {
-      it("should create an alert for 'row deleted' events with default template", () => {
+      it("should trigger an alert for 'row deleted' events with default template", () => {
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -305,7 +400,7 @@ describe("scenarios > data editing > setting alerts", () => {
         );
       });
 
-      it.only("should create an alert for 'row deleted' events with custom template", () => {
+      it("should trigger an alert for 'row deleted' events with custom template", () => {
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -364,6 +459,68 @@ describe("scenarios > data editing > setting alerts", () => {
           "id",
           "name",
         ]);
+      });
+    });
+  });
+
+  describe("Update an existing alert", () => {
+    it("should update an existing alert", () => {
+      H.getTableId({
+        name: TABLE_NAME,
+      }).then((tableId) => {
+        setupAlert(tableId, "event/row.created");
+        cy.findByTestId("table-notifications-trigger").click();
+        cy.findByTestId("alert-list-modal")
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("Notify when new records are created")
+              .should("be.visible")
+              .click();
+          });
+
+        cy.findByTestId("table-notification-create").within(() => {
+          cy.findByText("Edit alert").should("be.visible");
+
+          cy.findByTestId("notification-event-select").click();
+          cy.document()
+            .findByRole("option", {
+              name: /when any cell changes it's value/i,
+            })
+            .click();
+
+          cy.findByRole("button", { name: "Save changes" }).click();
+        });
+
+        cy.findByTestId("toast-undo").within(() => {
+          cy.findByText("Alert updated.").should("be.visible");
+        });
+      });
+    });
+  });
+
+  describe("Delete an existing alert", () => {
+    it("should delete an existing alert", () => {
+      H.getTableId({
+        name: TABLE_NAME,
+      }).then((tableId) => {
+        setupAlert(tableId, "event/row.created");
+        cy.findByTestId("table-notifications-trigger").click();
+        cy.findByTestId("alert-list-modal")
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("Notify when new records are created").realHover();
+            cy.root().findByLabelText("Delete this alert").click();
+            cy.document()
+              .findByTestId("delete-confirm")
+              .findByText("Delete it")
+              .click();
+          });
+
+        cy.findByTestId("toast-undo").within(() => {
+          cy.findByText("The alert was successfully deleted.").should(
+            "be.visible",
+          );
+        });
       });
     });
   });

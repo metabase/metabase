@@ -299,7 +299,6 @@ export const NotificationChannelsPicker = ({
   isPreviewOpen,
   defaultTemplates,
 }: NotificationChannelsPickerProps) => {
-  console.log(JSON.stringify(templateContext));
   const { data: httpChannelsConfig = [] } = useListChannelsQuery();
   const { data: users } = useListUserRecipientsQuery();
   const user = useSelector(getUser);
@@ -556,7 +555,6 @@ export const NotificationChannelsPicker = ({
     const template = stateAfterUpdateAction.templates[channel];
     const subjectValue = template?.subject || "";
     const bodyValue = template?.body || "";
-    console.log({ subjectValue, bodyValue });
 
     const hasSubject = !!subjectValue.trim();
     const hasBody = !!bodyValue.trim();
@@ -695,7 +693,6 @@ export const NotificationChannelsPicker = ({
                       handleTemplateChange("email", "subject", value, true);
                     }}
                     onBlur={(value) => {
-                      console.log("blur", value);
                       handleTemplateChange("email", "subject", value, true);
                     }}
                     onFocus={(initialValue) => {

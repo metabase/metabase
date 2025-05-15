@@ -313,7 +313,7 @@ const ConditionRowComponent = ({
               initialValue={condition.value}
               onSubmit={(value) => handleValueChange(value as string)}
               onCancel={() => {}}
-              inputProps={{ disabled: false, placeholder: "" }}
+              inputProps={{ disabled: false, placeholder: t`Select value` }}
             />
           </>
         )}
