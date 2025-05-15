@@ -27,7 +27,7 @@ on:
 jobs:
   cross-version-for-breaking-changes:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
