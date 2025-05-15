@@ -13,14 +13,13 @@ import type {
 import {
   trackColumnCombineViaShortcut,
   trackColumnExtractViaShortcut,
-} from "../../analytics";
-
-import { CombineColumns, hasCombinations } from "./CombineColumns";
-import { Editor } from "./Editor";
-import type { Shortcut } from "./Editor/Shortcuts";
-import { ExtractColumn, hasExtractions } from "./ExtractColumn";
-import { Layout, LayoutFooter, LayoutHeader } from "./Layout";
-import { NameInput } from "./NameInput";
+} from "../../../analytics";
+import { CombineColumns, hasCombinations } from "../CombineColumns";
+import { Editor } from "../Editor";
+import type { Shortcut } from "../Editor/Shortcuts";
+import { ExtractColumn, hasExtractions } from "../ExtractColumn";
+import { Layout, LayoutFooter, LayoutHeader } from "../Layout";
+import { NameInput } from "../NameInput";
 
 const WIDGET_WIDTH = 472;
 
