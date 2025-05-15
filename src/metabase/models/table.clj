@@ -1,7 +1,7 @@
 (ns metabase.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit]
+   [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
