@@ -308,7 +308,6 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
-        mode,
 
         navigateToNewCardFromDashboard,
         isLoading: isLoading && !error,
