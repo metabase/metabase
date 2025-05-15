@@ -330,17 +330,17 @@
       (with-actions-test-data-and-actions-permissively-enabled!
         (is (= 75
                (categories-row-count)))
-        (is (= {:success true}
-               (first
-                (:outputs
-                 (actions/perform-action! :table.row/delete
-                                          test-scope
-                                          [{:database (mt/id)
-                                            :table-id (mt/id :categories)
-                                            :arg      {(format-field-name :id) 75}}
-                                           {:database (mt/id)
-                                            :table-id (mt/id :categories)
-                                            :arg      {(format-field-name :id) 74}}])))))
+        (is (= [{:id 75}
+                {:id 74}]
+               (:outputs
+                (actions/perform-action! :table.row/delete
+                                         test-scope
+                                         [{:database (mt/id)
+                                           :table-id (mt/id :categories)
+                                           :arg      {(format-field-name :id) 75}}
+                                          {:database (mt/id)
+                                           :table-id (mt/id :categories)
+                                           :arg      {(format-field-name :id) 74}}]))))
         (is (= 73
                (categories-row-count)))))))
 
@@ -418,18 +418,18 @@
                 [2 "American"]
                 [3 "Artisan"]]
                (first-three-categories)))
-        (is (= {:rows-updated 2}
+        (is (= [{:id 1 :name "Seed Bowl"}
+                {:id 2 :name "Millet Treat"}]
                (let [id   (format-field-name :id)
                      name (format-field-name :name)]
-                 (first
-                  (:outputs
-                   (actions/perform-action! :table.row/update
-                                            test-scope
-                                            (for [row [{id 1, name "Seed Bowl"}
-                                                       {id 2, name "Millet Treat"}]]
-                                              {:database (mt/id)
-                                               :table-id (mt/id :categories)
-                                               :row      row})))))))
+                 (:outputs
+                  (actions/perform-action! :table.row/update
+                                           test-scope
+                                           (for [row [{id 1, name "Seed Bowl"}
+                                                      {id 2, name "Millet Treat"}]]
+                                             {:database (mt/id)
+                                              :table-id (mt/id :categories)
+                                              :row      row}))))))
 
         (testing "rows should be updated in the DB"
           (is (= [[1 "Seed Bowl"]
@@ -539,21 +539,22 @@
                                              :tunnel-user username
                                              :tunnel-pass ssh-password)}))
               (testing "Can perform implicit actions on ssh-enabled database"
-                (let [response (try (first
-                                     (:outputs
-                                      (actions/perform-action!
-                                       :table.row/update
-                                       test-scope
-                                       (let [id   (format-field-name :id)
-                                             name (format-field-name :name)]
-                                         (for [row [{id 1, name "Seed Bowl"}
-                                                    {id 2, name "Millet Treat"}]]
-                                           {:database (mt/id)
-                                            :table-id (mt/id :categories)
-                                            :row      row})))))
+                (let [response (try (:outputs
+                                     (actions/perform-action!
+                                      :table.row/update
+                                      test-scope
+                                      (let [id   (format-field-name :id)
+                                            name (format-field-name :name)]
+                                        (for [row [{id 1, name "Seed Bowl"}
+                                                   {id 2, name "Millet Treat"}]]
+                                          {:database (mt/id)
+                                           :table-id (mt/id :categories)
+                                           :row      row}))))
                                     (catch Exception e e))]
                   (if correct-password?
-                    (is (= {:rows-updated 2} response))
+                    (is (= [{:id 1, :name "Seed Bowl"}
+                            {:id 2, :name "Millet Treat"}]
+                           response))
                     (do
                       (is (instance? Exception response) "Did not get an error with wrong password")
                       (is (some (partial instance? org.apache.sshd.common.SshException)

@@ -601,7 +601,11 @@
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [[errors results]
+  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+                            (let [database       (actions/cached-database-via-table-id table-id)
+                                  field-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                              [table-id (map keyword (keys field-name->id))]))
+        [errors results]
         (batch-execution-by-table-id!
          {:inputs        inputs
           :row-action    :model.row/delete
@@ -623,7 +627,8 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs [{:success true}]}))
+     :outputs (for [diff results]
+                (select-keys (:before diff) (table-id->pk-keys (:table-id diff))))}))
 
 ;;;; `bulk/update`
 
@@ -678,4 +683,4 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs [{:rows-updated (count results)}]}))
+     :outputs (mapv :after results)}))

@@ -92,6 +92,9 @@
 
           (testing "DELETE should remove the corresponding rows"
             (is (= {:success true}
+                   ;; TODO change what we return to be more useful, for example it can contain children in the same
+                   ;;      table.
+                   #_[{:id 1} {:id 2}]
                    (mt/user-http-request :crowberto :post 200 (str url "/delete")
                                          {:rows [{:id 1}
                                                  {:id 2}]})))
