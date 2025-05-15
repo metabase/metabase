@@ -1,12 +1,9 @@
-import { useMemo, useState } from "react";
-import { t } from "ttag";
+import { useMemo } from "react";
 
 import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
-export type PreviewType = ReturnType<
-  typeof getTypeSelectorData
->[number]["value"];
+import { type PreviewType, getTypeSelectorData } from "./utils";
 
 interface Props {
   fieldId?: FieldId;
@@ -26,18 +23,6 @@ export const PreviewSection = ({ previewType, onPreviewTypeChange }: Props) => {
     </Card>
   );
 };
-
-function getTypeSelectorData() {
-  return [
-    { label: t`Table`, value: "table" as const },
-    { label: t`Detail`, value: "detail" as const },
-    { label: t`Filtering`, value: "filtering" as const },
-  ];
-}
-
-export function usePreviewType() {
-  return useState<PreviewType>("table");
-}
 
 function PreviewTypeSelector({
   value,
