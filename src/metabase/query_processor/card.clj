@@ -12,6 +12,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.cache-config :as cache-config]
+   [metabase.models.card :as card]
    [metabase.models.query :as query]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
