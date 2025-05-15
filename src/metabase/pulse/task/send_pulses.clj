@@ -158,7 +158,6 @@
   Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (task/delete-all-triggers-of-job! send-pulse-job-key)
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
                                               {:select    [:pc.*]
                                                :from      [[:pulse_channel :pc]]
