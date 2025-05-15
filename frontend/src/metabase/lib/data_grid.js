@@ -20,25 +20,36 @@ export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  // if (!settings[COLUMN_SPLIT_SETTING]) {
-  //   return null;
-  // }
+  if (
+    !settings[PREAGG_COLUMN_SPLIT_SETTING] ||
+    !settings[UNAGG_COLUMN_SPLIT_SETTING]
+  ) {
+    return null;
+  }
 
+  // TODO: add this back when it's a pre-aggregated pivot
   // const columnSplit = migratePivotColumnSplitSetting(
   //   settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
   //   data.pivot_cols,
   // );
 
-  const columnSplit = {
-    rows: settings["pivot.rows"],
-    cols: settings["pivot.cols"],
-    values: ["count"],
-  };
+  const columnSplit = _.mapObject(
+    settings[UNAGG_COLUMN_SPLIT_SETTING],
+    (partition) =>
+      partition.map((col) => {
+        if (typeof col === "string") {
+          return col;
+        } else {
+          return col.name;
+        }
+      }),
+  );
 
   const columns = Pivot.columns_without_pivot_group(data.pivot_cols);
 
+  // TODO: standardize on cols vs columns
   const {
-    cols: columnIndexes,
+    columns: columnIndexes,
     rows: rowIndexes,
     values: valueIndexes,
   } = _.mapObject(columnSplit, (columnNames) =>

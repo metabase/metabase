@@ -283,9 +283,7 @@ export const ChartSettingFieldsPartition = ({
 
             // Find the operator being used
             const operator = operators.find((op) => {
-              return (
-                Lib.displayInfo(query, -1, op).shortName === agg.aggregation
-              );
+              return Lib.displayInfo(query, -1, op).shortName === agg.name;
             });
 
             if (operator) {
@@ -346,8 +344,7 @@ export const ChartSettingFieldsPartition = ({
       };
 
       return {
-        aggregation: aggDisplay.name,
-        //displayName: aggDisplay.longDisplayName,
+        name: aggDisplay.name,
         column: columnDetails,
       };
     });
@@ -373,7 +370,9 @@ export const ChartSettingFieldsPartition = ({
     : t`Drag fields here`;
 
   const query = question.query();
-  const aggregationQuery = useMemo(() => {
+
+  // If we're in unaggregated pivot mode, build up the aggregated version of the query from the viz settings
+  const aggregatedQuery = useMemo(() => {
     if (!canEditColumns) {
       return query;
     }
@@ -386,30 +385,25 @@ export const ChartSettingFieldsPartition = ({
     const breakoutColumns = Lib.breakoutableColumns(query, -1);
     const operators = Lib.availableAggregationOperators(query, 0);
 
-    // Create aggregation clauses and add them to the query using reduce
     return aggregations.reduce((accQuery, agg) => {
-      // Find the column being aggregated (if any)
       const columnObj = agg.column
         ? breakoutColumns.find(
             (col) => Lib.displayInfo(query, -1, col).name === agg.column?.name,
           )
         : undefined;
 
-      // Find the operator being used
       const operator = operators.find(
-        (op) => Lib.displayInfo(query, -1, op).shortName === agg.aggregation,
+        (op) => Lib.displayInfo(query, -1, op).shortName === agg.name,
       );
 
-      // If we found the operator, add the aggregation to the query
       if (operator) {
         const clause = Lib.aggregationClause(operator, columnObj);
         return Lib.aggregate(accQuery, -1, clause);
       }
 
-      // If we couldn't create this aggregation, just return the query unchanged
       return accQuery;
     }, query);
-  }, [query, canEditColumns, value?.values]);
+  }, [query, canEditColumns, value]);
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -419,7 +413,7 @@ export const ChartSettingFieldsPartition = ({
         const AggregationOrBreakoutPopover =
           partitionType === "metric" ? (
             <AddAggregationPopover
-              query={aggregationQuery}
+              query={aggregatedQuery}
               onAddAggregation={onAddAggregation}
             />
           ) : (
