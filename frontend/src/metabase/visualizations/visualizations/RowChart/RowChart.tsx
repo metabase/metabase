@@ -4,6 +4,10 @@ import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
+import {
+  maybeTranslateDisplayNames,
+  useTranslateContent,
+} from "metabase/i18n/hooks";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import {
@@ -71,8 +75,6 @@ import {
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
 import { getChartWarnings } from "./utils/warnings";
-import { translateDisplayNames } from "metabase-enterprise/content_translation/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
 interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
   className?: string;
@@ -119,14 +121,16 @@ const RowChartVisualization = ({
 
   const tc = useTranslateContent();
 
-  // NOTE: We sometimes use 'raw' to mean 'untranslated', but the use of 'raw' in
-  // this variable name does not have to do with translation.
-  const translatedRawMultipleSeries = translateDisplayNames(
+  /** The rawMultipleSeries, but with displayName fields translated in EE.
+   *
+   * NOTE: We sometimes use 'raw' to mean 'untranslated', but the use of 'raw'
+   * in this variable name does not have to do with translation. */
+  const maybeTranslatedRawMultipleSeries = maybeTranslateDisplayNames(
     rawMultipleSeries,
     tc,
   );
 
-  const [chartSeries] = translatedRawMultipleSeries;
+  const [chartSeries] = maybeTranslatedRawMultipleSeries;
 
   const data = useMemo(
     () =>
