@@ -6,8 +6,10 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
+  getDatasets,
   getVisualizationType,
-  getVisualizerPrimaryColumn,
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import type { VisualizerCardDataSource } from "metabase-types/api";
 
@@ -30,7 +32,9 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { setSwapAffordanceVisible } = useVisualizerUi();
 
   const currentDisplay = useSelector(getVisualizationType);
-  const primaryColumn = useSelector(getVisualizerPrimaryColumn);
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+  const datasets = useSelector(getDatasets);
 
   const { data } = useGetCardQuery({ id: item.cardId });
 
@@ -43,19 +47,21 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   );
 
   const isCompatible = useMemo(() => {
-    const { display, fields } = metadata;
+    const { fields } = metadata;
 
     return getIsCompatible({
       currentDataset: {
-        display: currentDisplay,
-        primaryColumn,
+        display: currentDisplay ?? null,
+        columns,
+        settings,
       },
       targetDataset: {
-        display,
-        fields,
+        fields: fields ?? [],
+        dataSource: item,
       },
+      datasets,
     });
-  }, [metadata, primaryColumn, currentDisplay]);
+  }, [metadata, currentDisplay, columns, settings, item, datasets]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

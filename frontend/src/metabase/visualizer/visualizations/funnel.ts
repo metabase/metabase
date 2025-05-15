@@ -21,6 +21,7 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
+  VisualizerDataSourceId,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -115,6 +116,47 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
   );
 }
 
+export function findColumnSlotForFunnel(
+  {
+    display,
+    columns,
+    settings,
+  }: Pick<
+    VisualizerVizDefinitionWithColumns,
+    "display" | "columns" | "settings"
+  >,
+  datasets: Record<VisualizerDataSourceId, Dataset>,
+  column: DatasetColumn,
+  dataSource: VisualizerDataSource,
+) {
+  const isEmpty = columns.length === 0;
+  const dataset = datasets[dataSource.id];
+
+  if (
+    (isEmpty || isScalarFunnel({ display, settings })) &&
+    dataset &&
+    canCombineDatasetWithScalarFunnel(dataset)
+  ) {
+    // HACK: not really sure about this
+    return "scalar_funnel";
+  } else {
+    const ownMetric = settings["funnel.metric"];
+    if (!ownMetric && isMetric(column)) {
+      return "funnel.metric";
+    }
+
+    const ownDimension = settings["funnel.dimension"];
+    if (!ownDimension && isDimension(column) && !isMetric(column)) {
+      return "funnel.dimension";
+    }
+  }
+}
+
+function canCombineDatasetWithScalarFunnel(dataset: Dataset) {
+  const { cols = [], rows = [] } = dataset.data ?? {};
+  return cols.length === 1 && isNumeric(cols[0]) && rows.length === 1;
+}
+
 export function addScalarToFunnel(
   state: VisualizerVizDefinitionWithColumns,
   dataSource: VisualizerDataSource,
@@ -154,31 +196,29 @@ export function addColumnToFunnel(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  datasets: Record<string, Dataset>,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const isEmpty = state.columns.length === 0;
+  const slot = findColumnSlotForFunnel(state, datasets, column, dataSource);
 
-  if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(dataset)) {
+  if (!slot) {
+    return;
+  }
+
+  if (slot === "scalar_funnel") {
     addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
     return;
   }
 
-  if (!isScalarFunnel(state)) {
-    state.columns.push(column);
-    state.columnValuesMapping[column.name] = [columnRef];
-
-    const metric = state.settings["funnel.metric"];
-    if (!metric && isMetric(column)) {
-      state.settings["funnel.metric"] = column.name;
-    }
-
-    const dimension = state.settings["funnel.dimension"];
-    if (!dimension && isDimension(column) && !isMetric(column)) {
-      state.settings["funnel.dimension"] = column.name;
-    }
+  state.columns.push(column);
+  state.columnValuesMapping[column.name] = [columnRef];
+  if (slot === "funnel.metric") {
+    state.settings["funnel.metric"] = column.name;
+  } else if (slot === "funnel.dimension") {
+    state.settings["funnel.dimension"] = column.name;
   }
 }
 

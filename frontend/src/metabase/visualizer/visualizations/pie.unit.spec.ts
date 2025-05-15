@@ -5,7 +5,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
-import { createDataSource } from "../utils";
+import { createDataSource, createVisualizerColumnReference } from "../utils";
 
 import {
   addColumnToPieChart,
@@ -14,17 +14,41 @@ import {
 } from "./pie";
 
 describe("pie", () => {
+  const dataSource = createDataSource("card", "1:1", "Q1");
+
   const metricColumn = createMockNumericColumn({ id: 1, name: "count" });
+  const metricColumnRef = createVisualizerColumnReference(
+    dataSource,
+    metricColumn,
+    [],
+  );
+
   const metricColumn2 = createMockNumericColumn({ id: 2, name: "sum" });
+  const metricColumn2Ref = createVisualizerColumnReference(
+    dataSource,
+    metricColumn2,
+    [],
+  );
 
   const dimensionColumn = createMockCategoryColumn({
     id: 3,
     name: "category",
   });
+  const dimensionColumnRef = createVisualizerColumnReference(
+    dataSource,
+    dimensionColumn,
+    [],
+  );
+
   const dimensionColumn2 = createMockCategoryColumn({
     id: 4,
     name: "category2",
   });
+  const dimensionColumn2Ref = createVisualizerColumnReference(
+    dataSource,
+    dimensionColumn2,
+    [],
+  );
 
   describe("addColumnToPieChart", () => {
     it("should add a metric column", () => {
@@ -35,7 +59,12 @@ describe("pie", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToPieChart(state, { ...metricColumn, name: "COLUMN_1" });
+      addColumnToPieChart(
+        state,
+        {},
+        { ...metricColumn, name: "COLUMN_1" },
+        metricColumnRef,
+      );
 
       // TODO Enable when VIZ-652 is closed
       // expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -63,7 +92,12 @@ describe("pie", () => {
         },
       };
 
-      addColumnToPieChart(state, { ...metricColumn2, name: "COLUMN_2" });
+      addColumnToPieChart(
+        state,
+        {},
+        { ...metricColumn2, name: "COLUMN_2" },
+        metricColumn2Ref,
+      );
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(Object.keys(state.columnValuesMapping)).toEqual(["COLUMN_1"]);
@@ -78,7 +112,12 @@ describe("pie", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToPieChart(state, { ...dimensionColumn, name: "COLUMN_1" });
+      addColumnToPieChart(
+        state,
+        {},
+        { ...dimensionColumn, name: "COLUMN_1" },
+        dimensionColumnRef,
+      );
 
       // TODO Enable when VIZ-652 is closed
       // expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -106,7 +145,12 @@ describe("pie", () => {
         },
       };
 
-      addColumnToPieChart(state, { ...dimensionColumn2, name: "COLUMN_2" });
+      addColumnToPieChart(
+        state,
+        {},
+        { ...dimensionColumn2, name: "COLUMN_2" },
+        dimensionColumn2Ref,
+      );
 
       // TODO Enable when VIZ-652 is closed
       // expect(state.columns.map((c) => c.name)).toEqual([
@@ -235,6 +279,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -283,6 +328,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -310,6 +356,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2, metricColumn3] },
         }),
@@ -335,6 +382,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn] },
         }),
@@ -369,6 +417,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn2, dimensionColumn3] },
         }),
@@ -394,6 +443,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn2] },
         }),

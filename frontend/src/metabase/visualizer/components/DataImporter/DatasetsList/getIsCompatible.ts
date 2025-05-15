@@ -1,91 +1,90 @@
-import * as Lib from "metabase-lib";
-import { isDate, isNumber, isString } from "metabase-lib/v1/types/utils/isa";
+import _ from "underscore";
+
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
+import {
+  isDate,
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
+  Dataset,
   DatasetColumn,
   Field,
   VisualizationDisplay,
+  VisualizationSettings,
+  VisualizerDataSource,
 } from "metabase-types/api";
-
-function compareIdAndName(
-  column: DatasetColumn | undefined,
-  field: Field,
-): boolean {
-  if (!column) {
-    return false;
-  }
-
-  return column.name === field.name && column.id === field.id;
-}
-
-function compareType(column: DatasetColumn | undefined, field: Field): boolean {
-  if (!column) {
-    return false;
-  }
-
-  return Lib.isAssignableType(
-    Lib.legacyColumnTypeInfo(column),
-    Lib.legacyColumnTypeInfo(field as any), // TODO: Fix this type
-  );
-}
-
-function comparedId(column: DatasetColumn | undefined, field: Field): boolean {
-  if (!column) {
-    return false;
-  }
-
-  return column.id === field.id;
-}
 
 interface CompatibilityParameters {
   currentDataset: {
-    display?: VisualizationDisplay;
-    primaryColumn?: DatasetColumn;
+    display: VisualizationDisplay | null;
+    columns: DatasetColumn[];
+    settings: VisualizationSettings;
   };
-  targetDataset?: {
-    display?: VisualizationDisplay;
-    fields?: Field[];
+  targetDataset: {
+    fields: Field[];
+    dataSource: VisualizerDataSource;
   };
+  datasets: Record<string, Dataset>;
 }
 
 export function getIsCompatible(parameters: CompatibilityParameters) {
-  const { currentDataset, targetDataset } = parameters;
+  const { currentDataset, targetDataset, datasets } = parameters;
 
-  const { display: currentDisplay, primaryColumn } = currentDataset;
-  const fields = targetDataset?.fields;
+  const { display: currentDisplay, columns } = currentDataset;
+  const { fields, dataSource } = targetDataset;
 
-  if (!fields) {
+  const ownDimensions = columns.filter(
+    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
+  );
+
+  if (fields.length === 0) {
     return false;
   }
 
-  if (fields.length === 1) {
-    return currentDisplay === "funnel";
+  // TODO Move to funnel compat check
+  if (
+    currentDisplay === "funnel" &&
+    fields.length === 1 &&
+    isNumeric(fields[0])
+  ) {
+    return true;
   }
 
   if (currentDisplay === "pie") {
     return false;
   }
 
-  const idAndNameMatcher = (f: Field) => compareIdAndName(primaryColumn, f);
-  const idMatcher = (f: Field) => comparedId(primaryColumn, f);
-  const typeMatcher = (f: Field) => compareType(primaryColumn, f);
-
-  if (currentDisplay === "scalar") {
-    return (
-      targetDataset?.display === "scalar" && !!fields?.find(idAndNameMatcher)
-    );
-  }
-
-  if (!primaryColumn || !targetDataset) {
+  if (ownDimensions.length === 0) {
     return false;
   }
 
-  if (isNumber(primaryColumn) || isString(primaryColumn)) {
-    return fields.some(idMatcher) || fields.some(typeMatcher);
+  const [timeDimensions, otherDimensions] = _.partition(ownDimensions, (col) =>
+    isDate(col),
+  );
+
+  if (timeDimensions.length > 0) {
+    const isCompatible = fields.some((field) => isDate(field));
+    if (!isCompatible) {
+      return false;
+    }
+  }
+  if (otherDimensions.length > 0) {
+    const isCompatible = otherDimensions.every((dimension) =>
+      fields.some((field) => field.id === dimension.id),
+    );
+    if (!isCompatible) {
+      return false;
+    }
   }
 
-  if (isDate(primaryColumn)) {
-    return fields.some(typeMatcher);
-  }
-
-  return false;
+  const columnSettingMapping = groupColumnsBySuitableVizSettings(
+    currentDataset,
+    datasets,
+    fields,
+    dataSource,
+  );
+  return Object.keys(columnSettingMapping).length > 0;
 }

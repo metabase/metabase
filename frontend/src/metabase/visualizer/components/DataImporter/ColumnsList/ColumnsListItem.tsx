@@ -1,4 +1,9 @@
-import { type MouseEvent, forwardRef } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  forwardRef,
+  useMemo,
+} from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -17,19 +22,36 @@ import S from "./ColumnsListItem.module.css";
 
 export interface ColumnsListItemProps extends FlexProps {
   column: DatasetColumn;
+  isDisabled?: boolean;
   onRemove?: () => void;
   highlightedForDrag?: boolean;
 }
 
 export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
   function ColumnsListItem(
-    { column, onRemove, highlightedForDrag, ...props },
+    { column, isDisabled = false, onRemove, highlightedForDrag, ...props },
     ref,
   ) {
     const handleRemoveClick = (event: MouseEvent) => {
       event.stopPropagation();
       onRemove?.();
     };
+
+    const style = useMemo(() => {
+      const style: CSSProperties = {};
+      if (isDisabled) {
+        style.opacity = 0.5;
+        style.pointerEvents = "none";
+        return style;
+      } else if (highlightedForDrag) {
+        style.border = "2px solid var(--mb-color-brand)";
+        style.boxShadow = "0px 1px 4px 1px var(--mb-color-shadow)";
+        style.cursor = "grab";
+        style.backgroundColor = "var(--mb-color-bg-light)";
+        style.borderRadius = "var(--default-border-radius)";
+      }
+      return style;
+    }, [isDisabled, highlightedForDrag]);
 
     return (
       <Flex
@@ -41,17 +63,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
         align="center"
         justify="space-between"
         ref={ref}
-        style={
-          highlightedForDrag
-            ? {
-                border: "2px solid var(--mb-color-brand)",
-                boxShadow: "0px 1px 4px 1px var(--mb-color-shadow)",
-                cursor: "grab",
-                backgroundColor: "var(--mb-color-bg-light)",
-                borderRadius: "var(--default-border-radius)",
-              }
-            : {}
-        }
+        style={style}
       >
         <Flex align="center" miw={0}>
           <Icon
