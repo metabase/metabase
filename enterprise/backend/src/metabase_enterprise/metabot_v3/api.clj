@@ -57,6 +57,16 @@
          :conversation_id conversation_id)
     (metabot-v3.context/log :llm.log/be->fe)))
 
+(api.macros/defendpoint :get "/v2/prompt-suggestions"
+  "Get a set of suggested LLM prompts for the current user."
+  [_route-params
+   _query-params
+   _body]
+  (metabot-v3.context/log {:api :get-prompts} :llm.log/fe->be)
+  {:prompts [{:prompt "Sales totals by week"}
+             {:prompt "Top 10 customers by number of orders"}
+             {:prompt "Country distribution of customers"}]})
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
   (api.macros/ns-handler *ns* +auth))

@@ -2,7 +2,11 @@ import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
-import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
+import {
+  METABOT_TAG,
+  useGetSuggestedMetabotPromptsQuery,
+  useMetabotAgentMutation,
+} from "metabase-enterprise/api";
 
 import {
   getIsProcessing,
@@ -16,6 +20,8 @@ import {
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
+
+  const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery();
 
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
@@ -63,5 +69,6 @@ export const useMetabotAgent = () => {
       ],
     ),
     isDoingScience: sendMessageReq.isLoading || isProcessing,
+    suggestedPrompts: suggestedPromptsReq,
   };
 };
