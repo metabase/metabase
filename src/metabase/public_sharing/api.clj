@@ -11,7 +11,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.events :as events]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.card :as card]
@@ -254,10 +253,9 @@
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (lib.metadata.jvm/with-metadata-provider-cache
-    (validation/check-public-sharing-enabled)
-    (u/prog1 (dashboard-with-uuid uuid)
-      (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
+  (validation/check-public-sharing-enabled)
+  (u/prog1 (dashboard-with-uuid uuid)
+    (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
@@ -461,11 +459,10 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (lib.metadata.jvm/with-metadata-provider-cache
-    (let [dashboard (dashboard-with-uuid uuid)]
-      (request/as-admin
-        (binding [qp.perms/*param-values-query* true]
-          (api.dashboard/param-values dashboard param-key constraint-param-key->value))))))
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (request/as-admin
+      (binding [qp.perms/*param-values-query* true]
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."

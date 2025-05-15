@@ -465,8 +465,7 @@
                                                         (contains? param-ids-to-remove parameter_id)) param-mappings))))]
     (-> dashboard
         (update :dashcards #(map remove-parameters %))
-        ;; TODO cleanup
-        (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
+        (update :param_fields #(apply dissoc % field-ids-to-remove)))))
 
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
