@@ -11,7 +11,7 @@ import {
 import {
   getIsProcessing,
   getMessages,
-  getMetabotVisisble,
+  getMetabotVisible,
   resetConversation,
   setVisible,
   submitInput,
@@ -36,8 +36,8 @@ export const useMetabotAgent = () => {
   });
 
   return {
-    visible: useSelector(getMetabotVisisble as any) as ReturnType<
-      typeof getMetabotVisisble
+    visible: useSelector(getMetabotVisible as any) as ReturnType<
+      typeof getMetabotVisible
     >,
     setVisible: useCallback(
       (isVisible: boolean) => dispatch(setVisible(isVisible)),

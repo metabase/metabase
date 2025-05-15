@@ -1,6 +1,8 @@
 /* TODO: rtl support */
 
 .container {
+  --paddxing-x: 1rem;
+
   width: 100%;
   height: 100%;
   display: flex;
@@ -8,17 +10,53 @@
 }
 
 .header {
-  padding: 1rem;
+  padding: 1rem var(--paddxing-x);
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.headerWithScrollContent {
   border-bottom: 1px solid var(--border-color);
 }
 
 .conversationStatusContainer {
-  padding: 1rem;
+  margin: 1rem var(--paddxing-x);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes rotate-background {
+  0% {
+    background-position: 110%;
+  }
+
+  100% {
+    background-position: -10%;
+  }
+}
+
+.thinkingText {
+  --spread: 120px;
+  --base-gradient-color: var(--mb-color-bg-white);
+  --base-color: var(--mb-color-brand);
+  --bg: linear-gradient(
+    90deg,
+    #0000 calc(50% - var(--spread)),
+    var(--base-gradient-color),
+    #0000 calc(50% + var(--spread))
+  );
+
+  color: transparent;
+  background-clip: text;
+  background-size:
+    250% 100%,
+    auto;
+  background-image: var(--bg),
+    linear-gradient(var(--base-color), var(--base-color));
+  animation: rotate-background 2000ms ease infinite;
+  font-weight: bold;
 }
 
 .inputContainer {
@@ -33,7 +71,7 @@
 }
 
 .inputContainerExpanded {
-  padding: 1rem;
+  padding: 1rem var(--paddxing-x);
   align-items: flex-start;
   height: 8rem;
 }
@@ -72,7 +110,7 @@
 }
 
 .messagesContainer {
-  padding: 1rem;
+  padding: 1rem var(--paddxing-x);
   height: 100%;
   display: flex;
   flex-direction: column-reverse;
@@ -85,28 +123,29 @@
   gap: 0.75rem;
 }
 
-.message {
-  padding: 0.5rem 1rem;
+.messageContainer {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  border-radius: 1rem;
-  width: fit-content;
-  max-width: 80%;
-  min-width: 6rem;
-  line-height: 1.5;
 }
 
-.messageAgent {
-  background: var(--mb-color-bg-medium);
+.messageContainerUser {
+  align-items: flex-end;
+  align-self: flex-end;
+  max-width: 80%;
+  min-width: 6rem;
+  width: fit-content;
+}
+
+.message {
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .messageUser {
-  background: var(--mb-color-brand);
-  color: white;
-  align-self: flex-end;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  background: var(--mb-color-bg-medium);
 }
 
 .responseMessage {
@@ -118,37 +157,6 @@ button.responseDismissBtn {
   height: 1rem;
   cursor: pointer;
   margin-left: 0.5rem;
-}
-
-.textShimmer {
-  --spread: 36px;
-  --base-gradient-color: var(--mb-color-bg-medium);
-  --base-color: var(--mb-color-text-light);
-  --bg: linear-gradient(
-    90deg,
-    #0000 calc(50% - var(--spread)),
-    var(--base-gradient-color),
-    #0000 calc(50% + var(--spread))
-  );
-
-  color: transparent;
-  background-clip: text;
-  background-size:
-    250% 100%,
-    auto;
-  background-image: var(--bg),
-    linear-gradient(var(--base-color), var(--base-color));
-  animation: rotate-background 1400ms ease infinite;
-}
-
-@keyframes rotate-background {
-  0% {
-    background-position: 120%;
-  }
-
-  100% {
-    background-position: -20%;
-  }
 }
 
 .markdown {

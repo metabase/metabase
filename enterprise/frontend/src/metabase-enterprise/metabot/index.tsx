@@ -8,7 +8,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { Metabot } from "./components/Metabot";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
-import { metabotReducer } from "./state";
+import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
@@ -40,6 +40,8 @@ if (hasPremiumFeature("metabot_v3")) {
       return ret;
     }, [searchText, submitInput, setVisible]);
   };
+
+  PLUGIN_METABOT.getMetabotVisible = getMetabotVisible;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }

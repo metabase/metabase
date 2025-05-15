@@ -13,6 +13,7 @@ export interface AppBarProps {
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isMetabotVisible?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;

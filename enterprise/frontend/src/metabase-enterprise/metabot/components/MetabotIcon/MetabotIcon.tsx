@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { SVGProps } from "react";
 
 import Styles from "./MetabotIcon.module.css";
 
@@ -9,7 +10,11 @@ const COLORS = {
   summarize: "var(--mb-color-summarize)",
 };
 
-export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
+interface MetabotIconProps extends SVGProps<SVGSVGElement> {
+  isLoading: boolean;
+}
+
+export const MetabotIcon = ({ isLoading, ...props }: MetabotIconProps) => {
   const dotsStrokeColor = isLoading ? COLORS.summarize : COLORS.brand;
   const dotsFillColor = isLoading ? COLORS.summarize : COLORS.focus;
 
@@ -20,6 +25,7 @@ export const MetabotIcon = ({ isLoading }: { isLoading: boolean }) => {
       viewBox="0 0 33 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      {...props}
     >
       <rect
         x="0.75"
