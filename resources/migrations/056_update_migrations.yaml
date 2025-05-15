@@ -20,7 +20,7 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: >-
-              DELETE FROM permissions_group WHERE type = 'all-external-users';
+              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
       comment: Add All External Users group
       changes:
         - sql:
@@ -64,7 +64,17 @@ databaseChangeLog:
                     unique: true
 
   - changeSet:
-      id: v56.2025-06-11T11:29:05
+      id: v56.2025-06-11T11:34:30
+      author: johnswanson
+      comment: add an index for `core_user.tenant_id`
+      changes:
+        - addUniqueConstraint:
+            tableName: core_user
+            constraintName: idx_unique_core_user_tenant_id
+            columnNames: tenant_id
+
+  - changeSet:
+      id: v56.2025-06-11T11:34:34
       author: johnswanson
       comment: Add foreign key for `core_user.tenant_id`
       preConditions: # not needed
