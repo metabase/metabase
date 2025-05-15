@@ -10,7 +10,7 @@ export function setupContentTranslationEndpoints({
   uploadSuccess?: boolean;
 }) {
   fetchMock.get(
-    "path:/api/ee/content-translation/dictionary",
+    "path:/api/content-translation/dictionary",
     (url): DictionaryResponse => {
       const localeCode = new URL(url).searchParams.get("locale");
       const data = localeCode
