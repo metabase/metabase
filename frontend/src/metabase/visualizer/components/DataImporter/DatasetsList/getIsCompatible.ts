@@ -56,7 +56,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
-  if (!targetDataset || ownDimensions.length === 0) {
+  if (ownDimensions.length === 0) {
     return false;
   }
 
