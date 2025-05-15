@@ -80,7 +80,7 @@
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.14.2"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.561"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.564"}
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "4998a1fdd9d3713d7034d04509e9212204773bf2"
                                              :git/url "https://github.com/eerohele/pp"}
@@ -101,7 +101,7 @@
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  methodical/methodical                     {:mvn/version "1.0.125"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
+  methodical/methodical                     {:mvn/version "1.0.126"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:mvn/version "0.17.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.1.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
@@ -243,11 +243,10 @@
     clj-kondo/clj-kondo          {:mvn/version "2025.04.07"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
-    {:mvn/version "1.6.1"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
-    com.nextjournal/beholder     {:mvn/version "1.0.2"}                     ; watcher
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
     djblue/portal                {:mvn/version "0.59.0"}                    ; ui for inspecting values
@@ -267,6 +266,7 @@
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
     rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                    ; clojure source parsing and rewriting
+    ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
@@ -407,7 +407,7 @@
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "3.0.4"}}}
+    thheller/shadow-cljs               {:mvn/version "3.0.5"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -870,15 +870,7 @@
   :test/kondo
   {:exec-args {:only [".clj-kondo/test"]}}
 
-  ;; Watch and Reload clojure code. Will not start a repl.
-  ;; Reccomended way to use this:
-  ;;   1) start the server with `clojure -M:dev:dev-start`
-  ;;   2) ./bin/mage start-watcher
-  :watch {:extra-paths "dev/src/watch"
-          :main-opts ["-m" "watch.watcher"]}
-
   ;; DB configs -- start DBs with:
-
   ;; ./bin/mage start-db postgres oldest
   :db/postgres-oldest
   {:jvm-opts

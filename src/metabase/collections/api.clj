@@ -19,13 +19,13 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.upload.core :as upload]
@@ -1054,7 +1054,7 @@
        (and
         ;; we're a good candidate if:
         ;; - we're only in one dashboard
-        (card/sole-dashboard-id card)
+        (queries/sole-dashboard-id card)
         ;; - that one dashboard is in the same collection
         (= (:collection_id card)
            (-> card :in_dashboards first :collection_id))))
@@ -1104,14 +1104,13 @@
   (let [cards (cond->> (dashboard-question-candidates id)
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
-      (doall
-       (for [{:as card :keys [in_dashboards]} cards]
-         (do
-           (card/update-card! {:card-before-update card
-                               :card-updates {:dashboard_id (-> in_dashboards first :id)}
-                               :actor @api/*current-user*
-                               :delete-old-dashcards? false})
-           (:id card)))))))
+      (mapv (fn [{:as card :keys [in_dashboards]}]
+              (queries/update-card! {:card-before-update card
+                                     :card-updates {:dashboard_id (-> in_dashboards first :id)}
+                                     :actor @api/*current-user*
+                                     :delete-old-dashcards? false})
+              (:id card))
+            cards))))
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
@@ -1257,7 +1256,7 @@
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (doseq [card (t2/select :model/Card :collection_id (u/the-id collection-before-update))]
-      (card/delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
+      (notification/delete-card-notifications-and-notify! :event/card-update.notification-deleted.card-archived actor card))))
 
 (defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do

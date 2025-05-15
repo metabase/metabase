@@ -599,7 +599,7 @@
                           (qp/process-query {:database (mt/id)
                                              :type     :native
                                              :native   (dissoc (qp.compile/compile (:dataset_query card-2))
-                                                               :metabase.models.query.permissions/referenced-card-ids)}))))))
+                                                               :metabase.permissions.models.query.permissions/referenced-card-ids)}))))))
               (let [query (mt/native-query
                             {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
                              :template-tags {"card" {:name         "card"

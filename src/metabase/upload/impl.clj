@@ -20,12 +20,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.card :as card]
-   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
    [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.settings :as upload.settings]
@@ -619,7 +618,7 @@
                                                           :schema       schema-name
                                                           :table-name   table-name
                                                           :display-name display-name})
-            card              (card/create-card!
+            card              (queries/create-card!
                                {:collection_id          collection-id
                                 :type                   :model
                                 :database_id            (:id database)
@@ -747,7 +746,7 @@
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
   [model]
   ; dataset_query can be empty in tests
-  (when-let [query (card/lib-query model)]
+  (when-let [query (queries/card->lib-query model)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 
@@ -770,7 +769,7 @@
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
             fix-name #(update % :display_name humanization/name->human-readable-name)
-            metadata (card.metadata/refresh-metadata card {:update-fn fix-name})]
+            metadata (queries/refresh-metadata card {:update-fn fix-name})]
         (t2/update! :model/Card id {:result_metadata metadata})))))
 
 (defn- translate-type-keywords [m]

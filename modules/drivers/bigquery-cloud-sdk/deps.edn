@@ -3,12 +3,12 @@
 
  :deps
  ;; TODO: figure out how to be able to leave off this version string and use the version from the BOM
- {com.google.cloud/google-cloud-bigquery {:mvn/version "2.49.0"
+ {com.google.cloud/google-cloud-bigquery {:mvn/version "2.50.0"
                                           ;; this appears to be dual licensed EPL, GPL2.0 but it's not super
                                           ;; clear so we're excluding it
                                           :exclusions  [javax.annotation/javax.annotation-api
                                                         ;; netty is updated because of CVE
                                                         io.netty/netty-common
                                                         io.netty/netty-buffer]}
-  io.netty/netty-common                  {:mvn/version "4.2.0.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.0.Final"}}}
+  io.netty/netty-common                  {:mvn/version "4.2.1.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.2.1.Final"}}}
