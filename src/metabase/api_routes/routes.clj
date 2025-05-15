@@ -6,7 +6,6 @@
    [metabase.analytics.api]
    [metabase.api-keys.api]
    [metabase.api.dashboard]
-   [metabase.api.database]
    [metabase.api.dataset]
    [metabase.api.docs]
    [metabase.api.field]
@@ -55,6 +54,7 @@
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.warehouses.api]
    [metabase.xrays.api]))
 
 (comment metabase.actions.api/keep-me
@@ -62,7 +62,6 @@
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.dashboard/keep-me
-         metabase.api.database/keep-me
          metabase.api.dataset/keep-me
          metabase.api.field/keep-me
          metabase.api.logger/keep-me
@@ -91,7 +90,8 @@
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
-         metabase.user-key-value.api/keep-me)
+         metabase.user-key-value.api/keep-me
+         metabase.warehouses.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -144,7 +144,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.api.dashboard)
-   "/database"             (+auth 'metabase.api.database)
+   "/database"             (+auth 'metabase.warehouses.api)
    "/dataset"              (+auth 'metabase.api.dataset)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api

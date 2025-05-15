@@ -33,7 +33,7 @@
     :model/DashboardCardSeries               metabase.models.dashboard-card-series
     :model/DashboardTab                      metabase.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
-    :model/Database                          metabase.models.database
+    :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
     :model/Field                             metabase.models.field

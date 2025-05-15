@@ -298,7 +298,7 @@
       :else
       nil)))
 
-;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
+;; called [[from metabase.warehouses.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]

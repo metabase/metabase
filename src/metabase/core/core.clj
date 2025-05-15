@@ -18,7 +18,6 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.logger :as logger]
-   [metabase.models.database :as database]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -32,7 +31,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
-   [metabase.util.system-info :as u.system-info])
+   [metabase.util.system-info :as u.system-info]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.lang.management ManagementFactory)))
 

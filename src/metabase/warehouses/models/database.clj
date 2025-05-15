@@ -1,4 +1,4 @@
-(ns metabase.models.database
+(ns metabase.warehouses.models.database
   (:require
    [clojure.core.match :refer [match]]
    [clojure.data :as data]

@@ -100,7 +100,6 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.dashboard
-          metabase.api.database
           metabase.api.dataset
           metabase.api.docs
           metabase.api.field
@@ -120,14 +119,12 @@
            classloader
            collections
            config
-           database-routing
            db
            driver
            embedding
            events
            legacy-mbql
            lib
-           lib-be
            logger
            model-persistence
            models
@@ -139,8 +136,6 @@
            query-processor
            request
            revisions
-           sample-data
-           secrets
            server
            session
            settings
@@ -582,7 +577,6 @@
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
           metabase.models.dashboard.constants
-          metabase.models.database
           metabase.models.dispatch
           metabase.models.field
           metabase.models.field-values
@@ -596,8 +590,7 @@
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
-   :uses #{analytics
-           analyze
+   :uses #{analyze
            api
            audit-app
            channel
@@ -609,20 +602,19 @@
            events
            legacy-mbql
            lib
+           parameters
            permissions
            premium-features
-           secrets
-           settings
-           parameters
            public-sharing
            pulse
            queries
            query-processor
            search
+           settings
            setup
-           sync
            system
-           util}}
+           util
+           warehouses}}
 
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
@@ -680,7 +672,8 @@
            query-processor
            types
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -950,7 +943,8 @@
            request
            startup
            task
-           util}}
+           util
+           warehouses}}
 
   secrets
   {:api  #{metabase.secrets.core}
@@ -1080,7 +1074,8 @@
            settings
            task
            task-history
-           util}}
+           util
+           warehouses}}
 
   system
   {:api  #{metabase.system.core
@@ -1215,11 +1210,36 @@
            util}}
 
   warehouses
-  {:api  #{metabase.warehouses.core
-           metabase.warehouses.init}
-   :uses #{premium-features
+  {:api  #{metabase.warehouses.api
+           metabase.warehouses.core
+           metabase.warehouses.init
+           metabase.warehouses.models.database}
+   :uses #{analytics
+           api
+           audit-app
+           classloader
+           collections
+           config
+           database-routing
+           db
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           request
+           sample-data
+           search
+           secrets
            settings
-           util}}
+           sync
+           upload
+           util
+           warehouse-schema
+           enterprise/advanced-permissions}}
 
   xrays
   {:api  #{metabase.xrays.api
@@ -1267,13 +1287,14 @@
            permissions
            premium-features
            query-processor
-           util}}
+           util
+           warehouses}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-  :uses #{api
-          premium-features
-          enterprise/metabot-v3}}
+   :uses #{api
+           premium-features
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -1373,7 +1394,8 @@
            premium-features
            query-processor
            settings
-           util}}
+           util
+           warehouses}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
@@ -1428,7 +1450,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql
@@ -1472,6 +1493,7 @@
            request
            util
            warehouse-schema
+           warehouses
            enterprise/api}}
 
   enterprise/scim
