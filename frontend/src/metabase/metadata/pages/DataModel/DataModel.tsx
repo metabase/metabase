@@ -9,7 +9,12 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
-import { FieldSection, PreviewSection, TableSection } from "./components";
+import {
+  FieldSection,
+  PreviewSection,
+  TableSection,
+  usePreviewType,
+} from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
@@ -37,6 +42,7 @@ export const DataModel = ({ params }: Props) => {
         },
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const [previewType, setPreviewType] = usePreviewType();
 
   return (
     <Flex
@@ -115,7 +121,11 @@ export const DataModel = ({ params }: Props) => {
           </Box>
 
           <Box flex="1 1 200px" p="xl" pl={0} miw={0}>
-            <PreviewSection fieldId={fieldId} />
+            <PreviewSection
+              fieldId={fieldId}
+              previewType={previewType}
+              onPreviewTypeChange={setPreviewType}
+            />
           </Box>
         </>
       )}

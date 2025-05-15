@@ -4,19 +4,21 @@ import { t } from "ttag";
 import { Box, Card, Flex, SegmentedControl, Text } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
+export type PreviewType = ReturnType<
+  typeof getTypeSelectorData
+>[number]["value"];
+
 interface Props {
   fieldId?: FieldId;
+  previewType: PreviewType;
+  onPreviewTypeChange: (value: PreviewType) => void;
 }
 
-type PreviewType = ReturnType<typeof getTypeSelectorData>[number]["value"];
-
-export const PreviewSection = (_props: Props) => {
-  const [previewType, setPreviewType] = useState<PreviewType>("table");
-
+export const PreviewSection = ({ previewType, onPreviewTypeChange }: Props) => {
   return (
     <Card bg="white" h="100%" px="lg" py="md" shadow="xs">
       <Text fw="bold">Field preview</Text>
-      <PreviewTypeSelector value={previewType} onChange={setPreviewType} />
+      <PreviewTypeSelector value={previewType} onChange={onPreviewTypeChange} />
 
       {previewType === "table" && <Box>TABLE</Box>}
       {previewType === "detail" && <Box>DETAIL</Box>}
@@ -31,6 +33,10 @@ function getTypeSelectorData() {
     { label: t`Detail`, value: "detail" as const },
     { label: t`Filtering`, value: "filtering" as const },
   ];
+}
+
+export function usePreviewType() {
+  return useState<PreviewType>("table");
 }
 
 function PreviewTypeSelector({
