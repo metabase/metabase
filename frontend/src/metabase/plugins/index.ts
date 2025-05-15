@@ -715,6 +715,7 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  getMetabotVisible: (_state: State) => false,
 };
 
 type DashCardMenuItemGetter = (

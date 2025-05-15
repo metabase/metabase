@@ -6,6 +6,7 @@ import { jt, t } from "ttag";
 import Markdown from "metabase/core/components/Markdown";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
+  ActionIcon,
   Box,
   type BoxProps,
   Button,
@@ -23,6 +24,7 @@ import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
+import { useIsScrollable } from "./hooks";
 import { testMarkdown } from "./utils";
 
 const MIN_INPUT_HEIGHT = 42;
@@ -30,6 +32,7 @@ const MIN_INPUT_HEIGHT = 42;
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const isMessagesScrollable = useIsScrollable(messagesRef);
 
   const [input, setMessage] = useState("");
 
@@ -40,12 +43,8 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     setInputExpanded(false);
   }, []);
 
-  // TODO: i don't like the override, just trying to get this out quick..
-  // there's a problem where setting the value and sending in in the same
-  // function results in the current value being stale as rerender hasn't happend
-  // this this function to have the correct value in scope
-  const handleSend = (inputOverride?: string) => {
-    const trimmedInput = (inputOverride ?? input).trim();
+  const handleSubmitInput = (input: string) => {
+    const trimmedInput = input.trim();
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
@@ -76,9 +75,8 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     textarea.scrollTop = Math.max(MIN_INPUT_HEIGHT, textarea.scrollHeight);
   };
 
-  // TODO: think throug this a bit more... look at what other chat UIs are doing
   useEffect(
-    function autoScrollToBottom() {
+    function handleAutoscroll() {
       const el = messagesRef.current;
       if (el) {
         el.scrollTop = el.scrollHeight;
@@ -100,24 +98,21 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
-        <Box className={Styles.header} data-testid="metabot-chat-header">
-          <Text fz="xl" fw="bold">{t`Metabot Chat`}</Text>
-          <Flex gap="md">
-            <UnstyledButton
-              c="text-light"
-              onClick={() => metabot.resetConversation()}
-              h="md"
-            >
-              <Icon name="trash" size="1rem" />
-            </UnstyledButton>
-
-            <UnstyledButton
-              c="text-light"
-              onClick={() => metabot.setVisible(false)}
-              h="md"
-            >
-              <Icon name="close" size="1rem" />
-            </UnstyledButton>
+        <Box
+          data-testid="metabot-chat-header"
+          className={cx(
+            Styles.header,
+            isMessagesScrollable && Styles.headerWithScrollContent,
+          )}
+        >
+          <Text fz="lg" fw="bold">{t`Ask Metabot`}</Text>
+          <Flex gap="sm">
+            <ActionIcon onClick={() => metabot.resetConversation()}>
+              <Icon c="text-primary" name="refresh" />
+            </ActionIcon>
+            <ActionIcon onClick={() => metabot.setVisible(false)}>
+              <Icon c="text-primary" name="close" />
+            </ActionIcon>
           </Flex>
         </Box>
 
@@ -140,7 +135,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
                           <Button
                             fz="sm"
                             size="xs"
-                            onClick={() => handleSend(prompt)}
+                            onClick={() => handleSubmitInput(prompt)}
                           >
                             {prompt}
                           </Button>
@@ -161,34 +156,33 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
             ))}
             {/* TODO: remove */}
             {false && <Message actor="agent" message={testMarkdown} />}
-            {metabot.isDoingScience && (
-              <Message
-                key="thinkin"
-                data-testid="metabot-chat-message-thinking"
-                actor="agent"
-                message="Thinking..."
-                copyable={false}
-                shimmer
-              />
-            )}
           </Box>
         </Box>
 
         {/* conversation status container */}
         <Box className={Styles.conversationStatusContainer}>
-          <Box w="33px" h="24px">
-            <MetabotIcon isLoading={metabot.isDoingScience} />
-          </Box>
-
-          {metabot.messages.length > 0 && metabot.isDoingScience === false && (
-            <Text fz="sm" c="text-light">
-              {t`Metabot isn't perfect. Double-check results.`}
-            </Text>
+          {metabot.isDoingScience && (
+            <Text className={Styles.thinkingText}>{t`Thinking...`}</Text>
           )}
+
+          <Flex justify="space-between" align-items="center">
+            <MetabotIcon
+              width="40px"
+              height="30px"
+              isLoading={metabot.isDoingScience}
+            />
+
+            {metabot.messages.length > 0 && (
+              <Text fz="sm" c="text-light">
+                {t`Metabot isn't perfect. Double-check results.`}
+              </Text>
+            )}
+          </Flex>
         </Box>
 
+        {/* long convo warning */}
         {metabot.isLongConversation && (
-          <Text c="text-light" my="xs" ta="center">
+          <Text lh={1} c="text-light" m={0} ta="center">
             {jt`This chat is getting long. You can ${(
               <UnstyledButton
                 display="inline"
@@ -200,7 +194,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           </Text>
         )}
 
-        <Box p="md">
+        <Box px="md" py="md">
           <Paper
             className={cx(
               Styles.inputContainer,
@@ -233,7 +227,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
                   // prevent event from inserting new line + interacting with other content
                   e.preventDefault();
                   e.stopPropagation();
-                  handleSend();
+                  handleSubmitInput(input);
                 }
               }}
             />
@@ -255,36 +249,35 @@ const Message = ({
   actor,
   message,
   className,
-  copyable = true,
-  shimmer,
   ...props
 }: BoxProps & {
   actor: "agent" | "user";
   message: string;
-  copyable?: boolean;
-  shimmer?: boolean;
 }) => {
   const clipboard = useClipboard();
 
   return (
-    <Box
+    <Flex
       className={cx(
-        Styles.message,
-        actor === "agent" ? Styles.messageAgent : Styles.messageUser,
+        Styles.messageContainer,
+        actor === "user" && Styles.messageContainerUser,
         className,
       )}
+      direction="column"
       {...props}
     >
-      <Markdown className={cx(Styles.markdown, shimmer && Styles.textShimmer)}>
+      <Markdown
+        className={cx(
+          Styles.message,
+          actor === "user" && Styles.messageUser,
+          Styles.markdown,
+        )}
+      >
         {message}
       </Markdown>
-      {copyable && (
-        <Flex justify="flex-end">
-          <UnstyledButton onClick={() => clipboard.copy(message)} h="md">
-            <Icon name="copy" size="1rem" />
-          </UnstyledButton>
-        </Flex>
-      )}
-    </Box>
+      <ActionIcon onClick={() => clipboard.copy(message)} h="md">
+        <Icon name="copy" size="1rem" />
+      </ActionIcon>
+    </Flex>
   );
 };

@@ -5,7 +5,7 @@ import type { MetabotStoreState } from "./types";
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
 
-export const getMetabotVisisble = createSelector(
+export const getMetabotVisible = createSelector(
   getMetabot,
   (metabot) => metabot.visible,
 );
