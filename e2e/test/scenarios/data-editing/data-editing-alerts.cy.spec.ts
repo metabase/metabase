@@ -524,6 +524,129 @@ describe("scenarios > data editing > setting alerts", () => {
       });
     });
   });
+
+  describe("Template preview", () => {
+    it("should display default template preview", () => {
+      cy.findByTestId("table-notifications-trigger").click();
+
+      cy.findByTestId("table-notification-create").within(() => {
+        cy.findByTestId("notification-event-select").click();
+        cy.document()
+          .findByRole("option", {
+            name: /when new records are created/i,
+          })
+          .click();
+
+        cy.intercept("POST", "/api/notification/preview_template").as(
+          "previewTemplate",
+        );
+
+        cy.findByLabelText("Show preview").click();
+
+        cy.wait("@previewTemplate");
+        cy.findByTestId("preview-template-panel").should("be.visible");
+        cy.findByTestId("preview-template-panel").within(() => {
+          cy.root().contains(`A new record was added to "${TABLE_NAME}"`);
+          cy.root().contains(`A new record was created in Table ${TABLE_NAME}`);
+        });
+      });
+    });
+
+    it("should display custom template preview", () => {
+      cy.findByTestId("table-notifications-trigger").click();
+
+      cy.findByTestId("table-notification-create").within(() => {
+        cy.findByTestId("notification-event-select").click();
+        cy.document()
+          .findByRole("option", {
+            name: /when new records are created/i,
+          })
+          .click();
+
+        cy.findByTestId("email-template-subject")
+          .findByRole("textbox")
+          .click({ force: true })
+          .invoke("text", "My custom subject for {{table.name}}")
+          .blur();
+
+        cy.findByTestId("email-template-body")
+          .findByRole("textbox")
+          .click({ force: true })
+          .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
+          .blur();
+
+        cy.intercept("POST", "/api/notification/preview_template").as(
+          "previewTemplate",
+        );
+
+        cy.findByLabelText("Show preview").click();
+
+        cy.wait("@previewTemplate");
+        cy.findByTestId("preview-template-panel").should("be.visible");
+        cy.findByTestId("preview-template-panel").within(() => {
+          cy.root().contains(`My custom subject for ${TABLE_NAME}`);
+          cy.root().contains(/id.*name/);
+        });
+      });
+    });
+
+    it("should create an alert for 'row created' events with custom template", () => {
+      cy.findByTestId("table-notifications-trigger").click();
+
+      cy.findByTestId("table-notification-create").within(() => {
+        cy.findByTestId("notification-event-select").click();
+        cy.document()
+          .findByRole("option", {
+            name: /when new records are created/i,
+          })
+          .click();
+
+        cy.findByTestId("email-template-subject")
+          .findByRole("textbox")
+          .click({ force: true })
+          .invoke("text", "My custom subject for {{table.name}}")
+          .blur();
+
+        cy.findByTestId("email-template-body")
+          .findByRole("textbox")
+          .click({ force: true })
+          .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
+          .blur();
+
+        cy.findByRole("button", { name: "Done" }).click();
+      });
+
+      cy.findByTestId("table-notification-create").should("not.exist");
+
+      cy.findByTestId("toast-undo").within(() => {
+        cy.findByText("Alert created.").should("be.visible");
+      });
+
+      H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
+        expect(body[0].subject).to.include("You set up an alert");
+      });
+
+      cy.findByTestId("table-data-view-header").within(() => {
+        cy.findByText("New record").click();
+      });
+
+      H.modal().within(() => {
+        // Focus on 1st input, no other way to select it currently.
+        cy.findByPlaceholderText("Required").type("10003");
+
+        cy.findByRole("button", { name: "Create new record" }).click();
+      });
+
+      cy.wait(1000);
+
+      cy.log("Testing default email template");
+
+      H.checkEmailContent(`My custom subject for ${TABLE_NAME}`, [
+        "id",
+        "10003",
+      ]);
+    });
+  });
 });
 
 function openDatabaseTable() {

@@ -178,6 +178,7 @@ const TemplateToolbarButton = React.forwardRef<
   return (
     <Tooltip label={label} ref={ref}>
       <ActionIcon
+        aria-label={label}
         size={size}
         variant="viewHeader"
         style={{

@@ -32,7 +32,13 @@ export const PreviewTemplatePanel = ({
   const htmlContent = previewContent?.body?.[0]?.content;
 
   return (
-    <Flex direction="column" mah="100%" gap="md" className={S.root}>
+    <Flex
+      direction="column"
+      mah="100%"
+      gap="md"
+      className={S.root}
+      data-testid="preview-template-panel"
+    >
       <Flex gap="sm" align="center" h="1.625rem" className={S.header}>
         <Icon name="eye" size={16} />
         <Title size="h4">{t`Email message preview`}</Title>
