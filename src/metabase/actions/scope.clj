@@ -68,7 +68,7 @@
 (mu/defn normalize-scope :- ::types/scope.normalized
   "Remove all the implicit keys that can be derived from others. Useful to form stable keys. Idempotent."
   [scope :- ::types/scope.raw]
-  (cond-> scope
+  (cond-> (update scope :type #(or % (scope-type scope)))
     (:table-id scope)     (dissoc :database-id)
     (:card-id scope)      (-> (dissoc :table-id)
                               (dissoc :collection-id)
