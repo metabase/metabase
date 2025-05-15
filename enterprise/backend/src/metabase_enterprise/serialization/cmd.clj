@@ -13,7 +13,7 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.core :as analytics]
    [metabase.db :as mdb]
-   [metabase.models.field :as field]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]

@@ -1,7 +1,7 @@
 (ns metabase.models.params.chain-filter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]

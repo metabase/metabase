@@ -5,7 +5,7 @@
   comparing the differences in the two sets of Metadata."
   (:require
    [medley.core :as m]
-   [metabase.models.table :as table]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.util :as u]

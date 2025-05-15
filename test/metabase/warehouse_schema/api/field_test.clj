@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.field-test
+(ns ^:mb/driver-tests metabase.warehouse-schema.api.field-test
   "Tests for `/api/field` endpoints."
   (:require
    [clojure.test :refer :all]

@@ -4,7 +4,7 @@
    [honey.sql :as sql]
    [metabase.db :as mdb]
    [metabase.driver.util :as driver.u]
-   [metabase.models.table :as table]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]

@@ -19,7 +19,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]
-   [metabase.models.field :as field]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.settings.core :refer [defsetting]]
    [metabase.test.data.env :as tx.env]

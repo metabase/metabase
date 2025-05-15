@@ -11,7 +11,7 @@
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]

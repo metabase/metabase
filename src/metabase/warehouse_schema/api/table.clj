@@ -1,4 +1,4 @@
-(ns metabase.api.table
+(ns metabase.warehouse-schema.api.table
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
@@ -11,7 +11,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]

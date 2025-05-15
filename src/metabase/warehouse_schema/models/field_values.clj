@@ -1,4 +1,4 @@
-(ns metabase.models.field-values
+(ns metabase.warehouse-schema.models.field-values
   "FieldValues is used to store a cached list of values of Fields that has `has_field_values=:auto-list` or `:list`.
   Check the doc in [[metabase.lib.schema.metadata/column-has-field-values-options]] for more info about
   `has_field_values`.
@@ -357,21 +357,23 @@
            (reduced (assoc result ::reached-char-len-limit true))
            (rf result row)))))))
 
+;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
 (defn distinct-values
-  "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values are
-  past the threshold, this returns a subset of possible values values where the total length of all items is less than [[*total-max-length*]].
-  It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
+  "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values
+  are past the threshold, this returns a subset of possible values values where the total length of all items is less
+  than [[*total-max-length*]]. It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned
+  values list is a subset of all possible values.
 
   ;; (distinct-values (Field 1))
   ;; ->  {:values          [[1], [2], [3]]
           :has_more_values false}
 
-  (This function provides the values that normally get saved as a Field's
-  FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
-  very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
+  (This function provides the values that normally get saved as a Field's FieldValues. You most likely should not be
+  using this directly in code outside of this namespace, unless it's for a very specific reason, such as certain cases
+  where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (try
-    (let [result          ((requiring-resolve 'metabase.db.metadata-queries/table-query)
+    (let [result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
                            (:table_id field)
                            {:breakout        [[:field (u/the-id field) nil]]
                             :breakout-idents (lib.ident/indexed-idents 1)
@@ -560,7 +562,7 @@
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
-    ;; We only serialize the full values, see [[metabase.models.field/with-values]]
+    ;; We only serialize the full values, see [[metabase.warehouse-schema.models.field/with-values]]
     (get-latest-full-field-values (:id field))))
 
 (defn- field-path->field-ref [field-values-path]

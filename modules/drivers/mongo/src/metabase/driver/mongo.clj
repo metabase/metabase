@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.conversion :as mongo.conversion]
@@ -303,7 +303,7 @@
   Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
   [db table]
   (let [query (describe-table-query {:collection-name (:name table)
-                                     :sample-size     (* metadata-queries/nested-field-sample-limit 2)
+                                     :sample-size     (* table-rows-sample/nested-field-sample-limit 2)
                                      :max-depth       describe-table-query-depth})
         data  (:data (qp/process-query {:database (:id db)
                                         :type     "native"
@@ -492,9 +492,9 @@
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
   (qp.store/with-metadata-provider (:db_id table)
-    (let [mongo-opts {:limit    metadata-queries/nested-field-sample-limit
+    (let [mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
-      (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
+      (table-rows-sample/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
 (defn- encode-mongo
   "Converts a Clojure representation of a Mongo aggregation pipeline to a formatted JSON-like string"

@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
@@ -576,7 +576,7 @@
                                                                    []
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
-                    metadata-queries/nested-field-sample-limit 4]
+                    table-rows-sample/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))

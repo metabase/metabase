@@ -364,7 +364,6 @@
     metabase.connection-pool                                      connection-pool
     metabase.db.connection                                        mdb.connection
     metabase.db.jdbc-protocols                                    mdb.jdbc-protocols
-    metabase.db.metadata-queries                                  metadata-queries
     metabase.db.spec                                              mdb.spec
     metabase.db.query                                             mdb.query
     metabase.driver.common.parameters                             params

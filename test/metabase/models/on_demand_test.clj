@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.dashboard :as dashboard]
-   [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]

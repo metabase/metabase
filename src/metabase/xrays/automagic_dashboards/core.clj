@@ -149,7 +149,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.field :as field]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]

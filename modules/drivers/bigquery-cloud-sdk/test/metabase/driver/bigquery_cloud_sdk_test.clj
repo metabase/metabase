@@ -4,11 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -68,7 +68,7 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+             (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
                                                       [(t2/select-one :model/Field :id (mt/id :venues :id))
                                                        (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                       (constantly conj))
@@ -84,7 +84,7 @@
             page-callback   (fn [] (swap! pages-retrieved inc))]
         (with-bindings {#'bigquery/*page-size*     25
                         #'bigquery/*page-callback* page-callback}
-          (let [results (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+          (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
                                                                  [(t2/select-one :model/Field :id (mt/id :venues :id))
                                                                   (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                                  (constantly conj))

@@ -8,7 +8,7 @@
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]

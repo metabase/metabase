@@ -47,7 +47,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]

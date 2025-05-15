@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]

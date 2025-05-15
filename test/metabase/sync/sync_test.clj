@@ -7,7 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.sync.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]

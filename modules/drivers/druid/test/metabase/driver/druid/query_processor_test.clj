@@ -5,7 +5,7 @@
    [clojure.tools.macro :as tools.macro]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.query-processor :as qp]
@@ -234,7 +234,7 @@
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
+  (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
                                             (t2/select-one :model/Field :id (mt/id :checkins :timestamp))]

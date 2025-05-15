@@ -10,7 +10,7 @@
    [metabase.events.core :as events]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]

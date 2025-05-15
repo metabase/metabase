@@ -5,7 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.api.database :as api.database]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
    [metabase.driver.presto-jdbc :as presto-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -77,7 +77,7 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
                                                     [(t2/select-one :model/Field :id (mt/id :venues :id))
                                                      (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                     (constantly conj))

@@ -40,7 +40,7 @@
     for logging purposes by higher-level sync logic."
   (:require
    [metabase.driver.util :as driver.u]
-   [metabase.models.table :as table]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.settings.core :refer [defsetting]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]

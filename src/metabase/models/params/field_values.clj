@@ -4,8 +4,8 @@
   (:require
    [metabase.classloader.core :as classloader]
    [metabase.db.query :as mdb.query]
-   [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))

@@ -7,7 +7,7 @@
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
-   [metabase.models.table :as table]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]

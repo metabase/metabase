@@ -5,7 +5,7 @@
     :as row-level-restrictions]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :as field]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 

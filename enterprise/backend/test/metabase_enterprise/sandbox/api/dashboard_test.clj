@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.params.chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.data-permissions :as data-perms]

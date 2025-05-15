@@ -1758,30 +1758,10 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defn- has-to-honeysql-impl-for-legacy-table? [driver]
-  (not (identical? (get-method ->honeysql [driver :model/Table])
-                   (get-method ->honeysql [:sql :model/Table]))))
-
-(defmethod ->honeysql [:sql :model/Table]
-  [driver table]
-  (sql.qp.deprecated/log-deprecation-warning
-   driver
-   "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-   "0.48.0")
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
-
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (if (has-to-honeysql-impl-for-legacy-table? driver)
-    (do
-      (sql.qp.deprecated/log-deprecation-warning
-       driver
-       "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-       "0.48.0")
-      (->honeysql driver #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/->legacy-metadata table)))
-    (let [{table-name :name, schema :schema} table]
-      (->honeysql driver (h2x/identifier :table schema table-name)))))
+  (let [{table-name :name, schema :schema} table]
+    (->honeysql driver (h2x/identifier :table schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]

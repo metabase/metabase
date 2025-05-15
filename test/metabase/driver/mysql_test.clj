@@ -7,7 +7,6 @@
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
@@ -35,7 +34,8 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]))
 
 (set! *warn-on-reflection* true)
 
@@ -188,7 +188,7 @@
             fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
-                 (metadata-queries/table-rows-sample table fields (constantly conj)))))
+                 (table-rows-sample/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
                  (:updated-fingerprints (#'sync.fingerprint/fingerprint-fields! table fields)))))))))

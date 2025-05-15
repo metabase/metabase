@@ -1,10 +1,10 @@
-(ns ^:mb/driver-tests metabase.api.table-test
+(ns ^:mb/driver-tests metabase.warehouse-schema.api.table-test
   "Tests for /api/table endpoints."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.table :as api.table]
+   [metabase.warehouse-schema.api.table :as api.table]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
