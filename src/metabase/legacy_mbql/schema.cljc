@@ -713,6 +713,20 @@
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
   string [:or StringExpressionArg DateTimeExpressionArg])
 
+(def ^:private LiteralDatetimeModeString
+  [:enum {:error/message "datetime mode string"
+          :decode/normalize lib.schema.common/normalize-keyword-lower}
+   :iso
+   :simple
+   :unixmilliseconds
+   :unixseconds
+   :unixmicroseconds
+   :unixnanoseconds])
+
+(defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
+  value  :any ;; normally a string, number, or bytes
+  mode   LiteralDatetimeModeString)
+
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date))
 
