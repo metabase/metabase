@@ -971,7 +971,6 @@
    :uses #{analytics
            api
            api-keys
-           api-routes
            appearance
            config
            core

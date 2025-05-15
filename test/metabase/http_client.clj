@@ -11,10 +11,10 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
+   [metabase.test.initialize.web-server :as initialize.web-server]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -334,7 +334,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                        (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
+                        ((initialize.web-server/test-handler) request coerce-mock-response-body (fn raise [e] (throw e)))
                         (catch clojure.lang.ExceptionInfo e
                           (log/debug e method-name url)
                           (ex-data e))
