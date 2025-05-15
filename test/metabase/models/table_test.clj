@@ -6,7 +6,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.table :as table]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -190,8 +189,10 @@
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
 
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/insert! :model/PermissionsGroupMembership {:user_id (mt/user->id :rasta)
+                                                       :group_id (u/the-id pg1)})
+        (t2/insert! :model/PermissionsGroupMembership {:user_id (mt/user->id :rasta)
+                                                       :group_id (u/the-id pg2)})
 
         (t2/delete! :model/DataPermissions :db_id db-id)
 
