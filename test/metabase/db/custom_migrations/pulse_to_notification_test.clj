@@ -1,6 +1,5 @@
 (ns metabase.db.custom-migrations.pulse-to-notification-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.notification.models :as models.notification]
@@ -15,7 +14,7 @@
   [notiification]
   (update notiification :handler #(sort-by :channel_type %)))
 
-(defmacro with-test-setup
+(defmacro with-test-setup!
   [& body]
   `(mt/with-model-cleanup [:model/Pulse :model/Notification]
      (mt/with-temp-scheduler!
@@ -71,7 +70,7 @@
 
 (deftest migrate-alert-test
   (testing "basic alert migration"
-    (with-test-setup
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}]
         (testing "has one subscription, one email handler with one recipient"
           (let [alert-id (create-alert! {} card-id [{:channel_type "email"
@@ -97,7 +96,7 @@
 
 (deftest migrate-alert-http-test
   (testing "migrate alert with http channel"
-    (with-test-setup
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Channel {channel-id :id} {}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "http"
@@ -117,7 +116,7 @@
 
 (deftest migrate-alert-multiple-channels-test
   (testing "migrate alert with multiple channels 1 slack, 1 email with 1 external recipient and one user, 1 disabled email, one http"
-    (with-test-setup
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Channel {channel-id :id} {:type "channel/http"}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
@@ -154,7 +153,7 @@
 
 (deftest migrate-alert-send-condition-test
   (testing "migrate alert with different send conditions"
-    (with-test-setup
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}]
         (doseq [{:keys [expected alert-props]} [{:expected    {:send_condition :has_result
                                                                :send_once      false}
