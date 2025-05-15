@@ -153,22 +153,26 @@
 
 (declare update-send-pulse-trigger-if-needed!)
 
+(defn- active-dashsub-pcs
+  []
+  (t2/select :model/PulseChannel
+             {:select    [:pc.*]
+              :from      [[:pulse_channel :pc]]
+              :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
+                          [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+              :where     [:and
+                          [:= :pc.enabled true]
+                          ;; only do this for dashboard subscriptions, alert has been
+                          ;; migrated to notifications
+                          [:not= :p.dashboard_id nil]
+                          [:= :d.archived false]]}))
+
 (defn init-dashboard-subscription-triggers!
   "Update send pulse triggers for all active pulses.
   Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
-                                              {:select    [:pc.*]
-                                               :from      [[:pulse_channel :pc]]
-                                               :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
-                                                           [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                               :where     [:and
-                                                           [:= :pc.enabled true]
-                                                           ;; only do this for dashboard subscriptions, alert has been
-                                                           ;; migrated to notifications
-                                                           [:not= :p.dashboard_id nil]
-                                                           [:= :d.archived false]]})
+  (let [trigger-slot->pc-ids (as-> (active-dashsub-pcs)
                                    results
                                (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                                (update-vals results #(map :id %)))]
