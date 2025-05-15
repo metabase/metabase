@@ -116,6 +116,11 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
   );
 }
 
+// Normally, findColumnSlotForFunnel returns a viz setting key that fits a given column
+// There's no viz setting for scalar funnels, as we're adding a row value to the dataset,
+// instead of adding a column, so we need to use a special name for that
+const SCALAR_FUNNEL_SLOT = "scalar_funnel";
+
 export function findColumnSlotForFunnel(
   {
     display,
@@ -137,8 +142,7 @@ export function findColumnSlotForFunnel(
     dataset &&
     canCombineDatasetWithScalarFunnel(dataset)
   ) {
-    // HACK: not really sure about this
-    return "scalar_funnel";
+    return SCALAR_FUNNEL_SLOT;
   } else {
     const ownMetric = settings["funnel.metric"];
     if (!ownMetric && isMetric(column)) {
