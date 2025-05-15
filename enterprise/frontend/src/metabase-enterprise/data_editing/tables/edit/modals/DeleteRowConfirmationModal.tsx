@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal } from "metabase/ui";
 
 type DeleteRowConfirmationModalProps = {
   onConfirm: () => void;
@@ -12,19 +12,16 @@ export function DeleteRowConfirmationModal({
 }: DeleteRowConfirmationModalProps) {
   return (
     <Modal size="md" title={t`Delete this record?`} opened onClose={onCancel}>
-      <Stack>
-        <Text>{t`This action can not be undone.`}</Text>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onCancel}>
-            {t`Cancel`}
-          </Button>
-          <Button
-            variant="filled"
-            color="danger"
-            onClick={onConfirm}
-          >{t`Delete record`}</Button>
-        </Group>
-      </Stack>
+      <Group justify="flex-end" mt="xl">
+        <Button variant="subtle" onClick={onCancel}>
+          {t`Cancel`}
+        </Button>
+        <Button
+          variant="filled"
+          color="danger"
+          onClick={onConfirm}
+        >{t`Delete record`}</Button>
+      </Group>
     </Modal>
   );
 }

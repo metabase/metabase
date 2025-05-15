@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal } from "metabase/ui";
 
 type DeleteBulkRowConfirmationModalProps = {
   opened: boolean;
@@ -27,26 +27,23 @@ export function DeleteBulkRowConfirmationModal({
       opened={opened}
       onClose={onClose}
     >
-      <Stack>
-        <Text>{t`This action can not be undone.`}</Text>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>
-            {t`Cancel`}
-          </Button>
-          <Button
-            variant="filled"
-            color="danger"
-            onClick={onConfirm}
-            loading={isLoading}
-          >
-            {ngettext(
-              msgid`Delete ${rowCount} record`,
-              `Delete ${rowCount} records`,
-              rowCount,
-            )}
-          </Button>
-        </Group>
-      </Stack>
+      <Group justify="flex-end" mt="xl">
+        <Button variant="subtle" onClick={onClose}>
+          {t`Cancel`}
+        </Button>
+        <Button
+          variant="filled"
+          color="danger"
+          onClick={onConfirm}
+          loading={isLoading}
+        >
+          {ngettext(
+            msgid`Delete ${rowCount} record`,
+            `Delete ${rowCount} records`,
+            rowCount,
+          )}
+        </Button>
+      </Group>
     </Modal>
   );
 }
