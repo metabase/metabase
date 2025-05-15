@@ -29,18 +29,15 @@ type SupportedDisplayType = Exclude<
 >;
 
 type EmptyVizConfig = {
-  imgSrc: string | null;
+  imgSrc: string;
   primaryText: string;
   secondaryText: string;
   docsLink?: string;
 };
 
-// We have to use the `env` variable to tree-shake out svg images for SDK bundle
 const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   area: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? areaEmptyState : null;
-    },
+    imgSrc: areaEmptyState,
     get primaryText() {
       return t`Then pick a metric and multiple columns to group by.`;
     },
@@ -49,9 +46,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   bar: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? barEmptyState : null;
-    },
+    imgSrc: barEmptyState,
     get primaryText() {
       return t`Then pick a metric and a column to group by.`;
     },
@@ -60,9 +55,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   combo: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? comboEmptyState : null;
-    },
+    imgSrc: comboEmptyState,
     get primaryText() {
       return t`Then pick two or more metrics and one or two columns to group by.`;
     },
@@ -71,9 +64,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   funnel: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? funnelEmptyState : null;
-    },
+    imgSrc: funnelEmptyState,
     get primaryText() {
       return t`Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps.`;
     },
@@ -83,9 +74,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     docsLink: "questions/visualizations/funnel",
   },
   gauge: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? gaugeEmptyState : null;
-    },
+    imgSrc: gaugeEmptyState,
     get primaryText() {
       return t`Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings.`;
     },
@@ -94,9 +83,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   line: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? lineEmptyState : null;
-    },
+    imgSrc: lineEmptyState,
     get primaryText() {
       return t`Then pick one or more metrics and a time column to group by.`;
     },
@@ -105,9 +92,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   map: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? mapEmptyState : null;
-    },
+    imgSrc: mapEmptyState,
     get primaryText() {
       return t`Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a column with region names.`;
     },
@@ -117,9 +102,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     docsLink: "questions/visualizations/map",
   },
   pie: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? pieEmptyState : null;
-    },
+    imgSrc: pieEmptyState,
     get primaryText() {
       return t`Then pick a metric and a column to group by.`;
     },
@@ -128,9 +111,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   pivot: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? pivotEmptyState : null;
-    },
+    imgSrc: pivotEmptyState,
     get primaryText() {
       return t`Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by.`;
     },
@@ -139,9 +120,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   progress: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? progressEmptyState : null;
-    },
+    imgSrc: progressEmptyState,
     get primaryText() {
       return t`Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings.`;
     },
@@ -150,9 +129,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   row: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? rowEmptyState : null;
-    },
+    imgSrc: rowEmptyState,
     get primaryText() {
       return t`Then pick a metric and a column to group by.`;
     },
@@ -161,9 +138,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   sankey: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? sankeyEmptyState : null;
-    },
+    imgSrc: sankeyEmptyState,
     get primaryText() {
       return t`Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow.`;
     },
@@ -173,18 +148,14 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     docsLink: "questions/visualizations/sankey",
   },
   scalar: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? scalarEmptyState : null;
-    },
+    imgSrc: scalarEmptyState,
     get primaryText() {
       return t`Then pick an aggregate metric (such as Average or Sum).`;
     },
     secondaryText: `E.g. Average star rating`,
   },
   scatter: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? scatterEmptyState : null;
-    },
+    imgSrc: scatterEmptyState,
     get primaryText() {
       return t`Then pick a metric and a number columns to group by.`;
     },
@@ -193,9 +164,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   smartscalar: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? smartscalarEmptyState : null;
-    },
+    imgSrc: smartscalarEmptyState,
     get primaryText() {
       return t`Then pick an aggregate metric (such as the Average or Sum) and a time column to group by.`;
     },
@@ -204,9 +173,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
     },
   },
   waterfall: {
-    get imgSrc() {
-      return !process.env.IS_EMBEDDING_SDK ? waterfallEmptyState : null;
-    },
+    imgSrc: waterfallEmptyState,
     get primaryText() {
       return t`Then pick a metric and a single column to group by: either time or category.`;
     },
