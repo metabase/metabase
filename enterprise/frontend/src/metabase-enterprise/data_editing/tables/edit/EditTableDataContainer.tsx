@@ -60,7 +60,10 @@ export const EditTableDataContainer = ({
     isFetching,
     isLoading,
     refetch,
-  } = useGetAdhocQueryQuery(fakeTableQuery || skipToken);
+  } = useGetAdhocQueryQuery(fakeTableQuery || skipToken, {
+    // Invalidates cache when filter changes (some records might be updated)
+    refetchOnMountOrArgChange: true,
+  });
 
   const datasetData = useMemo(() => {
     return rawDatasetResult
