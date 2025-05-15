@@ -1,7 +1,7 @@
 (ns metabase.driver.sql.query-processor.boolean-to-comparison
-  "In Oracle and some other databases, boolean literals cannot appear in the top-level of WHERE clauses or expressions
-  like AND, OR, NOT, and CASE. These instead require a comparison operator, so boolean constants like 0 and 1 must be
-  replaced with equivalent expressions like 1 = 1 or 0 = 1.
+  "In SQL Server and some other databases, boolean literals cannot appear in the top-level of WHERE clauses or
+  expressions like AND, OR, NOT, and CASE. These instead require a comparison operator, so boolean constants like 0
+  and 1 must be replaced with equivalent expressions like 1 = 1 or 0 = 1.
 
   Drivers can call boolean->comparison to convert boolean literals and refs into comparison expressions. See the
   sqlserver or oracle drivers for examples."
@@ -27,6 +27,9 @@
 ;; https://learn.microsoft.com/en-us/sql/t-sql/data-types/constants-transact-sql#boolean-constants
 ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/comparison-operators-transact-sql#boolean-data-type
 ;; https://learn.microsoft.com/en-us/sql/t-sql/language-elements/and-transact-sql
+;;
+;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
+;; drop the boolean->comparison conversions in the Oracle driver.
 ;;
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/About-SQL-Conditions.html#GUID-E9EC8434-CD48-4C01-B01B-85E5359D8DD7
 ;; https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/Data-Types.html#GUID-285FFCA8-390D-4FA9-9A51-47B84EF5F83A
