@@ -1,10 +1,13 @@
-import type { StoryFn } from "@storybook/react";
-
 import { CommonSdkStoryCorsWrapper } from "embedding-sdk/test/CommonSdkCorsStoryWrapper";
 
 import { StaticDashboard } from "../SdkDashboard";
 
-const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
+import { dashboardStoryArgTypes } from "./arg-types";
+import { Default as DefaultDashboardStory } from "./dashboard.stories";
+import {
+  type DashboardStoryDefaultArgsProps,
+  dashboardStoryDefaultArgs,
+} from "./default-args";
 
 export default {
   title: "EmbeddingSDK/dashboard/CypressStaticDashboardWithCors",
@@ -13,13 +16,16 @@ export default {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryCorsWrapper],
+  argTypes: dashboardStoryArgTypes,
 };
 
-const Template: StoryFn<typeof StaticDashboard> = (args) => {
-  return <StaticDashboard {...args} />;
-};
+const staticDashboardStoryArgs = (args: DashboardStoryDefaultArgsProps = {}) =>
+  dashboardStoryDefaultArgs({
+    ...args,
+    mode: "static",
+  });
 
-export const Default = Template.bind({});
-Default.args = {
-  dashboardId: DASHBOARD_ID,
+export const Default = {
+  render: DefaultDashboardStory,
+  args: staticDashboardStoryArgs(),
 };
