@@ -1,13 +1,13 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
+   [metabase.classloader.core :as classloader]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.secret :as secret]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.secrets.core :as secret]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]

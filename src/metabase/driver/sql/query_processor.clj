@@ -227,6 +227,26 @@
       (ex-info (str "Cannot convert " (pr-str value) " to float.")
                {:value value}))))
 
+(defmulti date-dbtype
+  "Return the name of the date type we convert to in this database."
+  {:added "0.55.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod date-dbtype :sql
+  [_driver]
+  :date)
+
+(defmulti ->date
+  "Cast to date."
+  {:added "0.55.0" :arglists '([driver honeysql-expr])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->date :sql
+  [driver value]
+  (h2x/maybe-cast (date-dbtype driver) value))
+
 (defn ->integer-with-round
   "Helper function for drivers that need to round before converting to integer.
 
@@ -397,7 +417,7 @@
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :us))
 
-;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.settings.deprecated-grab-bag/start-of-week]]
+;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.lib-be.core/start-of-week]]
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
@@ -436,7 +456,7 @@
       (truncate-fn expr))))
 
 (mu/defn adjust-day-of-week
-  "Adjust day of week to respect the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting.
+  "Adjust day of week to respect the [[metabase.lib-be.core/start-of-week]] Setting.
 
   The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
 
@@ -736,6 +756,9 @@
 
                [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
                (cast-temporal-byte driver coercion-strategy honeysql-form)
+
+               [(:isa? :type/DateTime) (:isa? :Coercion/DateTime->Date)]
+               (->date driver honeysql-form)
 
                [:type/Text (:isa? :Coercion/String->Float)]
                (->float driver honeysql-form)
@@ -1259,6 +1282,10 @@
 (mu/defmethod ->honeysql [:sql :time] :- some?
   [driver [_ value unit]]
   (date driver unit (->honeysql driver value)))
+
+(defmethod ->honeysql [:sql :date]
+  [driver [_ value]]
+  (->date driver (->honeysql driver value)))
 
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]

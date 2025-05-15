@@ -4,6 +4,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.events.core :as events]
@@ -12,8 +13,8 @@
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -80,12 +81,12 @@
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
-  (public-settings/site-name! site-name)
-  (public-settings/admin-email! email)
+  (appearance/site-name! site-name)
+  (system/admin-email! email)
   (when site-locale
-    (public-settings/site-locale! site-locale))
+    (system/site-locale! site-locale))
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
-  (public-settings/anon-tracking-enabled! true))
+  (analytics/anon-tracking-enabled! true))
 
 (api.macros/defendpoint :post "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and

@@ -6,9 +6,9 @@ title: Troubleshooting SQL questions
 
 ## Incorrect results
 
-- [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
-- [Results have duplicated rows](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-duplicated-data).
-- [Results are missing rows](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-missing-data).
+- [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/sql/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
+- [Results have duplicated rows](https://www.metabase.com/learn/sql/debugging-sql/sql-logic-duplicated-data).
+- [Results are missing rows](https://www.metabase.com/learn/sql/debugging-sql/sql-logic-missing-data).
 - [Dates and times are wrong](./timezones.md).
 - [Data isn't up to date](./sync-fingerprint-scan.md).
 
@@ -18,7 +18,7 @@ title: Troubleshooting SQL questions
 - [SQL query contains table aliases](../questions/native-editor/sql-parameters.md#field-filters-dont-work-with-table-aliases).
 - [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#field-filters-must-be-connected-to-fields-included-in-the-query).
 - [No option to display a filter widget](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
-- [I don't know the SQL variable type](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables).
+- [I don't know the SQL variable type](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-variables)
 
 ## SQL syntax errors
 

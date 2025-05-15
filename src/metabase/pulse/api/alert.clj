@@ -6,9 +6,9 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.notification.api :as notification.api]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

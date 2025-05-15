@@ -41,6 +41,7 @@ import type { MetabotContext } from "metabase/metabot";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
+import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -59,16 +60,17 @@ import type {
   CollectionInstanceAnaltyicsConfig,
   DashCardId,
   Dashboard,
+  DashboardId,
   DatabaseId,
   Database as DatabaseType,
   Dataset,
   DatasetError,
   DatasetErrorType,
-  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
   Pulse,
   Revision,
   TableId,
@@ -193,22 +195,18 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 
 // menu items in people management tab
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
-  (user: User) => { title: string; link: string }
+  (user: User) => React.ReactNode
 >;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
-// auth settings
-interface AuthTabs {
-  name: string;
-  key: string;
-  to: string;
-}
-
-export const PLUGIN_ADMIN_SETTINGS_AUTH_TABS: AuthTabs[] = [];
-
 // authentication providers
 
-export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
+export const PLUGIN_AUTH_PROVIDERS = {
+  isEnabled: () => false,
+  AuthSettingsPage: PluginPlaceholder,
+  UserProvisioningSettings: PluginPlaceholder,
+  providers: [] as GetAuthProviders[],
+};
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
   formFieldAttributes: [] as string[],
@@ -609,6 +607,7 @@ type GdriveConnectionModalProps = {
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {
+  FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
@@ -716,10 +715,6 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
 };
 
-export const PLUGIN_GO_MENU = {
-  getMenuItems: (_dispatch: any) => [] as Array<any>,
-};
-
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
@@ -750,9 +745,14 @@ export const PLUGIN_DB_ROUTING = {
 };
 
 export const PLUGIN_API = {
-  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
-  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
-    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
-  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
-    `/api/field/${fieldId}/search/${searchFieldId}`,
+  getRemappedCardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getRemappedDashboardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };

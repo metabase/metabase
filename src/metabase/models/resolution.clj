@@ -1,6 +1,6 @@
 (ns metabase.models.resolution
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
@@ -15,7 +15,7 @@
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
-    :model/AuditLog                          metabase.models.audit-log
+    :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.models.card
@@ -23,9 +23,9 @@
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
-    :model/Collection                        metabase.models.collection
+    :model/Collection                        metabase.collections.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
-    :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
+    :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/Dashboard                         metabase.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
@@ -44,7 +44,7 @@
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
-    :model/ModerationReview                  metabase.models.moderation-review
+    :model/ModerationReview                  metabase.content-verification.models.moderation-review
     :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/NotificationCard                  metabase.notification.models
@@ -71,7 +71,7 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
-    :model/Secret                            metabase.models.secret
+    :model/Secret                            metabase.secrets.models.secret
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
@@ -82,7 +82,7 @@
     :model/User                              metabase.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value
-    :model/ViewLog                           metabase.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

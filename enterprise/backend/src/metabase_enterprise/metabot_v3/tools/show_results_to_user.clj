@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.show-results-to-user
   (:require
    [buddy.core.codecs :as codecs]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -14,5 +14,5 @@
                        (.getBytes "UTF-8")
                        codecs/bytes->b64-str)
         results-url (str "/question#" query-hash)]
-    {:output (str "Results can be seen at: " (public-settings/site-url) results-url)
+    {:output (str "Results can be seen at: " (system/site-url) results-url)
      :reactions [{:type :metabot.reaction/redirect, :url results-url}]}))

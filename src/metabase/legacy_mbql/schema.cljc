@@ -42,7 +42,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
@@ -635,8 +635,7 @@
   x NumericExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :expressions/integer}} integer
-  x [:or NumericExpressionArg
-     StringExpressionArg])
+  x [:or NumericExpressionArg StringExpressionArg])
 
 (defclause ^{:requires-features #{:expressions :expressions/float}} float
   x StringExpressionArg)
@@ -712,7 +711,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
-  string StringExpressionArg)
+  string [:or StringExpressionArg DateTimeExpressionArg])
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date))
@@ -822,7 +821,8 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
-(def ^:private Emptyable
+(def Emptyable
+  "Schema for a valid is-empty or not-empty argument."
   [:or StringExpressionArg Field])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and

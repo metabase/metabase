@@ -1,14 +1,14 @@
 (ns metabase.channel.impl.slack
   (:require
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.channel.slack :as slack]
    [metabase.models.params.shared :as shared.params]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
@@ -147,7 +147,7 @@
 (defn- filter-text
   [filter]
   (truncate
-   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
+   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (system/site-locale)))
    attachment-text-length-limit))
 
 (defn- include-branding?
@@ -177,7 +177,7 @@
                                     :text (mkdwn-link-text
                                            (urls/dashboard-url (:id dashboard) parameters)
                                            (format "*Sent from %s by %s*"
-                                                   (public-settings/site-name)
+                                                   (appearance/site-name)
                                                    creator-name))}]
                                    (include-branding?)
                                    (conj
@@ -185,7 +185,6 @@
                                      :text (mkdwn-link-text
                                             metabase-branding-link
                                             metabase-branding-copy)}))}
-
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
