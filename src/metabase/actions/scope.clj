@@ -58,7 +58,8 @@
 (mu/defn hydrate :- ::types/scope.hydrated
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
   [scope :- ::types/scope.raw]
-  (let [scope-type (scope-type scope)]
+  ;; Infer type if FE is not passing it (yet)
+  (let [scope-type (or (:type scope) (scope-type scope))]
     (assoc (u/strip-nils
             ;; Rerun until it converges.
             (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope)))))
