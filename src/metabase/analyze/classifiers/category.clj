@@ -35,8 +35,7 @@
         nil%           (get-in fingerprint [:global :nil%])]
     ;; Only mark a Field as a Category if it doesn't already have a semantic type.
     (when (and (nil? (:semantic_type field))
-               (or (some-> nil% (< 1))
-                   (isa? (:base_type field) :type/Boolean))
+               (some-> nil% (< 1))
                (some-> distinct-count (<= category-cardinality-threshold)))
       (log/debugf "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                   (sync-util/name-for-logging field)

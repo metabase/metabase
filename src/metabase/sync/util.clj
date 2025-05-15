@@ -634,5 +634,6 @@
 (defn can-be-category?
   "Can this type be a category?"
   [base-type semantic-type]
-  (and (not (isa? base-type :type/Number))
+  (and (or (isa? base-type :type/Text)
+           (isa? base-type :type/TextLike))
        (can-be-list? base-type semantic-type)))
