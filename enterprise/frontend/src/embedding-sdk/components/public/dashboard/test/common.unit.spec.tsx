@@ -89,7 +89,9 @@ describe("SdkDashboard", () => {
           });
 
           // Check if dashboard title is displayed
-          expect(screen.getByTestId("dashboard-title")).toBeInTheDocument();
+          expect(
+            screen.getByTestId("dashboard-name-heading"),
+          ).toBeInTheDocument();
         });
 
         it("should hide dashboard title when withTitle is false", async () => {
@@ -98,7 +100,7 @@ describe("SdkDashboard", () => {
           });
 
           expect(
-            screen.queryByTestId("dashboard-title"),
+            screen.queryByTestId("dashboard-name-heading"),
           ).not.toBeInTheDocument();
         });
       });

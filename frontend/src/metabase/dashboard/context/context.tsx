@@ -75,8 +75,7 @@ export const DashboardContext = createContext<ContextReturned | undefined>(
 );
 
 const DashboardContextProviderInner = ({
-  mode,
-
+  mode = "editable",
   dashboardId: initialDashboardId,
   parameterQueryParams = {},
   onLoad,
@@ -307,7 +306,6 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
-        mode,
 
         navigateToNewCardFromDashboard,
         isLoading: isLoading && !error,

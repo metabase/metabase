@@ -35,4 +35,21 @@ describe("EditableDashboard", () => {
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
+
+  it("should allow title editing", async () => {
+    await setup();
+
+    const titleInput = await screen.findByTestId("dashboard-name-heading");
+
+    userEvent.click(titleInput);
+    userEvent.clear(titleInput);
+
+    await userEvent.type(titleInput, "Oisin", { delay: 50 });
+
+    userEvent.tab();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Oisin")).toBeInTheDocument();
+    });
+  });
 });
