@@ -1,14 +1,13 @@
-import type { StoryFn } from "@storybook/react";
-
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+
+import { StaticDashboard } from "../SdkDashboard";
+
+import { dashboardStoryArgTypes } from "./arg-types";
+import { Default as DefaultDashboardStory } from "./dashboard.stories";
 import {
-  dashboardIdArgType,
-  dashboardIds,
-} from "embedding-sdk/test/storybook-id-args";
-
-import { StaticDashboard, type StaticDashboardProps } from "../SdkDashboard";
-
-const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
+  type DashboardStoryDefaultArgsProps,
+  dashboardStoryDefaultArgs,
+} from "./default-args";
 
 export default {
   title: "EmbeddingSDK/dashboard/StaticDashboard",
@@ -17,20 +16,23 @@ export default {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
-  argTypes: {
-    dashboardId: dashboardIdArgType,
-  },
+  argTypes: dashboardStoryArgTypes,
 };
 
-const Template: StoryFn<StaticDashboardProps> = (args) => {
-  return <StaticDashboard {...args} />;
-};
+const staticDashboardStoryArgs = (args: DashboardStoryDefaultArgsProps = {}) =>
+  dashboardStoryDefaultArgs({
+    ...args,
+    mode: "static",
+  });
 
 export const Default = {
-  render: Template,
+  render: DefaultDashboardStory,
+  args: staticDashboardStoryArgs(),
+};
 
-  args: {
-    dashboardId: DASHBOARD_ID,
-    withFooter: true,
-  },
+export const WithoutFooter = {
+  render: Default.render,
+  args: staticDashboardStoryArgs({
+    withFooter: false,
+  }),
 };

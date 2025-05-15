@@ -1,19 +1,13 @@
-import type { StoryFn } from "@storybook/react";
-
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import {
-  dashboardIdArgType,
-  dashboardIds,
-} from "embedding-sdk/test/storybook-id-args";
-import { Stack } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../InteractiveQuestion";
-import {
-  InteractiveDashboard,
-  type InteractiveDashboardProps,
-} from "../SdkDashboard";
+import { InteractiveDashboard } from "../SdkDashboard";
 
-const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
+import { dashboardStoryArgTypes } from "./arg-types";
+import { Default as DefaultDashboardStory } from "./dashboard.stories";
+import {
+  type DashboardStoryDefaultArgsProps,
+  dashboardStoryDefaultArgs,
+} from "./default-args";
 
 export default {
   title: "EmbeddingSDK/dashboard/InteractiveDashboard",
@@ -22,35 +16,21 @@ export default {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
-  argTypes: {
-    dashboardId: dashboardIdArgType,
-  },
+  argTypes: dashboardStoryArgTypes,
 };
 
-const Template: StoryFn<InteractiveDashboardProps> = (args) => {
-  return <InteractiveDashboard {...args} />;
-};
+const interactiveDashboardStoryArgs = (
+  args: DashboardStoryDefaultArgsProps = {},
+) => dashboardStoryDefaultArgs({ ...args, mode: "interactive" });
 
 export const Default = {
-  render: Template,
-
-  args: {
-    dashboardId: DASHBOARD_ID,
-    withFooter: true,
-  },
+  render: DefaultDashboardStory,
+  args: interactiveDashboardStoryArgs(),
 };
 
 export const WithCustomQuestionLayout = {
-  render: Template,
-
-  args: {
-    dashboardId: DASHBOARD_ID,
-    renderDrillThroughQuestion: () => (
-      <Stack>
-        <InteractiveQuestion.Title />
-        <InteractiveQuestion.QuestionVisualization />
-        <div>This is a custom question layout.</div>
-      </Stack>
-    ),
-  },
+  render: Default,
+  args: interactiveDashboardStoryArgs({
+    useCustomDrillThrough: true,
+  }),
 };
