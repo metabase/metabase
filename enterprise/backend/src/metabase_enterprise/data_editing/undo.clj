@@ -35,7 +35,8 @@
   [scope]
   (if (string? scope)
     scope
-    (or (some-> scope actions/normalize-scope nested-sort pr-str) "unknown")))
+    ;; For now :type is ignored for undo scope, but once the FE starts passing it in, we'll probably change that.
+    (or (some-> scope actions/normalize-scope (dissoc :type) nested-sort pr-str) "unknown")))
 
 (defn- next-batch [undo? user-id scope]
   ;; For now, we assume all the changes are to the same table.
