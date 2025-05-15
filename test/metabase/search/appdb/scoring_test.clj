@@ -25,6 +25,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index-contents
   "Populate the index with the given appdb agnostic entity shapes."
+  {:style/indent :defn}
   [entities & body]
   `(search.tu/with-temp-index-table
      (#'specialization/batch-upsert! (search.index/active-table)
@@ -33,11 +34,15 @@
                                           ~entities))
      ~@body))
 
+(defn search-results**
+  [search-string raw-ctx]
+  (memoize/memo-clear! #'scoring/view-count-percentiles)
+  (search.tu/search-results search-string (assoc raw-ctx :search-engine "appdb")))
+
 (defn search-results*
   [search-string & {:as raw-ctx}]
-  (memoize/memo-clear! #'scoring/view-count-percentiles)
   (mapv (juxt :model :id :name)
-        (search.tu/search-results search-string (assoc raw-ctx :search-engine "appdb"))))
+        (search-results** search-string raw-ctx)))
 
 (defmacro with-weights [weight-map & body]
   `(mt/with-dynamic-fn-redefs [search.config/weights (constantly ~weight-map)]
@@ -169,17 +174,20 @@
       (is (= [["card" 2 "card famous"]
               ["card" 3 "card popular"]
               ["card" 1 "card well known"]]
-             (search-results :view-count "card")))))
+             (search-results :view-count "card"))))))
 
+(deftest ^:parallel view-count-test-2
   (testing "don't error on fresh instances with no view count"
     (with-index-contents
       [{:model "card"      :id 1 :name "view card"      :view_count 0}
        {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
        {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-      (is (= [["dashboard" 2 "view dashboard"]
-              ["card"      1 "view card"]
-              ["dataset"   3 "view dataset"]]
-             (search-results* "view"))))))
+      ;; fix some test flakes where dataset 3 exists and has some sort of recent views
+      (with-weights (assoc (search.config/weights {:search-engine "appdb"}) :user-recency 0)
+        (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
+                 {:model "card",      :id 1, :name "view card"}
+                 {:model "dataset",   :id 3, :name "view dataset"}]
+                (search-results** "view" {})))))))
 
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
@@ -213,8 +221,9 @@
        {:model "card" :id 2 :name "card used" :dashboardcard_count 3}]
       (is (= [["card" 2 "card used"]
               ["card" 1 "card no used"]]
-             (search-results :dashboard "card")))))
+             (search-results :dashboard "card"))))))
 
+(deftest ^:parallel dashboard-count-test-2
   (testing "it has a ceiling, more than the ceiling is considered to be equal"
     (with-index-contents
       [{:model "card" :id 1 :name "card popular" :dashboardcard_count 200}

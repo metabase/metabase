@@ -2,8 +2,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.core :as perms]))
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.query.permissions :as query-perms]))
 
 (defn substitute-persisted-query
   "Removes persisted information if user is sandboxed or uses connection impersonation. `:persisted-info/native` is set

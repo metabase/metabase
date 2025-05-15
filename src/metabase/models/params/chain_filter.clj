@@ -67,7 +67,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db :as mdb]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -90,6 +89,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
@@ -428,7 +428,7 @@
                              :breakout-idents (lib.ident/indexed-idents 1)}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)
-                   metadata-queries/add-required-filters-if-needed))
+                   schema.metadata-queries/add-required-filters-if-needed))
    :middleware {:disable-remaps? true}})
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
@@ -468,7 +468,7 @@
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
-   v->human-readable :- metadata-queries/HumanReadableRemappingMap]
+   v->human-readable :- :parameters/human-readable-remapping-map]
   (map vector
        (map first values)
        (map (fn [[v]]
@@ -589,7 +589,7 @@
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
         options               (dissoc options :relax-fk-requirement?)
-        v->human-readable     (metadata-queries/human-readable-remapping-map field-id)
+        v->human-readable     (schema.metadata-queries/human-readable-remapping-map field-id)
         remapping             (delay (remapping field-id))]
     (cond
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
@@ -664,7 +664,7 @@
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
-   v->human-readable :- metadata-queries/HumanReadableRemappingMap
+   v->human-readable :- :parameters/human-readable-remapping-map
    constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]
@@ -716,7 +716,7 @@
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
-        v->human-readable     (delay (metadata-queries/human-readable-remapping-map field-id))
+        v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
         the-remapped-field-id (delay (remapped-field-id field-id))]
     (cond
       (str/blank? query)
