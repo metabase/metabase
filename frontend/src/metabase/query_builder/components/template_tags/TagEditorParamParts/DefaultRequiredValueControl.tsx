@@ -14,12 +14,16 @@ export function DefaultRequiredValueControl({
   tag,
   parameter,
   isEmbeddedDisabled,
+  disabled = false,
+  showTooltip = false,
   onChangeDefaultValue,
   onChangeRequired,
 }: {
   tag: TemplateTag;
   parameter: Parameter;
   isEmbeddedDisabled: boolean;
+  disabled?: boolean;
+  showTooltip?: boolean;
   onChangeDefaultValue: (value: any) => void;
   onChangeRequired: (value: boolean) => void;
 }) {
@@ -48,9 +52,10 @@ export function DefaultRequiredValueControl({
 
         <RequiredParamToggle
           uniqueId={tag.id}
-          disabled={isEmbeddedDisabled}
+          disabled={disabled || isEmbeddedDisabled}
           value={tag.required ?? false}
           onChange={onChangeRequired}
+          showTooltip={showTooltip}
           disabledTooltip={
             <>
               <Text lh={1.4}>
