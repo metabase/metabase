@@ -244,9 +244,10 @@
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         policy    (or policy
                       (cond
-                        (:model-id scope)                     :model-action
-                        (= "data-grid" (namespace action-kw)) :data-editing
-                        :else                                 :ad-hoc-invocation))
+                        (:model-id scope)                        :model-action
+                        (= "data-grid" (namespace action-kw))    :data-editing
+                        (= "data-editing" (namespace action-kw)) :data-editing
+                        :else                                    :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
