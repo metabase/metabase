@@ -21,25 +21,25 @@
      :model/Field {field3-id :id :as field3} {:entity_id "an entity id_________" :table_id table-id}
      :model/Card {card-id :id :as card}]
     (reset! serdes/entity-id-cache {})
-    (f {:db-id db-id
-        :table-id table-id
-        :field1-id field1-id
-        :field2-id field2-id
-        :field3-id field3-id
-        :card-id card-id
-        :db db
-        :table table
-        :field1 field1
-        :field2 field2
-        :field3 field3
-        :card card})))
+    (binding [backfill-entity-ids/*backfill-batch-size* 5000]
+      (f {:db-id db-id
+          :table-id table-id
+          :field1-id field1-id
+          :field2-id field2-id
+          :field3-id field3-id
+          :card-id card-id
+          :db db
+          :table table
+          :field1 field1
+          :field2 field2
+          :field3 field3
+          :card card}))))
 
 (deftest ^:synchronized backfill-databases-test
   (testing "Can backfill databases"
     (with-sample-data!
       (fn [{:keys [db-id table-id field1-id]}]
-        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
-          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database))
+        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Database)
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Database db-id]))))
         (is (not (contains? (:model/Table @serdes/entity-id-cache) table-id)))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field1-id)))))))
@@ -48,8 +48,7 @@
   (testing "Can backfill tables"
     (with-sample-data!
       (fn [{:keys [db-id table-id field1-id]}]
-        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
-          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Table))
+        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Table)
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Table table-id]))))
         (is (not (contains? (:model/Database @serdes/entity-id-cache) db-id)))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field1-id)))))))
@@ -80,8 +79,7 @@
       (fn [{:keys [db-id table-id field1-id card-id]}]
         (binding [serdes/*skip-entity-id-calc* true]
           (t2/update! :model/Card card-id {:entity_id nil}))
-        (binding [backfill-entity-ids/*backfill-batch-size* 5000]
-          (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Card))
+        (#'backfill-entity-ids/backfill-entity-ids!-inner :model/Card)
         (is (not (nil? @(get-in @serdes/entity-id-cache [:model/Card card-id]))))
         (is (not (contains? (:model/Field @serdes/entity-id-cache) field1-id)))
         (is (not (contains? (:model/Database @serdes/entity-id-cache) db-id)))

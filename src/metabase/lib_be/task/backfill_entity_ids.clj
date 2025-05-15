@@ -16,12 +16,12 @@
 
 (def ^:dynamic *drain-batch-size*
   "The number of records the drain entity ids job will process at once"
-  60)
+  10)
 (def ^:dynamic *backfill-batch-size*
   "The number of records the backfill entity ids job will process at once.  Defaults to slightly smaller than
   *drain-batch-size* so that if the user adds a few entities to the cache, the entire thing will still drain in one
   batch."
-  50)
+  6)
 (def ^:private min-repeat-ms
   "The minimum acceptable repeat rate for the backfill entity ids job"
   1000)
