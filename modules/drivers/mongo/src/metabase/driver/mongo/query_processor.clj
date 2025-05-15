@@ -8,7 +8,6 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.operators :refer [$add $addFields $addToSet $and $avg $concat $cond
                                             $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
@@ -16,7 +15,6 @@
                                             $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
                                             $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year
                                             $setWindowFields]]
-   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
@@ -287,22 +285,6 @@
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
             :else day_of_week}}))
-
-(defn- week
-  [column]
-  {$subtract [column
-              {$multiply [{$subtract [(day-of-week column)
-                                      1]}
-                          (* 24 60 60 1000)]}]})
-
-(defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
-                                    :date column}}]
-    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
-                           (for [part (concat (take-while (partial not= resolution)
-                                                          [:year :month :day :hour :minute :second :millisecond])
-                                              [resolution])]
-                             [part (str (name parts) \. (name part))]))}))
 
 (defn- days-till-start-of-first-full-week
   [column]
