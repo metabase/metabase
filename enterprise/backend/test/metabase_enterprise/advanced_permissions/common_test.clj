@@ -8,7 +8,6 @@
    [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -18,6 +17,7 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))

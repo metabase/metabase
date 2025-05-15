@@ -1,12 +1,12 @@
 (ns metabase.models.params.chain-filter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn shorthand->constraint [field-id v]

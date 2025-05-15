@@ -7,8 +7,13 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
+   ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
+   ;; so we need to go in and update the sync code as well.
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (def max-sample-rows
@@ -70,7 +75,6 @@
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
-;;; TODO -- this is only used by a handful of drivers for sync purposes, move into some sort of drivers/common namespace.
 (mu/defn table-rows-sample
   "Run a basic MBQL query to fetch a sample of rows of `fields` belonging to a `table`.
 

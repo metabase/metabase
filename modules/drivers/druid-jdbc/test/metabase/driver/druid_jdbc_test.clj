@@ -455,10 +455,10 @@
 
 (defn- table-rows-sample []
   (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
-                                           [(t2/select-one :model/Field :id (mt/id :checkins :id))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
-                                           (constantly conj))
+                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
+                                            (constantly conj))
        (sort-by first)
        (take 5)))
 

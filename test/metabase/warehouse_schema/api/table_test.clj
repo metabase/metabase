@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.warehouse-schema.api.table :as api.table]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -20,6 +19,7 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
+   [metabase.warehouse-schema.api.table :as api.table]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 

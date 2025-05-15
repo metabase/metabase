@@ -2,10 +2,10 @@
   "Tests for specific behavior related to the Field model."
   (:require
    [clojure.test :refer :all]
-   [metabase.warehouse-schema.models.field :as field]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
 (deftest unknown-types-test

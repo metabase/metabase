@@ -2,11 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.database :as api.database]
-   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -86,9 +86,9 @@
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
            (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                    [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                     (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                    (constantly conj))
+                                                     [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                      (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                     (constantly conj))
                 (sort-by first)
                 (take 5))))))
 

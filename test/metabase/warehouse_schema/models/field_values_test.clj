@@ -6,13 +6,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.serialization :as serdes]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import

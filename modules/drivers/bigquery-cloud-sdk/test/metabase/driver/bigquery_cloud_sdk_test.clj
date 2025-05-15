@@ -4,11 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -21,6 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery TableResult)))
@@ -69,9 +69,9 @@
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
              (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                      [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                       (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                      (constantly conj))
+                                                       [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                        (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                       (constantly conj))
                   (sort-by first)
                   (take 5)))))
 
@@ -85,9 +85,9 @@
         (with-bindings {#'bigquery/*page-size*     25
                         #'bigquery/*page-callback* page-callback}
           (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                                 [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                                  (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                                 (constantly conj))
+                                                                  [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                                   (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                                  (constantly conj))
                              (sort-by first)
                              (take 5))]
             (is (= [[1 "Red Medicine"]

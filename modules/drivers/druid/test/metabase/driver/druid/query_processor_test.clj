@@ -5,8 +5,8 @@
    [clojure.tools.macro :as tools.macro]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -235,10 +235,10 @@
 
 (defn- table-rows-sample []
   (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
-                                           [(t2/select-one :model/Field :id (mt/id :checkins :id))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :timestamp))]
-                                           (constantly conj))
+                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :timestamp))]
+                                            (constantly conj))
        (sort-by first)
        (take 5)))
 

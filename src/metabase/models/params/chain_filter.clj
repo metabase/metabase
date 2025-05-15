@@ -73,8 +73,6 @@
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.database :as database]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
    [metabase.models.params.field-values :as params.field-values]
@@ -90,6 +88,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
