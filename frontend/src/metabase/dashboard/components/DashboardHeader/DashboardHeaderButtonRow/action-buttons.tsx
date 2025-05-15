@@ -1,4 +1,6 @@
+import { useDashboardContext } from "metabase/dashboard/context";
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
 
@@ -15,6 +17,7 @@ import {
   DashboardActionMenu,
   DashboardInfoButton,
   EditDashboardButton,
+  ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
   NightModeToggleButton,
@@ -37,6 +40,7 @@ export const DASHBOARD_ACTION = {
   REFRESH_WIDGET: "REFRESH_WIDGET",
   NIGHT_MODE_TOGGLE: "NIGHT_MODE_TOGGLE",
   FULLSCREEN_TOGGLE: "FULLSCREEN_TOGGLE",
+  PDF_EXPORT_BUTTON: "PDF_EXPORT_BUTTON",
   DASHBOARD_HEADER_ACTION_DIVIDER: "DASHBOARD_HEADER_ACTION_DIVIDER",
   DASHBOARD_BOOKMARK: "DASHBOARD_BOOKMARK",
   DASHBOARD_INFO: "DASHBOARD_INFO",
@@ -176,6 +180,30 @@ export const dashboardActionButtons: Record<
     component: () => <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisButton />,
     enabled: ({ isEditing, dashboard }) =>
       PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeDashboard(dashboard) && !isEditing,
+  },
+
+  [DASHBOARD_ACTION.PDF_EXPORT_BUTTON]: {
+    component: function ExportDashboardPdfButton() {
+      const { dashboard, titled, parameters, hideParameters } =
+        useDashboardContext();
+
+      const hasParameters = Array.isArray(parameters) && parameters.length > 0;
+      const visibleParameters = hasParameters
+        ? getVisibleParameters(parameters, hideParameters)
+        : [];
+      const hasVisibleParameters = visibleParameters.length > 0;
+
+      return (
+        dashboard && (
+          <ExportAsPdfButton
+            dashboard={dashboard}
+            hasTitle={titled}
+            hasVisibleParameters={hasVisibleParameters}
+          />
+        )
+      );
+    },
+    enabled: ({ downloadsEnabled }) => Boolean(downloadsEnabled?.pdf),
   },
 
   // ACTIONS WHEN DASHBOARD IS ANALYTICS DASHBOARD

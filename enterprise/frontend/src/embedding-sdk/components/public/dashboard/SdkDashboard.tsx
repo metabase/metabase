@@ -18,6 +18,7 @@ import type {
   MetabasePluginsConfig,
 } from "embedding-sdk/types/plugins";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
 import {
   DASHBOARD_DISPLAY_ACTIONS,
   DASHBOARD_EDITING_ACTIONS,
@@ -125,7 +126,10 @@ const SdkDashboardInner = ({
         },
       }}
       onEditQuestion={onEditQuestion}
-      dashboardActions={dashboardActions}
+      dashboardActions={[
+        DASHBOARD_ACTION.PDF_EXPORT_BUTTON,
+        ...dashboardActions,
+      ]}
     >
       <Dashboard />
     </InteractiveDashboardProvider>

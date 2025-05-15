@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
+import type { DashboardContextProps } from "metabase/dashboard/context";
 import type {
   DashboardFullscreenControls,
   DashboardNightModeControls,
@@ -32,7 +33,8 @@ export type HeaderButtonProps = {
   isAdmin: boolean;
   isEmbeddingSdk: boolean;
   openSettingsSidebar: () => void;
-} & DashboardHeaderButtonRowProps;
+} & DashboardHeaderButtonRowProps &
+  Pick<DashboardContextProps, "downloadsEnabled">;
 
 export type DashboardActionButton = {
   component: ComponentType<HeaderButtonProps>;

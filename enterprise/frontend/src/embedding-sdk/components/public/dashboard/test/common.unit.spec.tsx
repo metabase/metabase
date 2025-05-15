@@ -131,9 +131,7 @@ describe("SdkDashboard", () => {
             props: { withDownloads: true },
           });
 
-          expect(
-            screen.getByTestId("dashboard-download-button"),
-          ).toBeInTheDocument();
+          expect(screen.getByLabelText("download icon")).toBeInTheDocument();
         });
 
         it("should disable downloads when withDownloads is false", async () => {
@@ -141,9 +139,7 @@ describe("SdkDashboard", () => {
             props: { withDownloads: false },
           });
 
-          expect(
-            screen.queryByTestId("dashboard-download-button"),
-          ).not.toBeInTheDocument();
+          expect(screen.queryByTestId("download icon")).not.toBeInTheDocument();
         });
       });
 
