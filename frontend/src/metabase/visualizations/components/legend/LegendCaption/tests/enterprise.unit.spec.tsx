@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import { setup as baseSetup, sampleSpanishDictionary } from "./setup";
+import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts) =>
   baseSetup({
@@ -16,6 +16,7 @@ describe("LegendCaption (EE without token)", () => {
       locale: "es",
     });
 
+    // TODO: This needs to be improved because it would pass even if the text were translated
     await waitFor(() => {
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
         "Hello World",
