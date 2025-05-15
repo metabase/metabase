@@ -233,7 +233,7 @@
    arg-map-or-maps
    & {:keys [policy existing-context]}]
   (let [action-kw (keyword action)
-        scope     (actions.scope/hydrate scope)
+        scope     (actions.scope/hydrate-scope scope)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         policy    (or policy
                       (cond

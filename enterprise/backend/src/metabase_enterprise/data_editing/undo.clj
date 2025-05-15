@@ -2,7 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase.actions.scope :as actions.scope]
+   [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -35,7 +35,7 @@
   [scope]
   (if (string? scope)
     scope
-    (or (some-> scope actions.scope/normalize nested-sort pr-str) "unknown")))
+    (or (some-> scope actions/normalize-scope nested-sort pr-str) "unknown")))
 
 (defn- next-batch [undo? user-id scope]
   ;; For now, we assume all the changes are to the same table.

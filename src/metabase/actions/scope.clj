@@ -55,7 +55,7 @@
     (:table-id scope)
     (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope))))))
 
-(mu/defn hydrate :- ::types/scope.hydrated
+(mu/defn hydrate-scope :- ::types/scope.hydrated
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
   [scope :- ::types/scope.raw]
   ;; Infer type if FE is not passing it (yet)
@@ -65,7 +65,7 @@
             (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope)))))
            :type scope-type)))
 
-(mu/defn normalize :- ::types/scope.normalized
+(mu/defn normalize-scope :- ::types/scope.normalized
   "Remove all the implicit keys that can be derived from others. Useful to form stable keys. Idempotent."
   [scope :- ::types/scope.raw]
   (cond-> scope

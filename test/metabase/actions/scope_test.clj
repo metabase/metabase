@@ -62,7 +62,7 @@
                   :table-id      table-id
                   :database-id   db-id
                   :type          :dashcard}
-                 (actions.scope/hydrate {:dashcard-id dashcard-id-1}))))
+                 (actions.scope/hydrate-scope {:dashcard-id dashcard-id-1}))))
 
         (testing "hydrate for dashcard with native card"
           (is (= {:dashcard-id   dashcard-id-2
@@ -71,13 +71,13 @@
                   :card-id       native-card-id
                   :database-id   db-id
                   :type          :dashcard}
-                 (actions.scope/hydrate {:dashcard-id dashcard-id-2}))))
+                 (actions.scope/hydrate-scope {:dashcard-id dashcard-id-2}))))
 
         (testing "hydrate for dashboard"
           (is (= {:dashboard-id  dashboard-id
                   :collection-id collection-id
                   :type          :dashboard}
-                 (actions.scope/hydrate {:dashboard-id dashboard-id}))))
+                 (actions.scope/hydrate-scope {:dashboard-id dashboard-id}))))
 
         (testing "hydrate for MBQL card"
           (is (= {:card-id       mbql-card-id
@@ -85,14 +85,14 @@
                   :table-id      table-id
                   :database-id   db-id
                   :type          :card}
-                 (actions.scope/hydrate {:card-id mbql-card-id}))))
+                 (actions.scope/hydrate-scope {:card-id mbql-card-id}))))
 
         (testing "hydrate for native card"
           (is (= {:card-id       native-card-id
                   :collection-id collection-id
                   :database-id   db-id
                   :type          :card}
-                 (actions.scope/hydrate {:card-id native-card-id}))))
+                 (actions.scope/hydrate-scope {:card-id native-card-id}))))
 
         (testing "hydrate for MBQL model"
           (is (= {:model-id      mbql-card-id
@@ -100,27 +100,27 @@
                   :table-id      table-id
                   :database-id   db-id
                   :type          :model}
-                 (actions.scope/hydrate {:model-id mbql-card-id}))))
+                 (actions.scope/hydrate-scope {:model-id mbql-card-id}))))
 
         (testing "hydrate for native model"
           (is (= {:model-id      native-card-id
                   :collection-id collection-id
                   :database-id   db-id
                   :type          :model}
-                 (actions.scope/hydrate {:model-id native-card-id}))))
+                 (actions.scope/hydrate-scope {:model-id native-card-id}))))
 
         (testing "hydrate for table"
           (is (= {:table-id    table-id
                   :database-id db-id
                   :type        :table}
-                 (actions.scope/hydrate {:table-id table-id}))))
+                 (actions.scope/hydrate-scope {:table-id table-id}))))
 
         (testing "hydrate for webhook"
           (is (= {:webhook-id  webhook-id
                   :table-id    table-id
                   :database-id db-id
                   :type        :webhook}
-                 (actions.scope/hydrate {:webhook-id webhook-id})))))
+                 (actions.scope/hydrate-scope {:webhook-id webhook-id})))))
 
       (finally
         (t2/delete! :table_webhook_token webhook-id)))))
@@ -129,29 +129,29 @@
   (mt/with-premium-features #{:table-data-editing}
     (testing "normalize with various scopes"
       (is (= {:dashcard-id 2}
-             (actions.scope/normalize {:dashboard-id 1
-                                       :dashcard-id          2
-                                       :card-id              3
-                                       :table-id             4
-                                       :collection-id        5
-                                       :database-id          6})))
+             (actions.scope/normalize-scope {:dashboard-id 1
+                                             :dashcard-id        2
+                                             :card-id            3
+                                             :table-id           4
+                                             :collection-id      5
+                                             :database-id        6})))
 
       (is (= {:dashboard-id 1}
-             (actions.scope/normalize {:dashboard-id 1
-                                       :collection-id        5})))
+             (actions.scope/normalize-scope {:dashboard-id 1
+                                             :collection-id      5})))
 
       (is (= {:card-id 3}
-             (actions.scope/normalize {:card-id 3
-                                       :table-id        4
-                                       :collection-id   5
-                                       :database-id     6})))
+             (actions.scope/normalize-scope {:card-id 3
+                                             :table-id      4
+                                             :collection-id 5
+                                             :database-id   6})))
 
       (is (= {:model-id 7}
-             (actions.scope/normalize {:model-id 7
-                                       :table-id         4
-                                       :collection-id    5
-                                       :database-id      6})))
+             (actions.scope/normalize-scope {:model-id 7
+                                             :table-id       4
+                                             :collection-id  5
+                                             :database-id    6})))
 
       (is (= {:table-id 4}
-             (actions.scope/normalize {:table-id 4
-                                       :database-id      6}))))))
+             (actions.scope/normalize-scope {:table-id 4
+                                             :database-id    6}))))))

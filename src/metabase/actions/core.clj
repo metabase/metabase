@@ -7,6 +7,7 @@
    [metabase.actions.execution]
    [metabase.actions.http-action]
    [metabase.actions.models]
+   [metabase.actions.scope]
    [potemkin :as p]))
 
 (comment
@@ -14,7 +15,8 @@
   metabase.actions.error/keep-me
   metabase.actions.execution/keep-me
   metabase.actions.http-action/keep-me
-  metabase.actions.models/keep-me)
+  metabase.actions.models/keep-me
+  metabase.actions.scope/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
@@ -44,4 +46,7 @@
   table-primitive-action
   unpack-table-primitive-action-id]
  [metabase.actions.events
-  publish-action-success!])
+  publish-action-success!]
+ [metabase.actions.scope
+  hydrate-scope
+  normalize-scope])
