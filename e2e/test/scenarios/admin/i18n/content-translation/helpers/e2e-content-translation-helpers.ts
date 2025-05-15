@@ -8,6 +8,7 @@ export const getCSVWithHeaderRow = (dictionary: DictionaryArray) => {
 };
 
 export const uploadTranslationDictionary = (rows: DictionaryArray) => {
+  interceptContentTranslationRoutes();
   cy.signInAsAdmin();
   cy.visit("/admin/settings/localization");
   cy.findByTestId("content-localization-setting").findByText(
@@ -38,4 +39,10 @@ export const assertOnlyTheseTranslationsAreStored = (rows: DictionaryArray) => {
       `The expected translations (length: ${rows.length}) match the actual translations (length: ${msgstrs.length})`,
     );
   });
+};
+
+export const interceptContentTranslationRoutes = () => {
+  cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
+    "uploadDictionary",
+  );
 };
