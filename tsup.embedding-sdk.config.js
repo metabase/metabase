@@ -94,12 +94,6 @@ const aliases = {
   "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
   "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
   "embedding-sdk": SDK_SRC_PATH,
-  "moment-timezone":
-    "moment-timezone/builds/moment-timezone-with-data-10-year-range.js",
-  "moment-timezone/data/packed/latest.json": path.join(
-    import.meta.dirname,
-    "dev/null",
-  ),
 };
 
 const getCssModulesInjectCode = async () => {
