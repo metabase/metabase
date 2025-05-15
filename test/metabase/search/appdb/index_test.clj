@@ -20,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- index-hits [term]
   (count (search.index/search term)))
