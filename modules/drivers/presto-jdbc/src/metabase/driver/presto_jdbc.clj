@@ -133,7 +133,7 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
   [driver [_ expr]]
-  (h2x/maybe-cast "varchar" (sql.qp/->honeysql driver expr)))
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
