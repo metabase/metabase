@@ -15,12 +15,14 @@ export const LanguageSelector = ({ w }: { w: number }) => {
   const localeData = useSelector(getAvailableLocales);
 
   const locales = useMemo(() => getLocales(localeData), [localeData]);
-  const languages = locales.map(({ name }) => name);
+  const languages = useMemo(() => locales.map(({ name }) => name), [locales]);
 
   const handleLocaleChange = (language: string) => {
     const locale = findWhere(locales, { name: language });
 
-    locale && dispatch(updateLocale(locale));
+    if (locale) {
+      dispatch(updateLocale(locale));
+    }
   };
 
   if (!locales) {
