@@ -462,6 +462,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("use second collection").click();
       cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
 
+      cy.log("close any existing open popovers to reduce flakes");
+      cy.findByText("Data").click();
+
       cy.log("open the data picker");
       cy.findByText("Pick your starting data").click();
 
