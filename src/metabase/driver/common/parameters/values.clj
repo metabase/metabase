@@ -248,7 +248,7 @@
       :content    (:content snippet)})))
 
 (defmethod parse-tag :temporal-unit
-  [{:keys [name] :as tag} params]
+  [{:keys [name required] :as tag} params]
   (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
                          (when (> (count matching-params) 1)
                            (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -261,10 +261,12 @@
     (params/map->TemporalUnit
      {:name name
       :value (or (:value matching-param)
-                 (when nil-value?
+                 (when (and nil-value? (not required))
                    params/no-value)
                  (:default tag)
-                 params/no-value)})))
+                 (if required
+                   (throw (missing-required-param-exception (:display-name tag)))
+                   params/no-value))})))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
