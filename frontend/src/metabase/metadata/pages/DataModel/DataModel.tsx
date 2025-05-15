@@ -120,13 +120,18 @@ export const DataModel = ({ params }: Props) => {
             </LoadingAndErrorWrapper>
           </Box>
 
-          <Box flex="1 1 200px" p="xl" pl={0} miw={0}>
-            <PreviewSection
-              fieldId={fieldId}
-              previewType={previewType}
-              onPreviewTypeChange={setPreviewType}
-            />
-          </Box>
+          {field && (
+            <Box flex="1 1 200px" p="xl" pl={0} miw={0}>
+              <PreviewSection
+                databaseId={databaseId}
+                tableId={tableId}
+                fieldId={fieldId}
+                field={field}
+                previewType={previewType}
+                onPreviewTypeChange={setPreviewType}
+              />
+            </Box>
+          )}
         </>
       )}
     </Flex>
