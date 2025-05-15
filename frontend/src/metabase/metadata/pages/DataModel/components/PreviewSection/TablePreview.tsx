@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { useGetAdhocQueryQuery } from "metabase/api";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -18,6 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import { Error } from "./Error";
+import { getErrorMessage } from "./utils";
 
 const PREVIEW_ROW_COUNT = 5;
 
@@ -79,21 +78,7 @@ function useDataSample({
   const base = { ...rest, error: undefined, rawSeries: undefined };
 
   if (data?.status === "failed") {
-    let error = typeof data.error === "string" ? data.error : data.error?.data;
-
-    if (data.error_type === "invalid-query") {
-      error = t`Something went wrong fetching the data for this field. This could mean something is wrong with the field settings, like a cast that is not supported for the underlying data type. Please check your settings and try again.`;
-    }
-
-    if (data.error_type === "missing-required-permissions") {
-      error = t`You do not have permission to preview this field's data.`;
-    }
-
-    return {
-      ...base,
-      isError: true,
-      error: error ?? t`Something went wrong`,
-    };
+    return { ...base, isError: true, error: getErrorMessage(data) };
   }
 
   if (!data?.data || data.data.cols.length === 0) {
