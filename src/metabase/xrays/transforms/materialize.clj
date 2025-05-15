@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [toucan2.core :as t2]))
 
@@ -60,6 +60,6 @@
         :result_metadata        (qp.preprocess/query->expected-cols query)
         :visualization_settings {}
         :display                :table}
-       card/populate-query-fields
+       queries/populate-card-query-fields
        (t2/insert-returning-instances! :model/Card)
        first))
