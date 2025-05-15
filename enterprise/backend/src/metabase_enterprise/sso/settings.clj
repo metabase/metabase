@@ -111,7 +111,6 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   (deferred-tru "Alias for the key that {0} should use for signing SAML requests"
                 (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
-  :default    "metabase"
   :feature    :sso-saml
   :audit      :getter)
 
@@ -145,7 +144,6 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting saml-attribute-group
   (deferred-tru "SAML attribute for group syncing")
-  :default    "member_of"
   :feature    :sso-saml
   :audit      :getter
   :encryption :when-encryption-key-set)
