@@ -19,7 +19,7 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
+   [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
@@ -42,8 +42,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc
-                                        ::sql.qp.boolean-is-comparison/boolean-is-comparison})
+(driver/register! :sqlserver, :parent #{:sql-jdbc})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :uuid-type                              true
@@ -528,10 +527,35 @@
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
 
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
+  [driver _ honeysql-form query]
+  (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
+       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
+
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sql.qp/->honeysql [:sqlserver :and]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :or]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :not]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :case]
+  [driver clause]
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
   [_ time-value]
