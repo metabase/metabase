@@ -240,11 +240,11 @@ export function assertBackgroundColorEqual($element: JQuery, expected: string) {
   );
 
   // the dynamically lightened/darkened colors are off by one,
-  // so we must compare with 5% tolerance.
+  // so we must compare with 1% tolerance.
   expect(
     colorDifferencePercentage,
     "color difference percentage is higher than expected",
-  ).to.be.lte(5);
+  ).to.be.lte(1);
 }
 
 function getColorDifferencePercentage(color1: string, color2: string) {
