@@ -577,10 +577,6 @@
 
   models
   {:api #{metabase.models.application-permissions-revision
-          metabase.models.dashboard
-          metabase.models.dashboard-card
-          metabase.models.dashboard-tab
-          metabase.models.dashboard.constants
           metabase.models.database
           metabase.models.dispatch
           metabase.models.field

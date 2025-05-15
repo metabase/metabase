@@ -1,9 +1,9 @@
-(ns metabase.models.dashboard-test
+(ns metabase.dashboards.models.dashboard-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]

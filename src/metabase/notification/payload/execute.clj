@@ -3,7 +3,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
