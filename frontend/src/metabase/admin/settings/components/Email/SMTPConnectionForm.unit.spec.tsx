@@ -1,12 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   setupEmailEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 import type {
   EnterpriseSettingKey,
@@ -82,11 +81,17 @@ const setup = async ({
       }),
     }),
   });
+
+  if (setEnvVars === "all") {
+    await screen.findByText("MB_EMAIL_SMTP_USERNAME");
+  } else {
+    await screen.findByDisplayValue("misty@example.com");
+  }
 };
 
 describe("SMTP connection form", () => {
   it("should render the smtp connection form", async () => {
-    await act(() => setup({}));
+    await setup({});
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Port/i)).toBeInTheDocument();
     expect(screen.getByText(/SMTP Host/i)).toBeInTheDocument();
@@ -143,16 +148,12 @@ describe("SMTP connection form", () => {
   });
 
   it("should submit all settings changes via api", async () => {
-    await act(() => setup({}));
-    await waitFor(() => {
-      expect(screen.getByLabelText(/SMTP Host/i)).toHaveValue("smtp.rotom.com");
-    });
+    await setup({});
     const hostInput = screen.getByLabelText(/SMTP Host/i);
     const portInput = screen.getByLabelText(/SMTP Port/i);
     const usernameInput = screen.getByLabelText(/SMTP Username/i);
     const passwordInput = screen.getByLabelText(/SMTP Password/i);
 
-    await userEvent.clear(hostInput);
     await userEvent.clear(hostInput);
     await userEvent.clear(portInput);
     await userEvent.clear(usernameInput);
@@ -181,20 +182,14 @@ describe("SMTP connection form", () => {
   });
 
   it("should hide setting fields that are set by an environment variable", async () => {
-    await act(() => setup({ setEnvVars: "host" }));
-    await waitFor(() => {
-      expect(screen.getByLabelText(/SMTP Port/i)).toHaveValue("123");
-    });
+    await setup({ setEnvVars: "host" });
     expect(screen.getByText(/this has been set by the/i)).toBeInTheDocument();
     expect(screen.getByText(/MB_EMAIL_SMTP_HOST/i)).toBeInTheDocument();
     expect(screen.getByText(/environment variable/i)).toBeInTheDocument();
   });
 
   it("should allow form submission when some fields are set by an environment variable", async () => {
-    await act(() => setup({ setEnvVars: "host" }));
-    await waitFor(() => {
-      expect(screen.getByLabelText(/SMTP Port/i)).toHaveValue("123");
-    });
+    await setup({ setEnvVars: "host" });
     expect(screen.getByText(/this has been set by the/i)).toBeInTheDocument();
     expect(screen.getByText(/MB_EMAIL_SMTP_HOST/i)).toBeInTheDocument();
     expect(screen.getByText(/environment variable/i)).toBeInTheDocument();
@@ -223,10 +218,8 @@ describe("SMTP connection form", () => {
   });
 
   it("should hide test email button when fields are missing", async () => {
-    setup({});
-    await waitFor(() => {
-      expect(screen.getByLabelText(/SMTP Port/i)).toHaveValue("123");
-    });
+    await setup({});
+    await userEvent.clear(screen.getByLabelText(/SMTP Host/i));
 
     expect(
       screen.queryByRole("button", { name: /send test email/i }),
@@ -234,10 +227,7 @@ describe("SMTP connection form", () => {
   });
 
   it("should hide test email button when form is dirty", async () => {
-    setup({});
-    await waitFor(() => {
-      expect(screen.getByLabelText(/SMTP Port/i)).toHaveValue("123");
-    });
+    await setup({});
 
     expect(
       await screen.findByRole("button", { name: /send test email/i }),
@@ -252,7 +242,7 @@ describe("SMTP connection form", () => {
   });
 
   it("should enable test email button when all fields are set by environment variables (metabase#45445)", async () => {
-    setup({ setEnvVars: "all" });
+    await setup({ setEnvVars: "all" });
 
     expect(
       await screen.findByRole("button", { name: /send test email/i }),
