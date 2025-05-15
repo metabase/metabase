@@ -107,32 +107,55 @@ export function Results({
             }
           };
 
+          function itemByIndex(index: number) {
+            return ref.current?.querySelector<HTMLDivElement>(
+              `[data-index='${index}']`,
+            );
+          }
+
           const handleKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
             if (typeof selectedIndex === "number") {
+              // If there is a selected index externally
+              // don't handle the key events
               return;
             }
             if (evt.code === "ArrowDown") {
-              ref.current
-                ?.querySelector<HTMLDivElement>(`[data-index='${index + 1}']`)
-                ?.focus();
-
-              evt.preventDefault();
-            }
-            if (evt.code === "ArrowRight") {
-              handleItemSelect(true);
-              evt.preventDefault();
-            }
-            if (evt.code === "ArrowLeft") {
-              handleItemSelect(false);
+              // focus the next item in the list
+              // does not wrap at around
+              itemByIndex(index + 1)?.focus();
               evt.preventDefault();
             }
             if (evt.code === "ArrowUp") {
-              ref.current
-                ?.querySelector<HTMLDivElement>(`[data-index='${index - 1}']`)
-                ?.focus();
+              // focus the previous item in the list
+              // does not wrap at around
+              itemByIndex(index - 1)?.focus();
               evt.preventDefault();
             }
+            if (evt.code === "ArrowLeft") {
+              if (isExpanded && type !== "table") {
+                // when expanded, close the item
+                toggle?.(key, false);
+              } else {
+                // when already closed, go to parent node
+                itemByIndex(parentIndex)?.focus();
+              }
+              evt.preventDefault();
+            }
+            if (evt.code === "ArrowRight") {
+              if (!isExpanded) {
+                // expand the item
+                if (type !== "table") {
+                  handleItemSelect(true);
+                }
+              } else {
+                // go to first child
+                itemByIndex(index + 1)?.focus();
+              }
+              evt.preventDefault();
+            }
+
             if (evt.code === "Space" || evt.code === "Enter") {
+              // toggle the current item
               handleItemSelect();
               evt.preventDefault();
             }
