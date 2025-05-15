@@ -177,11 +177,12 @@
     (doseq [[event-type payloads] (u/group-by first second effects)]
       (handle-effects!* event-type sans-effects payloads))))
 
-(mu/defn- perform-action-internal! [action-kw :- qualified-keyword?
-                                    ctx       :- :map
+(mu/defn- perform-action-internal!
+  [action-kw :- qualified-keyword?
+   ctx       :- :map
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
-                                    inputs    :- [:sequential :map]
-                                    & {:as _opts}]
+   inputs    :- [:sequential :map]
+   & {:as _opts}]
   (let [invocation-id  (nano-id/nano-id)
         context-before (-> (assoc ctx :invocation-id invocation-id)
                            (update :invocation-stack u/conjv [action-kw invocation-id]))]
