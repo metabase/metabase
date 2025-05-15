@@ -577,8 +577,7 @@
            util}}
 
   models
-  {:api #{metabase.models.application-permissions-revision
-          metabase.models.dashboard
+  {:api #{metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
           metabase.models.dashboard.constants
@@ -686,6 +685,7 @@
   {:api  #{metabase.permissions.api
            metabase.permissions.core
            ;; TODO -- move these into the API namespace.
+           metabase.permissions.models.application-permissions-revision
            metabase.permissions.models.collection-permission-graph-revision
            metabase.permissions.models.collection.graph
            metabase.permissions.models.data-permissions
@@ -1428,7 +1428,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql
