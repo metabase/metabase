@@ -55,8 +55,8 @@ export async function findRequests(method: "PUT" | "POST" | "DELETE" | "GET") {
 }
 
 /**
- * Asserts that a Jest expect() assertion fails. This is useful for ensuring
- * that the page is NOT asynchronously updated. This function ensures that the
+ * Asserts that a Jest expect() assertion fails. This function is useful for
+ * ensuring that the page is NOT asynchronously updated. It ensures that the
  * callback function repeatedly throws an error until the timeout elapses
  *
  * @see https://stackoverflow.com/questions/68118941/how-to-wait-for-something-not-to-happen-in-testing-library
@@ -64,7 +64,8 @@ export async function findRequests(method: "PUT" | "POST" | "DELETE" | "GET") {
 export const assertNeverPasses = async (
   fn: () => void | Promise<void>,
   expectedError: string | RegExp = /Timed out in waitFor/,
-  options?: waitForOptions,
+  options: waitForOptions = {},
 ) => {
+  options.timeout ??= 500;
   await expect(waitFor(fn, options)).rejects.toThrow(expectedError);
 };

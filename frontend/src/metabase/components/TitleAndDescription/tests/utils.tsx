@@ -1,10 +1,7 @@
-import userEvent from "@testing-library/user-event";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { assertNeverPasses } from "__support__/utils";
+import { renderWithProviders } from "__support__/ui";
 import type {
   RetrievedDictionaryArrayRow,
   TokenFeatures,
@@ -16,8 +13,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import TitleAndDescription from "../TitleAndDescription";
-
-import { sampleDictionary } from "./constants";
 
 export interface SetupOpts {
   localeCode: string;
@@ -52,44 +47,4 @@ export const setup = ({
     />,
     { storeInitialState },
   );
-};
-
-export const assertStringsArePresent = async (
-  stringType: "msgid" | "msgstr",
-) => {
-  expect(
-    await screen.findByRole("heading", {
-      name: sampleDictionary[0][stringType],
-    }),
-  ).toBeInTheDocument();
-
-  await userEvent.hover(screen.getByLabelText("info icon"));
-  expect(
-    await screen.findByRole("tooltip", {
-      name: sampleDictionary[1][stringType],
-    }),
-  ).toBeInTheDocument();
-};
-
-export const assertStringsDoNotBecomePresent = async (
-  /** A 'msgid' is a raw, untranslated string. A translation of a msgid is
-   * called a 'msgstr'. */
-  stringType: "msgid" | "msgstr",
-) => {
-  await assertNeverPasses(async () => {
-    expect(
-      await screen.findByRole("heading", {
-        name: sampleDictionary[0][stringType],
-      }),
-    ).toBeInTheDocument();
-  });
-
-  await assertNeverPasses(async () => {
-    await userEvent.hover(screen.getByLabelText("info icon"));
-    expect(
-      await screen.findByRole("tooltip", {
-        name: sampleDictionary[1][stringType],
-      }),
-    ).toBeInTheDocument();
-  });
 };
