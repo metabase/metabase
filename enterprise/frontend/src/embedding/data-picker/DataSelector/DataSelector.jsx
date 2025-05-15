@@ -372,10 +372,10 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
-    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasUsableModels()) {
-      await this.switchToStep(steps[1]);
+    } else if (!this.hasUsableModels()) {
+      await this.switchToStep(DATABASE_STEP);
     } else {
-      await this.switchToStep(steps[0]);
+      await this.switchToStep(DATA_BUCKET_STEP);
     }
   }
 
