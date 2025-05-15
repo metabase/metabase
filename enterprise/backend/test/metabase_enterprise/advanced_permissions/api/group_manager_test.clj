@@ -126,8 +126,8 @@
        (map :group_id)
        set))
 
-(deftest memebership-apis-permissions-test
-  (testing "/api/permissions/memebership"
+(deftest membership-apis-permissions-test
+  (testing "/api/permissions/membership"
     (mt/with-user-in-groups
       [group  {:name "New Group"}
        user   [group]]
@@ -175,8 +175,8 @@
               (delete-membership! user-2 204 group-2)
               (clear-memberships! user-2 204 group-2))))))))
 
-(deftest memebership-apis-edge-cases-test
-  (testing "/api/permissions/memebership"
+(deftest membership-apis-edge-cases-test
+  (testing "/api/permissions/membership"
     (mt/with-user-in-groups
       [group {:name "New Group"}
        user  [group]]
@@ -211,7 +211,7 @@
                                             :is_group_manager true})))))
 
           (testing "Admin can could view all groups"
-            (is (= (t2/select-fn-set :id :model/PermissionsGroup)
+            (is (= (t2/select-fn-set :id :model/PermissionsGroup :is_tenant_group false)
                    (membership->groups-ids (get-membership :crowberto 200))))))))))
 
 (deftest get-users-api-test
