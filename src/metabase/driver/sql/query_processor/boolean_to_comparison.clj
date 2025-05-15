@@ -57,11 +57,11 @@
 (defn- boolean-field-clause? [clause boolean-types]
   (and (mbql.u/is-clause? :field clause)
        (let [[_ id-or-name options] clause
-             has-types? (some-fn :base-type :base_type :effective-type :effective_type)]
+             has-some-type? (some-fn :base-type :base_type :effective-type :effective_type)]
          (or (boolean-typed? options boolean-types)
              ;; If :base-type is not present in the options, try looking it up in the metadata provider.
              (and (integer? id-or-name)
-                  (not (has-types? options))
+                  (not (has-some-type? options))
                   (boolean-typed? (lib.metadata/field (qp.store/metadata-provider) id-or-name)
                                   boolean-types))))))
 
