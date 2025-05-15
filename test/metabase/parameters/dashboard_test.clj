@@ -38,7 +38,7 @@
 (deftest ^:parallel combined-chained-filter-results-test
   (testing "dedupes and sort by value, then by label if exists"
     (is (= [[1] [2 "B"] [3] [4 "A"] [5 "C"] [6 "D"]]
-           (#'parameters.dashboard/combine-chained-fitler-results
+           (#'parameters.dashboard/combine-chained-filter-results
             [{:values [[1] [2] [4]]}
              {:values [[4 "A"] [5 "C"] [6 "D"]]}
              {:values [[1] [2] [3]]}

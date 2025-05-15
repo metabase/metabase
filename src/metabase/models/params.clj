@@ -301,6 +301,19 @@
   [dashcards]
   (into #{} cat (vals (dashcards->param-id->field-ids dashcards))))
 
+(mu/defn dashboard-param->field-ids :- [:set ms/PositiveInt]
+  "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
+  [{:keys [mappings]} :- ms/Parameter]
+  (let [param-id->field-ids (transduce (map (fn [mapping]
+                                              {:dashcard           (:dashcard mapping)
+                                               :param-mapping      mapping
+                                               :param-target-field (param-target->field-clause
+                                                                    (:target mapping)
+                                                                    (get-in mapping [:dashcard :card]))}))
+                                       field-id-into-context-rf
+                                       mappings)]
+    (into #{} cat (vals param-id->field-ids))))
+
 (defn get-linked-field-ids
   "Retrieve a map relating paramater ids to field ids."
   [dashcards]

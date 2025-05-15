@@ -5,17 +5,13 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -24,80 +20,24 @@
   "How many results to return when chain filtering"
   1000)
 
-(defn- get-template-tag
-  "Fetch the `:field` clause from `dashcard` referenced by `:template-tag`.
-
-    (get-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [dimension card]
-  (when-let [[_ tag] (mbql.u/check-clause :template-tag dimension)]
-    (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
-
 (defn- param-type->op [type]
   (if (get-in lib.schema.parameter/types [type :operator])
     (keyword (name type))
     :=))
 
-;; TODO needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
-;; TODO duplicates code in params.clj
-;; TODO needs to wrap models and metrics properly!
-(mu/defn ^:private param->fields
-  [{:keys [mappings] :as param} :- mbql.s/Parameter]
-  (let [cards (into {}
-                    (map (fn [mapping]
-                           (let [card (get-in mapping [:dashcard :card])]
-                             [(:id card) card])))
-                    mappings)
-        metadata-providers (->>
-                            cards
-                            vals
-                            (map :database_id)
-                            distinct
-                            (into {}
-                                  (map (fn [database-id]
-                                         [database-id
-                                          (lib.metadata.jvm/application-database-metadata-provider database-id)]))))
+(defn- param-type->default-options
+  [type]
+  (when (#{:string/contains :string/does-not-contain :string/starts-with :string/ends-with} type)
+    {:case-sensitive false}))
 
-        filterable-columns (into {}
-                                 (map (fn [[card-id card]]
-                                        (let [dataset-query (:dataset_query card)]
-                                          [card-id
-                                           (if (seq dataset-query)
-                                             (->> dataset-query
-                                                  (lib/query (metadata-providers (:database_id card)))
-                                                  lib/filterable-columns)
-                                             [])])))
-                                 cards)]
-    (for [{:keys [target] {:keys [card]} :dashcard} mappings
-          :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                    (mbql.u/check-clause :dimension))]
-          :when dimension
-          :let  [ttag      (get-template-tag dimension card)
-                 dimension (condp mbql.u/is-clause? dimension
-                             :field        dimension
-                             :expression   dimension
-                             :template-tag (:dimension ttag)
-                             (log/error "cannot handle this dimension" {:dimension dimension}))
-                 field-id  (or
-                            ;; Get the field id from the field-clause if it contains it. This is the common case
-                            ;; for mbql queries.
-                            (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
-                            ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                            ;; This is the common case for native queries in which mappings from original columns
-                            ;; have been performed using model metadata.
-                            (:id (qp.util/field->field-info dimension (:result_metadata card)))
-                            ;; Look through the card's filterable columns and see if any of them match. This is common
-                            ;; when the query has an aggregation and you want to filter on something pre-aggregation.
-                            (lib.util.match/match-one dimension [:field (field-name :guard string?) _]
-                              (->> card
-                                   :id
-                                   filterable-columns
-                                   (lib/find-matching-column (lib/->pMBQL dimension))
-                                   :id)))]
-          :when field-id]
+(mu/defn- param->fields
+  [param :- mbql.s/Parameter]
+  (let [op      (param-type->op (:type param))
+        options (or (:options param) (param-type->default-options (:type param)))]
+    (for [field-id (params/dashboard-param->field-ids param)]
       {:field-id field-id
-       :op       (param-type->op (:type param))
-       :options  (merge (:options ttag)
-                        (:options param))})))
+       :op       op
+       :options  options})))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard                   :- :map
@@ -128,7 +68,7 @@
                                        1 first)))
          :has_more_values has_more_values}))))
 
-(defn- combine-chained-fitler-results
+(defn- combine-chained-filter-results
   [results]
   (let [;; merge values with remapped values taking priority
         values (->> (mapcat :values results)
@@ -170,7 +110,7 @@
                                       #(chain-filter/chain-filter % constraints :limit result-limit))
                                     field-ids)
                has_more_values (boolean (some true? (map :has_more_values results)))]
-           {:values          (or (combine-chained-fitler-results results)
+           {:values          (or (combine-chained-filter-results results)
                                  ;; chain filter results can't be nil
                                  [])
             :has_more_values has_more_values})
