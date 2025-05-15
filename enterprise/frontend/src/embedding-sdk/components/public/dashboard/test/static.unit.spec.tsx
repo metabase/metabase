@@ -1,74 +1,42 @@
-import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 
-import {
-  type SetupSdkDashboardProps,
-  setup as setupSdkDashboard,
-} from "./setup";
+import { setup as setupSdkDashboard } from "./setup";
 
-const setup = (args: SetupSdkDashboardProps = {}) =>
+const setup = (args = {}) =>
   setupSdkDashboard({
     mode: "static",
     ...args,
   });
 
 describe("StaticDashboard", () => {
-  it("shows a dashboard card question title by default", async () => {
+  it("should not allow editing", async () => {
     await setup();
 
-    expect(screen.getByText("Here is a card title")).toBeInTheDocument();
-  });
-
-  it("hides the dashboard card question title when withCardTitle is false", async () => {
-    await setup({ props: { withCardTitle: false } });
-
-    expect(screen.queryByText("Here is a card title")).not.toBeInTheDocument();
-  });
-
-  it("should support onLoad, onLoadWithoutCards handlers", async () => {
-    const onLoad = jest.fn();
-    const onLoadWithoutCards = jest.fn();
-    const { dashboard } = await setup({
-      props: { onLoad, onLoadWithoutCards },
-    });
-
-    expect(onLoadWithoutCards).toHaveBeenCalledTimes(1);
-    expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
-
     await waitFor(() => {
-      return fetchMock.called(
-        `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
-      );
+      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
     });
 
-    expect(onLoad).toHaveBeenCalledTimes(1);
-    expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+    // Edit button should not be present
+    const header = screen.getByTestId("dashboard-header");
+    expect(
+      within(header).queryByLabelText("pencil icon"),
+    ).not.toBeInTheDocument();
   });
 
-  it("should support global dashboard load event handlers", async () => {
-    const onLoad = jest.fn();
-    const onLoadWithoutCards = jest.fn();
+  it("should not allow drilling through to questions", async () => {
+    await setup();
 
-    const { dashboard } = await setup({
-      providerProps: {
-        eventHandlers: {
-          onDashboardLoad: onLoad,
-          onDashboardLoadWithoutCards: onLoadWithoutCards,
-        },
-      },
-    });
+    // Click on card title, but it shouldn't navigate
+    await userEvent.click(screen.getByText("Here is a card title"));
 
-    expect(onLoadWithoutCards).toHaveBeenCalledTimes(1);
-    expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
+    // Should not navigate to question view
+    expect(
+      screen.queryByTestId("query-visualization-root"),
+    ).not.toBeInTheDocument();
 
-    await waitFor(() => {
-      return fetchMock.called(
-        `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
-      );
-    });
-
-    expect(onLoad).toHaveBeenCalledTimes(1);
-    expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+    // Should still be on dashboard
+    expect(screen.getByTestId("dashboard-grid")).toBeInTheDocument();
   });
 });

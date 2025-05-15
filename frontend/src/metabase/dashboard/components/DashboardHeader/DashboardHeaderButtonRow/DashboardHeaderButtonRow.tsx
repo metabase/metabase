@@ -8,6 +8,7 @@ import type {
   HeaderButtonProps,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getDashboardComplete,
   getHasModelActionsEnabled,
@@ -32,10 +33,10 @@ export const DashboardHeaderButtonRow = ({
 }: {
   dashboardActionKeys?: DashboardActionKey[] | null;
 } & DashboardHeaderButtonRowProps) => {
+  const { downloadsEnabled } = useDashboardContext();
   const formInput = useSelector(getPulseFormInput);
   const isAdmin = useSelector(getUserIsAdmin);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
-
   const dashboard = useSelector(getDashboardComplete);
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
 
@@ -74,6 +75,7 @@ export const DashboardHeaderButtonRow = ({
             isPublic,
             isEmbeddingSdk,
             openSettingsSidebar,
+            downloadsEnabled,
             ...props,
           };
 
