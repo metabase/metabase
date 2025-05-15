@@ -80,7 +80,7 @@
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
-   [metabase.test.initialize.web-server :as initialize.web-server]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -170,7 +170,7 @@
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! (initialize.web-server/test-handler))
+  (server/start-web-server! (server.test-handler/test-handler))
   (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
