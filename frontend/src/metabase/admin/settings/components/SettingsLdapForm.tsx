@@ -112,7 +112,9 @@ export const SettingsLdapForm = () => {
                 name="ldap-port"
                 label={t`LDAP Port`}
                 placeholder="389"
+                required
                 type="number"
+                {...getExtraProps(settingDetails?.["ldap-port"])}
               />
               <FormRadioGroup
                 name="ldap-security"
@@ -132,12 +134,14 @@ export const SettingsLdapForm = () => {
               <FormTextInput
                 name="ldap-bind-dn"
                 label={t`Username or DN`}
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-bind-dn"])}
               />
               <FormTextInput
                 name="ldap-password"
                 label={t`Password`}
                 type="password"
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-password"])}
               />
             </Stack>
@@ -154,6 +158,7 @@ export const SettingsLdapForm = () => {
               <FormTextInput
                 name="ldap-user-filter"
                 label={t`User filter`}
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-user-filter"])}
               />
             </Stack>
@@ -163,16 +168,19 @@ export const SettingsLdapForm = () => {
               <FormTextInput
                 name="ldap-attribute-email"
                 label={t`Email attribute`}
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-attribute-email"])}
               />
               <FormTextInput
                 name="ldap-attribute-firstname"
                 label={t`First name attribute`}
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-attribute-firstname"])}
               />
               <FormTextInput
                 name="ldap-attribute-lastname"
                 label={t`Last name attribute`}
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-attribute-lastname"])}
               />
             </Stack>
@@ -191,6 +199,7 @@ export const SettingsLdapForm = () => {
               <FormTextInput
                 name="ldap-group-base"
                 label={t`Group search base`}
+                nullable
                 {...getExtraProps(settingDetails?.["ldap-group-base"])}
               />
               <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />

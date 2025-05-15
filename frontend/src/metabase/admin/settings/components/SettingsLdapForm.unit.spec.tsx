@@ -35,24 +35,24 @@ const setup = async (settingValues?: Partial<LdapSettings>) => {
 };
 
 describe("SettingsLdapForm", () => {
+  const ATTRS = {
+    "ldap-host": "example.com",
+    "ldap-port": 123,
+    "ldap-security": "ssl",
+    "ldap-user-base": "user-base",
+    "ldap-user-filter": "(filter1)",
+    "ldap-bind-dn": "username",
+    "ldap-password": "password",
+    "ldap-attribute-email": "john@example.com",
+    "ldap-attribute-firstname": "John",
+    "ldap-attribute-lastname": "Doe",
+    "ldap-enabled": true,
+    "ldap-group-sync": true,
+    "ldap-group-base": "group-base",
+  };
+
   it("should submit the correct payload", async () => {
     await setup();
-
-    const ATTRS = {
-      "ldap-host": "example.com",
-      "ldap-port": 123,
-      "ldap-security": "ssl",
-      "ldap-user-base": "user-base",
-      "ldap-user-filter": "(filter1)",
-      "ldap-bind-dn": "username",
-      "ldap-password": "password",
-      "ldap-attribute-email": "john@example.com",
-      "ldap-attribute-firstname": "John",
-      "ldap-attribute-lastname": "Doe",
-      "ldap-enabled": true,
-      "ldap-group-sync": true,
-      "ldap-group-base": "group-base",
-    };
 
     await userEvent.type(
       await screen.findByLabelText(/LDAP Host/),
@@ -110,5 +110,20 @@ describe("SettingsLdapForm", () => {
     expect(
       screen.queryByRole("textbox", { name: /Group membership filter/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("can remove a nullable field", async () => {
+    setup(ATTRS as Partial<LdapSettings>);
+
+    await userEvent.clear(await screen.findByLabelText(/First name attribute/));
+    await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+
+    const [{ body }] = await findRequests("PUT");
+
+    // if the field is omitted, this will be undefined instead of null
+    expect(body["ldap-attribute-firstname"]).toBe(null);
+    expect(body["ldap-attribute-lastname"]).toBe(
+      ATTRS["ldap-attribute-lastname"],
+    );
   });
 });

@@ -25,6 +25,7 @@ export function LdapGroupMembershipFilter() {
       name="ldap-group-membership-filter"
       label={t`Group membership filter`}
       description={settingDetails?.description}
+      nullable
     />
   );
 }
