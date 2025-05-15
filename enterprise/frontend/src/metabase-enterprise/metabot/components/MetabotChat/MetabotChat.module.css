@@ -21,7 +21,7 @@
 }
 
 .conversationStatusContainer {
-  margin: 1rem var(--paddxing-x);
+  margin: 1rem var(--paddxing-x) 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -59,53 +59,15 @@
   font-weight: bold;
 }
 
-.inputContainer {
-  padding: 0 0.75rem 0 0.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.inputContainerLoading {
-  background: var(--mb-color-bg-light);
-}
-
-.inputContainerExpanded {
-  padding: 1rem var(--paddxing-x);
-  align-items: flex-start;
-  height: 8rem;
-}
-
 .input {
-  caret-color: var(--mb-color-brand);
-}
-
-.textarea {
-  textarea {
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    outline: none;
-    width: 100%;
-    caret-color: var(--mb-color-brand);
-    padding: 0.5rem 0;
-    line-height: 1.7;
-    color: var(--mb-color-text-dark);
+  & > div {
+    --input-size: 3rem;
   }
-}
 
-.textareaExpanded {
-  textarea {
-    padding: 0;
-  }
-}
+  box-shadow: 0 3px 6px 0 #0000000d;
 
-.textareaLoading {
-  textarea {
-    &:disabled {
-      opacity: 1;
-      background: transparent;
-    }
+  &:focus {
+    border-color: var(--mb-color-brand);
   }
 }
 

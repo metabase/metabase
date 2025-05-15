@@ -702,7 +702,8 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
-  Metabot: () => null as React.ReactElement | null,
+  Metabot: (_props: { isAdminApp: boolean }) =>
+    null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {

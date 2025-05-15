@@ -41,7 +41,7 @@ if (hasPremiumFeature("metabot_v3")) {
     }, [searchText, submitInput, setVisible]);
   };
 
-  PLUGIN_METABOT.getMetabotVisible = getMetabotVisible;
+  PLUGIN_METABOT.getMetabotVisible = getMetabotVisible as any; // TODO: fix type
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { METAKEY } from "metabase/lib/browser";
-import { Button, Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
+import { Button, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 /* eslint-disable no-restricted-imports */
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -48,24 +48,26 @@ export const SearchButton = () => {
           border: "1px solid var(--mb-color-border)",
         }}
       >
-        <Tooltip label={`${t`Metabot`}... (${METAKEY}+b)`}>
-          <UnstyledButton
-            className={S.iconButton}
-            aria-label={t`Metabot`}
-            onClick={() => metabot.setVisible(!metabot.visible)}
+        <UnstyledButton
+          className={S.iconButton}
+          aria-label={t`Metabot`}
+          onClick={() => metabot.setVisible(!metabot.visible)}
+        >
+          <Tooltip
+            offset={{ mainAxis: 20 }}
+            label={`${t`Open Metabot`} (${METAKEY}+b)`}
           >
             <Icon name="metabot" h="1rem" />
-          </UnstyledButton>
-        </Tooltip>
-        <Tooltip label={`${t`Search...`} (${METAKEY}+k)`}>
-          <UnstyledButton
-            className={S.searchTextButton}
-            aria-label={label}
-            onClick={handleClick}
-          >
-            {label}
-          </UnstyledButton>
-        </Tooltip>
+          </Tooltip>
+        </UnstyledButton>
+        <UnstyledButton
+          className={S.searchTextButton}
+          aria-label={label}
+          onClick={handleClick}
+        >
+          <Text>{label}</Text>
+          <Text className={S.shortcutText}>{`${METAKEY}+k`}</Text>
+        </UnstyledButton>
       </Flex>
     );
   }
