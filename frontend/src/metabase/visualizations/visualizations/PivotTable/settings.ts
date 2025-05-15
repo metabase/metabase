@@ -174,6 +174,7 @@ export const settings = {
       },
       partitions: partitions,
       columns: data == null ? [] : data.cols,
+      aggregatedColumns: data == null ? [] : data.pivot_cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {
         return getTitleForColumn(column, settings);
