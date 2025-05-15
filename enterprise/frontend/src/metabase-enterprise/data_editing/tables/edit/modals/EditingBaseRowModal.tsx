@@ -102,7 +102,6 @@ export function EditingBaseRowModal({
     resetForm,
     setFieldValue,
     handleSubmit,
-    errors,
     validateForm: revalidateForm,
   } = useFormik({
     initialValues: {} as EditingFormValues,
@@ -221,6 +220,11 @@ export function EditingBaseRowModal({
                   />
                   <Text className={S.modalBodyColumn}>
                     {column.display_name}
+                    {field?.database_required && (
+                      <Text component="span" c="error">
+                        *
+                      </Text>
+                    )}
                   </Text>
                   <ModalEditingInput
                     isEditingMode={isEditingMode}
@@ -229,7 +233,6 @@ export function EditingBaseRowModal({
                     field={field}
                     onSubmitValue={handleValueEdit}
                     onChangeValue={setFieldValue}
-                    error={!isEditingMode && !!errors[column.name]}
                     disabled={columnsConfig?.isColumnReadonly(column.name)}
                   />
                 </Fragment>
@@ -261,7 +264,6 @@ type EditingInputWithEventsProps = {
   field?: FieldWithMetadata;
   onSubmitValue: (key: string, value: RowValue) => void;
   onChangeValue: (key: string, value: RowValue) => void;
-  error?: boolean;
   disabled?: boolean;
 };
 function ModalEditingInput({
@@ -271,7 +273,6 @@ function ModalEditingInput({
   field,
   onSubmitValue,
   onChangeValue,
-  error,
   disabled,
 }: EditingInputWithEventsProps) {
   // The difference is that in editing mode we handle change only when value is ready (e.g. on blur)
@@ -303,7 +304,7 @@ function ModalEditingInput({
       onCancel={noop}
       onSubmit={handleValueSubmit}
       onChangeValue={handleValueChange}
-      inputProps={{ error, disabled }}
+      inputProps={{ disabled }}
     />
   );
 }
