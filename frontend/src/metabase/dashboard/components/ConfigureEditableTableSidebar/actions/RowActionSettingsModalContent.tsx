@@ -2,27 +2,29 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  ActionSettingsHeader,
   ActionSettingsLeft,
   ActionSettingsRight,
   ActionSettingsWrapper,
   ModalActions,
   ParameterMapperContainer,
 } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
-import { ExplainerText } from "metabase/actions/components/ActionViz/ExplainerText";
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import EmptyState from "metabase/components/EmptyState";
+import EditableText from "metabase/core/components/EditableText/EditableText";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, TextInput } from "metabase/ui";
+import { Box, Button, Title } from "metabase/ui";
 import type {
   EditableTableRowActionDisplaySettings,
   Field,
-  RowActionFieldFieldSettingsMap,
+  ParameterId,
+  PartialRowActionFieldSettings,
   RowActionFieldSettings,
   WritebackAction,
 } from "metabase-types/api";
 
+import S from "./ConfigureEditableTableActions.module.css";
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
+import { isValidMapping } from "./utils";
 
 interface Props {
   action: WritebackAction | null | undefined;
@@ -53,9 +55,9 @@ export function RowActionSettingsModalContent({
     rowActionSettings?.name || selectedAction?.name,
   );
 
-  const [parameterMappings, setParameterMappings] = useState(
-    rowActionSettings?.parameterMappings,
-  );
+  const [parameterMappings, setParameterMappings] = useState<
+    PartialRowActionFieldSettings[] | undefined
+  >(rowActionSettings?.parameterMappings);
 
   const hasParameters = !!selectedAction?.parameters?.length;
 
@@ -68,31 +70,16 @@ export function RowActionSettingsModalContent({
     [parameterMappings],
   );
 
-  // TODO: add validation rules
-  // const isFormInvalid =
-  //   selectedAction != null &&
-  //   selectedAction.parameters?.some((actionParameter) => {
-  //     const isHidden = isParameterHidden(selectedAction, actionParameter);
-  //     const isRequired = isParameterRequired(selectedAction, actionParameter);
-  //
-  //     const isParameterMapped =
-  //       currentMappingsMap[actionParameter.id] != null;
-  //
-  //     const defaultValue = getParameterDefaultValue(
-  //       selectedAction,
-  //       actionParameter,
-  //     );
-  //     const hasDefaultValue = defaultValue != null;
-  //
-  //     return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
-  //   });
+  const isFormInvalid =
+    selectedAction != null &&
+    parameterMappings?.some((mapping) => !isValidMapping(mapping));
 
   const handlePickAction = (action: WritebackAction) => {
     setSelectedAction(action);
   };
 
   const handleMappingsChange = (
-    mappingsMap: RowActionFieldFieldSettingsMap,
+    mappingsMap: Record<ParameterId, PartialRowActionFieldSettings>,
   ) => {
     setParameterMappings(Object.values(mappingsMap));
   };
@@ -102,7 +89,8 @@ export function RowActionSettingsModalContent({
       onSubmit({
         action: selectedAction,
         name: actionName,
-        parameterMappings: parameterMappings || [],
+        parameterMappings:
+          (parameterMappings as RowActionFieldSettings[]) || [], // checked via "isFormInvalid"
       });
     }
 
@@ -124,24 +112,25 @@ export function RowActionSettingsModalContent({
           />
         </ActionSettingsLeft>
       )}
-      <ActionSettingsRight>
+      <ActionSettingsRight style={{ padding: 0 }}>
         {selectedAction ? (
           <>
-            <Box p="md">
-              <TextInput
-                label={t`Row action name`}
-                value={actionName || selectedAction.name}
-                onChange={(e) => setActionName(e.target.value)}
+            <Box pl="lg">
+              <EditableText
+                className={S.EditableTitle}
+                initialValue={actionName || selectedAction.name}
+                placeholder={t`Add title`}
+                data-testid="row-action-name-heading"
+                onChange={setActionName}
               />
             </Box>
 
             {hasParameters && (
-              <>
-                <ActionSettingsHeader>
-                  {t`Where should the values for '${selectedAction.name}' row action come from?`}
-                </ActionSettingsHeader>
-                <ExplainerText />
-              </>
+              <Box p="1rem 2rem 0">
+                <Title
+                  order={4}
+                >{t`Where should the values for this row action come from?`}</Title>
+              </Box>
             )}
             <ParameterMapperContainer>
               <RowActionParameterMappingForm
@@ -158,7 +147,11 @@ export function RowActionSettingsModalContent({
           </ParameterMapperContainer>
         )}
         <ModalActions>
-          <Button variant="filled" onClick={handleSubmit}>
+          <Button
+            variant="filled"
+            onClick={handleSubmit}
+            disabled={isFormInvalid}
+          >
             {t`Done`}
           </Button>
         </ModalActions>

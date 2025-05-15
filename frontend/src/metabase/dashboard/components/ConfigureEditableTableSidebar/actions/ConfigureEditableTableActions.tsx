@@ -62,8 +62,6 @@ export const ConfigureEditableTableActions = ({
     return { enabledActions, enabledActionsMap };
   }, [dashcard.visualization_settings]);
 
-  // console.log("ConfigureEditableTableActions", enabledActions);
-
   const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to optimize this
 
   const tableColumns = useMemo(() => {
@@ -234,7 +232,7 @@ export const ConfigureEditableTableActions = ({
 
       {dashboard && (
         <Modal
-          size={editingAction ? undefined : "60rem"}
+          size={editingAction ? undefined : "xxl"}
           opened={isEditingModalOpen}
           onClose={cancelEditAction}
         >

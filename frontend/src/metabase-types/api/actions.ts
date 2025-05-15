@@ -1,4 +1,3 @@
-import type { RowValue } from "metabase-types/api/dataset";
 import type { FieldId } from "metabase-types/api/field";
 
 import type { CardId } from "./card";
@@ -224,7 +223,6 @@ type RowActionFieldSettingsBase = {
 
 export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {
   sourceType: "ask-user"; // default - ask user, cannot be hidden
-  value?: RowValue; // default placeholder value
 };
 
 export type RowDataRowActionFieldSettings = RowActionFieldSettingsBase & {
@@ -234,7 +232,7 @@ export type RowDataRowActionFieldSettings = RowActionFieldSettingsBase & {
 
 export type ConstantRowActionFieldSettings = RowActionFieldSettingsBase & {
   sourceType: "constant";
-  value: RowValue;
+  value: string;
 };
 
 export type RowActionFieldSettings =
@@ -244,7 +242,10 @@ export type RowActionFieldSettings =
 
 export type RowActionFieldSourceType = RowActionFieldSettings["sourceType"];
 
-export type RowActionFieldFieldSettingsMap = Record<
+export type PartialRowActionFieldSettingsMap = Record<
   ParameterId,
-  RowActionFieldSettings
+  PartialRowActionFieldSettings
 >;
+
+export type PartialRowActionFieldSettings = RowActionFieldSettingsBase &
+  Partial<RowActionFieldSettings>;

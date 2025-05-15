@@ -1,33 +1,33 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { ParameterFormLabel } from "metabase/actions/components/ActionViz/ActionParameterMapping.styled";
 import {
   isParameterHidden,
   isParameterRequired,
 } from "metabase/actions/components/ActionViz/utils";
 import { sortActionParams } from "metabase/actions/utils";
 import EmptyState from "metabase/components/EmptyState";
-import { Box, Select, TextInput } from "metabase/ui";
+import { Box, Select, Stack, Text, TextInput } from "metabase/ui";
 import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
 import type {
   Field,
   FieldId,
-  RowActionFieldFieldSettingsMap,
-  RowActionFieldSettings,
+  ParameterId,
+  PartialRowActionFieldSettings,
+  PartialRowActionFieldSettingsMap,
   RowActionFieldSourceType,
-  RowValue,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 
+import S from "./ConfigureEditableTableActions.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
 
 interface ActionParameterMappingProps {
   action: WritebackAction;
-  currentMappingsMap: RowActionFieldFieldSettingsMap;
+  currentMappingsMap: PartialRowActionFieldSettingsMap;
   tableColumns: Field[];
-  onMappingsChange: (currentMappings: RowActionFieldFieldSettingsMap) => void;
+  onMappingsChange: (currentMappings: PartialRowActionFieldSettingsMap) => void;
 }
 
 export const RowActionParameterMappingForm = ({
@@ -47,8 +47,10 @@ export const RowActionParameterMappingForm = ({
   }, [action]);
 
   const handleParameterChange = useCallback(
-    (newParameterSettings: RowActionFieldSettings) => {
-      const newParams = { ...currentMappingsMap };
+    (newParameterSettings: PartialRowActionFieldSettings) => {
+      const newParams: Record<ParameterId, PartialRowActionFieldSettings> = {
+        ...currentMappingsMap,
+      };
 
       newParams[newParameterSettings.parameterId] = newParameterSettings;
 
@@ -58,7 +60,7 @@ export const RowActionParameterMappingForm = ({
   );
 
   return (
-    <div>
+    <Stack gap="lg" mt="md">
       {sortedParameters.map((actionParameter: WritebackParameter) => {
         const parameterSettings = currentMappingsMap[actionParameter.id] || {
           parameterId: actionParameter.id,
@@ -79,16 +81,16 @@ export const RowActionParameterMappingForm = ({
       {sortedParameters.length === 0 && (
         <EmptyState message={t`This action has no parameters to map`} />
       )}
-    </div>
+    </Stack>
   );
 };
 
 interface ActionParameterMappingItemProps {
   action: WritebackAction;
   actionParameter: WritebackParameter;
-  parameterSettings: RowActionFieldSettings;
+  parameterSettings: PartialRowActionFieldSettings;
   tableColumns: Field[];
-  onChange: (parameterSettings: RowActionFieldSettings) => void;
+  onChange: (parameterSettings: PartialRowActionFieldSettings) => void;
 }
 
 const getDefaultOptions = (): SelectData<RowActionFieldSourceType> => {
@@ -122,21 +124,23 @@ export const ActionParameterMappingItem = ({
 
   const handleSourceTypeChange = (newValue: RowActionFieldSourceType) => {
     onChange({
-      ...parameterSettings,
+      parameterId: parameterSettings.parameterId,
       sourceType: newValue,
     });
   };
 
-  const handleValueChange = (newValue: RowValue) => {
+  const handleValueChange = (newValue: string) => {
     onChange({
-      ...parameterSettings,
+      parameterId: parameterSettings.parameterId,
+      sourceType: "constant",
       value: newValue,
     });
   };
 
   const handleColumnChange = (newValue: FieldId) => {
     onChange({
-      ...parameterSettings,
+      parameterId: parameterSettings.parameterId,
+      sourceType: parameterSettings.sourceType,
       sourceValueTarget: newValue,
     });
   };
@@ -144,31 +148,48 @@ export const ActionParameterMappingItem = ({
   const options = getDefaultOptions();
 
   return (
-    <Box data-testid={`parameter-form-section-${actionParameter.id}`} mt="1rem">
-      <ParameterFormLabel error={false}>
-        <span>{`${name}${isRequired ? t`: required` : ""}${isHidden ? t`: hidden` : ""}`}</span>
-      </ParameterFormLabel>
+    <Box
+      data-testid={`parameter-form-section-${actionParameter.id}`}
+      className={S.ParameterWidget}
+    >
+      <Text>
+        {`${name}: ${getFieldFlagsCaption({ isRequired, isHidden })}`}
+      </Text>
       <Select
         value={parameterSettings.sourceType}
         data={options}
         onChange={handleSourceTypeChange}
       />
 
-      {parameterSettings.sourceType === "row-data" && (
-        <TableColumnsSelect
-          value={parameterSettings.sourceValueTarget}
-          columns={tableColumns}
-          onChange={handleColumnChange}
-        />
-      )}
+      <Box mt="1rem">
+        {parameterSettings.sourceType === "row-data" && (
+          <TableColumnsSelect
+            value={parameterSettings.sourceValueTarget}
+            columns={tableColumns}
+            onChange={handleColumnChange}
+          />
+        )}
 
-      {parameterSettings.sourceType === "constant" && (
-        <TextInput
-          label={t`Value`}
-          value={parameterSettings.value}
-          onChange={(e) => handleValueChange(e.target.value)}
-        />
-      )}
+        {parameterSettings.sourceType === "constant" && (
+          <TextInput
+            label={t`Value`}
+            value={parameterSettings.value}
+            onChange={(e) => handleValueChange(e.target.value)}
+          />
+        )}
+      </Box>
     </Box>
   );
+};
+
+const getFieldFlagsCaption = ({
+  isRequired,
+  isHidden,
+}: {
+  isRequired: boolean;
+  isHidden: boolean;
+}) => {
+  return [isRequired ? t`required` : "", isHidden ? t`hidden` : ""]
+    .filter(Boolean)
+    .join(", ");
 };
