@@ -23,9 +23,11 @@
 
 ;; All derivable or unknown data removed, so that this is safe to use as a key.
 (mr/def ::scope.normalized
+
   (into [:or] (for [s raw-scope-types]
                 (vec (concat (subvec s 0 1)
-                             [{:closed true}]
+                             [{:closed true}
+                              [:type {:optional true} :keyword]]
                              (subvec s 1))))))
 
 ;; All derivable data included.
