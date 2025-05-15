@@ -4,8 +4,8 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.data-editing.coerce :as data-editing.coerce]
-   [metabase-enterprise.data-editing.scope :as data-editing.scope]
    [metabase.actions.core :as actions]
+   [metabase.actions.scope :as actions.scope]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -181,7 +181,7 @@
         (doseq [row-change row-changes]
           (events/publish-event! event {:actor_id   user-id
                                         :row_change row-change
-                                        :scope      (u/snake-keys (data-editing.scope/hydrate scope))
+                                        :scope      (u/snake-keys (actions.scope/hydrate scope))
                                         :args       {:table_id  table-id
                                                      :db_id     db-id
                                                      :timestamp (t/zoned-date-time (t/zone-id "UTC"))}}))))))

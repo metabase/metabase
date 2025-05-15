@@ -2,7 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.scope :as actions.scope]
+   [metabase.actions.scope :as actions.scope]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]

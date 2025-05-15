@@ -1,5 +1,4 @@
-;; This should move into the Actions module as things stabilize.
-(ns metabase-enterprise.data-editing.scope
+(ns metabase.actions.scope
   (:require
    [macaw.util :as u]
    [metabase.actions.types :as types]

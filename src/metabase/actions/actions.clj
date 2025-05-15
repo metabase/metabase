@@ -3,6 +3,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [metabase.actions.events :as actions.events]
+   [metabase.actions.scope :as actions.scope]
    [metabase.api.common :as api] [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -232,6 +233,7 @@
    arg-map-or-maps
    & {:keys [policy existing-context]}]
   (let [action-kw (keyword action)
+        scope     (actions.scope/hydrate scope)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
         policy    (or policy
                       (cond
@@ -250,9 +252,7 @@
         dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
                       ;; for data-grid actions that use their scope, rather than arguments
                       ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
-                      (some-> scope :database-id cached-database vector)
-                      ;; TODO won't need this if we hydrate scope before reaching this, which is probably a good idea.
-                      (some-> scope :table-id cached-database-via-table-id vector))
+                      (some-> scope :database-id cached-database vector))
         _         (when (> (count dbs) 1)
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400
