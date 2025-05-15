@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideAdhocQueryMetadataTags } from "./tags";
+import { provideAdhocQueryMetadataTags, provideAdhocQueryTags } from "./tags";
 
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -16,6 +16,8 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset",
         body,
       }),
+      providesTags: (dataset) =>
+        dataset ? provideAdhocQueryTags(dataset) : [],
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({
