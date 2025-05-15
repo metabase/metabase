@@ -12,8 +12,8 @@
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}

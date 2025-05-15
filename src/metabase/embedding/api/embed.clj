@@ -303,7 +303,7 @@
                                       :api (api.embed.common/parse-query-params query-params)
                                       :qp qp.pivot/run-pivot-query))
 
-(api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api.macros/defendpoint :get ["/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id" :token #"[a-f0-9]+"]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [{:keys [token dashcard-id card-id]} :- [:map

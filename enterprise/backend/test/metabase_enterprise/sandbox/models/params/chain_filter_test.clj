@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.models.field-values :as field-values]
-   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.parameters.chain-filter :as chain-filter]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

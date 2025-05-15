@@ -53,7 +53,7 @@
                (as-> $ (when (empty? $) (log/error "Sync preset is empty"))))}
    {:id :linkedfilters
     :display_name (tru "Linked filters troubleshooting")
-    :loggers (doto (->> (loggers-under "metabase.models.params.chain-filter")
+    :loggers (doto (->> (loggers-under "metabase.parameters.chain-filter")
                         (filter map?)
                         (map #(assoc % :level :debug))
                         (sort-by :name)
