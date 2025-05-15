@@ -81,6 +81,7 @@ function Dashboard() {
     toggleSidebar,
     setEditingDashboard,
     mode,
+    cardTitled,
   } = useDashboardContext();
 
   const canWrite = Boolean(dashboard?.can_write);
@@ -292,6 +293,7 @@ function Dashboard() {
                 autoScrollToDashcardId={autoScrollToDashcardId}
                 reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
                 handleSetEditing={handleSetEditing}
+                withCardTitle={cardTitled}
               />
             </FullWidthContainer>
           )}
