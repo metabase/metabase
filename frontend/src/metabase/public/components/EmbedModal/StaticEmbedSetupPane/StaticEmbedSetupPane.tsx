@@ -1,5 +1,6 @@
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -135,39 +136,25 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   });
 
-  const [iframeUrlWithoutHash, setIframeUrlWithoutHash] = useState<
-    string | null
-  >(null);
-  useEffect(() => {
-    let cancelled = false;
-
-    async function signUrl() {
-      const url = await getSignedPreviewUrlWithoutHash(
+  const { value: iframeUrlWithoutHash = null } = useAsync(
+    async () =>
+      getSignedPreviewUrlWithoutHash(
         siteUrl,
         resourceType,
         resource.id,
         previewParametersBySlug,
         secretKey,
         embeddingParams,
-      );
-
-      if (!cancelled) {
-        setIframeUrlWithoutHash(url);
-      }
-    }
-    signUrl();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    siteUrl,
-    resourceType,
-    resource.id,
-    previewParametersBySlug,
-    secretKey,
-    embeddingParams,
-  ]);
+      ),
+    [
+      siteUrl,
+      resourceType,
+      resource.id,
+      previewParametersBySlug,
+      secretKey,
+      embeddingParams,
+    ],
+  );
 
   const iframeUrl = iframeUrlWithoutHash
     ? iframeUrlWithoutHash + getIframeQueryWithoutDefaults(displayOptions)
