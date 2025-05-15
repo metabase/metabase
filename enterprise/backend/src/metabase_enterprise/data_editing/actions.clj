@@ -32,39 +32,39 @@
   (for [row (data-editing/apply-coercions table-id inputs)]
     {:table-id table-id :row row}))
 
-(defn- perform-table-row-action! [action-kw context inputs]
-  (->> (actions/perform-action!* action-kw context inputs)
-       :context :effects
-       (filter (comp #{:effect/row.modified} first))
-       (map second)
-       (map :after)))
+(defn- perform-table-row-action!
+  "Perform an action directly, skipping permissions checks etc, and generate outputs based on the table modifications."
+  [action-kw context inputs ->outputs]
+  (let [context-after (:context (actions/perform-action!* action-kw context inputs))]
+    {:context (assoc context :effects (:effects context-after))
+     :outputs (if-not (fn? ->outputs)
+                ->outputs
+                (->> context-after
+                     :effects
+                     (filter (comp #{:effect/row.modified} first))
+                     (map second)
+                     (map :after)
+                     ->outputs))}))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/create]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   ;; We could enhance this in future to work more richly with multi-table editable models.
-  (let [table-id    (scope->table-id context)
-        next-inputs (map-inputs table-id inputs)
-        rows-after  (perform-table-row-action! :table.row/create context next-inputs)]
-    ;; todo add on effects
-    {:context context
-     :outputs (data-editing/invalidate-and-present! table-id rows-after)}))
+  (let [table-id     (scope->table-id context)
+        next-inputs  (map-inputs table-id inputs)
+        rows->output (partial data-editing/invalidate-and-present! table-id)]
+    (perform-table-row-action! :table.row/create context next-inputs rows->output)))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/update]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   ;; We could enhance this in future to work more richly with multi-table editable models.
-  (let [table-id (scope->table-id context)
-        next-inputs (map-inputs table-id inputs)
-        rows-after  (perform-table-row-action! :table.row/update context next-inputs)]
-    ;; todo add on effects
-    {:context context
-     :outputs (data-editing/invalidate-and-present! table-id rows-after)}))
+  (let [table-id     (scope->table-id context)
+        next-inputs  (map-inputs table-id inputs)
+        rows->output (partial data-editing/invalidate-and-present! table-id)]
+    (perform-table-row-action! :table.row/update context next-inputs rows->output)))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/delete]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
   ;; We could enhance this in future to work more richly with multi-table editable models.
   (let [table-id    (scope->table-id context)
-        next-inputs (map-inputs table-id inputs)
-        _           (perform-table-row-action! :table.row/delete context next-inputs)]
-    ;; todo add on effects
-    {:context context
-     :outputs [{:success true}]}))
+        next-inputs (map-inputs table-id inputs)]
+    (perform-table-row-action! :table.row/delete context next-inputs [{:success true}])))
