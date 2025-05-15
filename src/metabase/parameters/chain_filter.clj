@@ -1,4 +1,4 @@
-(ns metabase.models.params.chain-filter
+(ns metabase.parameters.chain-filter
   "Generate and run an MBQL query to return possible values of a given Field based on the values of other related
   Fields.
 
@@ -75,9 +75,9 @@
    [metabase.models.database :as database]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
-   [metabase.models.params :as params]
-   [metabase.models.params.chain-filter.dedupe-joins :as dedupe]
-   [metabase.models.params.field-values :as params.field-values]
+   [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.parameters.params :as params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]

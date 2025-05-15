@@ -12,7 +12,7 @@
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.field-values :as field-values]
-   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api :as api.public]

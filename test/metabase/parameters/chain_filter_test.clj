@@ -1,9 +1,9 @@
-(ns metabase.models.params.chain-filter-test
+(ns metabase.parameters.chain-filter-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.field-values :as field-values]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.field-values :as params.field-values]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
