@@ -39,7 +39,7 @@
   (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
         ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
         scope (or scope {:table-id table-id})]
-    {:created-rows (:outputs (actions/perform-action! :data-grid/update scope rows))}))
+    {:created-rows (:outputs (actions/perform-action! :data-grid/create scope rows))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."

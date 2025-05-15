@@ -233,7 +233,11 @@
    & {:keys [policy existing-context]}]
   (let [action-kw (keyword action)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
-        policy    (or policy (when (:model-id scope) :model-action) :ad-hoc-invocation)
+        policy    (or policy
+                      (cond
+                        (:model-id scope)                     :model-action
+                        (= "data-grid" (namespace action-kw)) :data-editing
+                        :else                                 :ad-hoc-invocation))
         spec      (action-arg-map-spec action-kw)
         arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
         errors    (for [arg-map arg-maps
@@ -244,10 +248,11 @@
                     (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
                                     {::schema-errors errors})))
         dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
-                      ;; for data-grid actions that use their scope
+                      ;; for data-grid actions that use their scope, rather than arguments
                       ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
-                      (when-let [db-id (:database-id scope)]
-                        [db-id]))
+                      (some-> scope :database-id cached-database vector)
+                      ;; TODO won't need this if we hydrate scope before reaching this, which is probably a good idea.
+                      (some-> scope :table-id cached-database-via-table-id vector))
         _         (when (> (count dbs) 1)
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400
