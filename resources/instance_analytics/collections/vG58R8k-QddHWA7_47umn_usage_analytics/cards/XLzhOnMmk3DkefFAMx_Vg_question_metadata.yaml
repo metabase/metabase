@@ -85,7 +85,10 @@ dataset_query:
         - archived
       - base-type: type/Boolean
     - - field
-      - is_verified
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - is_verified
       - base-type: type/Boolean
     filter:
     - =
@@ -444,7 +447,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - is_verified
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - is_verified
   - base-type: type/Boolean
   id:
   - Internal Metabase Database
@@ -568,6 +574,13 @@ visualization_settings:
     - base-type: type/Boolean
     name: archived
   - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_verified
+    - base-type: type/Boolean
     name: is_verified
   table.pivot_column: full_name
 serdes/meta:

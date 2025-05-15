@@ -1481,3 +1481,19 @@
             (is (=? {name1 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"} idents))
             (is (=? {name2 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"}
                     (-> modified :query :expression-idents)))))))))
+
+(deftest ^:parallel transform-metadata-analysis-state-test
+  (testing "metadata_analysis_state"
+    (let [{:keys [in out]} card/transform-metadata-analysis-state]
+      (testing "on read: mapped to a keyword enum"
+        (is (= :analyzed (out 3)))
+        (testing "where unrecognized values return :unknown"
+          (is (= :unknown (out 2000)))))
+      (testing "on write:"
+        (testing "mapped from keyword or string to numeric enum"
+          (is (= 3 (in :analyzed)))
+          (is (= 5 (in "failed"))))
+        (testing "nil is treated as :not-started"
+          (is (= 1 (in nil))))
+        (testing "unknown values are treated as :unknown"
+          (is (= 7 (in :fancy-new-value))))))))

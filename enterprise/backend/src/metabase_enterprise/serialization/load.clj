@@ -624,6 +624,10 @@
       (assoc :creator_id    (default-user-id)
              :collection_id (:collection context))
       (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      (update :metadata_analysis_state (fn [state]
+                                         (if (string? state)
+                                           (keyword state)
+                                           (or state :not-started))))
       resolve-visualization-settings
       (cond->
        (-> card
