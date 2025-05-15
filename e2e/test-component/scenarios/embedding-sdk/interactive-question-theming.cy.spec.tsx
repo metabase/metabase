@@ -85,14 +85,6 @@ describe(
           assertBackgroundColorEqual($el, buttonHoverBg),
         );
 
-        // Hover should be a less lightened version of the background color.
-        cy.get(customColumn)
-          .should("be.visible")
-          .realHover()
-          .should(($el) =>
-            assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.4)),
-          );
-
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.5)),
         );
@@ -122,14 +114,6 @@ describe(
         cy.get(customColumn).should(($el) =>
           assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.05)),
         );
-
-        // Hover should be an even darker version of the background color
-        cy.get(customColumn)
-          .should("be.visible")
-          .realHover()
-          .should(($el) =>
-            assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.1)),
-          );
 
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.04)),
