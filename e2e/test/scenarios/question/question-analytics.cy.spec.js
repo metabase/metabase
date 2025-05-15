@@ -2,10 +2,15 @@ const { H } = cy;
 
 H.describeWithSnowplow("scenarios > question > snowplow", () => {
   describe("chart_generated", () => {
+    const NO_CHART_GENERATED_EVENTS_COUNT = 2;
+    const WITH_CHART_GENERATED_EVENTS_COUNT = 3;
+
     const generateNonTableVisualization = () => {
       cy.visit("/");
       H.openOrdersTable();
       H.summarize();
+
+      H.expectGoodSnowplowEvents(NO_CHART_GENERATED_EVENTS_COUNT);
 
       // Change query to render a bar chart
       H.rightSidebar().within(() => {
@@ -25,17 +30,18 @@ H.describeWithSnowplow("scenarios > question > snowplow", () => {
       generateNonTableVisualization();
 
       // Ensure chart_generated event is tracked
-      H.expectUnstructuredSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "chart_generated",
         event_detail: "bar",
       });
+      H.expectGoodSnowplowEvents(WITH_CHART_GENERATED_EVENTS_COUNT);
 
       // Reset and generate non-table visualization second time
       H.resetSnowplow();
       generateNonTableVisualization();
 
       // Should not track chart_generated event again
-      H.assertNoUnstructuredSnowplowEvent({ event: "chart_generated" });
+      H.expectGoodSnowplowEvents(NO_CHART_GENERATED_EVENTS_COUNT);
     });
 
     afterEach(() => {
