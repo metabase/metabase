@@ -1,7 +1,0 @@
-.error {
-  background-color: var(--mb-color-bg-light);
-  border: 1px solid var(--mb-color-border);
-  border-radius: 6px;
-  font-family: var(--mb-default-monospace-font-family);
-  font-size: 0.75rem;
-}

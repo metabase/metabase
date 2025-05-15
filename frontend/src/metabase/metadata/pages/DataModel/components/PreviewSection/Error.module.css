@@ -1,0 +1,4 @@
+.error {
+  border-radius: 200px;
+  background-color: var(--mb-color-bg-light);
+}

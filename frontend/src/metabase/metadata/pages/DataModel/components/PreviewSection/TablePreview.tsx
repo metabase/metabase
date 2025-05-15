@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isa } from "metabase-lib/v1/types/utils/isa";
@@ -18,7 +17,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import S from "./TablePreview.module.css";
+import { Error } from "./Error";
 
 const PREVIEW_ROW_COUNT = 5;
 
@@ -33,11 +32,7 @@ export function TablePreview(props: TablePreviewProps) {
   const { rawSeries, error } = useDataSample(props);
 
   if (error) {
-    return (
-      <Box p="md" mt="lg" className={S.error}>
-        {error}
-      </Box>
-    );
+    return <Error message={error} />;
   }
 
   return (
