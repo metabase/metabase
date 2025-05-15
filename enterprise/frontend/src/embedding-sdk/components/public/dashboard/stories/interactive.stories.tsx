@@ -29,7 +29,7 @@ export const Default = {
 };
 
 export const WithCustomQuestionLayout = {
-  render: Default,
+  render: DefaultDashboardStory,
   args: interactiveDashboardStoryArgs({
     useCustomDrillThrough: true,
   }),

@@ -31,7 +31,7 @@ export const Default = {
 };
 
 export const WithoutFooter = {
-  render: Default.render,
+  render: DefaultDashboardStory,
   args: staticDashboardStoryArgs({
     withFooter: false,
   }),
