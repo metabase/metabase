@@ -8,7 +8,7 @@ import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
-import { getUnsavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -232,13 +232,13 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
   }
 
   const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
-    text: getUnsavedDashboardUiParameters(
+    text: getDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({}),
       {},
     ),
-    number: getUnsavedDashboardUiParameters(
+    number: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -252,7 +252,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    dropdown_multiple: getUnsavedDashboardUiParameters(
+    dropdown_multiple: getDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({
@@ -260,7 +260,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       }),
       {},
     ),
-    dropdown_single: getUnsavedDashboardUiParameters(
+    dropdown_single: getDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_SINGLE_FILTER],
       createMockMetadata({
@@ -268,7 +268,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       }),
       {},
     ),
-    search: getUnsavedDashboardUiParameters(
+    search: getDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
       createMockMetadata({
@@ -276,7 +276,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       }),
       {},
     ),
-    date_all_options: getUnsavedDashboardUiParameters(
+    date_all_options: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -290,7 +290,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_month_year: getUnsavedDashboardUiParameters(
+    date_month_year: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -304,7 +304,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_quarter_year: getUnsavedDashboardUiParameters(
+    date_quarter_year: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -318,7 +318,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_single: getUnsavedDashboardUiParameters(
+    date_single: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -332,7 +332,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_range: getUnsavedDashboardUiParameters(
+    date_range: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -346,7 +346,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    date_relative: getUnsavedDashboardUiParameters(
+    date_relative: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({
@@ -360,7 +360,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       createMockMetadata({}),
       {},
     ),
-    temporal_unit: getUnsavedDashboardUiParameters(
+    temporal_unit: getDashboardUiParameters(
       dashboard.dashcards,
       [
         createMockParameter({

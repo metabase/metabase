@@ -76,7 +76,7 @@ export const PublicOrEmbeddedQuestion = ({
       }
 
       if (card.param_fields) {
-        await dispatch(addFields(Object.values(card.param_fields).flat()));
+        await dispatch(addFields(card.param_fields));
       }
 
       const parameters = getCardUiParameters(

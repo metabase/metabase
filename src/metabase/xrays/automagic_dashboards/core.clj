@@ -419,12 +419,11 @@
   [{:keys [source _entity] :as _root} tables]
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
-      (comp (->> (-> (t2/select :model/Field
-                                :table_id [:in (map u/the-id tables)]
-                                :visibility_type "normal"
-                                :preview_display true
-                                :active true)
-                     (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
+      (comp (->> (t2/select :model/Field
+                            :table_id [:in (map u/the-id tables)]
+                            :visibility_type "normal"
+                            :preview_display true
+                            :active true)
                  field/with-targets
                  (map #(assoc % :db db))
                  (group-by :table_id))
@@ -732,6 +731,16 @@
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
+(defn- filter-referenced-fields
+  "Return a map of fields referenced in filter clause."
+  [root filter-clause]
+  (->> filter-clause
+       magic.util/collect-field-references
+       (map (fn [[_ id-or-name _options]]
+              [id-or-name (magic.util/->field root id-or-name)]))
+       (remove (comp nil? second))
+       (into {})))
+
 (defn generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
   [{{:keys [show url query-filter] :as root} :root :as base-context}
@@ -749,7 +758,7 @@
                           (-> dashboard :cards count (> show)))
                  (format "%s#show=all" url))
          :transient_filters query-filter
-         :param_fields (group-by magic.util/filter-id-for-field (:filters dashboard))
+         :param_fields (filter-referenced-fields root query-filter)
          :auto_apply_filters true
          :width "fixed"))))
 

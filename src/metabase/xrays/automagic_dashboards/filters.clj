@@ -112,7 +112,7 @@
          (take max-filters)
          (reduce
           (fn [dashboard candidate]
-            (let [filter-id     (magic.util/filter-id-for-field candidate)
+            (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                   dashcards     (:dashcards dashboard)
                   dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]

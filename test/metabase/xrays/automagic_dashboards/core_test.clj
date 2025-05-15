@@ -11,8 +11,10 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
@@ -21,6 +23,7 @@
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1091,6 +1094,57 @@
   (or (t2/select-one :model/Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
                       {:table table :column column}))))
+
+(deftest filter-referenced-fields-test
+  (testing "X-Ray should work if there's a filter in the question (#19241)"
+    (mt/dataset test-data
+      (let [query (mi/instance
+                   :model/Query
+                   {:database-id   (mt/id)
+                    :table-id      (mt/id :products)
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]
+                                               :breakout     [[:field (mt/id :products :created_at) {:temporal-unit :year}]]
+                                               :filter       [:=
+                                                              [:field (mt/id :products :category) nil]
+                                                              "Doohickey"]}}})]
+        (testing `magic/filter-referenced-fields
+          (is (= {(mt/id :products :category)   (field! :products :category)
+                  (mt/id :products :created_at) (field! :products :created_at)}
+                 (#'magic/filter-referenced-fields
+                  {:source   (t2/select-one :model/Table :id (mt/id :products))
+                   :database (mt/id)
+                   :entity   query}
+                  [:and
+                   [:=
+                    [:field (mt/id :products :created_at) {:temporal-unit :year}]
+                    "2017-01-01T00:00:00Z"]
+                   [:=
+                    [:field (mt/id :products :category) nil]
+                    "Doohickey"]]))))
+
+        (testing "end-to-end"
+          ;; VERY IMPORTANT! Make sure the Table is FULLY synced (so it gets classified correctly), otherwise the
+          ;; automagic Dashboards won't work (the normal quick sync we do for tests doesn't include everything that's
+          ;; needed)
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :products)))
+          (let [query     {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :products)
+                                      :filter       [:= [:field (mt/id :products :category) nil] "Doohickey"]
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field (mt/id :products :created_at) {:temporal-unit "year"}]]}}
+                cell      [:=
+                           [:field (mt/id :products :created_at) {:temporal-unit "year"}]
+                           "2017-01-01T00:00:00Z"]
+                ->base-64 (fn [x]
+                            (codec/base64-encode (.getBytes (json/encode x) "UTF-8")))]
+            (is (=? {:description "A closer look at the metrics and dimensions used in this saved question."}
+                    (mt/user-http-request
+                     :crowberto :get 200
+                     (format "automagic-dashboards/adhoc/%s/cell/%s" (->base-64 query) (->base-64 cell)))))))))))
 
 (deftest most-specific-definition-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from most-specific-definition"

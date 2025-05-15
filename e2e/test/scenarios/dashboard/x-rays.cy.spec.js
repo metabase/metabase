@@ -216,7 +216,6 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     H.getDashboardCards().eq(1).contains("Total transactions");
   });
 
-  // TODO - this is a legitimate failure because `param_fields` are not returned for x-ray dashboards
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
