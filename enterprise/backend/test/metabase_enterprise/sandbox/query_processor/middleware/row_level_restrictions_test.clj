@@ -41,7 +41,8 @@
 (defn- identifier
   ([table-key]
    (qp.store/with-metadata-provider (mt/id)
-     (sql.qp/->honeysql (or driver/*driver* :h2) (t2/select-one :model/Table :id (mt/id table-key)))))
+     (sql.qp/->honeysql (or driver/*driver* :h2)
+                        (lib.metadata/table (qp.store/metadata-provider) (mt/id table-key)))))
 
   ([table-key field-key]
    (let [field-id   (mt/id table-key field-key)

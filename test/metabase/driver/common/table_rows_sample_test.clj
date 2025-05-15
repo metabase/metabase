@@ -82,8 +82,10 @@
       (let [query (atom nil)]
         (with-redefs [qp/process-query (fn [& args]
                                          (reset! query (-> args first :query)))]
-          (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
-                  (:filter @query))))))))
+          (is (=? {:filter [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]}
+                  (table-rows-sample/table-rows-sample table [] (constantly conj))))
+          (is (=? {:filter [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]}
+                  @query)))))))
 
 (deftest ^:parallel text-field?-test
   (testing "recognizes fields suitable for fingerprinting"
