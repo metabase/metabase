@@ -225,6 +225,7 @@ const config = {
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
+      "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
   },
   optimization: {
