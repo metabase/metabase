@@ -9,7 +9,7 @@ import { Select } from "metabase/ui";
 import { updateLocale } from "../../actions";
 import { getLocales } from "../../utils";
 
-export const LanguageSelector = ({ w }: { w: number }) => {
+export const LanguageSelector = () => {
   const dispatch = useDispatch();
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
@@ -31,7 +31,6 @@ export const LanguageSelector = ({ w }: { w: number }) => {
 
   return (
     <Select
-      w={w}
       aria-label={t`Select a language`}
       data={languages}
       value={locale?.name || "English"}

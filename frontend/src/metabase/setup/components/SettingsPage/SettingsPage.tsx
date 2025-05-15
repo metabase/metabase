@@ -33,18 +33,17 @@ const STEP_COMPONENTS: Partial<
 export const SettingsPage = (): JSX.Element => {
   const steps = useSelector(getSteps);
   const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
-  const SELECT_WIDTH = 160;
+  const SELECT_WIDTH = "10rem";
 
   return (
     <div data-testid="setup-forms">
       <Box component="header" className={S.PageHeader}>
-        <Flex
-          align="center"
-          justify={isEmbeddingUseCase ? "space-between" : "center"}
-        >
-          {isEmbeddingUseCase && <Box w={SELECT_WIDTH} className={S.Decoy} />}
+        <Flex align="center" justify="space-between">
+          <Box w={SELECT_WIDTH} className={S.Decoy} />
           <LogoIcon height={51} />
-          {isEmbeddingUseCase && <LanguageSelector w={SELECT_WIDTH} />}
+          <Box w={SELECT_WIDTH}>
+            {isEmbeddingUseCase && <LanguageSelector />}
+          </Box>
         </Flex>
       </Box>
       <Box className={S.PageBody}>
