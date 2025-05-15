@@ -10,6 +10,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
@@ -588,13 +589,9 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
-(defn- add-breakouts
-  [query breakout-cols]
-  (reduce lib/breakout query breakout-cols))
-
-(defn- nest-query
-  [query]
-  (assoc query :query {:source-query (:query query)}))
+#_(defn- nest-query
+    [query]
+    (assoc query :query {:source-query (:query query)}))
 
 (defn- original-cols
   [query]
@@ -607,39 +604,102 @@
             :data
             :cols))))
 
-(defn- outer-query-with-breakouts
-  [query column-split]
-  (try
-    (let [base-query-cols (original-cols query)
-          pivot-row-cols (reduce
-                          (fn [acc {:keys [name]}]
-                            (conj acc
-                                  (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
-                          []
-                          (:rows column-split))
-          pivot-col-cols (reduce
-                          (fn [acc {:keys [name]}]
-                            (conj acc
-                                  (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
-                          []
-                          (:columns column-split))]
-      (if (get-in query [:query :source-query :native])
-        (-> query
-            (assoc-in [:query :breakout]
-                      [(:field_ref (first pivot-row-cols))
-                       (:field_ref (first pivot-col-cols))])
-            (assoc-in [:query :aggregation] [["count"]]))
-        (-> (qp.store/with-metadata-provider (:database query)
-              (lib/query (qp.store/metadata-provider) query))
-            (add-breakouts pivot-row-cols)
-            (add-breakouts pivot-col-cols)
-            (lib/aggregate (lib/count)))))
-    (catch Exception e
-      (log/error e "Error in outer-query-with-breakouts")
-      (throw e))))
+#_(defn- outer-query-with-breakouts
+    [query column-split]
+    (try
+      (let [base-query-cols (original-cols query)
+            pivot-row-cols (reduce
+                            (fn [acc {:keys [name]}]
+                              (conj acc
+                                    (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
+                            []
+                            (:rows column-split))
+            pivot-col-cols (reduce
+                            (fn [acc {:keys [name]}]
+                              (conj acc
+                                    (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
+                            []
+                            (:columns column-split))]
+        (if (get-in query [:query :source-query :native])
+          (-> query
+              (assoc-in [:query :breakout]
+                        [(:field_ref (first pivot-row-cols))
+                         (:field_ref (first pivot-col-cols))])
+              (assoc-in [:query :aggregation] [["count"]]))
+          (-> (qp.store/with-metadata-provider (:database query)
+                (lib/query (qp.store/metadata-provider) query))
+              (add-breakouts pivot-row-cols)
+              (add-breakouts pivot-col-cols)
+              (lib/aggregate (lib/count)))))
+      (catch Exception e
+        (log/error e "Error in outer-query-with-breakouts")
+        (throw e))))
 
-(def ^:private empty-unagg-column-split
-  {:rows [] :columns [] :value []})
+(defn- add-breakouts
+  [query breakout-cols]
+  (reduce lib/breakout query breakout-cols))
+
+(defn- add-aggregations
+  [query aggregations]
+  (reduce lib/aggregate query aggregations))
+
+(defn- find-col-by-name
+  [cols name]
+  (u/seek #(= (:name %) name) cols))
+
+(defn- generate-breakouts
+  "Generates the breakout columns to add to the query, for a given split setting (row or column)"
+  [query cols split-setting]
+  (reduce
+   (fn [breakouts {:keys [name binning]}]
+     (let [col                (find-col-by-name cols name)
+           available-binnings (lib/available-binning-strategies query 0 col)
+           ;; TODO - right now we're just correlating binning options by number of
+           ;; bins. This can be improved.
+           binning-option     (u/seek (fn [available-binning]
+                                        (= (:numBins binning)
+                                           (-> available-binning :mbql :num-bins)))
+                                      available-binnings)]
+       (conj breakouts
+             (if binning-option (lib/with-binning col binning-option) col))))
+   []
+   split-setting))
+
+(defn- generate-aggregations
+  "Generates the aggregation clauses to add to the query, based on the split setting for the pivot table values."
+  [query cols value-split-setting]
+  (let [available-operators (lib/available-aggregation-operators query)]
+    (reduce
+     (fn [aggregations {:keys [name column]}]
+       (let [col (find-col-by-name cols (:name column))
+             op  (u/seek (fn [op] (= (:short op) (keyword name)))
+                         available-operators)]
+         (conj aggregations
+               (lib/aggregation-clause op col))))
+     []
+     value-split-setting)))
+
+(defn- nest-mbql-query
+  "Given an unaggregated query, and the column split from the pivot settings, adds a new stage
+  to the query that includes the necessary breakouts & aggregations to generate the pivot."
+  [base-query {:keys [rows columns values]}]
+  (let [query (-> (lib/query (qp.store/metadata-provider) base-query)
+                  lib/append-stage)
+        breakoutable-cols (lib/breakoutable-columns query)
+        row-breakouts (generate-breakouts query breakoutable-cols rows)
+        col-breakouts (generate-breakouts query breakoutable-cols columns)
+        aggregations  (generate-aggregations query breakoutable-cols values)]
+    (-> query
+        (add-breakouts row-breakouts)
+        (add-breakouts col-breakouts)
+        (add-aggregations aggregations))))
+
+(defn- is-unaggregated-query
+  "Is this query an unaggregated query with no pivot settings set yet? If so, we run it as-is,
+  not as a pivot."
+  [query]
+  (or (= (:pivot_unagg_column_split query) {:rows [] :columns [] :value []})
+      (= (:pivot_unagg_column_split query) [])))
 
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
@@ -652,10 +712,7 @@
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
-       ;; TODO
-       ;; Using pivot_rows as a proxy for whether this is a plain table query (which we run directly) or a pivoted query
-       (if (or (= (:pivot_unagg_column_split query) empty-unagg-column-split)
-               (= (:pivot_unagg_column_split query) []))
+       (if (is-unaggregated-query query)
          (qp/process-query (dissoc query :info)
                            (or rff qp.reducible/default-rff))
          (let [rff (or rff qp.reducible/default-rff)
@@ -665,9 +722,10 @@
                new-pivot-cols     (or (map :name (:columns unagg-column-split))
                                       (:pivot_cols query))
                base-query         (dissoc query :info :pivot_unagg_column_split)
-               nested-query       (-> (lib/query (qp.store/metadata-provider) base-query)
-                                      lib/append-stage)
-               query2             (outer-query-with-breakouts nested-query unagg-column-split)
+               query2 (nest-mbql-query base-query unagg-column-split)
+               ; nested-query       (-> (lib/query (qp.store/metadata-provider) base-query)
+               ;                        lib/append-stage)
+               ; query2             (outer-query-with-breakouts nested-query unagg-column-split)
                query3             (-> query2
                                       (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
                                                                               :pivot-cols new-pivot-cols
