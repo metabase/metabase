@@ -1,7 +1,13 @@
 import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
-import type { Dataset, DatasetColumn, Field } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  Field,
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { findColumnSlotForCartesianChart } from "./cartesian";
@@ -13,8 +19,9 @@ type CompatFn = (
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
-  datasets: Record<string, Dataset>,
+  datasets: Record<VisualizerDataSourceId, Dataset>,
   column: DatasetColumn,
+  dataSource: VisualizerDataSource,
 ) => string | undefined;
 
 const vizMappingFn: Record<string, CompatFn> = {
@@ -30,6 +37,7 @@ export function findSlotForColumn(
   >,
   datasets: Record<string, Dataset>,
   column: DatasetColumn,
+  dataSource: VisualizerDataSource,
 ) {
   const { display } = state;
   if (!display) {
@@ -40,7 +48,7 @@ export function findSlotForColumn(
     vizMappingFn[isCartesianChart(display) ? "cartesian" : display];
 
   if (compatFn) {
-    return compatFn(state, datasets, column);
+    return compatFn(state, datasets, column, dataSource);
   } else {
     return undefined;
   }
@@ -53,6 +61,7 @@ export function groupColumnsBySuitableVizSettings(
   >,
   datasets: Record<string, Dataset>,
   columns: DatasetColumn[] | Field[],
+  dataSource: VisualizerDataSource,
 ) {
   const { display } = state;
   if (!display) {
@@ -67,7 +76,7 @@ export function groupColumnsBySuitableVizSettings(
       .map((column) => ({
         column,
         // TODO Fix type casting
-        slot: compatFn(state, datasets, column as DatasetColumn),
+        slot: compatFn(state, datasets, column as DatasetColumn, dataSource),
       }))
       .filter((mapping) => !!mapping.slot);
     const groupedMappings = _.groupBy(mapping, (m) => m.slot as string);

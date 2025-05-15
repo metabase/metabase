@@ -60,7 +60,7 @@ describe("cartesian", () => {
       expect(
         findColumnSlotForCartesianChart(
           state,
-          { "1": defaultDataset },
+          { "card:1": defaultDataset },
           metricColumn,
         ),
       ).toEqual("graph.metrics");
@@ -77,14 +77,14 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset },
+            { "card:1": defaultDataset },
             timeDimensionColumn,
           ),
         ).toEqual("graph.dimensions");
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset },
+            { "card:1": defaultDataset },
             categoryDimensionColumn,
           ),
         ).toEqual("graph.dimensions");
@@ -106,7 +106,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             dateColumn,
           ),
         ).toBe("graph.dimensions");
@@ -131,7 +131,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": baseDataset, "2": newDataset },
+            { "card:1": baseDataset, "card:2": newDataset },
             categoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -157,8 +157,8 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             {
-              "1": defaultDataset,
-              "2": newDataset,
+              "card:1": defaultDataset,
+              "card:2": newDataset,
             },
             dateColumn,
           ),
@@ -181,7 +181,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             sameCategoryDimensionColumn,
           ),
         ).toBe("graph.dimensions");
@@ -203,7 +203,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             otherCategoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -228,7 +228,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             sameCategoryDimensionColumn,
           ),
         ).toBe("graph.dimensions");
@@ -253,7 +253,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             otherCategoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -275,7 +275,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             dateColumn,
           ),
         ).toBe("graph.dimensions");
@@ -300,7 +300,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": baseDataset, "2": newDataset },
+            { "card:1": baseDataset, "card:2": newDataset },
             dateColumn,
           ),
         ).toBeUndefined();
@@ -322,7 +322,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": defaultDataset, "2": newDataset },
+            { "card:1": defaultDataset, "card:2": newDataset },
             sameCategoryDimensionColumn,
           ),
         ).toBe("graph.dimensions");
@@ -347,7 +347,7 @@ describe("cartesian", () => {
         expect(
           findColumnSlotForCartesianChart(
             state,
-            { "1": baseDataset, "2": newDataset },
+            { "card:1": baseDataset, "card:2": newDataset },
             sameCategoryDimensionColumn,
           ),
         ).toBeUndefined();

@@ -194,7 +194,7 @@ export function findColumnSlotForCartesianChart(
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
-  datasets: Record<string, Dataset>,
+  datasets: Record<VisualizerDataSourceId, Dataset>,
   column: DatasetColumn,
 ) {
   if (display === "scatter") {

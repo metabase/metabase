@@ -21,6 +21,7 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
+  VisualizerDataSourceId,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -124,12 +125,18 @@ export function findColumnSlotForFunnel(
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
-  datasets: Record<string, Dataset>,
+  datasets: Record<VisualizerDataSourceId, Dataset>,
   column: DatasetColumn,
+  dataSource: VisualizerDataSource,
 ) {
   const isEmpty = columns.length === 0;
+  const dataset = datasets[dataSource.id];
 
-  if ((isEmpty || isScalarFunnel({ display, settings })) && isNumeric(column)) {
+  if (
+    (isEmpty || isScalarFunnel({ display, settings })) &&
+    dataset &&
+    canCombineDatasetWithScalarFunnel(dataset)
+  ) {
     // HACK: not really sure about this
     return "scalar_funnel";
   } else {
@@ -143,6 +150,11 @@ export function findColumnSlotForFunnel(
       return "funnel.dimension";
     }
   }
+}
+
+function canCombineDatasetWithScalarFunnel(dataset: Dataset) {
+  const { cols = [], rows = [] } = dataset.data ?? {};
+  return cols.length === 1 && isNumeric(cols[0]) && rows.length === 1;
 }
 
 export function addScalarToFunnel(
@@ -190,7 +202,8 @@ export function addColumnToFunnel(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForFunnel(state, datasets, column);
+  const slot = findColumnSlotForFunnel(state, datasets, column, dataSource);
+
   if (!slot) {
     return;
   }

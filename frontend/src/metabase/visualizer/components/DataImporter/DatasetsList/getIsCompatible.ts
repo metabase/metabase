@@ -14,6 +14,7 @@ import type {
   Field,
   VisualizationDisplay,
   VisualizationSettings,
+  VisualizerDataSource,
 } from "metabase-types/api";
 
 interface CompatibilityParameters {
@@ -24,6 +25,7 @@ interface CompatibilityParameters {
   };
   targetDataset: {
     fields: Field[];
+    dataSource: VisualizerDataSource;
   };
   datasets: Record<string, Dataset>;
 }
@@ -32,7 +34,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
   const { currentDataset, targetDataset, datasets } = parameters;
 
   const { display: currentDisplay, columns } = currentDataset;
-  const { fields } = targetDataset;
+  const { fields, dataSource } = targetDataset;
 
   const ownDimensions = columns.filter(
     (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
@@ -81,6 +83,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     currentDataset,
     datasets,
     fields,
+    dataSource,
   );
   return Object.keys(columnSettingMapping).length > 0;
 }

@@ -228,7 +228,9 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
-          {},
+          {
+            [dataSource.id]: scalarDataset1,
+          },
           { ...metricColumn, name: "COLUMN_1" },
           metricColumnRef,
           scalarDataset1,
@@ -276,7 +278,10 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
-          {},
+          {
+            [dataSource.id]: scalarDataset1,
+            [dataSource2.id]: scalarDataset2,
+          },
           { ...metricColumn2, name: "COLUMN_2" },
           createVisualizerColumnReference(dataSource, metricColumn2, [
             metricColumnRef,

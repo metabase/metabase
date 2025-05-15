@@ -119,6 +119,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                     { display, columns, settings },
                     datasets,
                     column,
+                    source,
                   );
 
                   return (
@@ -126,7 +127,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                       key={column.name}
                       column={column}
                       dataSource={source}
-                      isDisabled={!isUsable}
+                      isDisabled={!isSelected && !isUsable}
                       isSelected={isSelected}
                       onClick={() => {
                         if (!isSelected) {

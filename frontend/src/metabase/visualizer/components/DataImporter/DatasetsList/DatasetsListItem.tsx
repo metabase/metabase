@@ -57,10 +57,11 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       },
       targetDataset: {
         fields: fields ?? [],
+        dataSource: item,
       },
       datasets,
     });
-  }, [columns, currentDisplay, metadata, settings, datasets]);
+  }, [metadata, currentDisplay, columns, settings, item, datasets]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

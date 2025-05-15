@@ -1,4 +1,5 @@
 import registerVisualizations from "metabase/visualizations/register";
+import { createDataSource } from "metabase/visualizer/utils";
 import type { Field } from "metabase-types/api";
 import {
   createMockCategoryColumn,
@@ -13,6 +14,8 @@ import { getIsCompatible } from "./getIsCompatible";
 registerVisualizations();
 
 describe("getIsCompatible", () => {
+  const dataSource = createDataSource("card", `entity_1`, "Card 1");
+
   it("should return false if a target data source doesn't have columns", () => {
     const result = getIsCompatible({
       currentDataset: {
@@ -20,7 +23,7 @@ describe("getIsCompatible", () => {
         columns: [createMockNumericColumn(), createMockCategoryColumn()],
         settings: {},
       },
-      targetDataset: { fields: [] },
+      targetDataset: { fields: [], dataSource },
       datasets: {},
     });
     expect(result).toBe(false);
@@ -41,6 +44,7 @@ describe("getIsCompatible", () => {
             settings: {},
           },
           targetDataset: {
+            dataSource,
             fields: [
               createMockNumericField({ id: 1 }),
               createMockCategoryField({ id: 2 }),
@@ -63,9 +67,7 @@ describe("getIsCompatible", () => {
             columns: [],
             settings: {},
           },
-          targetDataset: {
-            fields: [createMockNumericField()],
-          },
+          targetDataset: { dataSource, fields: [createMockNumericField()] },
           datasets: {
             "1": createMockDataset({ data: { cols: [] } }),
             "2": createMockDataset({
@@ -85,6 +87,7 @@ describe("getIsCompatible", () => {
             settings: {},
           },
           targetDataset: {
+            dataSource,
             fields: [
               createMockNumericField({ id: 1 }),
               createMockNumericField({ id: 2 }),
@@ -113,9 +116,7 @@ describe("getIsCompatible", () => {
             columns: [],
             settings: {},
           },
-          targetDataset: {
-            fields: [createMockCategoryField()],
-          },
+          targetDataset: { dataSource, fields: [createMockCategoryField()] },
           datasets: {
             "1": createMockDataset({ data: { cols: [] } }),
             "2": createMockDataset({
@@ -164,6 +165,7 @@ describe("getIsCompatible", () => {
             settings: { "graph.metricColumn": [metricColumn.id] },
           },
           targetDataset: {
+            dataSource,
             fields: [dateField, sameCategoryDimensionField],
           },
           datasets: {
@@ -184,9 +186,7 @@ describe("getIsCompatible", () => {
               "graph.timeColumn": [timeDimensionColumn.id],
             },
           },
-          targetDataset: {
-            fields: [dateField],
-          },
+          targetDataset: { dataSource, fields: [dateField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
@@ -219,9 +219,7 @@ describe("getIsCompatible", () => {
               "graph.timeColumn": [temporalDimensionColumn.id],
             },
           },
-          targetDataset: {
-            fields: [dateField],
-          },
+          targetDataset: { dataSource, fields: [dateField] },
           datasets: {
             "1": dataset,
             "2": createMockDataset({
@@ -247,9 +245,7 @@ describe("getIsCompatible", () => {
               "graph.timeColumn": [timeDimensionColumn.id],
             },
           },
-          targetDataset: {
-            fields: [sameCategoryDimensionField],
-          },
+          targetDataset: { dataSource, fields: [sameCategoryDimensionField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
@@ -277,9 +273,7 @@ describe("getIsCompatible", () => {
               "graph.timeColumn": [categoryDimensionColumn.id],
             },
           },
-          targetDataset: {
-            fields: [sameCategoryDimensionField],
-          },
+          targetDataset: { dataSource, fields: [sameCategoryDimensionField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
@@ -307,7 +301,7 @@ describe("getIsCompatible", () => {
               "graph.timeColumn": [categoryDimensionColumn.id],
             },
           },
-          targetDataset: { fields: [otherCategoryDimensionField] },
+          targetDataset: { dataSource, fields: [otherCategoryDimensionField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
