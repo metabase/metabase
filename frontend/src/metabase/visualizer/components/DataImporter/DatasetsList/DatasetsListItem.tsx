@@ -6,6 +6,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
+  getDatasets,
   getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerDatasetColumns,
@@ -33,6 +34,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const currentDisplay = useSelector(getVisualizationType);
   const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
+  const datasets = useSelector(getDatasets);
 
   const { data } = useGetCardQuery({ id: item.cardId });
 
@@ -57,8 +59,9 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         display,
         fields,
       },
+      datasets,
     });
-  }, [columns, currentDisplay, metadata, settings]);
+  }, [columns, currentDisplay, metadata, settings, datasets]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

@@ -220,6 +220,7 @@ export const addDataSource = createAsyncThunk(
         ...copy(state),
         settings,
       },
+      state.datasets,
       dataSource,
       dataset,
     );
@@ -343,6 +344,7 @@ const visualizerSlice = createSlice({
       if (state.display === "funnel") {
         addColumnToFunnel(
           state,
+          state.datasets as Record<string, Dataset>,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -353,7 +355,13 @@ const visualizerSlice = createSlice({
       }
 
       if (isCartesianChart(state.display)) {
-        addColumnToCartesianChart(state, column, columnRef, dataSource);
+        addColumnToCartesianChart(
+          state,
+          state.datasets as Record<string, Dataset>,
+          column,
+          columnRef,
+          dataSource,
+        );
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
@@ -371,7 +379,12 @@ const visualizerSlice = createSlice({
           );
         }
       } else if (state.display === "pie") {
-        addColumnToPieChart(state, column, columnRef);
+        addColumnToPieChart(
+          state,
+          state.datasets as Record<string, Dataset>,
+          column,
+          columnRef,
+        );
       }
     },
     removeColumn: (
@@ -562,6 +575,7 @@ const visualizerSlice = createSlice({
 
 function maybeCombineDataset(
   state: VisualizerVizDefinitionWithColumns,
+  datasets: Record<string, Dataset>,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
 ) {
@@ -570,11 +584,11 @@ function maybeCombineDataset(
   }
 
   if (isCartesianChart(state.display)) {
-    combineWithCartesianChart(state, dataset, dataSource);
+    combineWithCartesianChart(state, datasets, dataset, dataSource);
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, dataset, dataSource);
+    combineWithPieChart(state, datasets, dataset, dataSource);
   }
 
   if (state.display === "funnel") {

@@ -18,6 +18,7 @@ describe("getIsCompatible", () => {
     const result = getIsCompatible({
       currentDataset: { display: "pie", columns: [], settings: {} },
       targetDataset: {},
+      datasets: {},
     });
     expect(result).toBe(false);
   });
@@ -26,6 +27,7 @@ describe("getIsCompatible", () => {
     const result = getIsCompatible({
       currentDataset: { display: "scalar", columns: [], settings: {} },
       targetDataset: {},
+      datasets: {},
     });
     expect(result).toBe(false);
   });
@@ -69,6 +71,7 @@ describe("getIsCompatible", () => {
           settings: {},
         },
         targetDataset: { display: "scalar", fields: [field] },
+        datasets: {},
       }),
     ).toBe(false);
 
@@ -80,6 +83,7 @@ describe("getIsCompatible", () => {
           settings: {},
         },
         targetDataset: { display: "scalar", fields: [anotherField] },
+        datasets: {},
       }),
     ).toBe(false);
 
@@ -94,6 +98,7 @@ describe("getIsCompatible", () => {
           display: "scalar",
           fields: [fieldButWithDifferentName],
         },
+        datasets: {},
       }),
     ).toBe(false);
   });
@@ -126,6 +131,7 @@ describe("getIsCompatible", () => {
       getIsCompatible({
         currentDataset: { display: "line", columns: dimensions, settings: {} },
         targetDataset: { display: "pie", fields: [field] },
+        datasets: {},
       }),
     ).toBe(false);
 
@@ -133,6 +139,7 @@ describe("getIsCompatible", () => {
       getIsCompatible({
         currentDataset: { display: "line", columns: dimensions, settings: {} },
         targetDataset: { display: "pie", fields: [anotherField] },
+        datasets: {},
       }),
     ).toBe(false);
   });
@@ -162,6 +169,7 @@ describe("getIsCompatible", () => {
           settings: {},
         },
         targetDataset: { display: "scalar", fields: [field] },
+        datasets: {},
       }),
     ).toBe(true);
     expect(
@@ -172,11 +180,12 @@ describe("getIsCompatible", () => {
           settings: {},
         },
         targetDataset: { display: "funnel", fields: [] },
+        datasets: {},
       }),
     ).toBe(false);
   });
 
-  it.skip("should accept a target if the primary column is a string or number (assuming the target has the same column)", () => {
+  it("should accept a target if the primary column is a string or number (assuming the target has the same column)", () => {
     const dimensions = [
       createMockColumn(
         NumberColumn({
@@ -215,6 +224,7 @@ describe("getIsCompatible", () => {
           display: "line",
           fields: [anotherField, andAnotherField],
         },
+        datasets: {},
       }),
     ).toBe(false);
 
@@ -223,11 +233,12 @@ describe("getIsCompatible", () => {
       getIsCompatible({
         currentDataset: { display: "line", columns: dimensions, settings: {} },
         targetDataset: { display: "line", fields: [field, anotherField] },
+        datasets: {},
       }),
     ).toBe(true);
   });
 
-  it.skip("should accept a target with a field with the same type as the primary column", () => {
+  it("should accept a target with a field with the same type as the primary column", () => {
     const dimensions = [
       createMockColumn(
         NumberColumn({
@@ -270,6 +281,7 @@ describe("getIsCompatible", () => {
       getIsCompatible({
         currentDataset: { display: "line", columns: dimensions, settings: {} },
         targetDataset: { display: "line", fields: [field, anotherField] },
+        datasets: {},
       }),
     ).toBe(true);
 
@@ -281,6 +293,7 @@ describe("getIsCompatible", () => {
           display: "line",
           fields: [anotherField, andAnotherField],
         },
+        datasets: {},
       }),
     ).toBe(false);
 
@@ -292,6 +305,7 @@ describe("getIsCompatible", () => {
           display: "line",
           fields: [anotherFieldWithSameType, anotherField],
         },
+        datasets: {},
       }),
     ).toBe(false);
   });
@@ -326,6 +340,7 @@ describe("getIsCompatible", () => {
       getIsCompatible({
         currentDataset: { display: "line", columns: dimensions, settings: {} },
         targetDataset: { display: "line", fields: [field, anotherField] },
+        datasets: {},
       }),
     ).toBe(true);
   });
@@ -352,6 +367,7 @@ describe("getIsCompatible", () => {
       getIsCompatible({
         currentDataset: { display: "line", columns: dimensions, settings: {} },
         targetDataset: { display: "line", fields },
+        datasets: {},
       });
 
     expect(isCompatible([dateField, sameIdAndType])).toBe(true);

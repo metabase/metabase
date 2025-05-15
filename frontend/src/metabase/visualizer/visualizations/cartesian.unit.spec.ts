@@ -63,7 +63,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(state, column2, column2Ref, dataSource);
+      addColumnToCartesianChart(state, {}, column2, column2Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
@@ -86,7 +86,7 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(state, column1, column1Ref, dataSource);
+      addColumnToCartesianChart(state, {}, column1, column1Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -119,7 +119,7 @@ describe("cartesian", () => {
         },
       };
 
-      addColumnToCartesianChart(state, column1, column1Ref, dataSource);
+      addColumnToCartesianChart(state, {}, column1, column1Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -144,7 +144,7 @@ describe("cartesian", () => {
         display: "bar",
       };
 
-      addColumnToCartesianChart(state, column4, column4Ref, dataSource);
+      addColumnToCartesianChart(state, {}, column4, column4Ref, dataSource);
 
       expect(state.columns.map((c) => c.name)).toEqual([]);
       expect(state.columnValuesMapping).toEqual({});
@@ -163,6 +163,7 @@ describe("cartesian", () => {
         // First column is automatically added as a dimension
         addColumnToCartesianChart(
           state,
+          {},
           copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
           dataSource,
@@ -174,6 +175,7 @@ describe("cartesian", () => {
         // Second column is automatically added as a metric
         addColumnToCartesianChart(
           state,
+          {},
           copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
           dataSource,
@@ -194,6 +196,7 @@ describe("cartesian", () => {
         // Third column is automatically added as a the bubble size
         addColumnToCartesianChart(
           state,
+          {},
           copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
           dataSource,
@@ -520,6 +523,7 @@ describe("cartesian", () => {
       const nextState = _.clone(state);
       combineWithCartesianChart(
         nextState,
+        {},
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
@@ -611,6 +615,7 @@ describe("cartesian", () => {
       const nextState = _.clone(state);
       combineWithCartesianChart(
         nextState,
+        {},
         createMockDataset({
           data: {
             cols: [

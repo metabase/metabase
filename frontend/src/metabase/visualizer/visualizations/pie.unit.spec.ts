@@ -61,6 +61,7 @@ describe("pie", () => {
 
       addColumnToPieChart(
         state,
+        {},
         { ...metricColumn, name: "COLUMN_1" },
         metricColumnRef,
       );
@@ -93,6 +94,7 @@ describe("pie", () => {
 
       addColumnToPieChart(
         state,
+        {},
         { ...metricColumn2, name: "COLUMN_2" },
         metricColumn2Ref,
       );
@@ -112,6 +114,7 @@ describe("pie", () => {
 
       addColumnToPieChart(
         state,
+        {},
         { ...dimensionColumn, name: "COLUMN_1" },
         dimensionColumnRef,
       );
@@ -144,6 +147,7 @@ describe("pie", () => {
 
       addColumnToPieChart(
         state,
+        {},
         { ...dimensionColumn2, name: "COLUMN_2" },
         dimensionColumn2Ref,
       );
@@ -275,6 +279,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -323,6 +328,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -350,6 +356,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [metricColumn2, metricColumn3] },
         }),
@@ -375,6 +382,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn] },
         }),
@@ -409,6 +417,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn2, dimensionColumn3] },
         }),
@@ -434,6 +443,7 @@ describe("pie", () => {
 
       combineWithPieChart(
         state,
+        {},
         createMockDataset({
           data: { cols: [dimensionColumn2] },
         }),

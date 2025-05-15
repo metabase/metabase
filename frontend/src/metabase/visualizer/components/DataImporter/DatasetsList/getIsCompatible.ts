@@ -4,6 +4,7 @@ import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
+  Dataset,
   DatasetColumn,
   Field,
   VisualizationDisplay,
@@ -20,10 +21,11 @@ interface CompatibilityParameters {
     display?: VisualizationDisplay;
     fields?: Field[];
   };
+  datasets: Record<string, Dataset>;
 }
 
 export function getIsCompatible(parameters: CompatibilityParameters) {
-  const { currentDataset, targetDataset } = parameters;
+  const { currentDataset, targetDataset, datasets } = parameters;
 
   const { display: currentDisplay, columns } = currentDataset;
   const ownDimensions = columns.filter(
@@ -76,6 +78,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
 
   const columnSettingMapping = groupColumnsBySuitableVizSettings(
     currentDataset,
+    datasets,
     fields,
   );
   return Object.keys(columnSettingMapping).length > 0;

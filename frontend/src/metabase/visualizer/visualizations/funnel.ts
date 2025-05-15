@@ -124,6 +124,7 @@ export function findColumnSlotForFunnel(
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
+  datasets: Record<string, Dataset>,
   column: DatasetColumn,
 ) {
   const isEmpty = columns.length === 0;
@@ -183,12 +184,13 @@ export function addColumnToFunnel(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  datasets: Record<string, Dataset>,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForFunnel(state, column);
+  const slot = findColumnSlotForFunnel(state, datasets, column);
   if (!slot) {
     return;
   }
