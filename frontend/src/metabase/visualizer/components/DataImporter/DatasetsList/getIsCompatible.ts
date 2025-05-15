@@ -44,6 +44,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     return false;
   }
 
+  // TODO Move to funnel compat check
   if (
     currentDisplay === "funnel" &&
     fields.length === 1 &&
