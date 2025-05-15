@@ -1,12 +1,9 @@
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
-import type {
-  ClauseArgDefinition,
-  MBQLClauseCategory,
-} from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { getClauseDefinition } from "./clause";
+import type { ClauseArgDefinition, MBQLClauseCategory } from "./types";
 
 export type HelpText = {
   name: string;

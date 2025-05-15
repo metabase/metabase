@@ -7,7 +7,7 @@ import type { EditorState } from "@codemirror/state";
 import { useMemo } from "react";
 import { usePrevious } from "react-use";
 
-import type { Completion } from "metabase-lib/v1/expressions/complete";
+import type { Completion } from "metabase/querying/expressions";
 
 export function useCompletions(state: EditorState) {
   const completions = useMemo(() => {

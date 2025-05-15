@@ -32,14 +32,14 @@ beforeAll(() => {
   console.warn = jest.fn();
 });
 
-describe("metabase-lib/v1/expressions/compiler", () => {
+describe("metabase/querying/expressions/compiler", () => {
   // quick sanity check before the real fuzzing
   it("should parse custom expresssion", () => {
     expect(() => compile("CASE([Deal],[Price]*7e-1,[Price])")).not.toThrow();
   });
 });
 
-fuzz("FUZZING metabase-lib/v1/expressions/compiler", () => {
+fuzz("FUZZING metabase/querying/expressions/compiler", () => {
   for (let seed = 1; seed < MAX_SEED; ++seed) {
     it("should parse generated number expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "number");

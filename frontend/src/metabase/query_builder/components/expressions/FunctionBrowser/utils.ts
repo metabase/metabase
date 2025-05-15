@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import * as Lib from "metabase-lib";
 import {
   type HelpText,
   clausesForMode,
   getHelpText,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 

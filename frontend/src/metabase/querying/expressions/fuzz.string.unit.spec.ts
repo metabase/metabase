@@ -32,7 +32,7 @@ function randomString(seed: number): string {
   return res.join("");
 }
 
-describe("metabase-lib/v1/expressions/compiler", () => {
+describe("metabase/querying/expressions/compiler", () => {
   it("should parse a convoluted string with single quotes", () => {
     const str = alphabet.join("");
 
@@ -61,7 +61,7 @@ describe("metabase-lib/v1/expressions/compiler", () => {
   });
 });
 
-fuzz("metabase-lib/v1/expressions/string", () => {
+fuzz("metabase/querying/expressions/string", () => {
   const QUOTES = ["'", '"', "["] as const;
 
   QUOTES.forEach((QUOTE) => {

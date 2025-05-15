@@ -3,12 +3,12 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Box, Button, Flex } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 import type {
   DefinedClauseName,
   ExpressionError,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import { Box, Button, Flex } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 
 import {
   trackColumnCombineViaShortcut,

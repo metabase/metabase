@@ -6,7 +6,7 @@ import { getExample } from "metabase/querying/drills/utils/column-extract-drill"
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ExpressionWidgetHeader } from "../ExpressionWidget";
+import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 
 import styles from "./ExtractColumn.module.css";
 import { getName } from "./util";
