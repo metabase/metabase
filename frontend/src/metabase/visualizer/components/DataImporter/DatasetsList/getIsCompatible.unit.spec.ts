@@ -162,7 +162,7 @@ describe("getIsCompatible", () => {
           currentDataset: {
             display: "line",
             columns: [metricColumn],
-            settings: { "graph.metricColumn": [metricColumn.id] },
+            settings: { "graph.metrics": [metricColumn.name] },
           },
           targetDataset: {
             dataSource,
@@ -182,8 +182,8 @@ describe("getIsCompatible", () => {
             display: "line",
             columns: [metricColumn, timeDimensionColumn],
             settings: {
-              "graph.metricColumn": [metricColumn.id],
-              "graph.timeColumn": [timeDimensionColumn.id],
+              "graph.metrics": [metricColumn.name],
+              "graph.dimensions": [timeDimensionColumn.name],
             },
           },
           targetDataset: { dataSource, fields: [dateField] },
@@ -215,8 +215,8 @@ describe("getIsCompatible", () => {
             display: "line",
             columns: [metricColumn, temporalDimensionColumn],
             settings: {
-              "graph.metricColumn": [metricColumn.id],
-              "graph.timeColumn": [temporalDimensionColumn.id],
+              "graph.metrics": [metricColumn.name],
+              "graph.dimensions": [temporalDimensionColumn.name],
             },
           },
           targetDataset: { dataSource, fields: [dateField] },
@@ -241,8 +241,8 @@ describe("getIsCompatible", () => {
             display: "line",
             columns: [metricColumn, timeDimensionColumn],
             settings: {
-              "graph.metricColumn": [metricColumn.id],
-              "graph.timeColumn": [timeDimensionColumn.id],
+              "graph.metrics": [metricColumn.name],
+              "graph.dimensions": [timeDimensionColumn.name],
             },
           },
           targetDataset: { dataSource, fields: [sameCategoryDimensionField] },
@@ -269,8 +269,8 @@ describe("getIsCompatible", () => {
             display: "line",
             columns: [metricColumn, categoryDimensionColumn],
             settings: {
-              "graph.metricColumn": [metricColumn.id],
-              "graph.timeColumn": [categoryDimensionColumn.id],
+              "graph.metrics": [metricColumn.name],
+              "graph.dimensions": [categoryDimensionColumn.name],
             },
           },
           targetDataset: { dataSource, fields: [sameCategoryDimensionField] },
@@ -297,8 +297,8 @@ describe("getIsCompatible", () => {
             display: "line",
             columns: [metricColumn, categoryDimensionColumn],
             settings: {
-              "graph.metricColumn": [metricColumn.id],
-              "graph.timeColumn": [categoryDimensionColumn.id],
+              "graph.metrics": [metricColumn.name],
+              "graph.dimensions": [categoryDimensionColumn.name],
             },
           },
           targetDataset: { dataSource, fields: [otherCategoryDimensionField] },
