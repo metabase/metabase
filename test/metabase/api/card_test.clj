@@ -3496,48 +3496,41 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
-(defn- native-card-with-template-tags []
-  {:dataset_query
-   {:type     :native
-    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-               :template-tags
-               {"id"      {:name         "id"
-                           :display-name "Id"
-                           :id           "_id_"
-                           :type         :dimension
-                           :dimension    [:field (mt/id :people :id) nil]
-                           :widget-type  :id
-                           :default      nil}
-                "name"    {:name         "name"
-                           :display-name "Name"
-                           :id           "_name_"
-                           :type         :dimension
-                           :dimension    [:field (mt/id :people :name) nil]
-                           :widget-type  :category
-                           :default      nil}
-                "source"  {:name         "source"
-                           :display-name "Source"
-                           :id           "_soure_"
-                           :type         :dimension
-                           :dimension    [:field (mt/id :people :source) nil]
-                           :widget-type  :category
-                           :default      nil}
-                "user_id" {:name         "user_id"
-                           :display-name "User"
-                           :id           "_user_id_"
-                           :type         :dimension
-                           :dimension    [:field (mt/id :orders :user_id) nil]
-                           :widget-type  :id
-                           :default      nil}}}
-    :database (mt/id)}
-   :query_type :native
-   :database_id (mt/id)})
-
 (deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
-     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
+     :model/Card {card-id-2 :id} {:dataset_query
+                                  {:type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                              :template-tags
+                                              {"id"      {:name         "id"
+                                                          :display-name "Id"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}
+                                               "name"    {:name         "name"
+                                                          :display-name "Name"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :name) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "source"  {:name         "source"
+                                                          :display-name "Source"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :people :source) nil]
+                                                          :widget-type  :category
+                                                          :default      nil}
+                                               "user_id" {:name         "user_id"
+                                                          :display-name "User"
+                                                          :type         :dimension
+                                                          :dimension    [:field (mt/id :orders :user_id) nil]
+                                                          :widget-type  :id
+                                                          :default      nil}}}
+                                   :database (mt/id)}
+                                  :query_type :native
+                                  :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
            {:fields empty?

@@ -258,6 +258,7 @@
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-depend": "^0.9.0",
+    "eslint-plugin-i18next": "^6.1.1",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jest": "^27.2.0",
     "eslint-plugin-jest-dom": "^5.4.0",

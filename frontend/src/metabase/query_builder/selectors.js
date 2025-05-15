@@ -670,15 +670,10 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [
-    getQuestion,
-    getFirstQueryResult,
-    getLastRunDatasetQuery,
-    getIsShowingRawTable,
-  ],
-  (question, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+  [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
+  (card, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
     const rawSeries = createRawSeries({
-      question,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
@@ -1070,7 +1065,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
 
 export const getSubmittableQuestion = (state, question) => {
   const rawSeries = createRawSeries({
-    question: getQuestion(state),
+    card: getCard(state),
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });

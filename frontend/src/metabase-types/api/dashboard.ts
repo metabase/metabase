@@ -75,7 +75,6 @@ export interface Dashboard {
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;
-  param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
 

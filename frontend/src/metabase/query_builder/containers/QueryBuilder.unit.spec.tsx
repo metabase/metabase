@@ -3,6 +3,7 @@ import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
+import { setupSettingsEndpoints } from "__support__/server-mocks";
 import {
   screen,
   waitFor,
@@ -87,6 +88,11 @@ describe("QueryBuilder", () => {
         createMockCard({ ...TEST_CARD_VISUALIZATION, display: "table" }),
         createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
       ];
+
+      beforeEach(() => {
+        fetchMock.put("path:/api/setting/non-table-chart-generated", 200);
+        setupSettingsEndpoints([]);
+      });
 
       it.each(cards)(
         `renders the row count in "$display" visualization`,

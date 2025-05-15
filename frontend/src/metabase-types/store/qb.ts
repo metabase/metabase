@@ -29,7 +29,6 @@ export interface QueryBuilderUIControls {
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
   isRunning: boolean;
-  isQueryComplete: boolean;
   isShowingSummarySidebar: boolean;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;

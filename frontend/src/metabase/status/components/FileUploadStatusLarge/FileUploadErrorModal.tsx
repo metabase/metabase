@@ -5,7 +5,8 @@ import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import { Text } from "metabase/ui";
 
-export const FileUploadErrorModal = ({
+// OSS Component, do not use directly, use through PLUGIN_UPLOAD_MANAGEMENT
+export const _FileUploadErrorModal = ({
   onClose,
   fileName,
   children,
