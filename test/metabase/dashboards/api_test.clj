@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.dashboard-test
+(ns ^:mb/driver-tests metabase.dashboards.api-test
   "Tests for /api/dashboard endpoints."
   (:require
    [clojure.data.csv :as csv]
@@ -8,11 +8,11 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.dashboard :as api.dashboard]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
+   [metabase.dashboards.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
    [metabase.http-client :as client]

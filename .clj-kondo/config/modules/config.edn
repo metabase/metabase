@@ -99,7 +99,6 @@
   {:api #{metabase.api.auth
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.dashboard
           metabase.api.database
           metabase.api.dataset
           metabase.api.docs
@@ -112,11 +111,9 @@
           metabase.api.user
           metabase.api.util
           metabase.api.util.handlers}
-   :uses #{actions
-           analytics
+   :uses #{analytics
            api-routes
            appearance
-           channel
            classloader
            collections
            config
@@ -134,11 +131,9 @@
            parameters
            permissions
            premium-features
-           pulse
            queries
            query-processor
            request
-           revisions
            sample-data
            secrets
            server
@@ -233,6 +228,7 @@
            appearance
            collections
            config
+           dashboards
            db
            driver
            events
@@ -331,6 +327,35 @@
   core
   {:api  #{metabase.core.initialization-status}
    :uses :any}
+
+  dashboards
+  {:api  #{metabase.dashboards.api
+           metabase.dashboards.constants
+           metabase.dashboards.models.dashboard
+           metabase.dashboards.models.dashboard-card
+           metabase.dashboards.models.dashboard-tab}
+   :uses #{actions
+           analytics
+           api
+           audit-app
+           channel
+           collections
+           config
+           db
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           pulse
+           queries
+           query-processor
+           request
+           revisions
+           search
+           util
+           xrays}}
 
   database-routing
   {:api  #{metabase.database-routing.core}
@@ -609,10 +634,6 @@
            premium-features
            secrets
            settings
-           parameters
-           public-sharing
-           pulse
-           queries
            query-processor
            search
            setup
@@ -641,6 +662,7 @@
            appearance
            channel
            config
+           dashboards
            driver
            events
            models
@@ -749,6 +771,7 @@
    :uses #{actions
            analytics
            api
+           dashboards
            events
            lib
            models
@@ -908,6 +931,7 @@
            metabase.revisions.init}
    :uses #{api
            config
+           dashboards
            events
            models
            permissions
@@ -1169,11 +1193,11 @@
    :uses #{classloader
            channel
            config
+           dashboards
            db
            driver
            legacy-mbql
            lib
-           models
            parameters
            settings
            system}}
@@ -1225,6 +1249,7 @@
            appearance
            api
            collections
+           dashboards
            driver
            legacy-mbql
            lib
@@ -1267,9 +1292,9 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-  :uses #{api
-          premium-features
-          enterprise/metabot-v3}}
+   :uses #{api
+           premium-features
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -1424,7 +1449,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql

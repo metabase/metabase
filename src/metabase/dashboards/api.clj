@@ -1,4 +1,4 @@
-(ns metabase.api.dashboard
+(ns metabase.dashboards.api
   "/api/dashboard endpoints."
   (:require
    [clojure.core.cache :as cache]
