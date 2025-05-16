@@ -5,6 +5,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.api-routes.core :as api-routes]
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config :as config]
@@ -185,7 +186,7 @@
     (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
 
 (defn init!
-  "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
+  "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
   (let [start-time (t/zoned-date-time)]
@@ -198,8 +199,10 @@
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
-    ;; launch embedded webserver async
-    (server/start-web-server! (server/handler))
+    ;; launch embedded webserver
+    (let [server-routes (server/make-routes #'api-routes/routes)
+          handler       (server/make-handler server-routes)]
+      (server/start-web-server! handler))
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing

@@ -1,4 +1,4 @@
-(ns metabase.models.application-permissions-revision
+(ns metabase.permissions.models.application-permissions-revision
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]

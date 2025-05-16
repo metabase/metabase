@@ -1,9 +1,11 @@
 (ns metabase.db.custom-migrations.pulse-to-notification-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.notification.models :as models.notification]
+   [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -12,9 +14,16 @@
   [notiification]
   (update notiification :handler #(sort-by :channel_type %)))
 
+(defmacro with-test-setup!
+  [& body]
+  `(mt/with-model-cleanup [:model/Pulse :model/Notification]
+     (mt/with-temp-scheduler!
+       (task/init! ::task.send-pulses/SendPulses)
+       ~@body)))
+
 (defn migrate-alert!
-  [pulse-id]
-  (->> (#'pulse-to-notification/alert->notification! (t2/select-one :pulse pulse-id))
+  [scheduler pulse-id]
+  (->> (#'pulse-to-notification/alert->notification! scheduler (t2/select-one :pulse pulse-id))
        (map :id)
        (map (partial t2/select-one :model/Notification))
        (map models.notification/hydrate-notification)
@@ -42,7 +51,7 @@
   (let [pulse-id (t2/insert-returning-pk! :pulse (add-timestamp pulse))]
     (t2/insert! :pulse_card (map #(assoc % :pulse_id pulse-id) pulse-cards))
     (doseq [pcr pcs+recipients]
-      (let [pc-id (t2/insert-returning-pk! :pulse_channel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))]
+      (let [pc-id (t2/insert-returning-pk! :model/PulseChannel (-> pcr (assoc :pulse_id pulse-id) (dissoc :recipients) add-timestamp))]
         (when (seq (:recipients pcr))
           (t2/insert! :pulse_channel_recipient (map #(assoc % :pulse_channel_id pc-id) (:recipients pcr))))))
     pulse-id))
@@ -61,13 +70,18 @@
 
 (deftest migrate-alert-test
   (testing "basic alert migration"
-    (mt/with-model-cleanup [:model/Pulse :model/Notification]
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}]
         (testing "has one subscription, one email handler with one recipient"
           (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                      :recipients  [{:user_id (mt/user->id :rasta)}]}])
                 alert    (t2/select-one :model/Pulse alert-id)
-                notification (first (migrate-alert! alert-id))]
+                alert-triggers (pulse-channel-test/send-pulse-triggers alert-id)
+                notification (first (migrate-alert! (task/scheduler) alert-id))]
+            (testing "sanity check that there is a trigger for the alert to begin with"
+              (is (= 1 (count alert-triggers)))
+              (testing "after the migration it got deleted"
+                (is (zero? (count (pulse-channel-test/send-pulse-triggers alert-id))))))
             (is (=? {:payload_type :notification/card
                      :active       true
                      :creator_id   (mt/user->id :crowberto)
@@ -82,12 +96,12 @@
 
 (deftest migrate-alert-http-test
   (testing "migrate alert with http channel"
-    (mt/with-model-cleanup [:model/Pulse :model/Notification]
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Channel {channel-id :id} {}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "http"
                                                    :channel_id   channel-id}])
-              notification (first (migrate-alert! alert-id))]
+              notification (first (migrate-alert! (task/scheduler) alert-id))]
           (is (=? {:payload_type :notification/card
                    :payload      {:card_id        card-id
                                   :send_once      false
@@ -102,7 +116,7 @@
 
 (deftest migrate-alert-multiple-channels-test
   (testing "migrate alert with multiple channels 1 slack, 1 email with 1 external recipient and one user, 1 disabled email, one http"
-    (mt/with-model-cleanup [:model/Pulse :model/Notification]
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Channel {channel-id :id} {:type "channel/http"}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
@@ -118,7 +132,7 @@
                                                   {:channel_type "email"
                                                    :enabled      false
                                                    :recipients   [{:user_id (mt/user->id :crowberto)}]}])
-              notification (first (migrate-alert! alert-id))]
+              notification (first (migrate-alert! (task/scheduler) alert-id))]
           (testing "are correctly migrated, the disabled channel is not migrated"
             (is (=? {:payload_type :notification/card
                      :active       true
@@ -139,7 +153,7 @@
 
 (deftest migrate-alert-send-condition-test
   (testing "migrate alert with different send conditions"
-    (mt/with-model-cleanup [:model/Pulse :model/Notification]
+    (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}]
         (doseq [{:keys [expected alert-props]} [{:expected    {:send_condition :has_result
                                                                :send_once      false}
@@ -159,40 +173,9 @@
           (testing (format "testing %s condition" alert-props)
             (let [alert-id (create-alert! alert-props card-id [{:channel_type "email"
                                                                 :recipients  [{:user_id (mt/user->id :rasta)}]}])
-                  notification (first (migrate-alert! alert-id))]
+                  notification (first (migrate-alert! (task/scheduler) alert-id))]
               (is (=? {:payload_type :notification/card
                        :payload      (merge {:card_id card-id} expected)
                        :active       true
                        :creator_id   (mt/user->id :crowberto)}
                       notification)))))))))
-
-(defn- bit->boolean
-  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
-  [v]
-  (if (number? v)
-    (not (zero? v))
-    v))
-
-(defn test-alert-view!
-  [{:keys [alert pcs expected-views]}]
-  (mt/with-model-cleanup [:model/Pulse :model/Notification]
-    (mt/with-temp [:model/Card {card-id :id} {}]
-      (let [alert-id (create-alert! alert card-id pcs)
-            notification-id (:id (first (migrate-alert! alert-id)))
-            entity-id       (format "notification_%s" notification-id)
-            card-entity-id  (format "card_%s" card-id)]
-        (is (=? (map #(assoc %
-                             :card_qualified_id card-entity-id
-                             :card_id card-id
-                             :entity_id notification-id)
-                     expected-views)
-                (map #(-> %
-                          (update :archived bit->boolean)
-                          (update :recipients (fn [recipients]
-                                                (some-> recipients
-                                                        (str/split #",")
-                                                        set))))
-                     (t2/query {:select [:*]
-                                :from [:v_alerts]
-                                :where [:= :entity_qualified_id entity-id]
-                                :order-by [:recipient_type]}))))))))

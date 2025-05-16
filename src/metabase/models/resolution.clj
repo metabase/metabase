@@ -14,7 +14,7 @@
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
-    :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
+    :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
