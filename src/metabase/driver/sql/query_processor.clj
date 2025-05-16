@@ -560,6 +560,7 @@
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
+;; default -- no need for windows now
 (defmethod apply-top-level-clause :default
   [_ _ honeysql-form _]
   honeysql-form)
@@ -770,8 +771,8 @@
                (->integer driver honeysql-form)
 
                :else honeysql-form)
-      (when-not (= <> honeysql-form)
-        (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
+             (when-not (= <> honeysql-form)
+               (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
 
 ;;; it's a little weird that we're calling [[->honeysql]] on an identifier, which is a Honey SQL form and not an MBQL
 ;;; form. See [[throw-double-compilation-error]] for more info.
@@ -867,14 +868,14 @@
                                    expr
                                    (h2x/with-database-type-info expr database-type)))]
       (u/prog1
-        (cond->> (if allow-casting? casted-field identifier)
+       (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
-          database-type            maybe-add-db-type
-          (:temporal-unit options) (apply-temporal-bucketing driver options)
-          (:binning options)       (apply-binning options))
-        (log/trace (binding [*print-meta* true]
-                     (format "Compiled field clause\n%s\n=>\n%s"
-                             (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
+         database-type            maybe-add-db-type
+         (:temporal-unit options) (apply-temporal-bucketing driver options)
+         (:binning options)       (apply-binning options))
+       (log/trace (binding [*print-meta* true]
+                    (format "Compiled field clause\n%s\n=>\n%s"
+                            (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
@@ -1250,30 +1251,30 @@
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (lib.util.match/match-one (nth (:aggregation *inner-query*) index)
-    [:aggregation-options ag (options :guard :name)]
-    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+                            [:aggregation-options ag (options :guard :name)]
+                            (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
+                            [:aggregation-options ag _]
+                            #_:clj-kondo/ignore
+                            (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
-    :distinct
-    (->honeysql driver (h2x/identifier :field-alias :count))
+                            :distinct
+                            (->honeysql driver (h2x/identifier :field-alias :count))
 
-    #{:+ :- :* :/}
-    (->honeysql driver &match)
+                            #{:+ :- :* :/}
+                            (->honeysql driver &match)
 
-    [:offset (options :guard :name) _expr _n]
-    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+                            [:offset (options :guard :name) _expr _n]
+                            (->honeysql driver (h2x/identifier :field-alias (:name options)))
 
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
-    [ag-type & _]
-    (->honeysql driver (h2x/identifier :field-alias ag-type))))
+                            [ag-type & _]
+                            (->honeysql driver (h2x/identifier :field-alias ag-type))))
 
 (mu/defmethod ->honeysql [:sql :absolute-datetime] :- some?
   [driver [_ timestamp unit]]
@@ -1405,20 +1406,20 @@
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
    (lib.util.match/replace form
-     [:field id-or-name opts]
-     [:field id-or-name (cond-> opts
-                          true
-                          (assoc ::add/source-alias        (::add/desired-alias opts)
-                                 ::add/source-table        ::add/none
+                           [:field id-or-name opts]
+                           [:field id-or-name (cond-> opts
+                                                true
+                                                (assoc ::add/source-alias        (::add/desired-alias opts)
+                                                       ::add/source-table        ::add/none
                                  ;; this key will tell the SQL QP not to apply casting here either.
-                                 :qp/ignore-coercion       true
+                                                       :qp/ignore-coercion       true
                                  ;; used to indicate that this is a forced alias
-                                 ::forced-alias            true)
+                                                       ::forced-alias            true)
                           ;; don't want to do temporal bucketing or binning inside the order by only.
                           ;; That happens inside the `SELECT`
                           ;; (#22831) however, we do want it in breakout
-                          (not is-breakout)
-                          (dissoc :temporal-unit :binning))])))
+                                                (not is-breakout)
+                                                (dissoc :temporal-unit :binning))])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
@@ -1426,6 +1427,7 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+;; aa
 (defmethod apply-top-level-clause [:sql :aggregation]
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
@@ -1455,6 +1457,7 @@
                                           (as driver field-clause)))))
       (apply sql.helpers/group-by new-hsql (mapv (partial ->honeysql driver) breakout-fields)))))
 
+;; ff
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
   (apply (if (:select-top honeysql-form)
@@ -1626,8 +1629,8 @@
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
   (if-let [field-arg (lib.util.match/match-one args
-                       :field          &match
-                       :expression     &match)]
+                                               :field          &match
+                                               :expression     &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
     [:or
@@ -1755,6 +1758,33 @@
   (-> honeysql-form
       (sql.helpers/limit (inline-num items))
       (sql.helpers/offset (inline-num (* items (dec page))))))
+;;; ---------------------------------------------------- windows -----------------------------------------------------
+
+;; basically same as aggregations...
+(defmethod apply-top-level-clause [:sql :windows]
+  [driver _top-level-clause honeysql-form {:keys [windows] :as _inner-query}]
+  (reduce (if (:select-top honeysql-form)
+            sql.helpers/select-top
+            sql.helpers/select)
+          honeysql-form
+          (for [window-clause windows
+                :let [window-expr  (->honeysql driver window-clause)
+                      window-name  (annotate/window-name _inner-query window-clause)
+                      window-alias (->honeysql driver (h2x/identifier
+                                                       :field-alias
+                                                       (driver/escape-alias driver window-name)))]]
+            [window-expr [window-alias]])))
+
+(defmethod ->honeysql [:sql :window-max]
+  [driver [_tag expr _opts]]
+  [:over [[:max (->honeysql driver expr)]]])
+
+(defmethod ->honeysql [:sql :window-min]
+  [driver [_tag expr _opts]]
+  [:over [[:min (->honeysql driver expr)]]])
+
+(comment
+  (honey.sql/format {:select [[[:over [[:sum :ahoj]]] :x]]}))
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
@@ -1802,7 +1832,7 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            [:source-table :breakout :aggregation :fields :filter :joins :order-by :page :limit])))
+            [:source-table :breakout :aggregation :fields :filter :joins :order-by :page :limit :windows])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."
@@ -2009,8 +2039,8 @@
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
       (u/prog1 (apply-clauses driver {} inner-query)
-        (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
-        (qp.debug/debug> (list '🍯 <>))))))
+               (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+               (qp.debug/debug> (list '🍯 <>))))))
 
 ;;;; MBQL -> Native
 

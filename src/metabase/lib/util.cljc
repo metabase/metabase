@@ -356,10 +356,12 @@
   [query        :- LegacyOrPMBQLQuery
    stage-number :- :int
    f & args]
-  (let [{:keys [stages], :as query} (pipeline query)
-        stage-number'               (canonical-stage-index query stage-number)
-        stages'                     (apply update (vec stages) stage-number' f args)]
-    (assoc query :stages stages')))
+  (let [rr (let [{:keys [stages], :as query} (pipeline query)
+                 stage-number'               (canonical-stage-index query stage-number)
+                 stages'                     (apply update (vec stages) stage-number' f args)]
+             (assoc query :stages stages'))]
+    #?(:clj (def rer rr))
+    rr))
 
 (defn native-stage?
   "Is this query stage a native stage?"
@@ -435,6 +437,8 @@
 
   ([s         :- ::lib.schema.common/non-blank-string
     max-bytes :- [:int {:min 0}]]
+   (def sss s)
+   (def mmm max-bytes)
    (if (<= (u/string-byte-count s) max-bytes)
      s
      (let [checksum  (crc32-checksum s)

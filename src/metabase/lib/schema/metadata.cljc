@@ -46,7 +46,8 @@
    ;; Introduced by `:expressions`; not necessarily ultimately returned.
    :source/expressions
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
-   :source/implicitly-joinable])
+   :source/implicitly-joinable
+   :source/windows])
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings

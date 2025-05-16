@@ -15,6 +15,7 @@
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
    [metabase.query-processor.middleware.binning :as binning]
+   [metabase.query-processor.middleware.binning-min-max :as binning-min-max]
    [metabase.query-processor.middleware.check-features :as check-features]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
@@ -124,6 +125,7 @@
    (ensure-legacy #'qp.add-dimension-projections/add-remapped-columns)
    (ensure-legacy #'qp.resolve-fields/resolve-fields)
    (ensure-legacy #'binning/update-binning-strategy)
+   (ensure-pmbql #'binning-min-max/rewrite-binning-window-min-max)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-legacy #'qp.add-implicit-joins/add-implicit-joins)

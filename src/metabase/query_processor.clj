@@ -43,7 +43,7 @@
 
 (defn- process-query** [query rff]
   (qp.debug/debug> (list `process-query query))
-  (let [preprocessed (qp.preprocess/preprocess query)
+  (let [preprocessed @(def pp (qp.preprocess/preprocess query))
         compiled     (qp.compile/attach-compiled-query preprocessed)
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff)))

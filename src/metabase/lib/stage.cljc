@@ -100,6 +100,18 @@
             :lib/hack-original-name   ((some-fn :lib/hack-original-name :name) ag)
             :lib/desired-column-alias (unique-name-fn (:name ag))))))
 
+(defn windows-columns
+  [query
+   stage-number
+   {:keys [unique-name-fn]}]
+  (when-some [windows (not-empty (:windows (lib.util/query-stage query stage-number)))]
+    (not-empty (mapv #(let [m (lib.metadata.calculation/metadata query stage-number %)]
+                        (merge
+                         m
+                         {:lib/source-column-alias (:name m)
+                          :lib/desired-column-alias  (unique-name-fn (:name m))}))
+                     windows))))
+
 ;;; TODO -- maybe the bulk of this logic should be moved into [[metabase.lib.field]], like we did for breakouts and
 ;;; aggregations above.
 (mu/defn- fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
@@ -285,8 +297,10 @@
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
-  (let [query            (ensure-previous-stages-have-metadata query stage-number options)
+  (let [query             (ensure-previous-stages-have-metadata query stage-number options)
         existing-columns (existing-visible-columns query stage-number options)]
+    #?(:clj (do (def eqeq query)
+                (def exex existing-columns)))
     (->> (concat
           existing-columns
            ;; add implicitly joinable columns if desired
@@ -308,21 +322,22 @@
    (existing-stage-metadata query stage-number unique-name-fn)
    (let [query        (ensure-previous-stages-have-metadata query stage-number options)
          summary-cols (summary-columns query stage-number options)
-         field-cols   (fields-columns query stage-number options)]
+         field-cols   (fields-columns query stage-number options)
+         window-cols  (windows-columns query stage-number options)]
      ;; ... then calculate metadata for this stage
      (cond
        summary-cols
-       (into summary-cols field-cols)
+       (into summary-cols cat [field-cols window-cols])
 
        field-cols
-       (let [_          (doall field-cols)           ; force generation of unique names before join columns
+       (let [_          (into field-cols window-cols)           ; force generation of unique names before join columns
              join-cols  (lib.join/all-joins-expected-columns query stage-number options)
              ;; The field-cols may contain would-be joined cols already! We de-duplicate them, but take the :ident
              ;; from the last of the duplicates.
              ;; TODO: This almost certainly doesn't work properly with double-joins, and should be powered by
              ;; "original ident" where possible. Or field-cols should return the correct joins; then taking that
              ;; copy doesn't hurt anything.
-             signed    (mapv (juxt column-signature identity) (concat field-cols join-cols))
+             signed    (mapv (juxt column-signature identity) (concat field-cols join-cols window-cols))
              idents    (into {} (keep (fn [[sig col]]
                                         (when-let [ident (:ident col)]
                                           [sig ident])))

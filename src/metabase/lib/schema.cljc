@@ -29,6 +29,7 @@
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.schema.window :as window]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]))
 
@@ -182,7 +183,8 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+    [:page         {:optional true} [:ref ::page]]
+    [:windows      {:optional true} [:ref ::window/windows]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
@@ -271,8 +273,8 @@
         (or
          (when (map? stage)
            (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
-             [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
-             (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
+                                     [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+                                     (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))
 

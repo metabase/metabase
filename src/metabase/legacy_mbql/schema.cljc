@@ -1015,6 +1015,7 @@
 ;;
 ;;    SUM(field_1 + field_2)
 
+;; here
 (defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression [:ref ::FieldOrExpressionDef])
 (defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression [:ref ::FieldOrExpressionDef])
 (defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression [:ref ::FieldOrExpressionDef])
@@ -1516,6 +1517,23 @@
   ;; queries, but I think we don't apply this schema until normalization.
   [:map-of ::lib.schema.common/non-blank-string [:maybe ::Ident]])
 
+;; TODO: later should redefine by means of one-of...
+(mr/def ::Window
+  [:tuple
+   {:error/message "Window function"}
+   [:enum :window-min :window-max]
+   [:ref ::FieldOrExpressionDef]
+   ;; TMP options
+   :any])
+
+;; FINE!
+(comment
+  (metabase.util.malli/explain ::Window [:window/min [:field 1 nil]])
+  (metabase.util.malli/explain ::Query {:database 2
+                                        :type :query
+                                        :query {:source-table 3
+                                                :windows [[:window/min [:field 1 nil]]]}}))
+
 (mr/def ::MBQLQuery
   [:and
    [:map
@@ -1533,6 +1551,7 @@
     [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
     [:page               {:optional true} [:ref ::Page]]
     [:joins              {:optional true} [:ref ::Joins]]
+    [:windows            {:optional true} [:sequential {:min 1} [:ref ::Window]]]
 
     [:source-metadata
      {:optional true

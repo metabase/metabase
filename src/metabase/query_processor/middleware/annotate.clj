@@ -142,18 +142,18 @@
   "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
   [clause]
   (lib.util.match/match-one clause
-    #{:datetime-add :datetime-subtract :relative-datetime}
-    true
+                            #{:datetime-add :datetime-subtract :relative-datetime}
+                            true
 
-    [:field _ (_ :guard :temporal-unit)]
-    true
-    [:expression _ (_ :guard :temporal-unit)]
-    true
+                            [:field _ (_ :guard :temporal-unit)]
+                            true
+                            [:expression _ (_ :guard :temporal-unit)]
+                            true
 
-    :+
-    (some (partial mbql.u/is-clause? :interval) (rest clause))
+                            :+
+                            (some (partial mbql.u/is-clause? :interval) (rest clause))
 
-    _ false))
+                            _ false))
 
 (declare col-info-for-field-clause)
 
@@ -238,11 +238,11 @@
   [a-ref]
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
-      [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
-      (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
-        (if (seq fe-friendly-opts)
-          [:expression expression-name fe-friendly-opts]
-          [:expression expression-name])))))
+                            [:expression expression-name (opts :guard (some-fn :base-type :effective-type))]
+                            (let [fe-friendly-opts (dissoc opts :base-type :effective-type)]
+                              (if (seq fe-friendly-opts)
+                                [:expression expression-name fe-friendly-opts]
+                                [:expression expression-name])))))
 
 (defn- col-info-for-expression
   [inner-query [_expression expression-name {:keys [temporal-unit] :as _opts} :as clause]]
@@ -365,29 +365,29 @@
   [inner-query :- :map
    clause      :- mbql.s/Field]
   (lib.util.match/match-one clause
-    :expression
-    (col-info-for-expression inner-query &match)
+                            :expression
+                            (col-info-for-expression inner-query &match)
 
-    :field
-    (col-info-for-field-clause* inner-query &match)
+                            :field
+                            (col-info-for-field-clause* inner-query &match)
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
-    _
-    (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
-                    {:field &match}))))
+                            _
+                            (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
+                                            {:field &match}))))
 
 (defn- mlv2-query [inner-query]
   (qp.store/cached [:mlv2-query (hash inner-query)]
-    (try
-      (lib/query-from-legacy-inner-query
-       (qp.store/metadata-provider)
-       (:id (lib.metadata/database (qp.store/metadata-provider)))
-       (mbql.normalize/normalize-fragment [:query] inner-query))
-      (catch Throwable e
-        (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
-                        {:inner-query inner-query, :type qp.error-type/qp}
-                        e))))))
+                   (try
+                     (lib/query-from-legacy-inner-query
+                      (qp.store/metadata-provider)
+                      (:id (lib.metadata/database (qp.store/metadata-provider)))
+                      (mbql.normalize/normalize-fragment [:query] inner-query))
+                     (catch Throwable e
+                       (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
+                                       {:inner-query inner-query, :type qp.error-type/qp}
+                                       e))))))
 
 (mu/defn- col-info-for-aggregation-clauses
   "Return appropriate (legacy) column metadata for the `:aggregation` clauses of this legacy inner query, in order."
@@ -429,6 +429,11 @@
   [inner-query :- LegacyInnerQuery
    ag-clause]
   (lib/column-name (mlv2-query inner-query) (lib/->pMBQL ag-clause)))
+
+(mu/defn window-name :- ::lib.schema.common/non-blank-string
+  [inner-query :- LegacyInnerQuery
+   window-clause]
+  (lib/column-name (mlv2-query inner-query) (lib/->pMBQL window-clause)))
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 
@@ -582,14 +587,14 @@
         true       (u/prog1 #_sq-cols (qp.debug/debug> [`cols-for-source-query <>]))
         model?     ((fn [sq-cols]
                       (u/prog1 (idents-for-model sq-cols entity-id)
-                        (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
-                                          ^{:portal.viewer/default :portal.viewer/diff}
-                                          [(vec sq-cols) (vec <>)]]))))
+                               (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
+                                                 ^{:portal.viewer/default :portal.viewer/diff}
+                                                 [(vec sq-cols) (vec <>)]]))))
         (seq cols) ((fn [sq-cols]
                       (u/prog1 (flow-field-metadata sq-cols cols model?)
-                        (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
-                                          ^{:portal.viewer/default :portal.viewer/diff}
-                                          [(vec sq-cols) (vec <>)]])))))
+                               (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
+                                                 ^{:portal.viewer/default :portal.viewer/diff}
+                                                 [(vec sq-cols) (vec <>)]])))))
 
       (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)
@@ -602,9 +607,9 @@
   (let [offset   (count breakouts)
         restored (reduce (fn [aggregations index]
                            (lib.util.match/replace-in aggregations [(- index offset)]
-                             [:count]       [:cum-count]
-                             [:count field] [:cum-count field]
-                             [:sum field]   [:cum-sum field]))
+                                                      [:count]       [:cum-count]
+                                                      [:count field] [:cum-count field]
+                                                      [:sum field]   [:cum-sum field]))
                          (vec aggregations)
                          replaced-indexes)]
     (assoc inner-query :aggregation restored)))
@@ -618,7 +623,7 @@
                         replaced-indexes (restore-cumulative-aggregations replaced-indexes))
                       outer-query
                       results)
-    (check-correct-number-of-columns-returned <> results)))
+           (check-correct-number-of-columns-returned <> results)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Deduplicating names                                               |

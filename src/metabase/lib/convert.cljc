@@ -14,6 +14,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.window :as lib.schema.window]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -46,7 +47,7 @@
       (dissoc almost-stage location-key))))
 
 (def ^:private stage-keys
-  #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
+  #{:aggregation :breakout :expressions :fields :filters :order-by :joins :windows})
 
 (defn- clean-stage-schema-errors [almost-stage]
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
@@ -362,6 +363,11 @@
     (let [[tag x y opts] clause]
       (lib.options/ensure-uuid [tag (or opts {}) (->pMBQL x) (->pMBQL y)]))))
 
+(defmethod ->pMBQL ::lib.schema.window/window-clause-tag
+  [[tag arg opts :as aa]]
+  #?(:clj (def aa aa))
+  (lib.options/ensure-uuid [tag opts (->pMBQL arg)]))
+
 (defn legacy-query-from-inner-query
   "Convert a legacy 'inner query' to a full legacy 'outer query' so you can pass it to stuff
   like [[metabase.legacy-mbql.normalize/normalize]], and then probably to [[->pMBQL]]."
@@ -377,6 +383,13 @@
   {:arglists '([x])}
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
+
+(declare options->legacy-MBQL)
+
+(defmethod ->legacy-MBQL ::lib.schema.window/window-clause-tag
+  [[tag opts arg :as bb]]
+  #?(:clj (def bb bb))
+  [tag (->legacy-MBQL arg) (options->legacy-MBQL opts)])
 
 (defn- metabase-lib-keyword?
   "Does keyword `k` have a`:lib/`, `:lib.columns/` or a `:metabase.lib.*/` namespace?"
