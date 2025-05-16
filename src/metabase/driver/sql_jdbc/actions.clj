@@ -516,7 +516,11 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs (mapv :after results)}))
+     :outputs (mapv (fn [{:keys [table-id after]}]
+                      {:table-id table-id
+                       :op       :created
+                       :row      after})
+                    results)}))
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
@@ -627,14 +631,16 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs (for [diff results]
-                (select-keys
-                 (let [row (:before diff)]
-                   ;; Hideous workaround for QP and direct JDBC disagreeing on case
-                   (merge (update-keys row (comp keyword u/upper-case-en name))
-                          (u/lower-case-map-keys row)
-                          row))
-                 (table-id->pk-keys (:table-id diff))))}))
+     :outputs (for [{:keys [table-id before]} results]
+                {:table-id table-id
+                 :op       :deleted
+                 :row      (select-keys
+                            (let [row before]
+                              ;; Hideous workaround for QP and direct JDBC disagreeing on case
+                              (merge (update-keys row (comp keyword u/upper-case-en name))
+                                     (u/lower-case-map-keys row)
+                                     row))
+                            (table-id->pk-keys table-id))})}))
 
 ;;;; `bulk/update`
 
@@ -689,4 +695,8 @@
                        :errors      errors
                        :results     results})))
     {:context (record-mutations context results)
-     :outputs (mapv :after results)}))
+     :outputs (mapv (fn [{:keys [table-id after]}]
+                      {:table-id table-id
+                       :op       :updated
+                       :row      after})
+                    results)}))
