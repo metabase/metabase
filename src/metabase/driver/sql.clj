@@ -34,6 +34,7 @@
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset
+                 :expressions/datetime
                  :distinct-where]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
