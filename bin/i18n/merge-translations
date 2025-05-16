@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# This script merges translations from the given branch into the current
+# branch.
+#
+# Example usage:
+#   merge-translations release-x.54.x
+
+sourceBranch=$1
+
+# Function: remove_unnecessary_wrapping
+# Description: This function processes gettext '.po' files and
+# removes unnecessary line wrapping. It specifically looks for lines with
+# 'msgid ""' and 'msgstr ""', and combines them with the following line.
+#
+# Example Usage:
+#   When provided with input:
+#     msgid ""
+#     "Live in collections to keep them separate from messy database\n"
+#     "schemas."
+#     msgstr ""
+#     "Vivent dans les collections métiers pour les séparer des schémas de données "
+#     "source."
+#
+#   It produces:
+#     msgid "Live in collections to keep them separate from messy database\n"
+#     "schemas."
+#     msgstr "Vivent dans les collections métiers pour les séparer des schémas de données "
+#     "source."
+remove_unnecessary_wrapping() {
+  input=""
+  while IFS= read -r line; do
+    input+="$line"$'EscapedNewline'
+  done
+
+  echo -E $input | sed 's/\(msgid\|msgstr\) ""EscapedNewline"/\1 "/g' | sed 's/EscapedNewline/\n/g'
+}
+
+for po in locales/*.po; do
+  echo "Merging translations from $sourceBranch:$po into $po"
+  # Since msgcat will insert 'msgid ""' at the start of long lines, the sed
+  # command reverses this.
+  msgcat --no-wrap $po <(git show $sourceBranch:$po) | remove_unnecessary_wrapping > $po
+done
