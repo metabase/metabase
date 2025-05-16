@@ -2,6 +2,7 @@ import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getEmbedOptions } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -43,6 +44,8 @@ export function EmbeddingDataPicker({
     (state) => getEmbedOptions(state).entity_types,
   );
 
+  const metadata = useSelector(getMetadata);
+
   if (isDataSourceCountLoading) {
     return null;
   }
@@ -73,11 +76,14 @@ export function EmbeddingDataPicker({
       />
     );
   }
+  const sourceTable = metadata.table(Lib.sourceTableOrCardId(query));
+  const isSourceModel = sourceTable?.type === "model";
 
   return (
     <PLUGIN_EMBEDDING.DataSourceSelector
-      key={pickerInfo?.tableId}
+      key={pickerInfo?.tableId ?? sourceTable?.id}
       isInitiallyOpen={!table}
+      isQuerySourceModel={isSourceModel}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
