@@ -1,8 +1,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import cx from "classnames";
 import { t } from "ttag";
 
 import { BaseCell } from "metabase/data-grid";
-import S from "metabase/data-grid/components/HeaderCell/HeaderCell.module.css";
+import S from "metabase/data-grid/components/RowActionCell/RowActionCell.module.css";
 import {
   MIN_COLUMN_WIDTH,
   ROW_ACTIONS_COLUMN_ID,
@@ -20,32 +21,28 @@ export const getActionsIdColumn = <TRow, TValue>({
     enableSorting: false,
     enableResizing: true,
     enablePinning: true,
-    cell: ({ row }) => {
-      return (
-        <BaseCell data-testid="row-id-cell" className={S.root}>
-          <Group>
-            {actions.map((action) => (
-              <Button
-                key={action.id}
-                variant="subtle"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onActionRun(action, row);
-                }}
-              >
-                {action.name}
-              </Button>
-            ))}
-          </Group>
-        </BaseCell>
-      );
-    },
-    header: () => {
-      return (
-        <BaseCell className={S.root} hasHover={false}>
-          {t`Row Actions`}
-        </BaseCell>
-      );
-    },
+    cell: ({ row }) => (
+      <BaseCell data-testid="row-id-cell" className={S.cellRoot}>
+        <Group>
+          {actions.map((action) => (
+            <Button
+              key={action.id}
+              variant="subtle"
+              onClick={(e) => {
+                e.stopPropagation();
+                onActionRun(action, row);
+              }}
+            >
+              {action.name}
+            </Button>
+          ))}
+        </Group>
+      </BaseCell>
+    ),
+    header: () => (
+      <BaseCell className={cx(S.headerRoot)} hasHover={false}>
+        {t`Row Actions`}
+      </BaseCell>
+    ),
   };
 };

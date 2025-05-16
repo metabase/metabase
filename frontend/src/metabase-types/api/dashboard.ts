@@ -12,6 +12,7 @@ import type {
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
+  RowActionFieldSettings,
   Table,
   TableColumnOrderSetting,
   UserId,
@@ -125,10 +126,11 @@ export type EditableTableRowActionId =
   | "row/create"
   | "row/delete";
 
-export type EditableTableRowActionDisplaySetting = {
+export type EditableTableRowActionDisplaySettings = {
   id: EditableTableRowActionId;
   enabled: boolean;
-  parameterMappings?: ActionParametersMapping[];
+  name?: string;
+  parameterMappings?: RowActionFieldSettings[];
 };
 
 export type DashCardVisualizationSettings = {
@@ -139,7 +141,7 @@ export type DashCardVisualizationSettings = {
   // "table-editable" specific settings
   "table.columns"?: TableColumnOrderSetting[];
   "table.editableColumns"?: string[]; // list of column names
-  "editableTable.enabledActions"?: EditableTableRowActionDisplaySetting[];
+  "editableTable.enabledActions"?: EditableTableRowActionDisplaySettings[];
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {

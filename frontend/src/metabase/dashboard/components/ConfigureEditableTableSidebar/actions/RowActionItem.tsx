@@ -7,6 +7,7 @@ type RowActionItemProps = {
   action: WritebackAction;
 
   isEnabled: boolean;
+  userDefinedName?: string;
   onToggle: ({ id, enabled }: { id: number; enabled: boolean }) => void;
   onRemove: (id: number) => void;
   onEdit: (action: WritebackAction) => void;
@@ -15,6 +16,7 @@ type RowActionItemProps = {
 export const RowActionItem = ({
   action,
   isEnabled,
+  userDefinedName,
   onToggle,
   onRemove,
   onEdit,
@@ -25,7 +27,7 @@ export const RowActionItem = ({
     <Group justify="space-between" align="center">
       <Checkbox
         key={id}
-        label={name}
+        label={userDefinedName || name}
         checked={isEnabled}
         onChange={() => onToggle({ id, enabled: !isEnabled })}
       />
