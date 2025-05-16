@@ -404,9 +404,6 @@ describe("scenarios > question > native", () => {
         cy.log("verify default value is empty");
         H.rightSidebar().should("contain", "Enter a default value…");
       });
-
-      // TODO: not implemented on BE yet
-      it.skip("should create two columns for two parameters with same name, but different columns used as a second parameter of mb.time_grouping", () => {});
     });
   });
 
