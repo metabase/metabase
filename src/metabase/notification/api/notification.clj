@@ -17,9 +17,12 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (com.github.jknack.handlebars HandlebarsException)))
 
 (set! *warn-on-reflection* true)
 
@@ -223,14 +226,23 @@
                                        :body
                                        (notification/notification-payload-schema notification)
                                        custom_context)
-                                      (sample-payload notification (:channel_type template)))]
+                                      (sample-payload notification (:channel_type template)))
+        rendered                    (try
+                                      (first (channel/render-notification
+                                              (:channel_type template)
+                                              (:payload_type notification)
+                                              sample-notification-context
+                                              template
+                                              [(sample-recipient (:channel_type template))]))
+                                      (catch HandlebarsException e
+                                        (throw (ex-info (tru "Failed to render template: {0}" (channel.template/humanize-error-message e))
+                                                        {:status-code 400})))
+                                      (catch Throwable e
+                                        (throw (ex-info (tru "Failed to render template: {0}" (ex-message e))
+                                                        {:status-code 400}))))]
+
     {:context  sample-notification-context
-     :rendered (first (channel/render-notification
-                       (:channel_type template)
-                       (:payload_type notification)
-                       sample-notification-context
-                       template
-                       [(sample-recipient (:channel_type template))]))}))
+     :rendered rendered}))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"

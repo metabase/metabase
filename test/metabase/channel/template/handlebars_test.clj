@@ -57,3 +57,10 @@
   (testing "with custom req"
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
+
+(deftest humanize-renderring-error
+  (try
+    (handlebars/render-string "{{template}" {})
+    (catch Exception e
+      (is (= "found: '}'\n{{template}\n          ^"
+             (handlebars/humanize-error-message e))))))

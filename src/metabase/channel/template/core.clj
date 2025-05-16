@@ -8,7 +8,8 @@
 (p/import-vars
  [channel.handlebars
   render-string
-  render]
+  render
+  humanize-error-message]
  [channel.default
   default-template])
 
