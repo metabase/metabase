@@ -20,7 +20,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.database :as database]
-   [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -41,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
@@ -1159,7 +1159,8 @@
                            (merge
                             {:order-by [[:%lower.schema :asc]]}
                             (when-not include-hidden?
-                               ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                               ;; a non-nil value means Table is hidden --
+                               ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
                               {:where [:= :visibility_type nil]})))
          filter-schemas
          ;; for `nil` schemas return the empty string

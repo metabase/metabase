@@ -1,12 +1,9 @@
-(ns metabase.api.field
+(ns metabase.warehouse-schema.api.field
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.parameters.field :as parameters.field]
    [metabase.query-processor :as qp]
@@ -18,6 +15,9 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.field :as schema.field]
+   [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2])
   (:import
@@ -167,8 +167,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
-    [[:count     (metadata-queries/field-count field)]
-     [:distincts (metadata-queries/field-distinct-count field)]]))
+    [[:count     (metadata-from-qp/field-count field)]
+     [:distincts (metadata-from-qp/field-distinct-count field)]]))
 
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
