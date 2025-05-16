@@ -14,9 +14,10 @@ import {
   Flex,
   Icon,
   Loader,
+  Paper,
   Stack,
   Text,
-  TextInput,
+  Textarea,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -24,23 +25,17 @@ import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
-import { useIsScrollable } from "./hooks";
 
 export const MetabotChat = () => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
-  const isMessagesScrollable = useIsScrollable(messagesRef);
 
   const [input, setMessage] = useState("");
 
   const metabot = useMetabotAgent();
 
   const hasMessages = metabot.messages.length > 0;
-  const suggestedPrompts = metabot.suggestedPrompts.data?.prompts ?? [
-    { prompt: "Sales totals by week" },
-    { prompt: "Top 10 customers by number of orders" },
-    { prompt: "Country distribution of customers" },
-  ];
+  const suggestedPrompts = metabot.suggestedPrompts.data?.prompts ?? [];
   const hasSuggestions = suggestedPrompts.length > 0;
 
   const resetInput = useCallback(() => {
@@ -56,7 +51,7 @@ export const MetabotChat = () => {
     metabot
       .submitInput(trimmedInput)
       .catch((err) => console.error(err))
-      .finally(() => inputRef.current?.focus());
+      .finally(() => textareaRef.current?.focus());
   };
 
   const { setVisible } = metabot;
@@ -88,17 +83,20 @@ export const MetabotChat = () => {
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
-        <Box
-          data-testid="metabot-chat-header"
-          className={cx(
-            Styles.header,
-            isMessagesScrollable && Styles.headerWithScrollContent,
-          )}
-        >
-          <Text fz="lg" fw="bold">{t`Ask Metabot`}</Text>
+        <Box data-testid="metabot-chat-header" className={Styles.header}>
+          <Flex gap="md" align-items="center">
+            <MetabotIcon width="43px" height="32px" />
+            <Stack gap="xs">
+              <Text lh={1} fz="lg" fw="bold">{t`Ask Metabot`}</Text>
+              <Text lh={1} fz="sm" c="text-secondary">
+                {t`Metabot isn't perfect. Double-check results.`}
+              </Text>
+            </Stack>
+          </Flex>
+
           <Flex gap="sm">
             <ActionIcon onClick={() => metabot.resetConversation()}>
-              <Icon c="text-primary" name="refresh" />
+              <Icon c="text-primary" name="revert" />
             </ActionIcon>
             <ActionIcon onClick={handleClose}>
               <Icon c="text-primary" name="close" />
@@ -106,15 +104,20 @@ export const MetabotChat = () => {
           </Flex>
         </Box>
 
-        {/* chat messages - TODO: rename the container css class */}
+        {/* chat messages */}
         <Box
           className={Styles.messagesContainer}
-          ref={messagesRef}
           data-testid="metabot-chat-messages"
         >
           {/* empty state with no sugggested prompts */}
           {!hasMessages && !hasSuggestions && (
-            <Flex h="100%" direction="column" align="center" justify="center">
+            <Flex
+              h="100%"
+              gap="md"
+              direction="column"
+              align="center"
+              justify="center"
+            >
               <Box
                 component="img"
                 src={EmptyDashboardBot}
@@ -123,9 +126,9 @@ export const MetabotChat = () => {
               />
               <Text
                 c="text-light"
-                maw="19rem"
+                maw="18rem"
                 ta="center"
-              >{t`I can tell you about what you’re looking at, or help you explore your models and metrics. empty state`}</Text>
+              >{t`I can tell you about what you’re looking at, or help you explore your models and metrics.`}</Text>
             </Flex>
           )}
 
@@ -166,26 +169,9 @@ export const MetabotChat = () => {
           )}
         </Box>
 
-        {/* conversation status container */}
-        {(hasMessages || hasSuggestions) && (
-          <Box className={Styles.conversationStatusContainer}>
-            {metabot.isDoingScience && (
-              <Text className={Styles.thinkingText}>{t`Thinking...`}</Text>
-            )}
-
-            <Flex justify="space-between" align-items="center">
-              <MetabotIcon
-                width="40px"
-                height="30px"
-                isLoading={metabot.isDoingScience}
-              />
-
-              {metabot.messages.length > 0 && (
-                <Text fz="sm" c="text-light">
-                  {t`Metabot isn't perfect. Double-check results.`}
-                </Text>
-              )}
-            </Flex>
+        {metabot.isDoingScience && (
+          <Box className={Styles.loadingContainer}>
+            <Loader color="brand" type="dots" size="lg" />
           </Box>
         )}
 
@@ -203,25 +189,39 @@ export const MetabotChat = () => {
           </Text>
         )}
 
-        <Box px="md" my="md">
-          <TextInput
-            data-testid="metabot-chat-input"
-            className={Styles.input}
-            autoFocus
-            value={input}
-            ref={inputRef}
-            disabled={metabot.isDoingScience}
-            placeholder={t`Tell me to do something, or ask a question`}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                // prevent event from inserting new line + interacting with other content
-                e.preventDefault();
-                e.stopPropagation();
-                handleSubmitInput(input);
-              }
-            }}
-          />
+        <Box className={Styles.textInputContainer}>
+          <Paper
+            className={cx(
+              Styles.inputContainer,
+              metabot.isDoingScience && Styles.inputContainerLoading,
+            )}
+          >
+            <Textarea
+              data-testid="metabot-chat-input"
+              w="100%"
+              autosize
+              minRows={1}
+              maxRows={10}
+              ref={textareaRef}
+              autoFocus
+              value={input}
+              disabled={metabot.isDoingScience}
+              className={cx(
+                Styles.textarea,
+                metabot.isDoingScience && Styles.textareaLoading,
+              )}
+              placeholder={t`Tell me to do something, or ask a question`}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // prevent event from inserting new line + interacting with other content
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSubmitInput(input);
+                }
+              }}
+            />
+          </Paper>
         </Box>
       </Box>
     </Sidebar>
