@@ -1,4 +1,4 @@
-(ns metabase.models.dashboard-tab-test
+(ns metabase.dashboards.models.dashboard-tab-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]

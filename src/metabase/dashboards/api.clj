@@ -1,4 +1,4 @@
-(ns metabase.api.dashboard
+(ns metabase.dashboards.api
   "/api/dashboard endpoints."
   (:require
    [clojure.core.cache :as cache]
@@ -15,13 +15,13 @@
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.dashboard :as dashboard]
-   [metabase.models.dashboard-card :as dashboard-card]
-   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
