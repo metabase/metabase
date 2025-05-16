@@ -230,8 +230,14 @@
 
 (task/defjob
   ^{:doc
-    "Find all active Dashboard Subscriptino channels, group them by pulse-id and schedule time and create a trigger for each.
-    Do this every startup to make sure all active pulse channels are triggered correctly."
+    "Find all notification subscriptions with cron schedules and create a trigger for each.
+    Run once on startup.
+
+    Context: Prior to 50, the SendPulse job has a single trigger that sends all pulses, but in #42316
+    We've changed it to one trigger per PulseChannel. We need this job so that users migrate from < 50
+    have all the triggers initiated properly.
+    The fact that it runs on every startup is because we have no way to have it run only once.
+    Ideally this should be a migration."
     DisallowConcurrentExecution true}
   InitSendPulseTriggers
   [_context]
