@@ -119,6 +119,11 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: cross-version-uberjar
+
       - name: Download Uberjar
         uses: actions/download-artifact@v4
         with:
