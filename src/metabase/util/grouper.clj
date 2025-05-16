@@ -20,7 +20,7 @@
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (grouper.core Grouper)))
+   (grouper.core Grouper IGrouper)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,44 +41,41 @@
  [grouper
   shutdown!])
 
-;;; for synchronous processing we need to maintain the dynamic variables that the task was submitted with, so for
-;;; example if we submitted it inside of a `with-temp` block we run using the current transaction instead of creating a
-;;; new one on a different thread. So instead of submitting a bunch of objects, we'll actually wrap them and submit
-;;; items like
-;;;
-;;;    {:object object, :do-in-context (fn [thunk] (thunk))}
-;;;
-;;; then when Grouper actually runs our task we'll do it INSIDE of the `do-in-context` function if we have one to get
-;;; the bound connection and what not. Our version of [[start!]] will unwrap stuff and make this transparent to its
-;;; users.
+;;; the sole purpose of this wrapper is so we can keep the original function around so we can call it directly on the
+;;; current thread if we're processing stuff synchronously
+(deftype ^:private GrouperWrapper [f ^Grouper grouper]
+  IGrouper
+  (start [_this body]
+    (.start grouper body))
+  (isRunning [_this]
+    (.isRunning grouper))
+  (submit [_this request]
+    (.submit grouper request))
+  (sleep [_this interval]
+    (.sleep grouper interval))
+  (wakeUp [_this]
+    (.wakeUp grouper)))
+
 (mu/defn start!
   "Wrapper around [[grouper/start!]]."
-  ^Grouper [f :- [:or (ms/InstanceOfClass clojure.lang.Var) fn?] & options]
-  (let [f* (fn [items]
-             (let [do-in-context (last (keep :do-in-context items))
-                   objects       (map :object items)]
-               (if do-in-context
-                 (do-in-context (^:once fn* [] (f objects)))
-                 (f objects))))]
-    (apply grouper/start! f* options)))
+  ^GrouperWrapper [f :- [:or (ms/InstanceOfClass clojure.lang.Var) fn?] & options]
+  ;; this wrapper is so we can use Vars which Grouper normally doesn't allow.
+  #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
+  (let [f*      (fn [items]
+                  (f items))
+        grouper (apply grouper/start! f* options)]
+    (->GrouperWrapper f grouper)))
 
 (mu/defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
    We use grouper for fire-and-forget scenarios, so we don't care about the result."
-  [^Grouper grouper :- (ms/InstanceOfClass Grouper) object & options]
-  (let [synchronous?   (or (synchronous-batch-updates)
-                           ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
-                           ;; back the transaction at the end (as we do in tests)
-                           (mdb/in-transaction?))
-
-        do-in-context (when synchronous?
-                        (bound-fn* (fn do-in-context [thunk]
-                                     (thunk))))
-        p            (apply grouper/submit! grouper {:object object, :do-in-context do-in-context} options)]
-    (when synchronous?
-      ;; wake up the group immediately and wait for it to finish
-      (.wakeUp grouper)
-      (let [result (deref p)]
-        (when (instance? Throwable result)
-          (throw result))))
+  [^GrouperWrapper grouper object & options]
+  (let [synchronous? (or (synchronous-batch-updates)
+                         ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
+                         ;; back the transaction at the end (as we do in tests)
+                         (mdb/in-transaction?))]
+    (if synchronous?
+      (let [f (.f grouper)]
+        (f [object]))
+      (apply grouper/submit! grouper object options))
     nil))
