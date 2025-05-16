@@ -54,10 +54,6 @@
   [_original-model _k]
   :model/Table)
 
-(t2/define-after-select :model/Table
-  [table]
-  (serdes/add-entity-id table))
-
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
@@ -142,11 +138,6 @@
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
-
-(defmethod serdes/hash-required-fields :model/Table
-  [_table]
-  {:model :model/Table
-   :required-fields [:schema :name :db_id]})
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -303,10 +294,9 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter]
+               :database_require_filter :entity_id]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
-               :entity_id  (serdes/backfill-entity-id-transformer)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]

@@ -258,7 +258,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -343,7 +343,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -603,7 +603,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id :id] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -670,14 +670,6 @@
                                        :table_id (mt/id :categories)}]
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
-
-(deftest ^:parallel table-metadata-has-entity-ids-test
-  (testing "GET /api/table/:id/query_metadata returns an entity id"
-    (is (=? {:entity_id some?
-             :db {:entity_id some?}
-             ;:fields api.test-util/all-have-entity-ids?
-             }
-            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
