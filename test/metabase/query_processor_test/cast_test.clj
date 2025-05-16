@@ -788,7 +788,7 @@
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
-      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T17:20:01Z" "")
+      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T17:20:01" "")
                                               :mode :iso
                                               :expected "2025-05-15T17:20:01Z"
                                               :limit 1}]]]
