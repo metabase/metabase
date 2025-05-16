@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type ReactNode, useState } from "react";
+import { type HTMLAttributes, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -65,12 +65,7 @@ interface UndoToastProps extends HTMLAttributes<HTMLDivElement> {
   onDismiss: () => void;
 }
 
-export function UndoToast({
-  undo,
-  onUndo,
-  onDismiss,
-  ...divProps
-}: UndoToastProps) {
+function UndoToast({ undo, onUndo, onDismiss, ...divProps }: UndoToastProps) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -166,20 +161,23 @@ export function UndoListing() {
   const undos = useSelector((state) => state.undo);
 
   return (
-    <UndoListOverlay>
-      {undos.map((undo) => (
-        <UndoToast
-          key={undo._domId}
-          undo={undo}
-          onUndo={() => dispatch(performUndo(undo.id))}
-          onDismiss={() => dispatch(dismissUndo({ undoId: undo.id }))}
-        />
-      ))}
-    </UndoListOverlay>
+    <UndoListOverlay
+      undos={undos}
+      onUndo={(undo) => dispatch(performUndo(undo.id))}
+      onDismiss={(undo) => dispatch(dismissUndo({ undoId: undo.id }))}
+    />
   );
 }
 
-export const UndoListOverlay = ({ children }: { children: ReactNode }) => {
+export function UndoListOverlay({
+  undos,
+  onUndo,
+  onDismiss,
+}: {
+  undos: Undo[];
+  onUndo: (undo: Undo) => void;
+  onDismiss: (undo: Undo) => void;
+}) {
   return (
     <Portal>
       <UndoList
@@ -187,8 +185,15 @@ export const UndoListOverlay = ({ children }: { children: ReactNode }) => {
         aria-label="undo-list"
         className={ZIndex.Overlay}
       >
-        {children}
+        {undos.map((undo) => (
+          <UndoToast
+            key={undo._domId}
+            undo={undo}
+            onUndo={() => onUndo(undo)}
+            onDismiss={() => onDismiss(undo)}
+          />
+        ))}
       </UndoList>
     </Portal>
   );
-};
+}
