@@ -1,7 +1,7 @@
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 export const setupAlert = (tableId: number, eventName: string) => {
-  cy.request("POST", "/api/notification", {
+  return cy.request("POST", "/api/notification", {
     payload_type: "notification/system-event",
     payload: { event_name: eventName, table_id: tableId },
     payload_id: null,

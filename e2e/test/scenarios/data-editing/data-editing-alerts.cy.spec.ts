@@ -1,6 +1,10 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
-import { setupAlert } from "./helpers/setup";
+import {
+  createNotificationWithCustomTemplate,
+  verifyNotificationTemplate,
+} from "./e2e-helpers/notification-helpers";
+import { setupAlert } from "./e2e-helpers/setup";
 
 const { H } = cy;
 
@@ -43,20 +47,23 @@ describe("scenarios > data editing > setting alerts", () => {
         setupAlert(tableId, "event/row.created");
         setupAlert(tableId, "event/row.updated");
         setupAlert(tableId, "event/row.deleted");
-        cy.findByTestId("table-notifications-trigger").click();
-        cy.findByTestId("alert-list-modal")
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("Notify when new records are created").should(
-              "be.visible",
-            );
-            cy.findByText("Notify when records are updated").should(
-              "be.visible",
-            );
-            cy.findByText("Notify when records are deleted").should(
-              "be.visible",
-            );
-          });
+
+        cy.then(() => {
+          cy.findByTestId("table-notifications-trigger").click();
+          cy.findByTestId("alert-list-modal")
+            .should("be.visible")
+            .within(() => {
+              cy.findByText("Notify when new records are created").should(
+                "be.visible",
+              );
+              cy.findByText("Notify when records are updated").should(
+                "be.visible",
+              );
+              cy.findByText("Notify when records are deleted").should(
+                "be.visible",
+              );
+            });
+        });
       });
     });
   });
@@ -110,38 +117,15 @@ describe("scenarios > data editing > setting alerts", () => {
       it("should create an alert for 'row created' events with custom template", () => {
         const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
         const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
+
         cy.findByTestId("table-notifications-trigger").click();
 
-        cy.findByTestId("table-notification-create").within(() => {
-          cy.findByTestId("notification-event-select").click();
-          cy.document()
-            .findByRole("option", {
-              name: /when new records are created/i,
-            })
-            .click();
-
-          cy.findByTestId("email-template-subject")
-            .findByRole("textbox")
-            .click({ force: true })
-            .invoke("text", CUSTOM_SUBJECT)
-            .blur();
-
-          cy.findByTestId("email-template-body")
-            .findByRole("textbox")
-            .click({ force: true })
-            .invoke("text", CUSTOM_BODY)
-            .blur();
-
-          cy.findByRole("button", { name: "Done" }).click();
-        });
-
-        cy.wait("@createNotification").then(({ response }) => {
-          expect(response?.statusCode).to.equal(200);
-          const stringifiedTemplate = JSON.stringify(
-            response?.body?.handlers?.[0]?.template,
-          );
-          expect(stringifiedTemplate).to.contain(CUSTOM_SUBJECT);
-          expect(stringifiedTemplate).to.contain(CUSTOM_BODY);
+        createNotificationWithCustomTemplate(
+          /when new records are created/i,
+          CUSTOM_SUBJECT,
+          CUSTOM_BODY,
+        ).then((interception) => {
+          verifyNotificationTemplate(interception, CUSTOM_SUBJECT, CUSTOM_BODY);
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
@@ -216,29 +200,17 @@ describe("scenarios > data editing > setting alerts", () => {
       });
 
       it("should trigger an alert for 'row updated' events with custom template", () => {
+        const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
+        const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
+
         cy.findByTestId("table-notifications-trigger").click();
 
-        cy.findByTestId("table-notification-create").within(() => {
-          cy.findByTestId("notification-event-select").click();
-          cy.document()
-            .findByRole("option", {
-              name: /when any cell changes it's value/i,
-            })
-            .click();
-
-          cy.findByTestId("email-template-subject")
-            .findByRole("textbox")
-            .click({ force: true })
-            .invoke("text", "My custom subject for {{table.name}}")
-            .blur();
-
-          cy.findByTestId("email-template-body")
-            .findByRole("textbox")
-            .click({ force: true })
-            .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
-            .blur();
-
-          cy.findByRole("button", { name: "Done" }).click();
+        createNotificationWithCustomTemplate(
+          /when any cell changes it's value/i,
+          CUSTOM_SUBJECT,
+          CUSTOM_BODY,
+        ).then((interception) => {
+          verifyNotificationTemplate(interception, CUSTOM_SUBJECT, CUSTOM_BODY);
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
@@ -417,29 +389,17 @@ describe("scenarios > data editing > setting alerts", () => {
       });
 
       it("should trigger an alert for 'row deleted' events with custom template", () => {
+        const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
+        const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
+
         cy.findByTestId("table-notifications-trigger").click();
 
-        cy.findByTestId("table-notification-create").within(() => {
-          cy.findByTestId("notification-event-select").click();
-          cy.document()
-            .findByRole("option", {
-              name: /when records are deleted/i,
-            })
-            .click();
-
-          cy.findByTestId("email-template-subject")
-            .findByRole("textbox")
-            .click({ force: true })
-            .invoke("text", "My custom subject for {{table.name}}")
-            .blur();
-
-          cy.findByTestId("email-template-body")
-            .findByRole("textbox")
-            .click({ force: true })
-            .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
-            .blur();
-
-          cy.findByRole("button", { name: "Done" }).click();
+        createNotificationWithCustomTemplate(
+          /when records are deleted/i,
+          CUSTOM_SUBJECT,
+          CUSTOM_BODY,
+        ).then((interception) => {
+          verifyNotificationTemplate(interception, CUSTOM_SUBJECT, CUSTOM_BODY);
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
