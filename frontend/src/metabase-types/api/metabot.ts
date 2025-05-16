@@ -1,4 +1,11 @@
-import type { CardId, CardType, DashboardId, DatasetQuery } from ".";
+import type {
+  CardId,
+  CardType,
+  CollectionId,
+  DashboardId,
+  DatasetQuery,
+  SearchModel,
+} from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -121,4 +128,20 @@ export const isMetabotMessage = (
   message: MetabotHistoryEntry,
 ): message is MetabotHistoryMessageEntry => {
   return message.role === "assistant";
+};
+
+export type MetabotId = number;
+export type MetabotName = string;
+
+export type MetabotInfo = {
+  id: MetabotId;
+  name: MetabotName;
+};
+
+export type MetabotEntity = {
+  id: CardId;
+  name: string;
+  model: Extract<SearchModel, "dataset" | "metric">;
+  collection_id: CollectionId;
+  collection_name: string;
 };

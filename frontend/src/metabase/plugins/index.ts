@@ -78,7 +78,12 @@ import type {
   TimelineEvent,
   User,
 } from "metabase-types/api";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
+import type {
+  AdminPath,
+  AdminPathKey,
+  Dispatch,
+  State,
+} from "metabase-types/store";
 
 import type {
   GetAuthProviders,
@@ -100,8 +105,6 @@ export const PLUGIN_REDUX_MIDDLEWARES = [];
 export const PLUGIN_LOGO_ICON_COMPONENTS = [];
 
 // admin nav items and routes
-export const PLUGIN_ADMIN_NAV_ITEMS = [];
-export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
@@ -715,6 +718,9 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  adminNavItem: [] as AdminPath[],
+  AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  MetabotAdminPage: () => `placeholder`,
 };
 
 type DashCardMenuItemGetter = (
