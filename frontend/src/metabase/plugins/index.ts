@@ -100,8 +100,6 @@ export const PLUGIN_REDUX_MIDDLEWARES = [];
 export const PLUGIN_LOGO_ICON_COMPONENTS = [];
 
 // admin nav items and routes
-export const PLUGIN_ADMIN_NAV_ITEMS = [];
-export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
@@ -715,6 +713,9 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  adminNavItem: [],
+  AdminRoute: PluginPlaceholder,
+  MetabotAdminPage: () => (`placeholder`),
 };
 
 type DashCardMenuItemGetter = (

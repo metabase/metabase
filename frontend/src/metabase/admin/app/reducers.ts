@@ -6,7 +6,7 @@ import Settings from "metabase/lib/settings";
 import { isNotNull } from "metabase/lib/types";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_ADMIN_NAV_ITEMS,
+  PLUGIN_METABOT,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
@@ -50,13 +50,13 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/tools",
       key: "tools",
     },
-  ];
-
-  items.push(...PLUGIN_ADMIN_NAV_ITEMS, {
+    ...PLUGIN_METABOT.adminNavItem,
+    {
     name: t`Troubleshooting`,
     path: "/admin/troubleshooting",
     key: "troubleshooting",
-  });
+    },
+  ];
 
   return items;
 };
