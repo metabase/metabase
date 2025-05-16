@@ -12,4 +12,5 @@ export * from "./SdkSaveQuestionForm";
 export * from "./Summarize";
 export * from "./Title";
 export * from "./Visualization";
+export * from "./VisualizationButton";
 export * from "./QuestionSettings";
