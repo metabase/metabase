@@ -1,4 +1,4 @@
-(ns metabase.models.table
+(ns metabase.warehouse-schema.models.table
   (:require
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]

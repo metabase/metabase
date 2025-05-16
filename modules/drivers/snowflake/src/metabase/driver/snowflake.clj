@@ -577,9 +577,12 @@
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
-  (sql-jdbc/query driver database {:select [:*]
-                                   :from   [[(qp.store/with-metadata-provider (u/the-id database)
-                                               (sql.qp/->honeysql driver table))]]}))
+  (qp.store/with-metadata-provider (u/the-id database)
+    (let [table-metadata   (lib.metadata/table (qp.store/metadata-provider) (:id table))
+          table-identifier (sql.qp/->honeysql driver table-metadata)
+          query            {:select [:*]
+                            :from   [[table-identifier]]}]
+      (sql-jdbc/query driver database query))))
 
 (defmethod driver/describe-database :snowflake
   [driver database]
