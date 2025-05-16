@@ -48,6 +48,7 @@
    [metabase.sso.api]
    [metabase.sync.api]
    [metabase.task-history.api]
+   [metabase.tenant.api]
    [metabase.testing-api.api]
    [metabase.testing-api.core]
    [metabase.tiles.api]
@@ -88,6 +89,7 @@
          metabase.settings.api/keep-me
          metabase.setup.api/keep-me
          metabase.task-history.api/keep-me
+         metabase.tenant.api/keep-me
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
@@ -176,6 +178,7 @@
    "/slack"                (+auth metabase.channel.api/slack-routes)
    "/table"                (+auth 'metabase.api.table)
    "/task"                 (+auth 'metabase.task-history.api)
+   "/tenant"               (+auth 'metabase.tenant.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)

@@ -77,6 +77,7 @@
     :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
+    :model/Tenant                            metabase.tenant.models.tenant
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/User                              metabase.models.user
