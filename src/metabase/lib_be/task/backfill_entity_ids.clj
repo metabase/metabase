@@ -127,6 +127,8 @@
   {:model/Database :model/Table
    :model/Table :model/Field})
 
+;; this var is only used in temporarily commented-out code, so the linter complains
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private initial-model :model/Database)
 
 (comment
@@ -191,5 +193,4 @@
 
 (defmethod task/init! ::BackfillEntityIds [_]
   ;; job is currently disabled, see SEM-319 in linear
-  (when false
-    (start-job! initial-model)))
+  #_(start-job! initial-model))
