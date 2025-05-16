@@ -179,6 +179,32 @@
                      (is (= 1 (count reqs)))
                      (is (=? {:body (mt/malli=? :map)} req)))}))
 
+(deftest default-slack-notification-is-escaped
+  (test-row-notification!
+   {:event_name :event/row.updated}
+   (fn [_notification]
+     (mt/user-http-request
+      :crowberto
+      :put
+      (data-editing.tu/table-url (mt/id :categories))
+      {:rows [{:ID 1 :NAME "Metabase's Notification"}]}))
+
+   {:channel/slack (fn [[message :as msgs]]
+                     (is (= 1 (count msgs)))
+                     (is (=? {:blocks [{:type "section"
+                                        :text {:type "mrkdwn"
+                                               :text (format
+                                                      (str "*A record was _updated_* in <%s|Table CATEGORIES> by Crowberto Corv\n"
+                                                           "*Changed Fields*\n"
+                                                           "• *NAME*: ~African~ → Metabase's Notification\n"
+                                                           "\n"
+                                                           "*Current Record Details*\n"
+                                                           "• *ID*: 1\n"
+                                                           "• *NAME*: Metabase's Notification\n")
+                                                      (urls/table-url (mt/id) (mt/id :categories)))}}]
+                              :channel "#test-pulse"}
+                             message)))}))
+
 (deftest record-and-changes-in-template-context-are-ordered
   (actions.tu/with-actions-test-data-tables #{"people"}
     (test-row-notification!

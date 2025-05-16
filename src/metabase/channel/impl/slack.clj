@@ -211,9 +211,11 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
   [channel-type _payload-type {:keys [context] :as notification-payload} template recipients]
+  (def notification-payload notification-payload)
   (let [event-name (:event_name context)
         template   (or template
                        (channel.template/default-template :notification/system-event context channel-type))
+        _ (def template template)
         sections    [{:type "section"
                       :text {:type "mrkdwn"
                              :text (truncate
