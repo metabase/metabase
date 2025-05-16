@@ -37,6 +37,12 @@
   :visibility :settings-manager
   :encryption :when-encryption-key-set)
 
+(defsetting test-api-setting-data-url
+  (deferred-tru "Test setting for data URL handling in API")
+  :visibility :public
+  :type :string
+  :encryption :no)
+
 ;; ## Helper Fns
 (defn- fetch-test-settings
   "Fetch the provided settings using the API. Settings not present in the response are ignored."

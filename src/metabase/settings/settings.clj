@@ -1,6 +1,8 @@
 (ns metabase.settings.settings
   (:require
    [metabase.config :as config]
+   [metabase.settings.models.setting :as setting]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (mu/defn application-name-for-setting-descriptions
@@ -18,3 +20,17 @@
     "Metabase"
     (binding [config/*disable-setting-cache* true]
       (getter))))
+
+(defn image-response
+  "Returns a the requested setting as a binary ring response if the setting is a data-url encoded string, such as an image."
+  [key]
+  (try
+    (setting/with-setting-access-control
+      (when-let [[content-type body] (setting/as-binary key)]
+        {:status 200
+         :headers {"content-type" content-type}
+         :body body}))
+    (catch Throwable e
+      (log/errorf e "Setting %s not found" key)
+      ;; Return nil on failure to try the next handler
+      nil)))
