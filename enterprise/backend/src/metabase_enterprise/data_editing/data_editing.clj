@@ -104,31 +104,6 @@
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 
-(defn perform-bulk-action!
-  "Operates on rows in the database, supply an action-kw: :table.row/create, :table.row/update, :table.row/delete.
-  The input `rows` is given different semantics depending on the action type, see actions/perform-action!."
-  [action-kw user-id scope table-id rows & {:keys [existing-context]}]
-  ;; TODO make this work for multi instances by using the metabase_cluster_lock table, or something similar
-  ;; https://github.com/metabase/metabase/pull/56173/files
-  (locking #'perform-bulk-action!
-    (let [db-id (api/check-404 (t2/select-one-fn :db_id [:model/Table :db_id] table-id))]
-      (->> (actions/perform-action!
-            action-kw
-            scope
-            (for [row rows]
-              {:database db-id, :table-id table-id, :row row})
-            {:policy           :data-editing
-             :existing-context (if existing-context
-                                 (assoc existing-context :user-id user-id)
-                                 (let [iid (nano-id/nano-id)]
-                                   {:invocation-id    iid
-                                    :invocation-stack [[:grid/edit iid]]
-                                    :user-id          user-id
-                                    :scope            scope}))})
-           :effects
-           (filter (comp #{:effect/row.modified} first))
-           (map second)))))
-
 (defn- row-update-event
   "Given a :effect/row.modified diff, figure out what kind of mutation it was."
   [{:keys [before after]}]
@@ -160,7 +135,7 @@
     ;; undo snapshots, but only if we're not executing an undo
     ;; TODO fix tests that execute actions without a user scope
     (when user-id
-      (when-not (some (comp #{"undo"} namespace first) invocation-stack)
+      (when-not (some (comp #{:data-editing/undo :data-editing/redo} first) invocation-stack)
         ((requiring-resolve 'metabase-enterprise.data-editing.undo/track-change!)
          user-id
          scope
