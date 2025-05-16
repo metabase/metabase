@@ -36,7 +36,7 @@ import { getDataTypes } from "../utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)
 const DATA_BUCKET_STEP = "BUCKET";
-// chooses a database
+// chooses a database or a model
 const DATABASE_STEP = "DATABASE";
 // chooses a schema (given that a database has already been selected)
 const SCHEMA_STEP = "SCHEMA";
