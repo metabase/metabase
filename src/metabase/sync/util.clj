@@ -9,7 +9,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
@@ -21,6 +20,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import

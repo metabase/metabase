@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.presto-jdbc :as presto-jdbc]
@@ -17,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.api :as api.database]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
