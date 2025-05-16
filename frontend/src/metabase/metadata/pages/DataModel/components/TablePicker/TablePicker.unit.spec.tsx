@@ -271,16 +271,28 @@ describe("TablePicker", () => {
       await userEvent.keyboard("{ArrowRight}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
 
+      // arrow down moves focus down
+      await userEvent.keyboard("{ArrowDown}");
+      expect(item(SINGLE_SCHEMA)).toHaveFocus();
+
+      // it opens single child automatically
+      expect(item(SINGLE_SCHEMA)?.dataset.open).toBe("true");
+
       // left arrow closes the node
       await userEvent.keyboard("{ArrowLeft}");
+      expect(item(SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
+
+      // arrow left again moves the cursor to the parent node
+      await userEvent.keyboard("{ArrowLeft}");
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
+
+      // space toggles the node
+      await userEvent.keyboard(" ");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
 
       // space toggles the node
       await userEvent.keyboard(" ");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
-
-      await userEvent.keyboard(" ");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
 
       // enter selects the node
       await userEvent.keyboard("{Enter}");
