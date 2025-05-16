@@ -4,10 +4,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import {
-  maybeTranslateDisplayNames,
-  useTranslateContent,
-} from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { maybeTranslateDisplayNames } from "metabase/i18n/utils";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
