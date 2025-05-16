@@ -2,7 +2,6 @@
   "Tests for `/api/field` endpoints."
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]

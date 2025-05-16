@@ -579,7 +579,7 @@
   [driver database table]
   (qp.store/with-metadata-provider (u/the-id database)
     (let [table-metadata   (lib.metadata/table (qp.store/metadata-provider) (:id table))
-          table-identifier (sql.qp/->honeysql driver table)
+          table-identifier (sql.qp/->honeysql driver table-metadata)
           query            {:select [:*]
                             :from   [[table-identifier]]}]
       (sql-jdbc/query driver database query))))
