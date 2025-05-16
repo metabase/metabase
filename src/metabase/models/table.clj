@@ -56,7 +56,10 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (serdes/add-entity-id table))
+  (-> table
+      serdes/add-entity-id
+      ;; this property is used for migration purposes only
+      (dissoc :name_before_deduplication)))
 
 (t2/define-before-insert :model/Table
   [table]
