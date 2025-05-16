@@ -22,8 +22,8 @@
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
@@ -661,7 +661,7 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
                   :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
@@ -4602,78 +4602,6 @@
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
-
-(deftest dashboard-metadata-has-entity-ids-test
-  (mt/with-temp
-    [:model/Dashboard           {dashboard-id :id}  {}
-     :model/Dashboard           {link-dash :id}     {}
-     :model/Card                {link-card :id}     {:dataset_query (mt/mbql-query reviews)
-                                                     :database_id (mt/id)}
-     :model/Card                {card-id-1 :id}     {:dataset_query (mt/mbql-query products)
-                                                     :database_id (mt/id)}
-     :model/Card                {card-id-2 :id}     {:dataset_query
-                                                     {:type     :native
-                                                      :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
-                                                                 :template-tags
-                                                                 {"id"      {:name         "id"
-                                                                             :display-name "Id"
-                                                                             :id           "_id_"
-                                                                             :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :id) nil]
-                                                                             :widget-type  :id
-                                                                             :default      nil}
-                                                                  "name"    {:name         "name"
-                                                                             :display-name "Name"
-                                                                             :id           "_name_"
-                                                                             :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :name) nil]
-                                                                             :widget-type  :category
-                                                                             :default      nil}
-                                                                  "source"  {:name         "source"
-                                                                             :display-name "Source"
-                                                                             :id           "_source_"
-                                                                             :type         :dimension
-                                                                             :dimension    [:field (mt/id :people :source) nil]
-                                                                             :widget-type  :category
-                                                                             :default      nil}
-                                                                  "user_id" {:name         "user_id"
-                                                                             :display-name "User"
-                                                                             :id           "_user_id_"
-                                                                             :type         :dimension
-                                                                             :dimension    [:field (mt/id :orders :user_id) nil]
-                                                                             :widget-type  :id
-                                                                             :default      nil}}}
-                                                      :database (mt/id)}
-                                                     :query_type :native
-                                                     :database_id (mt/id)}
-     :model/DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
-                                                     :card_id card-id-1
-                                                     :visualization_settings {:column_settings
-                                                                              {"[\"name\", 0]" ;; FE reference that must be json formatted
-                                                                               {:click_behavior {:type :link
-                                                                                                 :linkType "dashboard"
-                                                                                                 :targetId link-dash}}}}}
-     :model/DashboardCard       _                   {:dashboard_id dashboard-id,
-                                                     :card_id card-id-2
-                                                     :visualization_settings {:click_behavior {:type :link
-                                                                                               :linkType "question"
-                                                                                               :targetId link-card}}}
-     :model/Card                {series-id-1 :id}   {:name "Series Card 1"
-                                                     :dataset_query (mt/mbql-query checkins)
-                                                     :database_id (mt/id)}
-     :model/Card                {series-id-2 :id}   {:name "Series Card 2"
-                                                     :dataset_query (mt/mbql-query venues)
-                                                     :database_id (mt/id)}
-     :model/DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
-                                                     :card_id series-id-1
-                                                     :position 0}
-     :model/DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
-                                                     :card_id series-id-2
-                                                     :position 1}]
-    (is (=? {:fields api.test-util/all-have-entity-ids?
-             :tables api.test-util/all-have-entity-ids?
-             :databases api.test-util/all-have-entity-ids?}
-            (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
 
 (deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"

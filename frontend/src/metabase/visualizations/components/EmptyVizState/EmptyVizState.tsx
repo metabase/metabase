@@ -61,6 +61,7 @@ export const EmptyVizState = ({
     >
       <Box maw="20rem" mb="3rem">
         <img
+          className={CS.pointerEventsNone}
           src={imgSrc}
           alt={c("{0} refers to the chart type")
             .t`${emptyVizChart} chart example illustration`}

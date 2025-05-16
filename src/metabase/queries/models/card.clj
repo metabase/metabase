@@ -25,8 +25,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -814,7 +814,6 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      serdes/add-entity-id
       ensure-clause-idents
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
@@ -905,12 +904,7 @@
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
-  [:name (serdes/hydrated-hash :collection :collection_id) :created_at])
-
-(defmethod serdes/hash-required-fields :model/Card
-  [_card]
-  {:model :model/Card
-   :required-fields [:name :collection_id :created_at]})
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]

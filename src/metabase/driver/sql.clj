@@ -35,6 +35,8 @@
                  :window-functions/cumulative
                  :window-functions/offset
                  :expressions/datetime
+                 :expressions/date
+                 :expressions/text
                  :distinct-where]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 

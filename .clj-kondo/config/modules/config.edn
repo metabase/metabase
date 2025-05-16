@@ -241,6 +241,7 @@
            lib-be
            models
            notification
+           parameters
            permissions
            premium-features
            system
@@ -576,8 +577,7 @@
            util}}
 
   models
-  {:api #{metabase.models.application-permissions-revision
-          metabase.models.dashboard
+  {:api #{metabase.models.dashboard
           metabase.models.dashboard-card
           metabase.models.dashboard-tab
           metabase.models.dashboard.constants
@@ -588,11 +588,6 @@
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
-          metabase.models.params
-          metabase.models.params.chain-filter
-          metabase.models.params.custom-values
-          metabase.models.params.field-values
-          metabase.models.params.shared
           metabase.models.resolution
           metabase.models.serialization
           metabase.models.table
@@ -617,6 +612,7 @@
            premium-features
            secrets
            settings
+           parameters
            public-sharing
            pulse
            queries
@@ -625,9 +621,7 @@
            setup
            sync
            system
-           types
-           util
-           warehouse-schema}}
+           util}}
 
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
@@ -653,6 +647,7 @@
            driver
            events
            models
+           parameters
            permissions
            premium-features
            query-processor
@@ -665,22 +660,32 @@
            task-history
            util}}
 
+  ;; TODO -- too many API namespaces
   parameters
-  {:api  #{metabase.parameters.dashboard
+  {:api  #{metabase.parameters.chain-filter
+           metabase.parameters.custom-values
+           metabase.parameters.dashboard
            metabase.parameters.field
-           metabase.parameters.init}
+           metabase.parameters.init
+           metabase.parameters.params
+           metabase.parameters.shared}
    :uses #{api
+           classloader
            db
+           driver
            legacy-mbql
            lib
            models
            query-processor
-           util}}
+           types
+           util
+           warehouse-schema}}
 
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
            ;; TODO -- move these into the API namespace.
+           metabase.permissions.models.application-permissions-revision
            metabase.permissions.models.collection-permission-graph-revision
            metabase.permissions.models.collection.graph
            metabase.permissions.models.data-permissions
@@ -971,7 +976,6 @@
    :uses #{analytics
            api
            api-keys
-           api-routes
            appearance
            config
            core
@@ -1173,6 +1177,7 @@
            legacy-mbql
            lib
            models
+           parameters
            settings
            system}}
 
@@ -1422,7 +1427,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql
