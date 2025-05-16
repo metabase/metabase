@@ -28,7 +28,7 @@ const JAR_PATH = path.join(BE_FOLDER, "target/uberjar/metabase.jar");
 
 const TEST_FILES = [
   "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
-  "e2e/test/scenarios/question/caching.cy.spec.js",
+  ...getFilesInsideFolder(path.join(FE_FOLDER, "e2e/test/scenarios/question")),
 ];
 
 console.log(`Using frontend from ${FE_GIT_REF}`);
@@ -218,6 +218,10 @@ const getTestShardInfo = () => {
     testForThisShard,
   };
 };
+
+function getFilesInsideFolder(folder) {
+  return fs.readdirSync(folder).map((file) => path.join(folder, file));
+}
 
 // main logic
 (async () => {
