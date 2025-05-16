@@ -64,8 +64,8 @@
          base-query (lib/remove-all-breakouts metric-query)
          visible-cols (->> (lib/visible-columns base-query)
                            (map #(add-table-reference base-query %)))
-         ident->index (into {} (map-indexed (fn [i col] [(:ident col) i])) visible-cols)
-         col-index #(-> % :ident ident->index)
+         col->index (into {} (map-indexed (fn [i col] [col i])) visible-cols)
+         col-index #(-> % (dissoc :operators :field-values) col->index)
          default-temporal-breakout (->> breakouts
                                         (map #(lib/find-matching-column % visible-cols))
                                         (m/find-first lib.types.isa/temporal?))
@@ -82,11 +82,12 @@
                                                       field-id-prefix)
                                                      :field-id))}
        with-queryable-dimensions?
-       (assoc :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column
-                                            metric-query % (col-index %) field-id-prefix)
+       (assoc :queryable-dimensions (into []
+                                          (comp (map #(add-table-reference base-query %))
+                                                (map #(metabot-v3.tools.u/->result-column
+                                                       metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
-                                               field-values-fn
-                                               (mapv #(add-table-reference base-query %)))))))))
+                                               field-values-fn)))))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
