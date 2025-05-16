@@ -16,6 +16,8 @@
    [metabase.db :as mdb]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
    (grouper.core Grouper)))
@@ -37,28 +39,45 @@
 
 (p/import-vars
  [grouper
-  start!
   shutdown!])
 
-(defn submit!
+;;; for synchronous processing we need to maintain the dynamic variables that the task was submitted with, so for
+;;; example if we submitted it inside of a `with-temp` block we run using the current transaction instead of creating a
+;;; new one on a different thread. So instead of submitting a bunch of objects, we'll actually wrap them and submit
+;;; items like
+;;;
+;;;    {:object object, :do-in-context (fn [thunk] (thunk))}
+;;;
+;;; then when Grouper actually runs our task we'll do it INSIDE of the `do-in-context` function if we have one to get
+;;; the bound connection and what not. Our version of [[start!]] will unwrap stuff and make this transparent to its
+;;; users.
+(mu/defn start!
+  "Wrapper around [[grouper/start!]]."
+  ^Grouper [f :- [:or (ms/InstanceOfClass clojure.lang.Var) fn?] & options]
+  (let [f* (fn [items]
+             (let [do-in-context (last (keep :do-in-context items))
+                   objects       (map :object items)]
+               (if do-in-context
+                 (do-in-context (^:once fn* [] (f objects)))
+                 (f objects))))]
+    (apply grouper/start! f* options)))
+
+(mu/defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
    We use grouper for fire-and-forget scenarios, so we don't care about the result."
-  [^Grouper grouper thunk & options]
-  (let [synchronous? (or (synchronous-batch-updates)
-                         ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
-                         ;; back the transaction at the end (as we do in tests)
-                         (mdb/in-transaction?))
-        ;; If we're running synchronously, capture all the currently bound dynamic variables, including the current
-        ;; connection (so we can reuse it for doing Grouper stuff). If we're running asynchronously, capture everything
-        ;; but the current Toucan 2 connection and transaction depth (used to track whether we're in a transaction
-        ;; already or not).
-        thunk        (if synchronous?
-                       (bound-fn* thunk)
-                       (mdb/with-ignored-current-connection
-                         (bound-fn* thunk)))
-        p            (apply grouper/submit! grouper thunk options)]
+  [^Grouper grouper :- (ms/InstanceOfClass Grouper) object & options]
+  (let [synchronous?   (or (synchronous-batch-updates)
+                           ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
+                           ;; back the transaction at the end (as we do in tests)
+                           (mdb/in-transaction?))
+
+        do-in-context (when synchronous?
+                        (bound-fn* (fn do-in-context [thunk]
+                                     (thunk))))
+        p            (apply grouper/submit! grouper {:object object, :do-in-context do-in-context} options)]
     (when synchronous?
       ;; wake up the group immediately and wait for it to finish
-      (.wakeUp grouper)
-      (deref p))
+      (let [result (deref p)]
+        (when (instance? Throwable result)
+          (throw result))))
     nil))

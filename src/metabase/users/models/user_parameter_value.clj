@@ -48,22 +48,24 @@
         (t2/insert! :model/UserParameterValue
                     (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch))))))
 
+(defn- update-user-parameter-values* [inputs]
+  (try
+    (batched-upsert!
+     (->> (for [input     inputs
+                parameter (:parameters input)]
+            {:user_id      (:user-id input)
+             :dashboard_id (:dashboard-id input)
+             :parameter_id (:id parameter)
+             :value        (:value parameter)
+             :default      (:default parameter)})
+          (m/index-by (juxt :user_id :dashboard_id :parameter_id))
+          vals))
+    (catch Exception e
+      (log/error e "Error saving user parameters for a dashboard"))))
+
 (defonce ^:private user-parameter-value-queue
   (delay (grouper/start!
-          (fn [inputs]
-            (try
-              (batched-upsert!
-               (->> (for [input     inputs
-                          parameter (:parameters input)]
-                      {:user_id      (:user-id input)
-                       :dashboard_id (:dashboard-id input)
-                       :parameter_id (:id parameter)
-                       :value        (:value parameter)
-                       :default      (:default parameter)})
-                    (m/index-by (juxt :user_id :dashboard_id :parameter_id))
-                    vals))
-              (catch Exception e
-                (log/error e "Error saving user parameters for a dashboard"))))
+          #'update-user-parameter-values*
           :capacity 5000
           :interval 5000)))
 

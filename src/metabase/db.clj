@@ -137,12 +137,3 @@
   {:style/indent [:defn]}
   [application-db & body]
   `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
-
-(defmacro with-ignored-current-connection
-  "Execute `body` with the current connection's dynamic vars reset. Do this before capturing dynamic vars in tasks we
-  submit to async thread pools."
-  {:style/indent 0}
-  [& body]
-  `(binding [t2.connection/*current-connectable* nil
-             mdb.connection/*transaction-depth* 0]
-     ~@body))

@@ -55,10 +55,7 @@
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
-          ;; Grouper disallows vars so this wrapper will let us picc up local changes to [[increment-view-counts!*]].
-          #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
-          (fn [items]
-            (increment-view-counts!*  items))
+          #'increment-view-counts!*
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
@@ -120,7 +117,7 @@
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
-          update-dashboard-last-viewed-at!*
+          #'update-dashboard-last-viewed-at!*
           :capacity 500
           :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
 
