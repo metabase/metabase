@@ -105,43 +105,309 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("should handle template tags", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
+  describe("template tags", () => {
+    it("should handle template tags", () => {
+      H.startNewNativeQuestion();
+      H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
 
-    cy.get("input[placeholder*='Stars']").type("3");
-    runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 168 rows");
-  });
+      cy.get("input[placeholder*='Stars']").type("3");
+      runQuery();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Showing 168 rows");
+    });
 
-  it("should modify parameters accordingly when tags are modified", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
+    it("should modify parameters accordingly when tags are modified", () => {
+      H.startNewNativeQuestion();
+      H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
 
-    cy.findByTestId("sidebar-right")
-      .findByText("Always require a value")
-      .click();
-    cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
-    runQuery();
+      cy.findByTestId("sidebar-right")
+        .findByText("Always require a value")
+        .click();
+      cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
+      runQuery();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Save").click();
 
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").type("Products on Category");
-      cy.findByText("Save").click();
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText("Name").type("Products on Category");
+        cy.findByText("Save").click();
 
-      cy.wait("@card").should((xhr) => {
-        const requestBody = xhr.request?.body;
-        expect(requestBody?.parameters?.length).to.equal(1);
-        const parameter = requestBody.parameters[0];
-        expect(parameter.default).to.equal("Gizmo");
+        cy.wait("@card").should((xhr) => {
+          const requestBody = xhr.request?.body;
+          expect(requestBody?.parameters?.length).to.equal(1);
+          const parameter = requestBody.parameters[0];
+          expect(parameter.default).to.equal("Gizmo");
+        });
+      });
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Not now").click();
+    });
+
+    it("should recognize template tags and save them as parameters", () => {
+      H.startNewNativeQuestion();
+      H.NativeEditor.type(
+        "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
+      );
+      cy.get("input[placeholder*='Cat']").type("Gizmo");
+      cy.get("input[placeholder*='Stars']").type("3");
+
+      runQuery();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Save").click();
+
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText("Name").type("SQL Products");
+        cy.findByText("Save").click();
+
+        // parameters[] should reflect the template tags
+        cy.wait("@card").then((xhr) => {
+          const requestBody = xhr.request?.body;
+          expect(requestBody?.parameters?.length).to.equal(2);
+          cy.wrap(xhr.response.body.id).as("questionId");
+        });
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Not now").click();
+
+      // Now load the question again and parameters[] should still be there
+      cy.get("@questionId").then((questionId) => {
+        cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
+        cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
+        cy.wait("@cardQuestion").should((xhr) => {
+          const responseBody = xhr.response?.body;
+          expect(responseBody?.parameters?.length).to.equal(2);
+        });
       });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
+    describe("time grouping", () => {
+      it("should create entires in variables sidebar", () => {
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(
+          `
+          SELECT
+            count(*),
+            {{mb.time_grouping("unit", "created_at")}} as unit,
+            {{mb.time_grouping("unit2", "created_at")}} as unit2
+          FROM
+            ORDERS
+          GROUP BY
+            unit, unit2
+          `
+            .split("\n")
+            .map((line) => line.trim())
+            .join(" "),
+        );
+
+        cy.findByTestId("tag-editor-sidebar").within(() => {
+          cy.findAllByText("Parameter name").then((elements) => {
+            expect(elements).to.have.length(2);
+            cy.wrap(elements[0]).next().should("have.text", "unit");
+            cy.wrap(elements[1]).next().should("have.text", "unit2");
+          });
+
+          cy.findAllByLabelText("Filter widget label")
+            .first()
+            .type(" updated")
+            .blur();
+        });
+
+        cy.findAllByTestId("field-set")
+          .first()
+          .should("have.text", "Unit updated");
+      });
+
+      it("should handle required prop for time grouping", () => {
+        H.startNewNativeQuestion();
+        H.NativeEditor.type(
+          `
+          SELECT
+            count(*),
+            {{mb.time_grouping("unit", "created_at")}} as unit
+          FROM
+            ORDERS
+          GROUP BY
+            unit
+          `
+            .split("\n")
+            .map((line) => line.trim())
+            .join(" "),
+        );
+
+        H.runNativeQuery();
+
+        cy.findByTestId("query-visualization-root").should(
+          "contain",
+          "You'll need to pick a value for 'Unit' before this query can run.",
+        );
+
+        H.rightSidebar().within(() => {
+          cy.findByLabelText("Always require a value")
+            .should("be.disabled")
+            .should("be.checked");
+
+          cy.findByText("Enter a default value…").click();
+        });
+
+        H.popover().findByText("Year").click();
+
+        H.runNativeQuery();
+
+        cy.findByTestId("query-visualization-root").should(
+          "contain",
+          "January 1, 2022, 12:00 AM",
+        );
+      });
+
+      it("should run saved question with time grouping", () => {
+        const questionWithDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+          SELECT
+            count(*),
+            {{mb.time_grouping("unit", "created_at")}} as unit
+          FROM
+            ORDERS
+          GROUP BY
+            unit
+          `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+                required: true,
+                default: "year",
+              },
+            },
+          },
+        };
+        const questionWithoutDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+          SELECT
+            count(*),
+            {{mb.time_grouping("unit", "created_at")}} as unit
+          FROM
+            ORDERS
+          GROUP BY
+            unit
+          `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+                required: true,
+              },
+            },
+          },
+        };
+
+        H.createNativeQuestion(questionWithDefaultValue, {
+          wrapId: true,
+          idAlias: "q1",
+        }).then(() => {
+          return H.createNativeQuestion(questionWithoutDefaultValue, {
+            wrapId: true,
+            idAlias: "q2",
+          });
+        });
+
+        cy.get("@q1").then((questionId) => {
+          H.visitQuestion(questionId);
+        });
+
+        cy.log(
+          "verify that saved query with time grouping can run and return correct results",
+        );
+        cy.findByTestId("visualization-root").should(
+          "contain",
+          "January 1, 2022, 12:00 AM",
+        );
+
+        cy.get("@q2").then((questionId) => {
+          H.visitQuestion(questionId);
+        });
+
+        cy.log(
+          "verify that saved query without time grouping can run and return correct results",
+        );
+        cy.findByTestId("query-visualization-root").should(
+          "contain",
+          "You'll need to pick a value for 'Unit' before this query can run.",
+        );
+
+        H.filterWidget().click();
+        H.popover().findByText("Year").click();
+
+        cy.findAllByTestId("run-button").first().click();
+
+        cy.findByTestId("visualization-root").should(
+          "contain",
+          "January 1, 2022, 12:00 AM",
+        );
+      });
+
+      it("should reset default value when time grouping options are changed", () => {
+        const questionWithDefaultValue = {
+          name: "Saved question with time grouping",
+          native: {
+            query: `
+          SELECT
+            count(*),
+            {{mb.time_grouping("unit", "created_at")}} as unit
+          FROM
+            ORDERS
+          GROUP BY
+            unit
+          `,
+            "template-tags": {
+              unit: {
+                type: "temporal-unit",
+                name: "unit",
+                id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+                "display-name": "Unit",
+                required: true,
+                default: "year",
+              },
+            },
+          },
+        };
+
+        H.createNativeQuestion(questionWithDefaultValue).then(
+          ({ body: { id } }) => {
+            H.visitQuestion(id);
+          },
+        );
+
+        cy.log("open editor");
+        cy.findByTestId("visibility-toggler").click();
+        cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+
+        H.rightSidebar().should("contain", "Variables and parameters");
+
+        H.rightSidebar()
+          .findByText("Default filter widget value")
+          .next()
+          .should("contain", "Year");
+        H.rightSidebar().findByText("Time grouping options").next().click();
+        H.popover().findByText("Year").click();
+
+        cy.log("verify default value is empty");
+        H.rightSidebar().should("contain", "Enter a default value…");
+      });
+
+      // TODO: not implemented on BE yet
+      it.skip("should create two columns for two parameters with same name, but different columns used as a second parameter of mb.time_grouping", () => {});
+    });
   });
 
   it("can save a question with no rows", () => {
@@ -246,44 +512,6 @@ describe("scenarios > question > native", () => {
     cy.get("@sidebar").contains(/added/i);
   });
 
-  it("should recognize template tags and save them as parameters", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type(
-      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
-    );
-    cy.get("input[placeholder*='Cat']").type("Gizmo");
-    cy.get("input[placeholder*='Stars']").type("3");
-
-    runQuery();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
-
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").type("SQL Products");
-      cy.findByText("Save").click();
-
-      // parameters[] should reflect the template tags
-      cy.wait("@card").then((xhr) => {
-        const requestBody = xhr.request?.body;
-        expect(requestBody?.parameters?.length).to.equal(2);
-        cy.wrap(xhr.response.body.id).as("questionId");
-      });
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
-
-    // Now load the question again and parameters[] should still be there
-    cy.get("@questionId").then((questionId) => {
-      cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
-      cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
-      cy.wait("@cardQuestion").should((xhr) => {
-        const responseBody = xhr.response?.body;
-        expect(responseBody?.parameters?.length).to.equal(2);
-      });
-    });
-  });
-
   it("should not autorun ad-hoc native queries by default", () => {
     H.visitQuestionAdhoc(
       {
@@ -320,8 +548,9 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/missing required parameters/).should("be.visible");
+    H.modal()
+      .findByText(/missing required parameters/)
+      .should("be.visible");
   });
 
   it("should run the query when pressing meta+enter", () => {
