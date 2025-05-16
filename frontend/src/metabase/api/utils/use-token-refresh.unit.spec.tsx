@@ -1,17 +1,29 @@
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { act, renderWithProviders, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 import { createMockSettings } from "metabase-types/api/mocks";
+
+import { useGetSettingsQuery } from "../session";
 
 import { useTokenRefresh } from "./use-token-refresh";
 
 const TestComponent = () => {
   useTokenRefresh();
+  const { isFetching } = useGetSettingsQuery();
+
+  if (isFetching) {
+    return <div>Loading...</div>;
+  }
 
   return <div>Test</div>;
 };
 
-const waitTime = async () => act(() => jest.advanceTimersByTime(11 * 1000));
+const waitTime = async () => {
+  act(() => {
+    jest.advanceTimersByTime(11 * 1000);
+  });
+  await screen.findByText("Test");
+};
 
 const setupRefreshableProperties = (hasRefresh = true) => {
   const settings = createMockSettings({
@@ -28,6 +40,8 @@ const setupRefreshableProperties = (hasRefresh = true) => {
 const setup = async (hasRefresh = true) => {
   setupRefreshableProperties(hasRefresh);
   renderWithProviders(<TestComponent />);
+  await screen.findByText("Loading...");
+  await screen.findByText("Test");
   return waitForGets(1);
 };
 
@@ -45,11 +59,11 @@ describe("useTokenRefresh", () => {
 
   it("should refetch every 10 seconds", async () => {
     await setup(true); // always start with 1 request
-    await waitTime();
+    await waitTime(); // 2
     expect((await findRequests("GET")).length).toBe(2);
-
-    await waitTime();
-    await waitTime();
+    await waitTime(); // 3
+    await waitTime(); // 4
+    await waitForGets(4);
     expect((await findRequests("GET")).length).toBe(4);
   });
 
@@ -73,6 +87,8 @@ describe("useTokenRefresh", () => {
     await waitForGets(3); // should get one more
 
     await waitTime();
+    await waitTime();
+
     const gets = await findRequests("GET"); // should still be 3
     expect(gets.length).toBe(3);
   });
