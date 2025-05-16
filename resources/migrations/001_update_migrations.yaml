@@ -11263,7 +11263,7 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - sqlCheck:
             expectedResult: 1
-            sql: |
+            sql: >
               SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
               FROM (
                 SELECT ROW_NUMBER() OVER (PARTITION by name, engine) as row_num
@@ -11273,7 +11273,7 @@ databaseChangeLog:
       changes:
         - sql:
             dbms: postgresql
-            sql: |
+            sql: >
               UPDATE metabase_database as d1
               SET name = CONCAT(d1.name, ' ', d2.row_num)
               FROM (
@@ -11283,7 +11283,7 @@ databaseChangeLog:
               WHERE d1.id = d2.id AND d2.row_num > 1;
         - sql:
             dbms: mysql,mariadb
-            sql: |
+            sql: >
               UPDATE metabase_database as d1
               INNER JOIN (
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) as row_num
@@ -11293,7 +11293,7 @@ databaseChangeLog:
               WHERE d2.row_num > 1;
         - sql:
             dbms: h2
-            sql: |
+            sql: >
               UPDATE metabase_database as d1
               SET name = (
                 SELECT CASE WHEN d2.row_num > 1 THEN CONCAT(d1.name, ' ', d2.row_num) ELSE d1.name END
