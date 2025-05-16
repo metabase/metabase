@@ -1,4 +1,5 @@
 export * from "./config";
+export * from "./complete";
 export * from "./identifier";
 export * from "./formatter";
 export * from "./types";
