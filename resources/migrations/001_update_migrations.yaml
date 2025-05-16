@@ -11254,6 +11254,48 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  - changeSet:
+      id: v55.2025-05-16T02:00:00
+      validCheckSum: 8:d04207471480e335f14094e9a7a5d293
+      author: ranquild
+      comment: Deduplicate metabase_database on (name, engine)
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: |
+              SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+              FROM (
+                SELECT ROW_NUMBER() OVER (PARTITION by name, engine) as row_num
+                FROM metabase_database
+              )
+              WHERE row_num > 1
+      changes:
+        - sql: |
+            UPDATE metabase_database as d1
+            SET name = (
+              SELECT CASE WHEN row_num > 1 THEN CONCAT(d1.name, ' ', d2.row_num) ELSE name END
+              FROM (
+                SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) as row_num
+                FROM metabase_database
+              ) as d2
+              WHERE d1.id = d2.id
+            )
+
+  - changeSet:
+      id: v55.2025-05-16T02:00:00
+      author: ranquild
+      comment: Add unique constraint on metabase_database (name, engine)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_database
+            constraintName: idx_unique_database
+            columnNames: name, engine
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_database
+            constraintName: idx_unique_database
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
