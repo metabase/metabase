@@ -428,12 +428,14 @@ await build({
   target: "esnext",
   format: "esm",
   shims: true,
-  splitting: true,
-  treeshake: true,
-  sourcemap: isDevMode,
+  splitting: !isDevMode,
+  treeshake: !isDevMode,
+  sourcemap: false,
   minify: !isDevMode,
-  clean: true,
-  watch: isDevMode,
+  clean: !isDevMode,
+  watch: isDevMode
+    ? ["./enterprise/frontend/src/embedding-sdk", "./frontend/src"]
+    : false,
   metafile: false,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
