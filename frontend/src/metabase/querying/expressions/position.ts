@@ -1,4 +1,5 @@
 import { getMBQLName } from "./clause";
+import { END_OF_INPUT, STRING, type Token, lexify } from "./pratt";
 import { parser } from "./tokenizer/parser";
 
 export function enclosingFunction(doc: string, pos: number) {
@@ -52,4 +53,29 @@ export function enclosingFunction(doc: string, pos: number) {
   } while (cursor.next());
 
   return res;
+}
+
+export function tokenAtPos(source: string, pos: number): Token | null {
+  const tokens = lexify(source);
+
+  const idx = tokens.findIndex(
+    (token) => token.start <= pos && token.end >= pos,
+  );
+  if (idx === -1) {
+    return null;
+  }
+
+  const token = tokens[idx];
+  const prevToken = tokens[idx - 1];
+
+  if (token.type === END_OF_INPUT) {
+    return null;
+  }
+
+  if (prevToken && prevToken.type === STRING && prevToken.length === 1) {
+    // dangling single- or double-quote
+    return null;
+  }
+
+  return token;
 }

@@ -19,8 +19,8 @@ import {
   format,
   getClauseDefinition,
 } from "metabase/querying/expressions";
+import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
-import { tokenAtPos } from "metabase/querying/expressions/suggestions/util";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";

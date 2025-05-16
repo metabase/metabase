@@ -1,6 +1,8 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
-import { isFieldReference, isIdentifier, tokenAtPos } from "./util";
+import { tokenAtPos } from "../position";
+
+import { isFieldReference, isIdentifier } from "./util";
 
 export function suggestLiterals() {
   return function (context: CompletionContext) {

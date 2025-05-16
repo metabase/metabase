@@ -6,9 +6,10 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
+import { tokenAtPos } from "../position";
 
 import type { CompletionResult } from "./types";
-import { content, fuzzyMatcher, tokenAtPos } from "./util";
+import { content, fuzzyMatcher } from "./util";
 
 export type Options = {
   query: Lib.Query;

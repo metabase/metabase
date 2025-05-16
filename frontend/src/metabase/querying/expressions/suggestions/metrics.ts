@@ -3,8 +3,9 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import * as Lib from "metabase-lib";
 
 import { formatIdentifier } from "../identifier";
+import { tokenAtPos } from "../position";
 
-import { content, fuzzyMatcher, tokenAtPos } from "./util";
+import { content, fuzzyMatcher } from "./util";
 
 export type Options = {
   expressionMode: Lib.ExpressionMode;

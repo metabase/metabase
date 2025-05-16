@@ -4,6 +4,7 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { getSupportedClauses } from "../clause";
+import { tokenAtPos } from "../position";
 import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
@@ -13,7 +14,6 @@ import {
   fuzzyMatcher,
   isFieldReference,
   isIdentifier,
-  tokenAtPos,
 } from "./util";
 
 export type Options = {
