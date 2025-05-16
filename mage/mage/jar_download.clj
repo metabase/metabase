@@ -109,8 +109,6 @@
                                    without-slash)
         {:keys [latest-version
                 jar-path]} (download-jar! version dir delete?)]
-    (prn {:latest-version latest-version
-          :version version})
     (when run?
       ;; Check that the embedding token is set:
       (u/env "MB_PREMIUM_EMBEDDING_TOKEN"
@@ -119,16 +117,17 @@
                               {:parsed-args    (dissoc parsed :summary)
                                :latest-version latest-version})))
       (let [port        (+ 3000 (major-version latest-version))
-            _ (prn "after")
+            socket-port (+ 3000 port)
             db-file     (str "metabase_" version ".db")
             extra-env   {"MB_DB_TYPE"          "h2"
                          "MB_DB_FILE"          db-file
                          "MB_JETTY_PORT"       port
                          "MB_CONFIG_FILE_PATH" (str u/project-root-directory "/mage/jar_download_config.yml")}
-            run-jar-cmd (str "java -jar " jar-path)]
+            run-jar-cmd (str "java -Dclojure.server.repl=\"{:port " socket-port " :accept clojure.core.server/repl}\" -jar " jar-path)]
         (println (c/magenta "Running: " run-jar-cmd))
         (println "env:")
         (doseq [[k v] extra-env]
           (println (str "  " (c/yellow k) "=" (c/green v))))
+        (println "Socket repl will open on " socket-port)
         (println (str "\n\n   Open in browser: http://localhost:" port "\n"))
         (p/shell {:dir dir :extra-env extra-env} run-jar-cmd)))))
