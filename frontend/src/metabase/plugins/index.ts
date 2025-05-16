@@ -748,12 +748,11 @@ export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
 export const PLUGIN_CONTENT_TRANSLATION = {
   isEnabled: false,
   ContentTranslationConfiguration: PluginPlaceholder,
-  useTranslateContent: (): ContentTranslationFunction => {
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
     // In OSS, the input is not translated
-    return useCallback(
-      <T extends string | null | undefined>(arg: T) => arg,
-      [],
-    );
+    return useCallback(<U = T>(arg: U) => arg, []);
   },
   translateDisplayNames: ((obj, _tc, _fieldsToTranslate) => ({
     ...obj,
