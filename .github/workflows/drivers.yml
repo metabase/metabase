@@ -249,7 +249,7 @@ jobs:
             build-static-viz: false
             #:only '"enterprise/backend/test"'
             test-args: >-
-              :only metabase-enterprise.serialization.v2.load-test/deserialization-database-table-field-test
+              :only metabase-enterprise.serialization.v2.load-test
             exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
