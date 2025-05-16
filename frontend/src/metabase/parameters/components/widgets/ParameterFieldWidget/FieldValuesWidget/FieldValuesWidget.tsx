@@ -1,4 +1,3 @@
-import cx from "classnames";
 import {
   type StyleHTMLAttributes,
   forwardRef,
@@ -18,10 +17,8 @@ import {
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
-import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
@@ -32,13 +29,14 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
+import { Group, Loader, Skeleton, Stack } from "metabase/ui";
 import {
   type ComboboxItem,
-  Loader,
   MultiAutocomplete,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
+import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
@@ -54,7 +52,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import ValueComponent from "../Value";
+import { Value as ValueComponent } from "../Value";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import { ListField } from "./ListField";
@@ -549,12 +547,14 @@ export default connect(mapStateToProps, null, null, { forwardRef: true })(
 );
 
 const LoadingState = () => (
-  <div
-    className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
-    style={{ minHeight: 82 }}
-  >
-    <LoadingSpinner size={16} />
-  </div>
+  <Stack py="sm" px=".25rem" gap="md">
+    <Repeat times={4}>
+      <Group gap="sm">
+        <Skeleton circle w="1.5rem" h="1.5rem" />
+        <Skeleton h="1.5rem" natural />
+      </Group>
+    </Repeat>
+  </Stack>
 );
 
 function getNothingFoundMessage({
