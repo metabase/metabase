@@ -20,7 +20,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
@@ -42,6 +41,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))

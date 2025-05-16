@@ -1,4 +1,4 @@
-(ns metabase.models.field
+(ns metabase.warehouse-schema.models.field
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -7,7 +7,6 @@
    [metabase.db :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.field-values :as field-values]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -18,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -225,7 +225,7 @@
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
   [fields]
   ;; In 44 we added a new concept of Advanced FieldValues, so FieldValues are no longer have an one-to-one relationship
-  ;; with Field. See the doc in [[metabase.models.field-values]] for more.
+  ;; with Field. See the doc in [[metabase.warehouse-schema.models.field-values]] for more.
   ;; We filter down to only :type =:full values, as they contain configured labels which must be preserved. The Advanced
   ;; FieldValues can then be regenerated without loss given these Full entities.
   (let [id->field-values (select-field-id->instance fields :model/FieldValues :type :full)]

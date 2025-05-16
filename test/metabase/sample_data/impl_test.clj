@@ -7,7 +7,6 @@
    [clojure.test :refer :all]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.field-values :as field-values]
    [metabase.plugins.impl :as plugins]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
@@ -15,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.api-test :as api.database-test]
    [toucan2.core :as t2]))
 

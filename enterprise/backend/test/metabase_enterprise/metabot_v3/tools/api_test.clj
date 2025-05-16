@@ -14,9 +14,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn- ai-session-token

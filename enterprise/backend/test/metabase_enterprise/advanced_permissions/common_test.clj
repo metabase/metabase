@@ -1,12 +1,9 @@
 (ns ^:mb/driver-tests metabase-enterprise.advanced-permissions.common-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.advanced-permissions.common
-    :as advanced-permissions.common]
-   [metabase-enterprise.impersonation.util-test
-    :as advanced-perms.api.tu]
+   [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
+   [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
-   [metabase.models.field-values :as field-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -16,6 +13,7 @@
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.api :as api.database]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))

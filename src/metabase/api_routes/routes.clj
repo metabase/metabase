@@ -7,12 +7,10 @@
    [metabase.api-keys.api]
    [metabase.api.dataset]
    [metabase.api.docs]
-   [metabase.api.field]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.table]
    [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
@@ -54,6 +52,7 @@
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.warehouse-schema.api]
    [metabase.warehouses.api]
    [metabase.xrays.api]))
 
@@ -62,9 +61,7 @@
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.dataset/keep-me
-         metabase.api.field/keep-me
          metabase.api.logger/keep-me
-         metabase.api.table/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -150,7 +147,7 @@
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
-   "/field"                (+auth 'metabase.api.field)
+   "/field"                (+auth metabase.warehouse-schema.api/field-routes)
    "/geojson"              'metabase.geojson.api
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
@@ -174,7 +171,7 @@
    "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
-   "/table"                (+auth 'metabase.api.table)
+   "/table"                (+auth metabase.warehouse-schema.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
