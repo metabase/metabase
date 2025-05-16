@@ -26,10 +26,14 @@ const FE_FOLDER = path.join(TMP_FOLDER, "metabase-fe");
 const BE_FOLDER = path.join(TMP_FOLDER, "metabase-be");
 const JAR_PATH = path.join(BE_FOLDER, "target/uberjar/metabase.jar");
 
-const TEST_FILES = [
-  "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
-  ...getFilesInsideFolder(path.join(FE_FOLDER, "e2e/test/scenarios/question")),
-];
+const getTestFiles = () => {
+  return [
+    "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
+    ...getFilesInsideFolder(
+      path.join(FE_FOLDER, "e2e/test/scenarios/question"),
+    ),
+  ];
+};
 
 console.log(`Using frontend from ${FE_GIT_REF}`);
 console.log(`Using backend from ${BE_GIT_REF}`);
@@ -198,17 +202,19 @@ async function test() {
 }
 
 const getTestShardInfo = () => {
+  const testFiles = getTestFiles();
+
   if (!SHARD_ARG) {
     return {
       shard: 1,
       totalShards: 1,
-      testForThisShard: TEST_FILES,
+      testForThisShard: testFiles,
     };
   }
 
   const totalShards = SHARD_ARG.split("/")[1];
   const shard = SHARD_ARG.split("/")[0];
-  const testForThisShard = TEST_FILES.filter(
+  const testForThisShard = testFiles.filter(
     (_test, i) => i % totalShards === shard - 1,
   );
 
