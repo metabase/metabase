@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [malli.error :as me]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -454,11 +454,11 @@
                    (some-> (.getCause e) recur)))))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
-                                           [(t2/select-one :model/Field :id (mt/id :checkins :id))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
-                                           (constantly conj))
+  (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
+                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
+                                            (constantly conj))
        (sort-by first)
        (take 5)))
 

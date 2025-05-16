@@ -1,4 +1,4 @@
-(ns metabase.api.table
+(ns metabase.warehouse-schema.api.table
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
@@ -11,7 +11,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -24,6 +23,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]

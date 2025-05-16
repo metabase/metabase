@@ -11,7 +11,6 @@
    [metabase.config :as config]
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -24,6 +23,7 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
