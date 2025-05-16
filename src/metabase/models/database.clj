@@ -481,7 +481,9 @@
                :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
-               :cache_ttl]
+               :cache_ttl
+               ;; used for migration only
+               :name_before_deduplication]
    :transform {:created_at          (serdes/date)
                :entity_id           (serdes/backfill-entity-id-transformer)
                ;; details should be imported if available regardless of options
