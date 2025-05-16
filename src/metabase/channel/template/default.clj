@@ -25,24 +25,24 @@
                                                                     :details      {:type :slack/handlebars-text
                                                                                    :body (str "*A new record was _created_* in <{{table.url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.\n"
                                                                                               "{{#each record}}"
-                                                                                              "• *{{@key}}*: {{@value}}\n"
+                                                                                              "• *{{{@key}}}*: {{{@value}}}\n"
                                                                                               "{{/each}}")}}
                    [:notification/system-event :event/row.updated] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
                                                                                    :body (str "*A record was _updated_* in <{{table.url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}\n"
                                                                                               "*Changed Fields*\n"
                                                                                               "{{#each changes}}"
-                                                                                              "• *{{@key}}*: ~{{@value.before}}~ → {{@value.after}}\n"
+                                                                                              "• *{{{@key}}}*: ~{{{@value.before}}}~ → {{{@value.after}}}\n"
                                                                                               "{{/each}}\n"
                                                                                               "*Current Record Details*\n"
                                                                                               "{{#each record}}"
-                                                                                              "• *{{@key}}*: {{@value}}\n"
+                                                                                              "• *{{{@key}}}*: {{{@value}}}\n"
                                                                                               "{{/each}}")}}
                    [:notification/system-event :event/row.deleted] {:channel_type :channel/slack
                                                                     :details      {:type :slack/handlebars-text
                                                                                    :body (str "*A record was _deleted_* in <{{table.url}}|Table {{table.name}}>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.\n"
                                                                                               "{{#each record}}"
-                                                                                              "• ~*{{@key}}*~: {{@value}}\n"
+                                                                                              "• ~*{{{@key}}}*~: {{{@value}}}\n"
                                                                                               "{{/each}}\n"
                                                                                               "This record is no longer available")}}
                    [:notification/card nil] {:channel_type :channel/slack

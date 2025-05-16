@@ -327,6 +327,8 @@
         template    (or template
                         ;; TODO: the context here does not nescessarily have the same shape as payload, needs to rethink this
                         (channel.template/default-template :notification/system-event (:context notification-payload) :channel/email))]
+    (def template template)
+    (def notification-payload notification-payload)
     (assert template (str "No template found for event " event-name))
     (if-not template
       []
