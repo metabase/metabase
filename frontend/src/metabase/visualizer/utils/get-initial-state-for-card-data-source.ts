@@ -12,7 +12,6 @@ import type {
   Dataset,
   DatasetColumn,
   VisualizationDisplay,
-  VisualizationSettings,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -32,6 +31,7 @@ import {
   isVisualizerSupportedVisualization,
 } from "./dashboard-card-supports-visualizer";
 import { createDataSource, createDataSourceNameRef } from "./data-source";
+import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
 import { getColumnVizSettings } from "./viz-settings";
 
 function pickColumnsFromTableToBarChart(
@@ -198,52 +198,10 @@ export function getInitialStateForCardDataSource(
     .filter(isNotNull);
 
   state.settings = {
-    ...convertVizSettings(card.visualization_settings, columnsToRefs),
+    ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
     "card.title": card.name,
   };
 
   return state;
 }
-
-/**
- * Recursively converts visualization settings to use the new column references.
- *
- * If the settings contain the color for a series called, say, `avg` (`{colors: {avg: "#000"}}`),
- * and the column reference for `avg` is `COLUMN_1`, this function will convert it
- * to `{colors: {COLUMN_1: "#000"}}`.
- *
- *
- * @param settings the settings to convert
- * @param columnsToRefs the mapping of column names to their references
- * @returns the converted settings
- */
-const convertVizSettings = (
-  settings: VisualizationSettings,
-  columnsToRefs: Record<string, string>,
-): VisualizationSettings => {
-  if (typeof settings !== "object" || settings === null) {
-    return settings;
-  }
-
-  if (Array.isArray(settings)) {
-    return settings.map((item) => convertVizSettings(item, columnsToRefs));
-  }
-
-  if (typeof settings === "object") {
-    const newSettings: VisualizationSettings = {};
-    for (const key in settings) {
-      if (columnsToRefs[key]) {
-        newSettings[columnsToRefs[key]] = settings[key];
-      }
-      if (typeof settings[key] === "object") {
-        newSettings[key] = convertVizSettings(settings[key], columnsToRefs);
-      } else {
-        newSettings[key] = settings[key];
-      }
-    }
-    return newSettings;
-  }
-
-  return settings;
-};
