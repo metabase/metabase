@@ -202,7 +202,8 @@
                                                                                       :semantic_type     :type/FK
                                                                                       :database_type     "INTEGER"
                                                                                       :name              "USER_ID"}]]]
-                                          ::row-level-restrictions/gtap? true}
+                                          ::row-level-restrictions/gtap? true
+                                          ::query-perms/gtapped-table    $$checkins}
                            :joins        [{:source-query
                                            {:source-table                  $$venues
                                             :fields                        [$venues.id $venues.name $venues.category_id
@@ -215,7 +216,8 @@
                                                                                        :semantic_type     :type/Category
                                                                                        :database_type     "INTEGER"
                                                                                        :name              "PRICE"}]]
-                                            ::row-level-restrictions/gtap? true}
+                                            ::row-level-restrictions/gtap? true
+                                            ::query-perms/gtapped-table    $$venues}
                                            :alias     "v"
                                            :strategy  :left-join
                                            :condition [:= $venue_id &v.venues.id]}]
@@ -250,6 +252,7 @@
                               :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                           "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                           "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\" ASC")
+                                             ::query-perms/gtapped-table    $$venues
                                              :params []}}
 
                    ::row-level-restrictions/original-metadata [{:base_type     :type/Integer

@@ -390,3 +390,23 @@
              clojure.lang.ExceptionInfo
              #"You do not have permissions to run this query"
              (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" card-id)))))))))
+
+(deftest native-sandboxes-still-block-other-joined-tables
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                                                      :table_id             (mt/id :checkins)
+                                                      :card_id              card-id
+                                                      :attribute_remappings {}}
+                     :model/Card {query-card-id :id} {:dataset_query (mt/mbql-query checkins
+                                                                       {:aggregation [[:count]]
+                                                                        :joins       [{:source-table $$venues
+                                                                                       :alias        "v"
+                                                                                       :strategy     :left-join
+                                                                                       :condition    [:= $venue_id &v.venues.id]}]})}]
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {(mt/id 'venues) :blocked})
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" query-card-id)))))))))
