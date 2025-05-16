@@ -1,3 +1,12 @@
+## [0.53.17](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.16...embedding-sdk-0.53.17) (2025-05-16)
+
+
+### Bug Fixes
+
+* **sdk:** Move @cypress/react as dev dependency for SDK ([#57984](https://github.com/metabase/metabase/issues/57984)) ([084f267](https://github.com/metabase/metabase/commit/084f26777c4fd06a9eea8043b1470bf84d6d44f0))
+
+
+
 ## [0.53.16](https://github.com/metabase/metabase/compare/embedding-sdk-0.53.15...embedding-sdk-0.53.16) (2025-05-13)
 
 
