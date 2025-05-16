@@ -54,10 +54,6 @@
   [_original-model _k]
   :model/Table)
 
-(t2/define-after-select :model/Table
-  [table]
-  (serdes/add-entity-id table))
-
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
@@ -142,11 +138,6 @@
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
-
-(defmethod serdes/hash-required-fields :model/Table
-  [_table]
-  {:model :model/Table
-   :required-fields [:schema :name :db_id]})
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 

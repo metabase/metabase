@@ -124,9 +124,7 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (-> field
-      (dissoc :is_defective_duplicate :unique_field_helper)
-      serdes/add-field-entity-id))
+  (dissoc field :is_defective_duplicate :unique_field_helper))
 
 (t2/define-before-insert :model/Field
   [field]
@@ -183,11 +181,6 @@
 (defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
-
-(defmethod serdes/hash-required-fields :model/Field
-  [_field]
-  {:model :model/Field
-   :required-fields [:name :table_id :parent_id]})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
