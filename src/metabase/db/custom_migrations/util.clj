@@ -1,8 +1,8 @@
 (ns metabase.db.custom-migrations.util
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
+   [metabase.classloader.core :as classloader]
    [metabase.db.connection :as mdb.connection]
-   [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]))
 
 (defn- set-jdbc-backend-properties! []

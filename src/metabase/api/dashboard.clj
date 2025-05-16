@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -11,37 +12,31 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :as card]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
@@ -383,7 +378,7 @@
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
-                            [id (card/create-card!
+                            [id (queries/create-card!
                                  (cond-> to-copy
                                    true                    (assoc :collection_id dest-coll-id)
                                    same-collection?        (update :name #(str % " - " (tru "Duplicate")))
@@ -869,6 +864,66 @@
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
+(defn create-editable-table-card!
+  "The implementation details of an editable table dashcard.
+  A quick solution, and a very extensible one, but perhaps overloading a core primitive too much, and could be leaky."
+  [dashboard-id dashcard table-id]
+  (let [tab-id  (:dashboard_tab_id dashcard)
+        table   (t2/select-one [:model/Table :db_id :display_name] table-id)
+        card    (some->> dashcard :card_id (t2/select-one [:model/Card :id :dataset_query :display :card_schema]))
+        ;; If the currently attached card is not editing the expected the table, then create a new one.
+        keep?    (and (= :table-editable (:display card))
+                      (= table-id (get-in card [:dataset_query :query :source-table])))
+        _        (when (and card (not keep?))
+                   (log/warnf "Detaching card %s from dashcard %s as it not editing the expected table (%s)"
+                              (:id card)
+                              (:id dashcard)
+                              table-id))
+        ;; To keep things simple for now, we don't make any attempt to further deduplicate these cards.
+        ;; This especially keeps things simple if we decide to promote them to a first class "editable", by saving them
+        ;; into a collection.
+        ;;
+        ;; We use dashboard cards, which helps keep them hidden and have their lifecycle handled implicitly.
+        ;; We need to watch out for other ways they could "leak", for example, in search.
+        ;; We've handled search for now by filtering on :display, but that's quite opinionated and coupled.
+        ;;
+        ;; Adding and removing tables can create a lot of garbage, but it shouldn't be a big problem in our PoC.
+        ;; We could also change from archiving to deleting them when they are orphaned.
+        card-map {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       tab-id
+                  :collection_position    nil
+                  :dataset_query          {:database (:db_id table)
+                                           :query    {:source-table table-id}
+                                           :type     :query}
+                  :description            nil
+                  :display                "table-editable"
+                  :name                   (str (:display_name table) " (editable)")
+                  :result_metadata        nil
+                  :type                   "model"
+                  ;; Redundant with :display, but just in case it's useful. Revisit once FE is built.
+                  :visualization_settings {:editable? true}}
+        card-id (if keep?
+                  (:id card)
+                  (:id (queries/create-card! card-map @api/*current-user* true false)))]
+    (-> dashcard
+        ;; This is a downside to creating a new card. If we find more pockets like this, we should pivot to reusing
+        ;; the existing card.
+        (u/update-if-exists :parameter_mappings #(walk/postwalk (fn [x] (if (:card_id x) (assoc x :card_id card-id) x)) %))
+        (assoc :dashboard_id dashboard-id
+               :card_id card-id))))
+
+(defn- init-editable-table-cards!
+  "This method insulated the FE from knowing anything about the implementation details of editable-table dashcards.
+  Given some 'template' we return the fully realized dashcards, with their internal dependencies already in the db.
+  The template data is preserved, allowing the frontend end to further manipulate it in future."
+  [dashboard-id new-dashcards]
+  (for [dashcard new-dashcards]
+    ;; I was expecting dashcards to have some type, but it seems they're duck typed?
+    ;; We probably want to look into this more and have them more clearly differentiated.
+    (if-let [table-id (get-in dashcard [:visualization_settings :table_id])]
+      (create-editable-table-card! dashboard-id dashcard table-id)
+      dashcard)))
+
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
@@ -905,19 +960,19 @@
                                            :embedding_params :archived :auto_apply_filters}))]
              (when (api/column-will-change? :archived current-dash dash-updates)
                (if (:archived dash-updates)
-                 (card/with-allowed-changes-to-internal-dashboard-card
+                 (queries/with-allowed-changes-to-internal-dashboard-card
                    (t2/update! :model/Card
                                :dashboard_id id
                                :archived false
                                {:archived true :archived_directly false}))
-                 (card/with-allowed-changes-to-internal-dashboard-card
+                 (queries/with-allowed-changes-to-internal-dashboard-card
                    (t2/update! :model/Card
                                :dashboard_id id
                                :archived true
                                :archived_directly false
                                {:archived false}))))
              (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (card/with-allowed-changes-to-internal-dashboard-card
+               (queries/with-allowed-changes-to-internal-dashboard-card
                  (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
@@ -949,7 +1004,23 @@
                                                                (map (fn [card]
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                                         (assoc card :dashboard_tab_id real-tab-id)
-                                                                        card))))
+                                                                        card)))
+                                                               true
+                                                               (map (fn [dashcard]
+                                                                      (cond
+                                                                        (pos-int? (:action_id dashcard))
+                                                                        (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
+                                                                        (neg-int? (:action_id dashcard))
+                                                                        (let [[op table-id] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
+                                                                          (-> dashcard
+                                                                              (assoc-in [:visualization_settings :table_action]
+                                                                                        {:kind (u/qualified-name op)
+                                                                                         :table_id table-id})
+                                                                              (dissoc :action_id)))
+                                                                        :else
+                                                                        dashcard))))
+
+                   new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                (reset! changes-stats
                        (merge
@@ -1030,7 +1101,7 @@
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [dashboard (get-dashboard id)]
-        (api.query-metadata/batch-fetch-dashboard-metadata [dashboard])))))
+        (queries/batch-fetch-dashboard-metadata [dashboard])))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -1112,190 +1183,6 @@
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
 
-(def ^:const result-limit
-  "How many results to return when chain filtering"
-  1000)
-
-(defn- get-template-tag
-  "Fetch the `:field` clause from `dashcard` referenced by `:template-tag`.
-
-    (get-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
-  [dimension card]
-  (when-let [[_ tag] (mbql.u/check-clause :template-tag dimension)]
-    (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
-
-(defn- param-type->op [type]
-  (if (get-in lib.schema.parameter/types [type :operator])
-    (keyword (name type))
-    :=))
-
-;; TODO needs to call [[lib/ensure-filter-stage]] and take `stage-number` from the parameter mapping into account
-;; TODO duplicates code in params.clj
-;; TODO needs to wrap models and metrics properly!
-(mu/defn- param->fields
-  [{:keys [mappings] :as param} :- mbql.s/Parameter]
-  (let [cards (into {}
-                    (map (fn [mapping]
-                           (let [card (get-in mapping [:dashcard :card])]
-                             [(:id card) card])))
-                    mappings)
-        metadata-providers (->>
-                            cards
-                            vals
-                            (map :database_id)
-                            distinct
-                            (into {}
-                                  (map (fn [database-id]
-                                         [database-id
-                                          (lib.metadata.jvm/application-database-metadata-provider database-id)]))))
-
-        filterable-columns (into {}
-                                 (map (fn [[card-id card]]
-                                        (let [dataset-query (:dataset_query card)]
-                                          [card-id
-                                           (if (seq dataset-query)
-                                             (->> dataset-query
-                                                  (lib/query (metadata-providers (:database_id card)))
-                                                  lib/filterable-columns)
-                                             [])])))
-                                 cards)]
-    (for [{:keys [target] {:keys [card]} :dashcard} mappings
-          :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                    (mbql.u/check-clause :dimension))]
-          :when dimension
-          :let  [ttag      (get-template-tag dimension card)
-                 dimension (condp mbql.u/is-clause? dimension
-                             :field        dimension
-                             :expression   dimension
-                             :template-tag (:dimension ttag)
-                             (log/error "cannot handle this dimension" {:dimension dimension}))
-                 field-id  (or
-                            ;; Get the field id from the field-clause if it contains it. This is the common case
-                            ;; for mbql queries.
-                            (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
-                            ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                            ;; This is the common case for native queries in which mappings from original columns
-                            ;; have been performed using model metadata.
-                            (:id (qp.util/field->field-info dimension (:result_metadata card)))
-                            ;; Look through the card's filterable columns and see if any of them match. This is common
-                            ;; when the query has an aggregation and you want to filter on something pre-aggregation.
-                            (lib.util.match/match-one dimension [:field (field-name :guard string?) _]
-                              (->> card
-                                   :id
-                                   filterable-columns
-                                   (lib/find-matching-column (lib/->pMBQL dimension))
-                                   :id)))]
-          :when field-id]
-      {:field-id field-id
-       :op       (param-type->op (:type param))
-       :options  (merge (:options ttag)
-                        (:options param))})))
-
-(mu/defn- chain-filter-constraints :- chain-filter/Constraints
-  [dashboard                   :- :map
-   constraint-param-key->value :- [:map-of string? any?]]
-  (vec (for [[param-key value] constraint-param-key->value
-             :let              [param (get-in dashboard [:resolved-params param-key])]
-             :when             param
-             field             (param->fields param)]
-         (assoc field :value value))))
-
-(defn filter-values-from-field-refs
-  "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
-  are provided (rather than field-ids). This is a common case for nested queries."
-  [dashboard param-key]
-  (let [dashboard       (t2/hydrate dashboard :resolved-params)
-        param           (get-in dashboard [:resolved-params param-key])
-        results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                            (mbql.u/check-clause :dimension))]
-                              :when field-ref]
-                          (custom-values/values-from-card card field-ref opts))]
-    (when-some [values (seq (distinct (mapcat :values results)))]
-      (let [has_more_values (boolean (some true? (map :has_more_values results)))]
-        {:values          (cond->> values
-                            (seq values)
-                            (sort-by (case (count (first values))
-                                       2 second
-                                       1 first)))
-         :has_more_values has_more_values}))))
-
-(defn- combine-chained-fitler-results
-  [results]
-  (let [;; merge values with remapped values taking priority
-        values (->> (mapcat :values results)
-                    (sort-by count)
-                    (m/index-by first)
-                    vals)]
-    (cond->> values
-      (seq values)
-      ;; sort by remapped values only if all values are remapped
-      (sort-by (case (count (first values))
-                 2 second
-                 1 first)))))
-
-(mu/defn chain-filter :- ms/FieldValuesResult
-  "C H A I N filters!
-
-  Used to query for values that populate chained filter dropdowns and text search boxes."
-  ([dashboard param-key constraint-param-key->value]
-   (chain-filter dashboard param-key constraint-param-key->value nil))
-
-  ([dashboard                   :- ms/Map
-    param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- [:map-of string? any?]
-    query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard   (cond-> dashboard
-                       (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
-         constraints (chain-filter-constraints dashboard constraint-param-key->value)
-         param       (get-in dashboard [:resolved-params param-key])
-         field-ids   (into #{} (map :field-id (param->fields param)))]
-     (if (empty? field-ids)
-       (or (filter-values-from-field-refs dashboard param-key)
-           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                           {:param       (get (:resolved-params dashboard) param-key)
-                            :status-code 400})))
-       (try
-         (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
-               results         (map (if (seq query)
-                                      #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                      #(chain-filter/chain-filter % constraints :limit result-limit))
-                                    field-ids)
-               has_more_values (boolean (some true? (map :has_more_values results)))]
-           {:values          (or (combine-chained-fitler-results results)
-                                 ;; chain filter results can't be nil
-                                 [])
-            :has_more_values has_more_values})
-         (catch clojure.lang.ExceptionInfo e
-           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-             (api/throw-403 e)
-             (throw e))))))))
-
-(mu/defn param-values
-  "Fetch values for a parameter.
-
-  The source of values could be:
-  - static-list: user defined values list
-  - card: values is result of running a card
-  - nil: chain-filter"
-  ([dashboard param-key constraint-param-key->value]
-   (param-values dashboard param-key constraint-param-key->value nil))
-
-  ([dashboard                   :- :map
-    param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- [:map-of string? any?]
-    query                       :- [:maybe ms/NonBlankString]]
-   (let [dashboard (t2/hydrate dashboard :resolved-params)
-         param     (get (:resolved-params dashboard) param-key)]
-     (when-not param
-       (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))
-                        :status-code     400})))
-     (custom-values/parameter->values
-      param
-      query
-      (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
-
 (api.macros/defendpoint :get "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
   restrict these values by passing query parameters like `other-parameter=value` e.g.
@@ -1308,7 +1195,7 @@
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key constraint-param-key->value))))
+      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -1326,34 +1213,7 @@
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key constraint-param-key->value query))))
-
-(defn dashboard-param-remapped-value
-  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
-  ([dashboard param-key value]
-   (dashboard-param-remapped-value dashboard param-key value nil))
-  ([dashboard param-key value constraint-param-key->value]
-   (when (contains? constraint-param-key->value param-key)
-     (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
-                     {:status-code 400
-                      :parameter param-key})))
-   (or (let [dashboard (-> dashboard
-                           (t2/hydrate :resolved-params)
-                           ;; whatever the param's type, we want an equality constraint
-                           (m/update-existing-in [:resolved-params param-key] assoc :type :id))
-             param     (get-in dashboard [:resolved-params param-key])]
-         (custom-values/parameter-remapped-value
-          param
-          value
-          #(let [field-ids (into #{} (map :field-id (param->fields param)))]
-             (-> (if (= (count field-ids) 1)
-                   (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
-                                              :relax-fk-requirement? true :limit 1)
-                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
-                     (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
-                 :values
-                 first))))
-       [value])))
+      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
@@ -1366,7 +1226,7 @@
    {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
-      (dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
+      (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
@@ -1471,7 +1331,7 @@
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
-                                                                [:export-format api.dataset/ExportFormat]]
+                                                                [:export-format ::qp.schema/export-format]]
    _query-params
    {:keys          [parameters]
     format-rows?   :format_rows

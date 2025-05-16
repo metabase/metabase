@@ -15,7 +15,7 @@ import {
   SingleDatePicker,
   type SingleDatePickerValue,
 } from "./SingleDatePicker";
-import S from "./SpecificDatePicker.modules.css";
+import S from "./SpecificDatePicker.module.css";
 import {
   canSetTime,
   coerceValue,

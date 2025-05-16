@@ -72,8 +72,13 @@ function DashCardActionsPanelInner({
   className,
   onEditVisualization,
 }: Props) {
-  const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
-    getVisualizationRaw(series) ?? {};
+  const {
+    disableSettingsConfig,
+    supportPreviewing,
+    disableClickBehavior,
+    disableReplaceCard,
+    additionalDashcardActionButtons,
+  } = getVisualizationRaw(series) ?? {};
 
   const buttons = [];
 
@@ -126,6 +131,17 @@ function DashCardActionsPanelInner({
         onOpen={() => setIsDashCardTabMenuOpen(true)}
       />,
     );
+  }
+
+  if (additionalDashcardActionButtons) {
+    additionalDashcardActionButtons.forEach((AdditionalButtonComponent) => {
+      buttons.push(
+        <AdditionalButtonComponent
+          key={AdditionalButtonComponent.name}
+          dashcard={dashcard}
+        />,
+      );
+    });
   }
 
   if (supportPreviewing && isPreviewing) {
@@ -208,7 +224,12 @@ function DashCardActionsPanelInner({
     }
   }
 
-  if (!isLoading && dashcard && !isVirtualDashCard(dashcard)) {
+  if (
+    !isLoading &&
+    dashcard &&
+    !isVirtualDashCard(dashcard) &&
+    !disableReplaceCard
+  ) {
     buttons.push(
       <DashCardActionButton
         key="replace-question"

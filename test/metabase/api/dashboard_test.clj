@@ -8,7 +8,6 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
@@ -23,14 +22,16 @@
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.chain-filter-test :as chain-filter-test]
+   [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -47,7 +48,9 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest update-colvalmap-setting-test
+(use-fixtures :once (fixtures/initialize :test-users))
+
+(deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
     (let [id->new-card {123 {:id 456}
                         789 {:id 987}}
@@ -74,14 +77,6 @@
 
       (testing "should handle items without sourceId"
         (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
-
-(use-fixtures
-  :once
-  (fixtures/initialize :test-users))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Helper Fns & Macros                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- remove-ids-and-booleanize-timestamps [x]
   (cond
@@ -666,7 +661,7 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
                   :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
@@ -1758,6 +1753,47 @@
                                                              (format "dashboard/%d" dashboard-id)
                                                              {:dashcards [new-dashcard-info]
                                                               :tabs      []}))}))))))
+
+(deftest e2e-create-editable-table-card
+  (testing "PUT /api/dashboard/:id with a placeholder for an editable table.\n"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Dashboard               {dashboard-id :id}  {}]
+        (let [table-id (mt/id :venues)
+              dash-map {:tabs      [{:id   -1
+                                     :name "New tab"}]
+                        :dashcards [{:id                     -1
+                                     :size_x                 1
+                                     :size_y                 1
+                                     :col                    3
+                                     :row                    3
+                                     :dashboard_tab_id       -1
+                                     :visualization_settings {:table_id table-id}}]}
+              url      (format "dashboard/%d" dashboard-id)
+              resp     (mt/user-http-request :rasta :put 200 url dash-map)
+              card-id  (:card_id (first (:dashcards resp)))]
+          (testing "the dashcard gets turned into something richer, that supports filtering."
+            (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
+                      :size_x                 1
+                      :size_y                 1
+                      :col                    3
+                      :row                    3
+                      :card_id                int?
+                      :visualization_settings {:table_id table-id}}]
+                    (:dashcards resp))))
+          (testing "a clear name"
+            (is (= "Venues (editable)" (:name (t2/select-one :model/Card card-id)))))
+          (testing "if we save the dashboard again, we keep using the same card, and preserve its settings"
+            (t2/update! :model/Card card-id {:visualization_settings {:editable? true, :other_settings 42}})
+            (let [new-resp (mt/user-http-request :rasta :put 200 url (assoc-in dash-map [:dashcards 0 :card_id] card-id))]
+              (is (= card-id (:card_id (first (:dashcards new-resp))))))
+            (is (= 42 (:other_settings (:visualization_settings (t2/select-one :model/Card card-id))))))
+          (testing "if we the change which table we want to edit, we create a new card"
+            (let [new-resp (mt/user-http-request :rasta :put 200 url
+                                                 (update-in dash-map [:dashcards 0] assoc
+                                                            :card_id card-id
+                                                            :visualization_settings {:table_id (mt/id :products)}))]
+              (is (not= card-id (:card_id (first (:dashcards new-resp))))))))))))
 
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
@@ -2967,15 +3003,6 @@
                  3
                  (mt/user-http-request :rasta :get 200 (chain-filter-values-url dash-id "__ID__")))))))))
 
-(deftest combined-chained-filter-results-test
-  (testing "dedupes and sort by value, then by label if exists"
-    (is (= [[1] [2 "B"] [3] [4 "A"] [5 "C"] [6 "D"]]
-           (#'api.dashboard/combine-chained-fitler-results
-            [{:values [[1] [2] [4]]}
-             {:values [[4 "A"] [5 "C"] [6 "D"]]}
-             {:values [[1] [2] [3]]}
-             {:values [[4 "A"] [2 "B"] [5 "C"]]}])))))
-
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
     (when config/ee-available?
@@ -3282,36 +3309,6 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest param->fields-test
-  (testing "param->fields"
-    (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (let [dashboard (t2/hydrate dashboard :resolved-params)]
-        (testing "Should correctly retrieve fields"
-          (is (=? [{:op := :options nil}]
-                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_NAME_"]))))
-          (is (=? [{:op :contains :options {:case-sensitive false}}]
-                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])))))))))
-
-(deftest chain-filter-constraints-test
-  (testing "chain-filter-constraints"
-    (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (let [dashboard (t2/hydrate dashboard :resolved-params)]
-        (testing "Should return correct constraints with =/!="
-          (is (=? [{:op := :value "ood" :options nil}]
-                  (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})))
-          (is (=? [{:op :!= :value "ood" :options nil}]
-                  (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"}))))
-        (testing "Should return correct constraints with a few filters"
-          (is (=? [{:op := :value "foo" :options nil}
-                   {:op :!= :value "bar" :options nil}
-                   {:op :contains :value "buzz" :options {:case-sensitive false}}]
-                  (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_"     "foo"
-                                                                       "_NOT_CATEGORY_NAME_" "bar"
-                                                                       "_CATEGORY_CONTAINS_" "buzz"}))))
-        (testing "Should ignore incorrect/unknown filters"
-          (is (= []
-                 (#'api.dashboard/chain-filter-constraints dashboard {"qqq" "www"}))))))))
-
 ;; See the commented-out test below which calls this helper, and the TODO on why it's disabled.
 #_(defn- card-fields-from-table-metadata
     [card-id]
@@ -3336,7 +3333,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [api.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (with-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card       {card-id :id} {}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -3811,7 +3808,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to update"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1 "name" "Birds"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3838,7 +3835,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to delete"
-                (is (= {:rows-deleted [1]}
+                (is (= {:rows-deleted 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Extra parameter should fail gracefully"
@@ -4057,7 +4054,7 @@
                 (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -4087,7 +4084,7 @@
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                        (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))

@@ -1,15 +1,19 @@
 import { createAction } from "redux-actions";
 
+import { updateSetting } from "metabase/admin/settings/settings";
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
+import type { Card } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
 } from "metabase-types/store";
+
+import { trackFirstNonTableChartGenerated } from "../analytics";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
@@ -113,6 +117,14 @@ export const setNotebookNativePreviewState = (isShown: boolean) =>
     key: "notebook-native-preview-shown",
     value: isShown,
   });
+
+export const setDidFirstNonTableChartRender = (card: Card) => {
+  trackFirstNonTableChartGenerated(card);
+  return updateSetting({
+    key: "non-table-chart-generated",
+    value: true,
+  });
+};
 
 export const setNotebookNativePreviewSidebarWidth = (width: number) =>
   updateUserSetting({

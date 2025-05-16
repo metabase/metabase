@@ -65,7 +65,8 @@
   '#{require
      clojure.core/require
      classloader/require
-     metabase.plugins.classloader/require
+     metabase.classloader.core/require
+     metabase.classloader.impl/require
      requiring-resolve
      clojure.core/requiring-resolve})
 
@@ -375,9 +376,17 @@
         (full-dependencies)))
 
 (defn module-dependencies-mermaid []
+  (println "flowchart TD")
   (doseq [[module deps] (module-dependencies)
           dep deps]
     (printf "%s-->%s\n" module dep)))
+
+(defn module-dependencies-graphviz []
+  (println "digraph {")
+  (doseq [[module deps] (module-dependencies)
+          dep deps]
+    (printf "  \"%s\" -> \"%s\"\n" module dep))
+  (println "}"))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."

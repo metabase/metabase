@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
@@ -107,9 +106,7 @@
   "Retrieve the card with `id` from the app DB."
   [id]
   (-> (t2/select-one :model/Card :id id)
-      api/read-check
-      (t2/hydrate :based_on_upload :creator :can_write :can_run_adhoc_query [:collection :is_personal])
-      (api/present-in-trash-if-archived-directly (collection/trash-collection-id))))
+      api/read-check))
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards from the collection with name `collection-name` from the app DB."
@@ -122,9 +119,7 @@
                    :collection_id [:in collection-query]
                    :archived false
                    {:order-by [:id]})
-        (->> (filter mi/can-read?))
-        (t2/hydrate :based_on_upload :creator :can_write :can_run_adhoc_query [:collection :is_personal])
-        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
+        (->> (filter mi/can-read?)))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.card-test :as api.card-test]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
@@ -19,6 +18,7 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.queries.api.card-test :as api.card-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -1036,12 +1036,11 @@
                                                                                       :schedule_day  nil
                                                                                       :recipients    [(mt/fetch-user :rasta)]}]
                                                                      :skip_if_empty false}))))]
-                (is (= {:message [{"Daily Sad Toucans" true}
+                (is (= {:body    [{"Daily Sad Toucans" true}
                                   pulse.test-util/png-attachment]
-                        :message-type :attachments,
-                        :recipients #{"rasta@metabase.com"}
-                        :subject "Daily Sad Toucans"
-                        :recipient-type nil}
+                        :from    "notifications@metabase.com"
+                        :bcc     #{"rasta@metabase.com"}
+                        :subject "Daily Sad Toucans"}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
 (deftest send-test-pulse-to-non-user-test
@@ -1075,12 +1074,11 @@
                                                                                       :schedule_day  nil
                                                                                       :recipients    [{:email "nonuser@metabase.com"}]}]
                                                                      :skip_if_empty false}))))]
-                (is (= {:message [{"Unsaved Subscription Test" true, "Unsubscribe" false}
+                (is (= {:body    [{"Unsaved Subscription Test" true, "Unsubscribe" false}
                                   pulse.test-util/png-attachment]
-                        :message-type :attachments,
-                        :recipients #{"nonuser@metabase.com"}
-                        :subject "Unsaved Subscription Test"
-                        :recipient-type nil}
+                        :from    "notifications@metabase.com"
+                        :bcc      #{"nonuser@metabase.com"}
+                        :subject "Unsaved Subscription Test"}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Unsaved Subscription Test" #"Unsubscribe")))))))))))
 
 (deftest send-test-alert-with-http-channel-test
@@ -1193,12 +1191,11 @@
                                                                                 :schedule_day  nil
                                                                                 :recipients    [(mt/fetch-user :rasta)]}]
                                                                :skip_if_empty false}))))]
-          (is (= {:message [{"Daily Sad Toucans" true}
+          (is (= {:body    [{"Daily Sad Toucans" true}
                             pulse.test-util/png-attachment]
-                  :message-type :attachments,
-                  :recipients #{"rasta@metabase.com"}
-                  :subject "Daily Sad Toucans"
-                  :recipient-type nil}
+                  :from    "notifications@metabase.com"
+                  :bcc     #{"rasta@metabase.com"}
+                  :subject "Daily Sad Toucans"}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
 (deftest array-query-can-be-emailed-test
@@ -1218,12 +1215,11 @@
                                                                                 :include_xls       false}]
                                                                :channels      [{:channel_type  "email"
                                                                                 :recipients    [(mt/fetch-user :rasta)]}]}))))]
-          (is (= {:message [{"Venues by Category" true}
+          (is (= {:body    [{"Venues by Category" true}
                             pulse.test-util/png-attachment]
-                  :message-type :attachments,
-                  :recipients #{"rasta@metabase.com"}
-                  :subject "Venues by Category"
-                  :recipient-type nil}
+                  :from    "notifications@metabase.com"
+                  :bcc     #{"rasta@metabase.com"}
+                  :subject "Venues by Category"}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Venues by Category"))))))))
 
 (deftest ^:parallel pulse-card-query-results-test

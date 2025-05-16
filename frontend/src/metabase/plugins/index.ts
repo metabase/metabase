@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import React, {
   type ComponentType,
   type HTMLAttributes,
@@ -58,12 +59,14 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   DashCardId,
   Dashboard,
   DashboardId,
   DatabaseId,
   Database as DatabaseType,
   Dataset,
+  DatasetData,
   DatasetError,
   DatasetErrorType,
   Group,
@@ -75,7 +78,9 @@ import type {
   Revision,
   TableId,
   Timeline,
+  TimelineEvent,
   User,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
@@ -679,6 +684,7 @@ export interface AIQuestionAnalysisSidebarProps {
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
 }
 
 export type PluginAIEntityAnalysis = {
@@ -742,6 +748,36 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+    location: Location<{ filter?: string }>;
+  }>,
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
+    dashcardId: number;
+    cardId: number;
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    className?: string;
+    visualizationSettings?: VisualizationSettings;
+    question: Question;
+  }>,
 };
 
 export const PLUGIN_API = {

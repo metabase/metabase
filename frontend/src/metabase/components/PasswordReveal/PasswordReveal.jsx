@@ -69,6 +69,7 @@ export default class PasswordReveal extends Component {
             }
           />
         ) : (
+          // eslint-disable-next-line i18next/no-literal-string
           <span style={styles.input} className={CS.mr3}>
             &#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;
           </span>

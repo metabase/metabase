@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.cluster-lock :as cluster-lock]

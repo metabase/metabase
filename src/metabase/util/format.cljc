@@ -100,3 +100,29 @@
      (if plural
        plural
        (str singular \s)))))
+
+(defn qualified-name
+  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
+  (also unlike `name`).
+
+     (u/qualified-name :type/FK) -> \"type/FK\""
+  [k]
+  (cond
+    (nil? k)
+    nil
+
+    ;; optimization in Clojure: calling [[symbol]] on a keyword returns the underlying symbol, and [[str]] on a symbol
+    ;; is cached internally (see `clojure.lang.Symbol/toString()`). So we can avoid constructing a new string here.
+    ;; Not sure whether this is cached in ClojureScript as well.
+    (keyword? k)
+    (str (symbol k))
+
+    (symbol? k)
+    (str k)
+
+    :else
+    (if-let [namespac (when #?(:clj  (instance? clojure.lang.Named k)
+                               :cljs (satisfies? INamed k))
+                        (namespace k))]
+      (str namespac "/" (name k))
+      (name k))))

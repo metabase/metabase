@@ -188,7 +188,7 @@
 
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
-  `action` is a keyword like `:row/create` or `:bulk/create`; `hsql-query` is a generic
+  `action` is a keyword like `:model.row/create` or `:table.row/create`; `hsql-query` is a generic
   query of the type corresponding to `action`."
   {:changelog-test/ignore true, :arglists '([driver action hsql-query]), :added "0.46.0"}
   (fn [driver action _]
@@ -202,104 +202,6 @@
 
 (defn- prepare-query [hsql-query driver action]
   (prepare-query* driver action hsql-query))
-
-(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
-  [driver action database {database-id :database, :as query}]
-  (let [raw-hsql    (mbql-query->raw-hsql driver query)
-        delete-hsql (-> raw-hsql
-                        (dissoc :select :limit)
-                        (assoc :delete [])
-                        (prepare-query driver action))
-        sql-args    (sql.qp/format-honeysql driver delete-hsql)]
-    (with-jdbc-transaction [conn database-id]
-      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-deleted (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
-        (when-not (= rows-deleted 1)
-          (throw (ex-info (if (zero? rows-deleted)
-                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                          {:staus-code 400})))
-        {:rows-deleted [1]}))))
-
-(defmethod actions/perform-action!* [:sql-jdbc :row/update]
-  [driver action database {database-id :database :keys [update-row] :as query}]
-  (let [raw-hsql     (mbql-query->raw-hsql driver query)
-        target-table (first (:from raw-hsql))
-        update-hsql  (-> raw-hsql
-                         (select-keys [:where])
-                         (assoc :update target-table
-                                :set (cast-values driver update-row database-id (get-in query [:query :source-table])))
-                         (prepare-query driver action))
-        sql-args     (sql.qp/format-honeysql driver update-hsql)]
-    (with-jdbc-transaction [conn database-id]
-      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-      (let [rows-updated (with-auto-parse-sql-exception driver database action
-                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
-        (when-not (= rows-updated 1)
-          (throw (ex-info (if (zero? rows-updated)
-                            (tru "Sorry, the row you''re trying to update doesn''t exist")
-                            (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                          {:staus-code 400})))
-        {:rows-updated [1]}))))
-
-(defmulti select-created-row
-  "Multimethod for converting the result of an insert into the created row.
-  `create-hsql` is the honeysql query used to insert the new row,
-  `conn` is the DB connection used to insert the new row and
-  `result` is the value returned by the insert command."
-  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
-  (fn [driver _ _ _]
-    (driver/dispatch-on-initialized-driver driver))
-  :hierarchy #'driver/hierarchy)
-
-(mr/def ::created-row
-  [:map-of :string :any])
-
-;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
-;;; the newly created row. This function will `SELECT` the newly created row
-;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe ::created-row]
-  [driver create-hsql conn result]
-  (let [select-hsql     (-> create-hsql
-                            (dissoc :insert-into :values)
-                            (assoc :select [:*]
-                                   :from [(:insert-into create-hsql)]
-                                   ;; :and with a single clause will be optimized in HoneySQL
-                                   :where (into [:and]
-                                                (for [[col val] result]
-                                                  [:= (keyword col) val]))))
-        select-sql-args (sql.qp/format-honeysql driver select-hsql)]
-    (log/tracef ":row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
-    (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
-    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
-
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create] :- [:map [:created-row [:maybe ::created-row]]]
-  [driver
-   action
-   database
-   {database-id :database :keys [create-row] :as query} :- ::mbql.s/Query]
-  (let [raw-hsql    (mbql-query->raw-hsql driver query)
-        create-hsql (-> raw-hsql
-                        (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [(cast-values driver create-row database-id (get-in query [:query :source-table]))])
-                        (dissoc :select :from :limit)
-                        (prepare-query driver action))
-        sql-args    (sql.qp/format-honeysql driver create-hsql)]
-    (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
-    (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
-    (with-jdbc-transaction [conn database-id]
-      (let [result (with-auto-parse-sql-exception driver database action
-                     (jdbc/execute! {:connection conn} sql-args {:return-keys  true
-                                                                 :identifiers  identity
-                                                                 :transaction? false
-                                                                 :keywordize?  false}))
-            _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
-            row    (select-created-row driver create-hsql conn result)]
-        (log/tracef ":row/create returned row %s" (pr-str row))
-        {:created-row row}))))
-
-;;;; Bulk actions
 
 (defmulti do-nested-transaction
   "Execute `thunk` inside a nested transaction inside `connection`, which is currently in a transaction. If `thunk`
@@ -322,13 +224,13 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn- perform-bulk-action-with-repeated-single-row-actions!
-  [{:keys [driver database action rows xform]
-    :or   {xform identity}}]
-  (assert (seq rows))
-  (with-jdbc-transaction [conn (u/the-id database)]
+(defn- run-bulk-transaction!
+  "Like [[clojure.core/run!]] but exhaustively executing the procedures within nested transactions.
+   Rolls back the outer transaction if there are any failures, and returns [errors success], golang style."
+  [{:keys [database proc coll]}]
+  (with-jdbc-transaction [conn (:id database)]
     (transduce
-     (comp xform (m/indexed))
+     (m/indexed)
      (fn
        ([]
         [[] []])
@@ -338,61 +240,300 @@
           (.rollback conn))
         [errors successes])
 
-       ([[errors successes] [row-index arg-map]]
+       ([[errors successes] [row-index arg]]
         (try
-          (let [result (do-nested-transaction
-                        driver
-                        conn
-                        (fn []
-                          (actions/perform-action!* driver action database arg-map)))]
-            [errors
-             (conj successes result)])
+          (let [result (do-nested-transaction (:engine database) conn #(proc arg))]
+            [errors (conj successes result)])
           (catch Throwable e
-            [(conj errors {:index row-index, :error (ex-message e)})
+            [(conj errors {:index row-index, :error e})
              successes]))))
+     coll)))
+
+(defn- inputs->db
+  "Given the inputs to a row action, determine the underlying database."
+  [inputs]
+  (let [db-ids (into #{} (map :database inputs))
+        _      (when-not (= 1 (count db-ids))
+                 (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                 {:status-code  400
+                                  :database-ids db-ids})))]
+    (actions/cached-database (first db-ids))))
+
+(defn- record-mutations
+  "Update the context to reflect the modifications made by the action."
+  [context diffs]
+  (update context :effects (fnil into []) (map #(vector :effect/row.modified %) diffs)))
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(defn- subsume-effects
+  "Update the calling context with the effects produced by nested calls."
+  [parent-context child-results]
+  (update parent-context :effects (fnil into []) (mapcat (comp :effects :context)) child-results))
+
+(defn- result-schema [output-schema]
+  [:map {:closed true}
+   [:context :map]
+   [:outputs [:sequential output-schema]]])
+
+(defn- row-delete!* [action database query]
+  (let [db-id                (u/the-id database)
+        driver               (:engine database)
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        delete-hsql          (-> {:delete-from (first from)
+                                  :where       where}
+                                 (prepare-query driver action))
+        sql-args             (sql.qp/format-honeysql driver delete-hsql)]
+    ;; We rely on this per-row transaction for the consistency guarantee of deleting exactly 1 row
+    (with-jdbc-transaction [conn db-id]
+      (let [row-before   (as-> {:select [:*] :from from :where where} %
+                           (prepare-query % driver action)
+                           (sql.qp/format-honeysql driver %)
+                           (jdbc/query {:connection conn} % {:transaction? false})
+                           (first %))
+            ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+            rows-deleted (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-deleted 1)
+          (throw (ex-info (if (zero? rows-deleted)
+                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
+                          {:status-code 400})))
+        {:table-id (-> query :query :source-table)
+         :db-id    (u/the-id database)
+         :before   row-before
+         :after    nil}))))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
+  [action context inputs]
+  (let [database       (inputs->db inputs)
+        ;; TODO it would be nice to make this 1 statement per table, instead of N.
+        ;;      we can rely on the table lock instead of the nested row transactions.
+        [errors diffs] (run-bulk-transaction!
+                        {:database database
+                         :proc     (partial row-delete!* action database)
+                         :coll     inputs})]
+    (if (seq errors)
+      ;; For backwards compatibility
+      (throw (:error (first errors)))
+      {:context (record-mutations context diffs)
+       :outputs [{:rows-deleted (count diffs)}]})))
+
+(defn- row-update!* [action database {:keys [update-row] :as query}]
+  (let [driver       (:engine database)
+        source-table (get-in query [:query :source-table])
+        {:keys [from where]} (mbql-query->raw-hsql driver query)
+        update-hsql  (-> {:update (first from)
+                          :set    (cast-values driver update-row (u/the-id database) source-table)
+                          :where  where}
+                         (prepare-query driver action))
+        sql-args     (sql.qp/format-honeysql driver update-hsql)]
+    (with-jdbc-transaction [conn (u/the-id database)]
+      (let [row-before   (as-> {:select [:*] :from from :where where} %
+                           (prepare-query % driver action)
+                           (sql.qp/format-honeysql driver %)
+                           (jdbc/query {:connection conn} % {:transaction? false})
+                           (first %))
+            ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+            rows-updated (with-auto-parse-sql-exception driver database action
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))
+            _            (when-not (= rows-updated 1)
+                           (throw (ex-info (if (zero? rows-updated)
+                                             (tru "Sorry, the row you''re trying to update doesn''t exist")
+                                             (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
+                                           {:status-code 400})))
+            row-after    (as-> {:select [:*] :from from :where where} %
+                           (prepare-query % driver action)
+                           (sql.qp/format-honeysql driver %)
+                           (jdbc/query {:connection conn} % {:transaction? false})
+                           (first %))]
+        {:table-id (-> query :query :source-table)
+         :db-id    (u/the-id database)
+         :before   row-before
+         :after    row-after}))))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/update]
+  [action context inputs]
+  (let [database          (inputs->db inputs)
+        ;; TODO it would be nice to make this 1 statement per table, instead of N.
+        ;;      we can rely on the table lock instead of the nested row transactions.
+        [errors diffs]    (run-bulk-transaction!
+                           {:database database
+                            :proc     (partial row-update!* action database)
+                            :coll     inputs})]
+    (if (seq errors)
+      ;; For backwards compatibility
+      (throw (:error (first errors)))
+      {:context (record-mutations context diffs)
+       :outputs [{:rows-updated (count diffs)}]})))
+
+(defmulti select-created-row
+  "Multimethod for converting the result of an insert into the created row.
+  `create-hsql` is the honeysql query used to insert the new row,
+  `conn` is the DB connection used to insert the new row and
+  `result` is the value returned by the insert command."
+  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
+  (fn [driver _ _ _]
+    (driver/dispatch-on-initialized-driver driver))
+  :hierarchy #'driver/hierarchy)
+
+(mr/def ::row
+  [:map-of :keyword :any])
+
+(mr/def ::modified-row
+  [:map
+   [:pk     ::row]
+   [:before [:maybe ::row]]
+   [:after  [:maybe ::row]]])
+
+;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
+;;; the newly created row. This function will `SELECT` the newly created row
+;;; assuming that `result` is a map from column names to the generated values.
+(mu/defmethod select-created-row :default :- [:maybe [:map-of :string :any]]
+  [driver create-hsql conn result]
+  (let [select-hsql     (-> create-hsql
+                            (dissoc :insert-into :values)
+                            (assoc :select [:*]
+                                   :from [(:insert-into create-hsql)]
+                                   ;; :and with a single clause will be optimized in HoneySQL
+                                   :where (into [:and]
+                                                (for [[col val] result]
+                                                  [:= (keyword col) val]))))
+        select-sql-args (sql.qp/format-honeysql driver select-hsql)]
+    (log/tracef ":model.row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
+    (log/tracef ":model.row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
+    (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
+
+(defn- row-create!* [action database {:keys [create-row] :as query}]
+  (let [db-id       (u/the-id database)
+        driver      (:engine database)
+        {:keys [from]} (mbql-query->raw-hsql driver query)
+        create-hsql (-> {:insert-into (first from)
+                         :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
+                        (prepare-query driver action))
+        sql-args    (sql.qp/format-honeysql driver create-hsql)]
+    (log/tracef ":model.row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
+    (log/tracef ":model.row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
+    (with-jdbc-transaction [conn db-id]
+      (let [result (with-auto-parse-sql-exception driver database action
+                     (jdbc/execute! {:connection conn} sql-args {:return-keys  true
+                                                                 :identifiers  identity
+                                                                 :transaction? false
+                                                                 :keywordize?  false}))
+            _      (log/tracef ":model.row/create INSERT returned\n\n%s" (u/pprint-to-str result))
+            row    (update-keys (select-created-row driver create-hsql conn result) keyword)]
+        (log/tracef ":model.row/create returned row %s" (pr-str row))
+        {:table-id (-> query :query :source-table)
+         :db-id    (u/the-id database)
+         :before nil
+         :after  row}))))
+
+(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::row]])
+  [action context inputs :- [:sequential ::mbql.s/Query]]
+  (let [database (inputs->db inputs)
+        ;; TODO it would be nice to make this 1 statement per table, instead of N.
+        ;;      we can rely on the table lock instead of the nested row transactions.
+        [errors diffs]    (run-bulk-transaction!
+                           {:database database
+                            :proc     (partial row-create!* action database)
+                            :coll     inputs})]
+    (if (seq errors)
+      ;; For backwards compatibility
+      (throw (:error (first errors)))
+      {:context (record-mutations context diffs)
+       :outputs (mapv #(array-map :created-row (:after %)) diffs)})))
+
+;;;; Bulk actions
+
+(defn- perform-bulk-action-with-repeated-single-row-actions!
+  [{:keys [database action proc rows xform]
+    :or   {xform identity}}]
+  (with-jdbc-transaction [conn (u/the-id database)]
+    ;; TODO accumulate snapshots from row actions
+    (transduce
+     (comp xform (m/indexed))
+     (fn
+       ([]
+        [[] []])
+
+       ([[errors results]]
+        (when (seq errors)
+          (.rollback conn))
+        [errors results])
+
+       ([[errors results] [row-index query]]
+        (try
+          ;; Note that each row action takes care of reverting itself.
+          (let [result (do-nested-transaction (:engine database) conn #(proc action database query))]
+            [errors (conj results result)])
+          (catch Throwable e
+            (log/error e)
+            [(conj errors {:index row-index, :error (ex-message e)})
+             results]))))
      rows)))
 
-;;;; `:bulk/create`
+(defn- batch-execution-by-table-id! [{:keys [inputs row-fn row-action validate-fn input-fn]}]
+  (let [databases (into #{} (map (comp actions/cached-database-via-table-id :table-id)) inputs)
+        _         (when-not (= 1 (count databases))
+                    (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                    {:status-code  400
+                                     :database-ids (map :id databases)})))
+        database  (first databases)
+        driver    (:engine database)
+        x-inputs  (for [[table-id rows] (u/group-by :table-id :row inputs)]
+                    {:table-id table-id, :rows rows})]
+    (when validate-fn
+      (doseq [{:keys [table-id rows]} x-inputs]
+        (validate-fn database table-id rows)))
+    (perform-bulk-action-with-repeated-single-row-actions!
+     {:driver   driver
+      :database database
+      :action   row-action
+      :proc     row-fn
+      :rows     x-inputs
+      ;; We're not yet batching per table, due to the "mapcat". Need to rework the row functions.
+      :xform   (mapcat #(map (partial input-fn database (:table-id %)) (:rows %)))})))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
-  [driver                  :- :keyword
-   _action
-   database                :- [:map
-                               [:id ::lib.schema.id/database]]
-   {:keys [table-id rows]} :- [:map
-                               [:table-id ::lib.schema.id/table]
-                               [:rows     [:sequential ::lib.schema.actions/row]]]]
-  (log/tracef "Inserting %d rows" (count rows))
-  (perform-bulk-action-with-repeated-single-row-actions!
-   {:driver   driver
-    :database database
-    :action   :row/create
-    :rows     rows
-    :xform    (comp (map (fn [row]
-                           {:database   (u/the-id database)
-                            :type       :query
-                            :query      {:source-table table-id}
-                            :create-row row}))
-                    #(completing % (fn [[errors successes]]
-                                     (when (seq errors)
-                                       (throw (ex-info (tru "Error(s) inserting rows.")
-                                                       {:status-code 400, :errors errors})))
-                                     {:created-rows (map :created-row successes)})))}))
+(mr/def ::table-row-input
+  [:map
+   [:table-id ::lib.schema.id/table]
+   [:row ::lib.schema.actions/row]])
 
-;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create]
+  [_action context inputs :- [:sequential ::table-row-input]]
+  (let [[errors results]
+        (batch-execution-by-table-id!
+         {:row-action :model.row/create
+          :row-fn     row-create!*
+          :inputs     inputs
+          :input-fn   (fn [database table-id row]
+                        {:database   (u/the-id database)
+                         :type       :query
+                         :query      {:source-table table-id}
+                         :create-row row})})]
+    (when (seq errors)
+      (throw (ex-info (tru "Error(s) inserting rows.")
+                      {:status-code 400
+                       :errors      errors
+                       :results     results})))
+    {:context (record-mutations context results)
+     :outputs (mapv :after results)}))
+
+;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
 (mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
-  (into {}
-        (comp (filter (fn [{:keys [semantic-type], :as _field}]
-                        (isa? semantic-type :type/PK)))
-              (map (juxt :name :id)))
-        (qp.store/with-metadata-provider database-id
-          (lib.metadata.protocols/fields
-           (qp.store/metadata-provider)
-           table-id))))
+  (actions/cached-value
+   [::table-id->pk-field-name->id table-id]
+   #(into {}
+          (comp (filter (fn [{:keys [semantic-type], :as _field}]
+                          (isa? semantic-type :type/PK)))
+                (map (juxt :name :id)))
+          (qp.store/with-metadata-provider database-id
+            (lib.metadata.protocols/fields
+             (qp.store/metadata-provider)
+             table-id)))))
 
 (defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
@@ -416,7 +557,7 @@
                                                            (pr-str field-name)))]]
                  [:= [:field field-id nil] value])))
 
-;;;; `:bulk/delete`
+;;;; `:table.row/delete`
 
 (defn- check-rows-have-expected-columns-and-no-other-keys
   "Make sure all `rows` have all the keys in `expected-columns` *and no other keys*, or return a 400."
@@ -458,31 +599,42 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
-  [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
-  (log/tracef "Deleting %d rows" (count rows))
-  (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
-    ;; validate the keys in `rows`
-    (check-consistent-row-keys rows)
-    (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
-    (check-unique-rows rows)
-    ;; now do one `:row/delete` for each row
-    (perform-bulk-action-with-repeated-single-row-actions!
-     {:driver   driver
-      :database database
-      :action   :row/delete
-      :rows     rows
-      :xform    (comp (map (fn [row]
-                             {:database database-id
-                              :type     :query
-                              :query    {:source-table table-id
-                                         :filter       (row->mbql-filter-clause pk-name->id row)}}))
-                      #(completing % (fn [[errors _successes]]
-                                       (when (seq errors)
-                                         (throw (ex-info (tru "Error(s) deleting rows.")
-                                                         {:status-code 400, :errors errors})))
-                                       ;; `:bulk/delete` just returns a simple status message on success.
-                                       {:success true})))})))
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
+  [_action context inputs :- [:sequential ::table-row-input]]
+  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+                            (let [database       (actions/cached-database-via-table-id table-id)
+                                  field-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                              [table-id (map keyword (keys field-name->id))]))
+        [errors results]
+        (batch-execution-by-table-id!
+         {:inputs        inputs
+          :row-action    :model.row/delete
+          :row-fn        row-delete!*
+          :validate-fn   (fn [database table-id rows]
+                           (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                             (check-consistent-row-keys rows)
+                             (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
+                             (check-unique-rows rows)))
+          :input-fn      (fn [{db-id :id} table-id row]
+                           {:database db-id
+                            :type     :query
+                            :query    {:source-table table-id
+                                       :filter       (row->mbql-filter-clause
+                                                      (table-id->pk-field-name->id db-id table-id) row)}})})]
+    (when (seq errors)
+      (throw (ex-info (tru "Error(s) deleting rows.")
+                      {:status-code 400
+                       :errors      errors
+                       :results     results})))
+    {:context (record-mutations context results)
+     :outputs (for [diff results]
+                (select-keys
+                 (let [row (:before diff)]
+                   ;; Hideous workaround for QP and direct JDBC disagreeing on case
+                   (merge (update-keys row (comp keyword u/upper-case-en name))
+                          (u/lower-case-map-keys row)
+                          row))
+                 (table-id->pk-keys (:table-id diff))))}))
 
 ;;;; `bulk/update`
 
@@ -493,8 +645,8 @@
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
     (throw (ex-info (tru "Row is missing required primary key column. Required {0}; got {1}"
-                         (pr-str pk-names)
-                         (pr-str (set (keys row))))
+                         (pr-str (sort pk-names))
+                         (pr-str (sort (keys row))))
                     {:row row, :pk-names pk-names, :status-code 400}))))
 
 (mu/defn- check-row-has-some-non-pk-columns
@@ -510,41 +662,31 @@
                        :all-keys    (set (keys row))
                        :pk-names    pk-names})))))
 
-(defn- bulk-update-row-xform
-  "Create a function to use to transform each row coming in to a `:bulk/update` request into an MBQL query that can be
-  passed to `:row/update`."
-  [{database-id :id, :as _database} table-id]
-  ;; TODO -- make sure all rows specify the PK columns
-  (let [pk-name->id (table-id->pk-field-name->id database-id table-id)
-        pk-names    (set (keys pk-name->id))]
-    (fn [row]
-      (check-row-has-all-pk-columns row pk-names)
-      (let [pk-column->value (select-keys row pk-names)]
-        (check-row-has-some-non-pk-columns row pk-names)
-        {:database   database-id
-         :type       :query
-         :query      {:source-table table-id
-                      :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
-         :update-row (apply dissoc row pk-names)}))))
-
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
-  [driver _action database {:keys [table-id rows]}]
-  (log/tracef "Updating %d rows" (count rows))
-  (perform-bulk-action-with-repeated-single-row-actions!
-   {:driver   driver
-    :database database
-    :action   :row/update
-    :rows     rows
-    :xform    (comp (map (bulk-update-row-xform database table-id))
-                    #(completing % (fn [[errors successes]]
-                                     (when (seq errors)
-                                       (throw (ex-info (tru "Error(s) updating rows.")
-                                                       {:status-code 400, :errors errors})))
-                                     ;; `:bulk/update` returns {:rows-updated <number-of-rows-updated>} on success.
-                                     (transduce
-                                      (map (comp first :rows-updated))
-                                      (completing +
-                                                  (fn [num-rows-updated]
-                                                    {:rows-updated num-rows-updated}))
-                                      0
-                                      successes))))}))
+(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/update]
+  [_action context inputs :- [:sequential ::table-row-input]]
+  (let [[errors results]
+        (batch-execution-by-table-id!
+         {:inputs     inputs
+          :row-action :model.row/update
+          :row-fn     row-update!*
+          :input-fn   (fn [database table-id row]
+                        ;; We could optimize the worst case a bit by pre-validating all the rows.
+                        ;; But in the happy case, this saves a bit of memory (and some lines of code).
+                        (let [db-id            (:id database)
+                              pk-name->id      (table-id->pk-field-name->id db-id table-id)
+                              pk-names         (set (keys pk-name->id))
+                              _                (check-row-has-all-pk-columns row pk-names)
+                              _                (check-row-has-some-non-pk-columns row pk-names)
+                              pk-column->value (select-keys row pk-names)]
+                          {:database   db-id
+                           :type       :query
+                           :query      {:source-table table-id
+                                        :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
+                           :update-row (apply dissoc row pk-names)}))})]
+    (when (seq errors)
+      (throw (ex-info (tru "Error(s) updating rows.")
+                      {:status-code 400
+                       :errors      errors
+                       :results     results})))
+    {:context (record-mutations context results)
+     :outputs (mapv :after results)}))

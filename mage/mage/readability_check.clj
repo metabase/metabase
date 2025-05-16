@@ -1,10 +1,12 @@
 (ns mage.readability-check
   (:require
    [babashka.fs :as fs]
-   [clojure.pprint :as pp]
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [edamame.core :as edamame]
    [flatland.ordered.map :as m]))
+
+(set! *warn-on-reflection* true)
 
 (defn- find-data-readers []
   (let [reader-tags (conj (keys (read-string
@@ -123,7 +125,7 @@
                            :starting-at (nth lines (dec start))
                            :ending-at (nth lines (dec (dec end))))]
                #_:clj-kondo/ignore
-               (pp/pprint result)
+               (pprint/pprint result)
                result))
            (catch Exception e
              (let [data (ex-data e)]
@@ -134,12 +136,13 @@
                 :message (ex-message e)
                 :data data}))))))
 
+#_:clj-kondo/ignore
 (comment ;; hi self
 
-  (check "test/metabase/models/card_test.clj" 20)
-  ;; => {:readable true, :starting-at "(ns metabase.models.card-test\n  (:require"}
+  (check "test/metabase/queries/models/card_test.clj" 20)
+  ;; => {:readable true, :starting-at "(ns metabase.queries.models.card-test\n  (:require"}
 
-  (check "test/metabase/models/card_test.clj" 20000)
+  (check "test/metabase/queries/models/card_test.clj" 20000)
   ;; => {:readable false, :exception true,
   ;;     :message "Line number 20000 is greater than the number of lines in the file (1472).",
   ;;     :data {:cause :line-number-too-high}}
@@ -167,7 +170,7 @@
   (check "bin/build/test/i18n/create_artifacts/backend_test.clj" 29)
   ;; => {:readable true, :starting-at "\n(deftest ^:parallel backend-message?"}
 
-;; this should be a test:
+  ;; this should be a test:
   (require '[babashka.fs :as fs])
   (defn read-all-files []
     (set

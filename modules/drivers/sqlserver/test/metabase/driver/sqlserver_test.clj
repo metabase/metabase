@@ -537,46 +537,43 @@
                          :fields      [[:expression "MyTrue"]]
                          :limit       1})
                       (update :query merge args)))]
-          (doseq [{:keys [desc query expected-sql expected-rows]}
+          (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
                     (orders-query {:filter true-value})
                     :expected-sql
-                    {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
-                             "FROM"
-                             "  dbo.orders"
-                             "WHERE"
-                             "  ? = ?"]
-                     :params [1 1 1]}
-                    :expected-rows
-                    [[1]]}
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  1 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
                    {:desc "false filter"
                     :query
                     (orders-query {:filter false-value})
                     :expected-sql
-                    {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
-                             "FROM"
-                             "  dbo.orders"
-                             "WHERE"
-                             "  ? = ?"]
-                     :params [1 0 1]}
-                    :expected-rows
-                    []}
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  0 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  []}
                    {:desc "not filter"
                     :query
                     (orders-query {:filter [:not false-value]})
                     :expected-sql
-                    {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
-                             "FROM"
-                             "  dbo.orders"
-                             "WHERE"
-                             "  NOT (? = ?)"]
-                     :params [1 0 1]}
-                    :expected-rows
-                    [[1]]}
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  NOT (0 = 1)"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
                    {:desc "nested logical operators"
                     :query
                     (orders-query {:filter [:and
@@ -585,19 +582,18 @@
                                              [:expression "MyFalse"]
                                              [:expression "MyTrue"]]]})
                     :expected-sql
-                    {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
-                             "FROM"
-                             "  dbo.orders"
-                             "WHERE"
-                             "  NOT (? = ?)"
-                             "  AND ("
-                             "    (? = ?)"
-                             "    OR (? = ?)"
-                             "  )"]
-                     :params [1 0 1 0 1 1 1]}
-                    :expected-rows
-                    [[1]]}
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  NOT (0 = 1)"
+                     "  AND ("
+                     "    (0 = 1)"
+                     "    OR (1 = 1)"
+                     "  )"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
                    {:desc "case expression"
                     :query
                     (orders-query {:expressions {"MyTrue"  true-value
@@ -606,42 +602,44 @@
                                                                    [[:expression "MyTrue"]  true-value]]]}
                                    :fields [[:expression "MyCase"]]})
                     :expected-sql
-                    {:query ["SELECT"
-                             "  TOP(1) CASE"
-                             "    WHEN ? = ? THEN ?"
-                             "    WHEN ? = ? THEN ?"
-                             "  END AS MyCase"
-                             "FROM"
-                             "  dbo.orders"]
-                     :params [0 1 0 1 1 1]}
-                    :expected-rows
-                    [[1]]}
+                    ["SELECT"
+                     "  TOP(1) CASE"
+                     "    WHEN 0 = 1 THEN 0"
+                     "    WHEN 1 = 1 THEN 1"
+                     "  END AS MyCase"
+                     "FROM"
+                     "  dbo.orders"]
+                    :expected-types [:type/Integer]
+                    :expected-rows  [[1]]}
                    ;; only top-level booleans should be transformed; otherwise an expression like 1 = 1 gets compiled
                    ;; to (1 = 1) = (1 = 1)
                    {:desc "non-top-level booleans"
                     :query
                     (orders-query {:filter [:= true-value true-value]})
                     :expected-sql
-                    {:query ["SELECT"
-                             "  TOP(1) ? AS MyTrue"
-                             "FROM"
-                             "  dbo.orders"
-                             "WHERE"
-                             "  ? = ?"]
-                     :params [1 1 1]}
-                    :expected-rows
-                    [[1]]}]]
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  1 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}]]
             (testing (format "\n%s\nMBQL query = %s\n" desc query)
               (testing "Should generate the correct SQL query"
                 (is (= expected-sql
-                       (-> query
-                           qp.compile/compile
-                           (update :query pretty-sql)))))
+                       (pretty-sql (:query (qp.compile/compile query))))))
               (testing "Should return correct results"
-                (is (= expected-rows
-                       (->> query
-                            qp/process-query
-                            mt/rows)))))))))))
+                (let [result (qp/process-query query)
+                      rows (mt/rows result)
+                      cols (mt/cols result)
+                      results-metadata-cols (-> result :data :results_metadata :columns)]
+                  (is (= expected-rows
+                         rows))
+                  (is (= expected-types
+                         (map :base_type cols)))
+                  (is (= expected-types
+                         (map :base_type results-metadata-cols))))))))))))
 
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver

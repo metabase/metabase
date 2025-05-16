@@ -11,9 +11,9 @@
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
-   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -184,7 +184,7 @@
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (card/model? card)
+      (when-not (queries/model? card)
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
       (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
@@ -196,7 +196,7 @@
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [card           (t2/select-one :model/Card :id card-id)
                 persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-    (when (not (card/model? card))
+    (when (not (queries/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))

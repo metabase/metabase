@@ -50,7 +50,7 @@
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
-;;; in [[metabase.models.field-values]], [[metabase.models.params.chain-filter]],
+;;; in [[metabase.models.field-values]], [[metabase.parameters.chain-filter]],
 ;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 
@@ -239,10 +239,10 @@
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
-  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
-  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
-  massaged into a sequence of [[::column]] metadata just yet. See [[metabase.lib.card/card-metadata-columns]] that
-  converts these as needed."
+  a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
+  converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
+  not quite massaged into a sequence of [[::column]] metadata just yet.
+  See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
   [:map
    {:error/message "Valid Card metadata"}
    [:lib/type    [:= :metadata/card]]

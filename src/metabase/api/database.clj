@@ -6,7 +6,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.table :as api.table]
+   [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.database-routing.core :as database-routing]
@@ -19,13 +19,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :as card]
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
@@ -42,6 +41,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -143,7 +143,7 @@
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- ::card/type
+  [card-type :- ::queries.schema/card-type
    & {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
@@ -176,20 +176,20 @@
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- ::card/type]
+  [card-type :- ::queries.schema/card-type]
   (seq (source-query-cards card-type :xform (take 1))))
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- ::card/type
+  [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
   (for [card (source-query-cards card-type)]
-    (api.table/card->virtual-table card :include-fields? include-fields?)))
+    (schema.table/card->virtual-table card :include-fields? include-fields?)))
 
 (mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- ::card/type
+  [card-type :- ::queries.schema/card-type
    & {:keys [include-tables? include-fields?]}]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
@@ -1256,10 +1256,10 @@
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
-          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
+          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map api.table/card->virtual-table))))
+         (map schema.table/card->virtual-table))))
 
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
@@ -1278,7 +1278,7 @@
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
-          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
+          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map api.table/card->virtual-table))))
+         (map schema.table/card->virtual-table))))

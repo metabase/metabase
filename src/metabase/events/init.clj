@@ -5,7 +5,6 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
-   [metabase.events.cards-notification-deleted-on-card-save]
    [metabase.events.driver-notifications]
    [metabase.events.last-login]
    [metabase.events.schema]))

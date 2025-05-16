@@ -145,9 +145,7 @@
           file-info (slack/upload-file! file-content "diagnostic-info.json")
           blocks (create-slack-message-blocks diagnostic-info file-info)]
       (slack/post-chat-message!
-       bug-report-channel
-       nil
-       {:blocks blocks})
+       {:channel bug-report-channel :blocks blocks})
       {:success true
        :file-url (get file-info :permalink_public)})
     (catch Exception e

@@ -1,6 +1,6 @@
 (ns metabase.models.resolution
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
@@ -18,7 +18,7 @@
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
-    :model/Card                              metabase.models.card
+    :model/Card                              metabase.queries.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -51,7 +51,8 @@
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
     :model/NotificationSubscription          metabase.notification.models
-    :model/ParameterCard                     metabase.models.parameter-card
+    :model/NotificationSystemEvent           metabase.notification.models
+    :model/ParameterCard                     metabase.queries.models.parameter-card
     :model/Permissions                       metabase.permissions.models.permissions
     :model/PermissionsGroup                  metabase.permissions.models.permissions-group
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
@@ -61,13 +62,13 @@
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
-    :model/Query                             metabase.models.query
+    :model/Query                             metabase.queries.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
     :model/QueryCache                        metabase.cache.models.query-cache
-    :model/QueryExecution                    metabase.models.query-execution
-    :model/QueryField                        metabase.models.query-field
-    :model/QueryTable                        metabase.models.query-table
+    :model/QueryExecution                    metabase.queries.models.query-execution
+    :model/QueryField                        metabase.queries.models.query-field
+    :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
@@ -79,6 +80,7 @@
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
+    :model/Undo                              metabase-enterprise.data-editing.undo
     :model/User                              metabase.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.models.user-parameter-value

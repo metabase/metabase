@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { substitute_tags } from "cljs/metabase.models.params.shared";
+import { substitute_tags } from "cljs/metabase.parameters.shared";
 import { siteLocale, withInstanceLanguage } from "metabase/lib/i18n";
 
 export function fillParametersInText({

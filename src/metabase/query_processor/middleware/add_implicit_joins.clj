@@ -28,7 +28,7 @@
   Fields from metadata are not considered. It is expected, that field which would cause implicit join is in the query
   and not just in it's metadata. Example of query having `:source-field` fields in `:source-metadata` and no use of
   `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
-  [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
+  [[metabase.parameters.custom-values-test/with-mbql-card-test]]."
   [x]
   (set (lib.util.match/match x
          [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]

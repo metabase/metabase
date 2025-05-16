@@ -11,7 +11,7 @@ describe("parameters/utils/template-tag-options", () => {
   describe("getParameterOptions", () => {
     it("should return options with operator subtypes", () => {
       const options = new Set(_.map(getParameterOptions(), "type"));
-      const expectedOptionTypes = ["id"].concat(
+      const expectedOptionTypes = ["id", "boolean/="].concat(
         _.map(PARAMETER_OPERATOR_TYPES.number, "type"),
         _.map(PARAMETER_OPERATOR_TYPES.string, "type"),
         _.map(PARAMETER_OPERATOR_TYPES.date, "type"),
@@ -43,7 +43,6 @@ describe("parameters/utils/template-tag-options", () => {
     const field = {
       isDate: () => false,
       isID: () => false,
-      isCategory: () => false,
       isCity: () => false,
       isState: () => false,
       isZipCode: () => false,

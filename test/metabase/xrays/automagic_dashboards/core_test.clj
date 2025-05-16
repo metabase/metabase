@@ -8,7 +8,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.query :as query]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -17,13 +16,12 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [metabase.xrays.automagic-dashboards.dashboard-templates
-    :as dashboard-templates]
+   [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
-   [metabase.xrays.test-util.automagic-dashboards
-    :as automagic-dashboards.test]
+   [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -897,39 +895,39 @@
 (deftest adhoc-filter-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 7)))))
 
 (deftest adhoc-count-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:field (mt/id :venues :category_id) nil]]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
+                                                                      :breakout [[:field (mt/id :venues :category_id) nil]]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 17)))))
 
 (deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
-                                          :source-table (mt/id :checkins)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
+                                                                      :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
+                                                                      :source-table (mt/id :checkins)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q 9)))))
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup!
-      (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                          :source-table (mt/id :venues)}
-                                  :type :query
-                                  :database (mt/id)})]
+      (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
+                                                                      :source-table (mt/id :venues)}
+                                                              :type :query
+                                                              :database (mt/id)})]
         (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
 (deftest join-splicing-test
@@ -939,11 +937,11 @@
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
                           :alias        "Dealios"}]
-            q           (query/adhoc-query {:query {:source-table (mt/id :venues)
-                                                    :joins join-vec
-                                                    :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
-                                            :type :query
-                                            :database (mt/id)})
+            q           (api.automagic-dashboards/adhoc-query-instance {:query {:source-table (mt/id :venues)
+                                                                                :joins join-vec
+                                                                                :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
+                                                                        :type :query
+                                                                        :database (mt/id)})
             res         (magic/automagic-analysis q {})
             cards       (vec (:dashcards res))
             join-member (get-in cards [2 :card :dataset_query :query :joins])]
@@ -1315,7 +1313,7 @@
                                                                   {:base-type :type/DateTime :temporal-unit :year}]
                                                               "2018"]}
                                   :parameters []}
-                q                (query/adhoc-query query-with-joins)
+                q                (api.automagic-dashboards/adhoc-query-instance query-with-joins)
                 section-headings (->> (magic/automagic-analysis q {:show :all})
                                       :dashcards
                                       (keep (comp :text :visualization_settings))
@@ -1330,7 +1328,7 @@
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [left                 (query/adhoc-query
+        (let [left                 (api.automagic-dashboards/adhoc-query-instance
                                     (mt/mbql-query orders
                                       {:joins [{:strategy     :left-join
                                                 :alias        "Products"
@@ -1374,7 +1372,7 @@
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
-        (let [left                 (query/adhoc-query
+        (let [left                 (api.automagic-dashboards/adhoc-query-instance
                                     {:database (mt/id)
                                      :type     :query
                                      :query

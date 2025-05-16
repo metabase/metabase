@@ -4,7 +4,7 @@ title: Embedded analytics SDK - quickstart with sample app
 
 # Embedded analytics SDK - quickstart with sample app
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true convert_pro_link_to_embbedding=true %}
 
 This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
 
@@ -15,7 +15,7 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
 - [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
 - [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup)
-- (Optional): [Docker](https://www.docker.com/) 
+- (Optional): [Docker](https://www.docker.com/)
 
 ## Two ways to set up the sample app with Metabase
 
@@ -28,7 +28,7 @@ This quick setup will run a Docker container with the sample app and a sample Me
 
 1. Copy `.env.docker.example` to `.env.docker`.
 2. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
-3. In the top-level directory, run: 
+3. In the top-level directory, run:
     ```bash
     yarn start
     ```

@@ -17,7 +17,7 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
+   [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -32,15 +32,14 @@
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
    (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
-   (java.time Instant OffsetDateTime ZonedDateTime LocalDateTime)
+   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :oracle, :parent #{:sql-jdbc
-                                     ::sql.qp.empty-string-is-null/empty-string-is-null
-                                     ::sql.qp.boolean-is-comparison/boolean-is-comparison})
+                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (doseq [[feature supported?] {:datetime-diff           true
                               :expression-literals     true
@@ -510,10 +509,44 @@
                  :where  [:<= [:raw "rownum"] [:inline (+ offset items)]]}]
        :where  [:> :__rownum__ offset]})))
 
+;; Prior to version 23, Oracle does not have a separate boolean type and instead uses 0/1 which are mapped to
+;; :database-type "NUMBER" and :base-type :type/Decimal.
+(def ^:private boolean-field-types #{:type/Boolean :type/Decimal})
+
+;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
+;; drop these boolean->comparison conversions.
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
+
+(defmethod sql.qp/apply-top-level-clause [:oracle :filter]
+  [driver _ honeysql-form query]
+  (->> (update query :filter boolean->comparison)
+       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
+
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
   [_ bool]
   [:inline (if bool 1 0)])
+
+(defmethod sql.qp/->honeysql [:oracle :and]
+  [driver clause]
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+
+(defmethod sql.qp/->honeysql [:oracle :or]
+  [driver clause]
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+
+(defmethod sql.qp/->honeysql [:oracle :not]
+  [driver clause]
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+
+(defmethod sql.qp/->honeysql [:oracle :case]
+  [driver clause]
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
   [driver [_ expr]]

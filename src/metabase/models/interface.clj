@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
@@ -15,7 +16,6 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -661,6 +661,14 @@
     (str (format "%s does not yet have an implementation for `can-update?`. " (name (models.dispatch/model instance)))
          "Please consider adding one. See dox for `can-update?` for more details."))))
 
+(defmulti visible-filter-clause
+  "Return a honey SQL query fragment that will limit another query to only selecting records visible to the supplied user
+  by filtering on a supplied column or honeysql expression, using a the map of permission type->minimum permission-level.
+
+  Defaults to returning a no-op false statement 0=1."
+  {:arglists '([model column-or-exp user-info perm-type->perm-level])}
+  dispatch-on-model)
+
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation
   of [[can-read?]] and/or [[can-write?]]."
@@ -764,6 +772,10 @@
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
+
+(defmethod visible-filter-clause :default
+  [_m _column-or-expression _user-info _perm-type->perm-level]
+  [:= [:inline 0] [:inline 1]])
 
 ;;;; [[to-json]]
 

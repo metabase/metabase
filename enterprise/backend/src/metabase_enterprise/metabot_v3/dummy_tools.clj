@@ -54,6 +54,8 @@
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
   ([card metadata-provider]
+   (metric-details card metadata-provider nil))
+  ([card metadata-provider {:keys [field-values-fn] :or {field-values-fn add-field-values}}]
    (let [id (:id card)
          metric-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))
          breakouts (lib/breakouts metric-query)
@@ -61,7 +63,7 @@
          visible-cols (->> (lib/visible-columns base-query)
                            (map #(add-table-reference base-query %)))
          filterable-cols (->> (lib/filterable-columns base-query)
-                              add-field-values
+                              field-values-fn
                               (map #(add-table-reference base-query %)))
          default-temporal-breakout (->> breakouts
                                         (map #(lib/find-matching-column % visible-cols))
@@ -114,6 +116,8 @@
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
   ([base metadata-provider]
+   (card-details base metadata-provider nil))
+  ([base metadata-provider {:keys [field-values-fn] :or {field-values-fn add-field-values}}]
    (let [id (:id base)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
@@ -125,7 +129,7 @@
                                                    dataset-query
                                                    card-metadata))
          cols (->> (lib/visible-columns card-query)
-                   add-field-values
+                   field-values-fn
                    (map #(add-table-reference card-query %)))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
@@ -143,7 +147,7 @@
                     :metric metric-details
                     :model card-details)]
     (lib.metadata/bulk-metadata mp :metadata/card (map :id cards))
-    (map #(-> % (detail-fn mp) (assoc :type card-type)) cards)))
+    (map #(-> % (detail-fn mp {:field-values-fn identity}) (assoc :type card-type)) cards)))
 
 (defn answer-sources
   "Get the details metrics and models from the collection with name `collection-name`."

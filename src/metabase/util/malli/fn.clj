@@ -140,6 +140,15 @@
                        (for [arity (:arities arities-value)]
                          (arity-schema arity return-schema options)))))))
 
+(defn- with-schema-fn
+  "Helper function for generating a function form with schema metadata.
+   Takes the function body (arities or single arity) and adds schema metadata."
+  [fn parsed]
+  `(vary-meta
+    ~fn
+    merge
+    {:schema ~(fn-schema parsed {:target :target/metadata})}))
+
 (defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
   (concat
    [(:arglist (md/parse args))]
@@ -322,6 +331,13 @@
   [error-context parsed & [fn-name]]
   `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+
+(defn instrumented-fn-form-with-schema
+  "Like [[instrumented-fn-form]] but the fn will have schema in metadata."
+  [error-context parsed & args]
+  (with-schema-fn
+    (instrumented-fn-form error-context parsed args)
+    parsed))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 

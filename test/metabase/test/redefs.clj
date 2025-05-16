@@ -3,7 +3,7 @@
   needed when running)."
   (:require
    [mb.hawk.parallel]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.test.util.thread-local :as tu.thread-local]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.connection]

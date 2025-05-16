@@ -2,19 +2,21 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
-   [metabase.api.common :as api]
-   [metabase.driver :as driver]
+   [metabase.actions.events :as actions.events]
+   [metabase.actions.scope :as actions.scope]
+   [metabase.api.common :as api] [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [nano-id.core :as nano-id]
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
@@ -22,6 +24,14 @@
   :type :boolean
   :visibility :public
   :database-local :only)
+
+(setting/defsetting database-enable-table-editing
+  (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
+  :default false
+  :type :boolean
+  :visibility :public
+  :database-local :only
+  :export? true)
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -36,7 +46,7 @@
 (defmulti action-arg-map-spec
   "Return the appropriate spec to use to validate the arg map passed to [[perform-action!*]].
 
-    (action-arg-map-spec :row/create) => :actions.args.crud/row.create"
+    (action-arg-map-spec :model.row/create) => :actions.args.crud/row.create"
   {:arglists '([action]), :added "0.44.0"}
   keyword)
 
@@ -45,30 +55,24 @@
   any?)
 
 (defmulti perform-action!*
-  "Multimethod for doing an Action. The specific `action` is a keyword like `:row/create` or `:bulk/create`; the shape
-  of `arg-map` depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
-  validate the args for a given action. When implementing a new action type, be sure to implement both this method
+  "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
+  of each input depends on the action being performed. [[action-arg-map-spec]] returns the appropriate spec to use to
+  validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
   and [[action-arg-map-spec]].
-
-  At the time of this writing Actions are performed with either `POST /api/action/:action-namespace/:action-name`,
-  which passes in the request body as `args-map` directly, or `POST
-  /api/action/:action-namespace/:action-name/:table-id`, which passes in an `args-map` like
-
-    {:table-id <table-id>, :arg <request-body>}
-
-  The former endpoint is currently used for the various `:row/*` Actions while the version with `:table-id` as part of
-  the route is currently used for `:bulk/*` Actions.
 
   DON'T CALL THIS METHOD DIRECTLY TO PERFORM ACTIONS -- use [[perform-action!]] instead which does normalization,
   validation, and binds Database-local values."
-  {:arglists '([driver action database arg-map]), :added "0.44.0"}
-  (fn [driver action _database _arg-map]
-    [(driver/dispatch-on-initialized-driver driver)
+  {:arglists '([action context inputs]), :added "0.44.0"}
+  (fn [action {:keys [driver]} _inputs]
+    [(if driver
+       (driver/dispatch-on-initialized-driver driver)
+       ;; For now, all actions have this as the lowest common denominator, and use it even where the db is irrelevant.
+       :sql-jdbc)
      (keyword action)])
   :hierarchy #'driver/hierarchy)
 
-(defn- known-actions
-  "Set of all known actions."
+(defn- known-implicit-actions
+  "Set of all known legacy actions."
   []
   (into #{}
         (comp (filter sequential?)
@@ -76,9 +80,10 @@
         (keys (methods perform-action!*))))
 
 (defmethod perform-action!* :default
-  [driver action _database _arg-map]
+  [action context _inputs]
   (let [action        (keyword action)
-        known-actions (known-actions)]
+        driver        (:engine context)
+        known-actions (known-implicit-actions)]
     ;; return 404 if the action doesn't exist.
     (when-not (contains? known-actions action)
       (throw (ex-info (i18n/tru "Unknown Action {0}. Valid Actions are: {1}"
@@ -131,6 +136,23 @@
 
   nil)
 
+(defn check-data-editing-enabled-for-database!
+  "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  ;; for now we reuse the :actions driver feature, but specialise the message
+  (when-not (driver.u/supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
+  (setting/with-database-local-values db-settings
+    (when-not (database-enable-table-editing)
+      (throw (ex-info (i18n/tru "Data editing is not enabled.")
+                      {:status-code 400, :database-id db-id}))))
+
+  nil)
+
 (defn- database-for-action [action-or-id]
   (t2/select-one :model/Database {:select [:db.*]
                                   :from   :action
@@ -144,28 +166,159 @@
   [action-or-id]
   (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
+(defmulti handle-effects!*
+  "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
+  {:arglists '([effect-type context payloads]), :added "internal-tools"}
+  (fn [effect-type _context _payloads]
+    (keyword effect-type)))
+
+(defn- handle-effects! [{:keys [effects] :as context}]
+  (let [sans-effects (dissoc context :effects)]
+    (doseq [[event-type payloads] (u/group-by first second effects)]
+      (handle-effects!* event-type sans-effects payloads))))
+
+(mu/defn- perform-action-internal!
+  [action-kw :- qualified-keyword?
+   ctx       :- :map
+   ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
+   inputs    :- [:sequential :map]
+   & {:as _opts}]
+  (let [invocation-id  (nano-id/nano-id)
+        context-before (-> (assoc ctx :invocation-id invocation-id)
+                           (update :invocation-stack u/conjv [action-kw invocation-id]))]
+    (actions.events/publish-action-invocation! action-kw context-before inputs)
+    (try
+      (u/prog1 (perform-action!* action-kw context-before inputs)
+        (let [{context-after :context, :keys [outputs]} <>]
+          (doseq [k [:invocation-id :invocation-stack :user-id]]
+            (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+          ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
+          (handle-effects! context-after)
+          (actions.events/publish-action-success! action-kw context-after outputs)))
+      ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
+      (catch Throwable e
+        (let [msg  (ex-message e)
+              ;; Can't be nil or adding metadata will NPE
+              info (or (ex-data e) {})
+              ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
+              info (with-meta info (merge (meta info) {:exception e}))]
+          ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
+          (actions.events/publish-action-failure! action-kw context-before msg info)
+          (throw e))))))
+
+(defn perform-nested-action!
+  "Similar to [[perform-action!]] but taking an existing context.
+   Assumes (for now) that the schemas have been checked and args coerced, etc. Also doesn't do perms checks yet.
+   Use this if you want to explicitly call an action from within an action and have it traced in the audit log etc."
+  [action-kw context inputs]
+  ;; For now, we are handling effects whenever we "pop" an action, but in future we may want them to propagate.
+  ;; The rationale for this is that it would allow us batch things more atomically (e.g., for notifications)
+  {:context context #_(update context :effects into (:effects context-after))
+   :outputs (:outputs (perform-action-internal! action-kw context inputs))})
+
+(defn cached-database
+  "Uses cache to prevent redundant look-ups with an action call chain."
+  [db-id]
+  (assert db-id "Id cannot be nil")
+  (cached-value [:databases db-id]
+                #(qp.store/with-metadata-provider db-id
+                   (lib.metadata/database (qp.store/metadata-provider)))))
+
+(defn cached-database-via-table-id
+  "Uses cache to prevent redundant look-ups with an action call chain."
+  [table-id]
+  (assert table-id "Id cannot be nil")
+  (cached-database (:db_id (cached-value [:tables table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+
 (mu/defn perform-action!
-  "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
+  "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action
-   arg-map :- [:map
-               [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
-               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
-  (let [action  (keyword action)
-        spec    (action-arg-map-spec action)
-        arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
-    (when (s/invalid? (s/conform spec arg-map))
-      (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
-                      (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
-                                                   (lib.metadata/database (qp.store/metadata-provider))))]
-      (check-actions-enabled-for-database! db)
-      (binding [*misc-value-cache* (atom {})]
-        (qp.perms/check-query-action-permissions* arg-map)
-        (driver/with-driver driver
-          (perform-action!* driver action db arg-map))))))
+   scope
+   arg-map-or-maps
+   & {:keys [policy existing-context]}]
+  (let [action-kw (keyword action)
+        scope     (actions.scope/hydrate-scope scope)
+        arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
+        policy    (or policy
+                      (cond
+                        (:model-id scope)                        :model-action
+                        (= "data-grid" (namespace action-kw))    :data-editing
+                        (= "data-editing" (namespace action-kw)) :data-editing
+                        :else                                    :ad-hoc-invocation))
+        spec      (action-arg-map-spec action-kw)
+        arg-maps  (map (partial normalize-action-arg-map action-kw) arg-maps)
+        errors    (for [arg-map arg-maps
+                        :when (s/invalid? (s/conform spec arg-map))]
+                    {:message (format "Invalid Action arg map for %s: %s" action-kw (s/explain-str spec arg-map))
+                     :data    (s/explain-data spec arg-map)})
+        _         (when (seq errors)
+                    (throw (ex-info (str "Invalid Action arg map(s) for " action-kw)
+                                    {::schema-errors errors})))
+        dbs       (or (seq (map (comp api/check-404 cached-database) (distinct (keep :database arg-maps))))
+                      ;; for data-grid actions that use their scope, rather than arguments
+                      ;; TODO it probably makes more sense for the actions themselves to perform the permissions checks
+                      (some-> scope :database-id cached-database vector))
+        _         (when (> (count dbs) 1)
+                    (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
+                                    {:status-code  400
+                                     :database-ids (map :id dbs)})))
+        db        (first dbs)
+        driver    (:engine db)]
+
+    ;; -- * Authorization* --
+    ;; NOTE: policy should get subsumed by :scope
+    ;; The action might not be database-centric (e.g., call a webhook)
+    (when db
+      (case policy
+        :ad-hoc-invocation
+        (check-actions-enabled-for-database! db)
+        :model-action
+        (check-actions-enabled-for-database! db)
+        :data-editing
+        (check-data-editing-enabled-for-database! db)))
+
+    (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
+      (when (= :model-action policy)
+        (doseq [arg-map arg-maps]
+          (qp.perms/check-query-action-permissions* arg-map)))
+      (when (= :ad-hoc-invocation policy)
+        (doseq [arg-map arg-maps]
+          (cond
+            (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
+            (:table-id arg-map) (qp.perms/check-query-action-permissions*
+                                 {:type :query,
+                                  :database (:database arg-map)
+                                  :query {:source-table (:table-id arg-map)}}))))
+
+      ;; TODO fix tons of tests which execute without user scope
+      (let [result (let [context (-> (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})
+                                     (u/assoc-default :scope scope))]
+                     (if-not driver
+                       (perform-action-internal! action-kw context arg-maps)
+                       (driver/with-driver driver
+                         (let [context (assoc context
+                                              ;; Legacy drivers dispatch on this, for now.
+                                              ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
+                                              ;;      on this and just fail if the dynamically determined driver is incompatible.
+                                              :driver driver)]
+                           (perform-action-internal! action-kw context arg-maps)))))]
+        {:effects (:effects (:context result))
+         :outputs (:outputs result)}))))
+
+(mu/defn perform-action-with-single-input-and-output
+  "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
+  [action arg-map & {:keys [scope] :as opts}]
+  (try (let [scope             (or scope {:unknown :legacy-action})
+             {:keys [outputs]} (perform-action! action scope [arg-map] (dissoc opts :scope))]
+         (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
+         (first outputs))
+       (catch ExceptionInfo e
+         (if-let [{:keys [message data]} (first (::schema-errors (ex-data e)))]
+           (throw (ex-info message data))
+           (throw e)))))
 
 ;;;; Action definitions.
 
@@ -184,7 +337,7 @@
 (s/def :actions.args/common
   (s/keys :req-un [:actions.args.common/database]))
 
-;;; Common base spec for all CRUD row Actions. All CRUD row Actions at least require
+;;; Common base spec for all CRUD model row Actions. All CRUD model row Actions at least require
 ;;;
 ;;;    {:database <id>, :query {:source-table <id>}}
 
@@ -199,7 +352,7 @@
    :actions.args/common
    (s/keys :req-un [:actions.args.crud.row.common/query])))
 
-;;;; `:row/create`
+;;;; `:model.row/create`
 
 ;;; row/create requires at least
 ;;;
@@ -207,7 +360,7 @@
 ;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
 ;;;     :create-row <map>}
 
-(defmethod normalize-action-arg-map :row/create
+(defmethod normalize-action-arg-map :model.row/create
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -219,11 +372,11 @@
    :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.create/create-row])))
 
-(defmethod action-arg-map-spec :row/create
+(defmethod action-arg-map-spec :model.row/create
   [_action]
   :actions.args.crud/row.create)
 
-;;;; `:row/update`
+;;;; `:model.row/update`
 
 ;;; row/update requires at least
 ;;;
@@ -231,7 +384,7 @@
 ;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
 ;;;     :update-row <map>}
 
-(defmethod normalize-action-arg-map :row/update
+(defmethod normalize-action-arg-map :model.row/update
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -252,18 +405,18 @@
    (s/keys :req-un [:actions.args.crud.row.update/update-row
                     :actions.args.crud.row.update/query])))
 
-(defmethod action-arg-map-spec :row/update
+(defmethod action-arg-map-spec :model.row/update
   [_action]
   :actions.args.crud/row.update)
 
-;;;; `:row/delete`
+;;;; `:model.row/delete`
 
 ;;; row/delete requires at least
 ;;;
 ;;;    {:database <id>
 ;;;     :query    {:source-table <id>, :filter <mbql-filter-clause>}}
 
-(defmethod normalize-action-arg-map :row/delete
+(defmethod normalize-action-arg-map :model.row/delete
   [_action query]
   (mbql.normalize/normalize-or-throw query))
 
@@ -280,29 +433,29 @@
    :actions.args.crud.row/common
    (s/keys :req-un [:actions.args.crud.row.delete/query])))
 
-(defmethod action-arg-map-spec :row/delete
+(defmethod action-arg-map-spec :model.row/delete
   [_action]
   :actions.args.crud/row.delete)
 
-;;;; Bulk actions
+;;;; Table actions
 
-;;; All bulk Actions require at least
+;;; All table Actions require at least
 ;;;
 ;;;    {:database <id>, :table-id <id>, :rows [{<key> <value>} ...]}
 
-(s/def :actions.args.crud.bulk.common/table-id
+(s/def :actions.args.crud.table.common/table-id
   :actions.args/id)
 
-(s/def :actions.args.crud.bulk/rows
-  (s/cat :rows (s/+ (s/map-of string? any?))))
+(s/def :actions.args.crud.table/row
+  (s/map-of string? any?))
 
-(s/def :actions.args.crud.bulk/common
+(s/def :actions.args.crud.table/common
   (s/merge
    :actions.args/common
-   (s/keys :req-un [:actions.args.crud.bulk.common/table-id
-                    :actions.args.crud.bulk/rows])))
+   (s/keys :req-un [:actions.args.crud.table.common/table-id
+                    :actions.args.crud.table/row])))
 
-;;; The request bodies for the bulk CRUD actions are all the same. The body of a request to `POST
+;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
 ;;; [[perform-action!]] with
 ;;;
@@ -312,44 +465,18 @@
 ;;;
 ;;;     {:database <database-id>, :table-id <table-id>, :rows <request-body>}
 
-;;;; `:bulk/create`, `:bulk/delete`, `:bulk/update` -- these all have the exact same shapes
+;;;; `:table.row/create`, `:table.row/delete`, `:table.row/update` -- these all have the exact same shapes
 
-(defn- normalize-bulk-crud-action-arg-map
-  [{:keys [database table-id], rows :arg, :as _arg-map}]
-  {:type :query, :query {:source-table table-id}
-   :database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+(derive :table.row/create :table.row/common)
+(derive :table.row/update :table.row/common)
+(derive :table.row/delete :table.row/common)
 
-(defmethod normalize-action-arg-map :bulk/create
-  [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
-
-(defmethod action-arg-map-spec :bulk/create
+(defmethod action-arg-map-spec :table.row/common
   [_action]
-  :actions.args.crud.bulk/common)
+  :actions.args.crud.table/common)
 
-(defmethod normalize-action-arg-map :bulk/update
-  [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
-
-(defmethod action-arg-map-spec :bulk/update
-  [_action]
-  :actions.args.crud.bulk/common)
-
-;;;; `:bulk/delete`
-
-;;; Request-body should look like:
-;;;
-;;;    ;; single pk, two rows
-;;;    [{"ID": 76},
-;;;     {"ID": 77}]
-;;;
-;;;    ;; multiple pks, one row
-;;;    [{"PK1": 1, "PK2": "john"}]
-
-(defmethod normalize-action-arg-map :bulk/delete
-  [_action arg-map]
-  (normalize-bulk-crud-action-arg-map arg-map))
-
-(defmethod action-arg-map-spec :bulk/delete
-  [_action]
-  :actions.args.crud.bulk/common)
+(defmethod normalize-action-arg-map :table.row/common
+  [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
+  {:database (or database (when table-id (cached-database-via-table-id table-id)))
+   :table-id table-id
+   :row      (update-keys (or row row-arg) u/qualified-name)})

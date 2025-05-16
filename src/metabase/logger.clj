@@ -10,8 +10,8 @@
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [flatland.ordered.map :as ordered-map]
-   [metabase.config :as config]
-   [metabase.plugins.classloader :as classloader])
+   [metabase.classloader.core :as classloader]
+   [metabase.config :as config])
   (:import
    (java.lang AutoCloseable)
    (org.apache.commons.lang3.exception ExceptionUtils)

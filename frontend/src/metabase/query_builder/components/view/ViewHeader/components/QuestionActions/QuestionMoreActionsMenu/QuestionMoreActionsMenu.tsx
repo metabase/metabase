@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -20,6 +20,7 @@ import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
+import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -52,6 +53,7 @@ export const QuestionMoreActionsMenu = ({
   onSetQueryBuilderMode,
 }: QuestionMoreActionsMenuProps): JSX.Element | null => {
   const [opened, setOpened] = useState(false);
+  const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const dispatch = useDispatch();
 
@@ -67,9 +69,9 @@ export const QuestionMoreActionsMenu = ({
   const hasCollectionPermissions = question.canWrite();
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
-  const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
-    question.query(),
-  );
+  const hasDataPermissions =
+    underlyingQuestion != null &&
+    Lib.queryDisplayInfo(underlyingQuestion.query()).isEditable;
 
   const reload = () => dispatch(softReloadCard());
 

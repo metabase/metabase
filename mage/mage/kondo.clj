@@ -81,7 +81,8 @@
     (println "Files:")
     (doseq [filename updated-files]
       (println "  " filename))
-    (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)))
+    (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)]
+      (System/exit exit))))
 
 (defn kondo-updated
   "Run Kondo against files that have been changed relative to a Git ref (default `HEAD`).

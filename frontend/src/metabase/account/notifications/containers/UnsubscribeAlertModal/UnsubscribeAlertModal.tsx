@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
+import { UnsubscribeConfirmModal } from "metabase/notifications/modals/shared/UnsubscribeConfirmModal";
 import { addUndo } from "metabase/redux/undo";
 import { getUser } from "metabase/selectors/user";
 import type { Notification, User } from "metabase-types/api";

@@ -10,7 +10,6 @@
     <Logger name="metabase" level="FATAL"/>
     <Logger name="metabase-enterprise" level="FATAL"/>
     <Logger name="metabase.test.gentest" level="INFO"/>
-    <Logger name="metabase.api.common" level="ERROR"/>
 
     <Root level="FATAL">
       <AppenderRef ref="Console"/>

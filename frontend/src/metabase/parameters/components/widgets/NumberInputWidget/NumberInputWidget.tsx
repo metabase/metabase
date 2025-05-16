@@ -22,8 +22,8 @@ import { Footer, TokenFieldWrapper, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 export type NumberInputWidgetProps = {
-  value: ParameterValueOrArray | undefined;
-  setValue: (value: ParameterValueOrArray | undefined) => void;
+  value: ParameterValueOrArray | null | undefined;
+  setValue: (value: ParameterValueOrArray | null | undefined) => void;
   className?: string;
   arity?: "n" | number;
   infixText?: string;

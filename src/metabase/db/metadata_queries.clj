@@ -1,8 +1,9 @@
 (ns metabase.db.metadata-queries
   "Predefined MBQL queries for getting metadata about an external database.
 
-  TODO -- these have nothing to do with the application database. This namespace should be renamed something like
-  `metabase.driver.util.metadata-queries`."
+  TODO -- these have nothing to do with the application database. This namespace should moved into either `schema` or
+  `warehouses` or `sync` (TBD). Some of this stuff has already been moved into [[metabase.warehouse-schema.metadata-queries]],
+  maybe we should move the pure functions there (and move the ones that use the QP somewhere else)."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -16,54 +17,17 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [toucan2.core :as t2]))
-
-(defn- partition-field->filter-form
-  "Given a partition field, returns the default value can be used to query."
-  [field]
-  (let [field-form [:field (:id field) {:base-type (:base_type field)}]]
-    (condp #(isa? %2 %1) (:base_type field)
-      :type/Number   [:> field-form -9223372036854775808]
-      :type/Date     [:> field-form "0001-01-01"]
-      :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
-
-(defn add-required-filters-if-needed
-  "Add a dummy filter for tables that require filters.
-  Look into tables from source tables and all the joins.
-  Currently this only apply to partitioned tables on bigquery that requires a partition filter.
-  In the future we probably want this to be dispatched by database engine or handled by QP."
-  [query]
-  (let [table-ids              (->> (conj (keep :source-table (:joins query)) (:source-table query))
-                                    (filter pos-int?))
-        required-filter-fields (when (seq table-ids)
-                                 (t2/select :model/Field {:select    [:f.*]
-                                                          :from      [[:metabase_field :f]]
-                                                          :left-join [[:metabase_table :t] [:= :t.id :f.table_id]]
-                                                          :where     [:and
-                                                                      [:= :f.active true]
-                                                                      [:= :f.database_partitioned true]
-                                                                      [:= :t.active true]
-                                                                      [:= :t.database_require_filter true]
-                                                                      [:in :t.id table-ids]]}))
-        update-query-filter-fn (fn [existing-filter new-filter]
-                                 (if (some? existing-filter)
-                                   [:and existing-filter new-filter]
-                                   new-filter))]
-    (case (count required-filter-fields)
-      0
-      query
-      1
-      (update query :filter update-query-filter-fn (partition-field->filter-form (first required-filter-fields)))
-      ;; > 1
-      (update query :filter update-query-filter-fn (into [:and] (map partition-field->filter-form required-filter-fields))))))
 
 (defn- add-breakout-idents-if-needed [{:keys [breakout] :as inner-query}]
   (m/assoc-some inner-query :breakout-idents (lib.ident/indexed-idents breakout)))
 
 (defn table-query
   "Runs the `mbql-query` where the source table is `table-id` and returns the result.
-  Add the required filters if the table requires it, see [[add-required-filters-if-needed]] for more details.
-  Also takes an optional `rff`, use the default rff if not provided."
+  Add the required filters if the table requires it,
+  see [[metabase.warehouse-schema.metadata-queries/add-required-filters-if-needed]] for more details. Also takes an optional
+  `rff`, use the default rff if not provided."
   ([table-id mbql-query]
    (table-query table-id mbql-query nil))
   ([table-id mbql-query rff]
@@ -74,34 +38,18 @@
        :database   (t2/select-one-fn :db_id :model/Table table-id)
        :query      (-> mbql-query
                        (assoc :source-table table-id)
-                       add-required-filters-if-needed
+                       schema.metadata-queries/add-required-filters-if-needed
                        add-breakout-idents-if-needed)
        :middleware {:disable-remaps? true}}
       rff))))
 
-(def HumanReadableRemappingMap
-  "Schema for the map of actual value -> human-readable value. Cannot be empty."
-  [:map-of {:min 1} :any [:maybe :string]])
-
-(mu/defn human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
-  "Get the human readable (internally mapped) values of the field specified by `field-id`."
-  [field-id :- ms/PositiveInt]
-  (let [{orig :values, remapped :human_readable_values}
-        (t2/select-one [:model/FieldValues :values :human_readable_values]
-                       {:where [:and
-                                [:= :type "full"]
-                                [:= :field_id field-id]
-                                [:not= :human_readable_values nil]
-                                [:not= :human_readable_values "{}"]]})]
-    (some->> (seq remapped) (zipmap orig))))
-
 (defn search-values-query
-  "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query
-  generated differs slightly based on whether the two Fields are the same Field.
+  "Generate the MBQL query used to power FieldValues search in [[metabase.parameters.field/search-values]]. The actual
+  query generated differs slightly based on whether the two Fields are the same Field.
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
   [field search-field value limit]
-  (if-let [value->human-readable-value (human-readable-remapping-map (u/the-id field))]
+  (if-let [value->human-readable-value (schema.metadata-queries/human-readable-remapping-map (u/the-id field))]
     (let [query (some-> value u/lower-case-en)]
       (cond->> value->human-readable-value
         value (filter #(str/includes? (-> % val u/lower-case-en) query))
@@ -189,7 +137,7 @@
                    (assoc :order-by order-by)
 
                    true
-                   add-required-filters-if-needed)
+                   schema.metadata-queries/add-required-filters-if-needed)
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 

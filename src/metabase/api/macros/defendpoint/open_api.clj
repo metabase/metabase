@@ -29,7 +29,7 @@
 
 (def ^:private file-schema (mjs/transform ms/File {::mjs/definitions-path "#/components/schemas/"}))
 
-(mu/defn- fix-json-schema :- :metabase.api.open-api/parameter.schema
+(mu/defn fix-json-schema :- :metabase.api.open-api/parameter.schema
   "Clean-up JSON schema to make it more understandable for OpenAPI tools.
 
   Returns a new schema WITH an indicator if it's *NOT* required.
@@ -192,13 +192,18 @@
              (vals endpoints))
      :components {:schemas @*definitions*}}))
 
+(defn schema->json-schema
+  "Convert a malli schema to a OpenAI schema schema."
+  [schema]
+  (-> schema mr/resolve-schema mjs/transform fix-json-schema))
+
 #_:clj-kondo/ignore
 (comment
   (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"
-   (:form (metabase.api.macros/find-route 'metabase.api.card :get "/:id/series"))
+   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series"))
 
    (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
        fix-json-schema)))

@@ -6,7 +6,7 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
-   [metabase.plugins :as plugins]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :refer [defsetting]]
    [metabase.sync.util :as sync-util]

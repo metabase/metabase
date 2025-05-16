@@ -457,8 +457,18 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
+
+      cy.log("click on the button to switch target collection");
       cy.findByText("use second collection").click();
       cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
+    });
+
+    cy.log("close any existing open popovers to reduce flakes");
+    cy.get("body").type("{esc}");
+
+    getSdkRoot().within(() => {
+      cy.log("open the data picker");
+      cy.findByText("Pick your starting data").click();
 
       cy.log("ensure that the interactive question still works");
       H.popover().findByRole("link", { name: "Orders" }).click();

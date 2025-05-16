@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { CopyButton } from "metabase/components/CopyButton";
 import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
@@ -17,12 +16,15 @@ import {
 import { useAnalyzeChartMutation } from "../../../api/ai-entity-analysis";
 import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
 
+import { getTimelineEventsForAnalysis } from "./utils";
+
 // This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
 const RENDER_DELAY_MS = 100;
 
 export function AIQuestionAnalysisSidebar({
   question,
-  timelines,
+  timelines = [],
+  visibleTimelineEvents = [],
   className,
   onClose,
 }: AIQuestionAnalysisSidebarProps) {
@@ -47,16 +49,15 @@ export function AIQuestionAnalysisSidebar({
       return;
     }
 
+    const questionCollectionId = question.card().collection_id;
     const timelineEvents =
-      timelines
-        ?.flatMap((timeline) =>
-          timeline.events?.map((event) => ({
-            name: event.name,
-            description: event.description ?? undefined,
-            timestamp: event.timestamp,
-          })),
-        )
-        ?.filter(isNotNull) ?? [];
+      questionCollectionId == null
+        ? []
+        : getTimelineEventsForAnalysis(
+            visibleTimelineEvents,
+            timelines,
+            questionCollectionId,
+          );
 
     analysisTimeoutRef.current = setTimeout(async () => {
       const imageBase64 = await getBase64ChartImage(
@@ -82,7 +83,13 @@ export function AIQuestionAnalysisSidebar({
         analysisTimeoutRef.current = null;
       }
     };
-  }, [analyzeChart, isLoadingComplete, question, timelines]);
+  }, [
+    analyzeChart,
+    isLoadingComplete,
+    question,
+    timelines,
+    visibleTimelineEvents,
+  ]);
 
   const renderCopyButton = () => {
     if (!analysisData?.summary) {

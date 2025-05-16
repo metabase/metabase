@@ -252,7 +252,7 @@
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
   or an ad-hoc query (referred to as a 'question' in this namespace) created with the
-  `metabase.models.query/adhoc-query` function, which has a `:table-id` property."
+  [[metabase.xrays.api.automagic-dashboards/adhoc-query-instance]] function, which has a `:table-id` property."
   ;; TODO - probably better if we just changed `adhoc-query` to use the same keys as Cards (e.g. `:table_id`) so we
   ;; didn't need this function, seems like something that would be too easy to forget
   [card-or-question]

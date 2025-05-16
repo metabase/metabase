@@ -216,9 +216,3 @@
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
-
-(defn export-formats
-  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
-  with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
-  []
-  (set (keys (methods qp.si/stream-options))))

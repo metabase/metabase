@@ -10,7 +10,6 @@ import type {
   CardId,
   DashboardParameterMapping,
   Parameter,
-  Table,
   TableId,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -277,8 +276,8 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         target: ["dimension", ["field", fieldId, { "base-type": baseType }]],
       });
 
-      getTableId(tableName).then((tableId) => {
-        getFieldId(tableId, "id").then((fieldId) => {
+      H.getTableId({ name: tableName }).then((tableId) => {
+        H.getFieldId({ tableId, name: "id" }).then((fieldId) => {
           H.createQuestion(getTargetQuestionDetails(tableId)).then(
             ({ body: card }) => {
               H.createDashboard(dashboardDetails).then(
@@ -937,8 +936,8 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         tableName: string;
         baseType: string;
       }) {
-        getTableId(tableName).then((tableId) => {
-          getFieldId(tableId, "id").then((fieldId) => {
+        H.getTableId({ name: tableName }).then((tableId) => {
+          H.getFieldId({ tableId, name: "id" }).then((fieldId) => {
             const parameterDetails: Parameter = {
               id: "0dcd2f82-2e7d-4989-9362-5c94744a6585",
               name: "ID",
@@ -1047,7 +1046,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         },
       });
 
-      getTableId(tableName).then((tableId) => {
+      H.getTableId({ name: tableName }).then((tableId) => {
         H.createQuestion(getQuestionDetails(tableId), { visitQuestion: true });
       });
     }
@@ -1089,7 +1088,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
 
   it("query builder + object detail", { tags: "@external" }, () => {
     function setupQuestion({ tableName }: { tableName: string }) {
-      getTableId(tableName).then((tableId) =>
+      H.getTableId({ name: tableName }).then((tableId) =>
         H.createQuestion(
           {
             database: WRITABLE_DB_ID,
@@ -1199,7 +1198,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         display: "table",
       });
 
-      getTableId(tableName).then((tableId) => {
+      H.getTableId({ name: tableName }).then((tableId) => {
         H.createQuestion(getTargetQuestionDetails(tableId), {
           wrapId: true,
           visitQuestion: true,
@@ -1410,34 +1409,6 @@ function setupTables() {
   H.resetTestTable({ type: dialect, table: BIGINT_PK_TABLE_NAME });
   H.resetTestTable({ type: dialect, table: DECIMAL_PK_TABLE_NAME });
   H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-}
-
-function getTableId(tableName: string) {
-  return cy
-    .request("GET", "/api/table")
-    .then(({ body: tables }: { body: Table[] }) => {
-      const table = tables.find((table) => table.name === tableName);
-      if (!table) {
-        throw new TypeError(`Table with name ${tableName} cannot be found`);
-      }
-      return table.id;
-    });
-}
-
-function getFieldId(tableId: TableId, fieldName: string) {
-  return cy
-    .request("GET", `/api/table/${tableId}/query_metadata`)
-    .then(({ body: table }: { body: Table }) => {
-      const fields = table.fields ?? [];
-      const field = fields.find((field) => field.name === fieldName);
-      if (!field) {
-        throw new TypeError(`Field with name ${fieldName} cannot be found`);
-      }
-      if (typeof field.id !== "number") {
-        throw new TypeError("Unexpected non-integer field id.");
-      }
-      return field.id;
-    });
 }
 
 function visitPublicQuestion() {

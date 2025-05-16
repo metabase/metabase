@@ -1,7 +1,8 @@
 (ns metabase.search.permissions
   (:require
    [metabase.collections.models.collection :as collection]
-   [metabase.models.table :as table]
+   [metabase.db :as mdb]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
@@ -45,9 +46,12 @@
 (mu/defn permitted-tables-clause
   "Build the WHERE clause corresponding to which tables the given user has access to."
   [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
-  (table/visible-tables-filter-clause
-   table-id-col
+  (mi/visible-filter-clause
+   :model/Table
+   [:cast table-id-col (case (mdb/db-type)
+                         :mysql :signed
+                         :integer)]
    {:user-id current-user-id
-    :is-superuser? is-superuser?
-    :view-data-permission-level :unrestricted
-    :create-queries-permission-level :query-builder}))
+    :is-superuser? is-superuser?}
+   {:perms/view-data :unrestricted
+    :perms/create-queries :query-builder}))

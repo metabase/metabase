@@ -21,13 +21,12 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated.
 
   There is also more written about how these are used for remapping in the docstrings
-  for [[metabase.models.params.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
+  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
@@ -372,11 +371,12 @@
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (try
-    (let [result          (metadata-queries/table-query (:table_id field)
-                                                        {:breakout        [[:field (u/the-id field) nil]]
-                                                         :breakout-idents (lib.ident/indexed-idents 1)
-                                                         :limit           *absolute-max-distinct-values-limit*}
-                                                        (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
+    (let [result          ((requiring-resolve 'metabase.db.metadata-queries/table-query)
+                           (:table_id field)
+                           {:breakout        [[:field (u/the-id field) nil]]
+                            :breakout-idents (lib.ident/indexed-idents 1)
+                            :limit           *absolute-max-distinct-values-limit*}
+                           (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
@@ -394,8 +394,9 @@
 (defn- delete-duplicates-and-return-latest!
   "Takes a list of field values, return a map of field-id -> latest FieldValues.
 
-  If a field has more than one Field Values, delete the old ones. This is a workaround for the issue of stale FieldValues rows (metabase#668)
-  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows.
+  If a field has more than one Field Values, delete the old ones. This is a workaround for the issue of stale
+  FieldValues rows (metabase#668) In order to mitigate the impact of duplicates, we return the most recently updated
+  row, and delete the older rows.
 
   It assumes that all rows are of the same type. Rows could be from multiple field-ids."
   [fvs]

@@ -19,8 +19,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.database :as database]
-   [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
