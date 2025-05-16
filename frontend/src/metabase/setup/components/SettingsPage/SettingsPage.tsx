@@ -50,7 +50,11 @@ export const SettingsPage = (): JSX.Element => {
         {steps.map(({ key }, index) => {
           const Component = STEP_COMPONENTS[key];
           if (Component) {
-            return <Component key={key} stepLabel={index} />;
+            const [firstStep] = steps;
+            const hasWelcomeStep = firstStep.key === "welcome";
+            const stepIndex = hasWelcomeStep ? index : index + 1;
+
+            return <Component key={key} stepLabel={stepIndex} />;
           }
         })}
         <CompletedStep />
