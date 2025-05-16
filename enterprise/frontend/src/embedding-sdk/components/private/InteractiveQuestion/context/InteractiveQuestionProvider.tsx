@@ -9,7 +9,6 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { EntityTypeFilterKeys } from "embedding-sdk/types/question";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -47,7 +46,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  questionId: initialQuestionId,
+  questionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -62,17 +61,6 @@ export const InteractiveQuestionProvider = ({
   withDownloads,
   variant,
 }: InteractiveQuestionProviderProps) => {
-  const {
-    id: questionId,
-    isLoading: isLoadingValidatedId,
-    isError: isCardIdError,
-  } = useValidatedEntityId({
-    type: "card",
-
-    // If the question is new, we won't have a question id yet.
-    id: initialQuestionId === "new" ? undefined : initialQuestionId,
-  });
-
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
 
@@ -146,8 +134,8 @@ export const InteractiveQuestionProvider = ({
   }, [question, variant, plugins]);
 
   const questionContext: InteractiveQuestionContextType = {
-    originalId: initialQuestionId,
-    isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
+    originalId: questionId,
+    isQuestionLoading: isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
     onReset: loadAndQueryQuestion,
@@ -166,7 +154,6 @@ export const InteractiveQuestionProvider = ({
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     targetCollection,
-    isCardIdError,
     withDownloads,
     variant,
   };

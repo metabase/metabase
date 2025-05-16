@@ -2,7 +2,8 @@ import type { AstPath } from "prettier";
 
 import * as Lib from "metabase-lib";
 
-import * as nodeMatchers from "../matchers";
+import { EXPRESSION_OPERATORS } from "../config";
+import * as literal from "../literal";
 
 type Assertion<T> = T extends (expr: any) => expr is infer U ? U : never;
 type Lifted<T> = {
@@ -45,9 +46,40 @@ function liftMatcher<T>(
  *   pathMatchers.isStringLiteral(path)
  */
 export const pathMatchers = lift({
-  ...nodeMatchers,
+  ...literal,
   isExpressionParts: Lib.isExpressionParts,
   isColumnMetadata: Lib.isColumnMetadata,
   isMetricMetadata: Lib.isMetricMetadata,
   isSegmentMetadata: Lib.isSegmentMetadata,
+  isExpressionOperator,
+  isDimensionOperator,
+  isValueOperator,
 });
+
+/**
+ * Return true if the node is an Lib.ExpressionParts and the operator is
+ * one of + - / * < > >= <= = != and or not.
+ */
+export function isExpressionOperator(
+  node: Lib.ExpressionParts | Lib.ExpressionArg,
+): node is Lib.ExpressionParts {
+  return Lib.isExpressionParts(node) && node.operator in EXPRESSION_OPERATORS;
+}
+
+/**
+ * Return true if the node is an Lib.ExpressionParts and the operator is
+ * value.
+ */
+export function isValueOperator(node: Lib.ExpressionParts) {
+  return Lib.isExpressionParts(node) && node.operator === "value";
+}
+
+/**
+ * Return true if the node is an Lib.ExpressionParts and the operator is
+ * dimension (internal use only).
+ */
+export function isDimensionOperator(node: Lib.ExpressionParts) {
+  return (
+    Lib.isExpressionParts(node) && (node.operator as string) === "dimension"
+  );
+}

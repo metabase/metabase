@@ -6,10 +6,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.task-history :as task-history]
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -182,7 +182,12 @@
 (task/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."
+    Run once on startup.
+
+    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
+    This job is needed to create triggers for all existing notification subscriptions after the migration.
+    The fact that it runs on every startup is because we have no way to have it run only once.
+    Ideally this should be a migration."
     DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]

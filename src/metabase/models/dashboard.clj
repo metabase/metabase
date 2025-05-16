@@ -3,24 +3,22 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
-   [metabase.models.audit-log :as audit-log]
-   [metabase.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card]
-   [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
-   [metabase.moderation :as moderation]
+   [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -75,7 +73,7 @@
 (t2/define-before-delete :model/Dashboard
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
-    (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
+    (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
     (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
@@ -89,7 +87,7 @@
 (t2/define-after-insert :model/Dashboard
   [dashboard]
   (u/prog1 dashboard
-    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
+    (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
@@ -97,7 +95,7 @@
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
-        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+        (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
@@ -191,8 +189,6 @@
                                                  :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
       (for [dashboard dashboards]
         (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard)))))))
-
-(comment moderation/keep-me)
 
 (defn archive-or-unarchive-internal-dashboard-questions!
   "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
@@ -461,24 +457,6 @@
      ;; parameter with values_source_type = "card" will depend on a card
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
-
-;;; ------------------------------------------------ Audit Log --------------------------------------------------------
-
-(defmethod audit-log/model-details :model/Dashboard
-  [dashboard event-type]
-  (case event-type
-    (:dashboard-create :dashboard-delete :dashboard-read)
-    (select-keys dashboard [:description :name])
-
-    (:dashboard-add-cards :dashboard-remove-cards)
-    (-> (select-keys dashboard [:description :name :parameters :dashcards])
-        (update :dashcards (fn [dashcards]
-                             (for [{:keys [id card_id]} dashcards]
-                               (-> (t2/select-one [:model/Card :name :description :card_schema], :id card_id)
-                                   (assoc :id id)
-                                   (assoc :card_id card_id))))))
-
-    {}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

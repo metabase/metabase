@@ -13,12 +13,11 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Markdown from "metabase/core/components/Markdown";
 import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getClauseDefinition } from "metabase-lib/v1/expressions/config";
 import {
-  getHelpDocsUrl,
+  type HelpText,
+  getClauseDefinition,
   getHelpText,
-} from "metabase-lib/v1/expressions/helper-text-strings";
-import type { HelpText } from "metabase-lib/v1/expressions/types";
+} from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
@@ -90,7 +89,7 @@ export function HelpText({
   const isSupported = clause && database?.hasFeature(clause?.requiresFeature);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    helpText ? getHelpDocsUrl(helpText) : "",
+    helpText?.docsUrl ?? "",
   );
 
   const handleMouseDown = useCallback(
@@ -113,7 +112,7 @@ export function HelpText({
     return null;
   }
 
-  const { description, structure, args, example } = helpText;
+  const { description, displayName: structure, args, example } = helpText;
   const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (
@@ -126,10 +125,10 @@ export function HelpText({
       >
         <Box>
           {structure}
-          {args != null && (
+          {
             <>
               (
-              {args.map(({ name }, index) => (
+              {args?.map(({ name }, index) => (
                 <span key={index}>
                   <span
                     className={cx(S.arg, {
@@ -145,7 +144,7 @@ export function HelpText({
               ))}
               )
             </>
-          )}
+          }
         </Box>
         <UnstyledButton className={S.toggle} px="sm">
           <Icon
@@ -177,7 +176,9 @@ export function HelpText({
                     {wrapPlaceholder(name)}
                   </Box>
                   <Box data-testid={`arg-${name}-description`}>
-                    <Markdown components={components}>{description}</Markdown>
+                    <Markdown components={components}>
+                      {description ?? ""}
+                    </Markdown>
                   </Box>
                 </Fragment>
               ))}

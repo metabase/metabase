@@ -114,6 +114,9 @@ export type Limit = number | null;
 declare const ColumnMetadataSymbol: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadataSymbol };
 
+declare const ColumnTypeInfoSymbol: unique symbol;
+export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
+
 declare const ColumnGroupSymbol: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroupSymbol };
 

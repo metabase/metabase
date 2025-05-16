@@ -149,24 +149,35 @@
            ;; with negative minibars extending to the left
            (if has-neg?
              [:tr
-              [:td {:style (style/style {:background-color (if is-neg? style/mb-secondary-color-alpha style/mb-primary-color-alpha) :border-radius "3px" :padding "0"})}
+              [:td {:style (style/style {:background-color (if is-neg? (style/mb-secondary-color-alpha) (style/mb-primary-color-alpha))
+                                         :border-radius "3px"
+                                         :padding "0"})}
                [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height (format "%spx" style/mb-height)})}
                 (if is-neg?
                   [:tr
                    [:td {:style (style/style {:width (format "%s%%" neg-pct-left) :padding "0"})}]
-                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color style/mb-secondary-color :border-radius "3px 0 0 3px"})}]
+                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full))
+                                              :padding "0"
+                                              :background-color (style/mb-secondary-color)
+                                              :border-radius "3px 0 0 3px"})}]
                    [:td {:style (style/style {:width "2%" :padding "0" :background-color "white"})}]
                    [:td {:style (style/style {:width "49%" :padding "0"})}]]
                   [:tr
                    [:td {:style (style/style {:width "49%" :padding "0"})}]
                    [:td {:style (style/style {:width "2%" :padding "0" :background-color "white"})}]
-                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full)) :padding "0" :background-color style/mb-primary-color :border-radius "0 3px 3px 0"})}]
+                   [:td {:style (style/style {:width (format "%s%%" (dec neg-pct-full))
+                                              :padding "0"
+                                              :background-color (style/mb-primary-color)
+                                              :border-radius "0 3px 3px 0"})}]
                    [:td {:style (style/style {:width (format "%s%%" neg-pct-left) :padding "0"})}]])]]]
              [:tr
-              [:td {:style (style/style {:background-color style/mb-primary-color-alpha :border-radius "3px" :padding "0"})}
+              [:td {:style (style/style {:background-color (style/mb-primary-color-alpha) :border-radius "3px" :padding "0"})}
                [:table {:style (style/style {:width "100%" :border-collapse "collapse" :height (format "%spx" style/mb-height)})}
                 [:tr
-                 [:td {:style (style/style {:width (format "%s%%" pct-full) :padding "0" :background-color style/mb-primary-color :border-radius "3px"})}]
+                 [:td {:style (style/style {:width (format "%s%%" pct-full)
+                                            :padding "0"
+                                            :background-color (style/mb-primary-color)
+                                            :border-radius "3px"})}]
                  [:td {:style (style/style {:width (format "%s%%" pct-left) :padding "0"})}]]]]])]]]]])
     (h val)))
 
@@ -232,6 +243,19 @@
     (= "middle" text-align) "center"
     :else                   text-align))
 
+(defn- column-has-width
+  "Check if a column has a valid width in the column-widths array.
+   Returns true if:
+   - column-widths is present
+   - column-index is not nil
+   - column-index is within bounds of column-widths
+   - The width at column-index is not nil"
+  [column-widths column-index]
+  (and column-widths
+       (some? column-index)
+       (< column-index (count column-widths))
+       (some? (nth column-widths column-index))))
+
 (defn column->viz-setting-styles
   "Takes a vector of column definitions and visualization settings
   Returns a map of column identifier keys to style maps based on the visualization settings"
@@ -248,10 +272,12 @@
            ;; text wrapping
            (::mb.viz/text-wrapping col-setting)
            (assoc column-name (merge {:white-space "normal"}
-                                     (if column-widths
+                                     (if (column-has-width column-widths column-index)
                                        {:min-width (format "%spx" (get-min-width column-widths column-index))}
-                                       ;; Text wrapping enabled but no column widths supplied, default to 780px
-                                       {:max-width "780px"})))
+                                       ;; Text wrapping enabled but conditions not met, fall back to 780px
+                                       ;; Email clients respond to `min-width`, but slack responds to `width`
+                                       {:max-width "780px !important"
+                                        :width "780px"})))
 
            ;; text alignment
            (::mb.viz/text-align col-setting)
@@ -263,7 +289,7 @@
 
            ;; minibar
            (::mb.viz/show-mini-bar col-setting)
-           (assoc column-name (if column-widths
+           (assoc column-name (if (column-has-width column-widths column-index)
                                 {:width (nth column-widths column-index)
                                  :min-width (get-min-width column-widths column-index)}
                                 {})))))

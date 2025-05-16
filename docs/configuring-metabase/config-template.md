@@ -12,7 +12,6 @@ clojure -M:doc:ee config-template
 
 The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
 
-
 ```yaml
 # A config file template for Metabase.
 # You'll need to update (or remove) the `users` and `databases` sections.
@@ -27,45 +26,45 @@ The template lists example `database`, `user`, and `settings` sections for the [
 version: 1
 config:
   users:
-  - first_name: First
-    last_name: Person
-    password: metabot1
-    email: first@example.com
-  - first_name: Normal
-    last_name: Person
-    password: metabot1
-    email: normal@example.com
-  - first_name: Admin
-    last_name: Person
-    password: metabot1
-    is_superuser: true
-    email: admin@example.com
+    - first_name: First
+      last_name: Person
+      password: metabot1
+      email: first@example.com
+    - first_name: Normal
+      last_name: Person
+      password: metabot1
+      email: normal@example.com
+    - first_name: Admin
+      last_name: Person
+      password: metabot1
+      is_superuser: true
+      email: admin@example.com
   databases:
-  - name: Sample PostgreSQL
-    engine: postgres
-    details:
-      host: postgres-data
-      port: 5432
-      user: metabase
-      password: metasample123
-      dbname: sample
-  - name: Sample MySQL
-    engine: mysql
-    details:
-      host: mysql-data
-      port: 3306
-      user: metabase
-      password: metasample123
-      dbname: sample
+    - name: Sample PostgreSQL
+      engine: postgres
+      details:
+        host: postgres-data
+        port: 5432
+        user: metabase
+        password: metasample123
+        dbname: sample
+    - name: Sample MySQL
+      engine: mysql
+      details:
+        host: mysql-data
+        port: 3306
+        user: metabase
+        password: metasample123
+        dbname: sample
   api-keys:
-  - name: Admin API key
-    group: admin
-    creator: first@example.com
-    key: mb_firsttestapikey123
-  - name: All Users API key
-    group: all-users
-    creator: first@example.com
-    key: mb_secondtestapikey456
+    - name: Admin API key
+      group: admin
+      creator: first@example.com
+      key: mb_firsttestapikey123
+    - name: All Users API key
+      group: all-users
+      creator: first@example.com
+      key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
@@ -102,7 +101,7 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    backfill-entity-ids-repeat-ms: 2000
+    backfill-entity-ids-repeat-ms: 3000
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -136,7 +135,6 @@ config:
     enable-embedding-interactive: false
     enable-embedding-sdk: false
     enable-embedding-static: false
-    enable-field-usage-analysis: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -149,7 +147,7 @@ config:
     gsheets: null
     health-check-logging-enabled: true
     help-link: metabase
-    help-link-custom-destination: https://www.metabase.com/help/premium
+    help-link-custom-destination: https://www.metabase.com/help-premium
     humanization-strategy: simple
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
@@ -162,7 +160,7 @@ config:
     jwt-identity-provider-uri: null
     jwt-shared-secret: null
     jwt-user-provisioning-enabled: true
-    landing-page: ''
+    landing-page: ""
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail

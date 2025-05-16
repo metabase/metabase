@@ -105,7 +105,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
-  it("should handle the use of `regexextract` in a sandboxed table (metabase#14873)", () => {
+  it("should handle the use of `regexExtract` in a sandboxed table (metabase#14873)", () => {
     const CC_NAME = "Firstname";
     // We need ultra-wide screen to avoid scrolling (custom column is rendered at the last position)
     cy.viewport(2200, 1200);
@@ -306,14 +306,8 @@ describe("UI elements that make no sense for users without data permissions (met
       cy.icon("refresh").should("not.exist");
     });
 
-    cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-
-    H.popover()
-      .should("contain", "Dashboard")
-      .and("contain", "Collection")
-      .and("not.contain", "Question");
+    H.newButton().click();
+    H.popover().should("contain", "Dashboard").and("not.contain", "Question");
   });
 
   it("should not show visualization or question settings to users with block data permissions", () => {
@@ -341,14 +335,9 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.icon("refresh").should("not.exist");
     });
-    cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
 
-    H.popover()
-      .should("contain", "Dashboard")
-      .and("contain", "Collection")
-      .and("not.contain", "Question");
+    H.newButton().click();
+    H.popover().should("contain", "Dashboard").and("not.contain", "Question");
   });
 });
 

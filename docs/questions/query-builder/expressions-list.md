@@ -66,7 +66,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [lower](#lower)
     - [notEmpty](#notempty)
     - [path](#path)
-    - [regexextract](./expressions/regexextract.md)
+    - [regexExtract](./expressions/regexextract.md)
     - [replace](#replace)
     - [splitPart](#splitpart)
     - [rTrim](#rtrim)
@@ -99,6 +99,12 @@ For an introduction to expressions, check out the [overview of custom expression
     - [weekday](#weekday)
     - [year](#year)
 
+  - [Type-casting functions](#type-casting-functions)
+
+    - [date](#date)
+    - [integer](#integer)
+    - [text](#text)
+
   - [Window functions](#window-functions)
 
     - [Offset](./expressions/offset.md)
@@ -124,9 +130,9 @@ Example: `Average([Quantity])` would return the mean for the `Quantity` field.
 
 Returns the count of rows (also known as records) in the selected data.
 
-Syntax: `Count`
+Syntax: `Count()`
 
-Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
+Example: `Count()` If a table or result returns 10 rows, `Count` will return `10`.
 
 ### [CountIf](./expressions/countif.md)
 
@@ -413,7 +419,7 @@ Example: `contains([Status], "Class")`.
 
 If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case does not match.
 
-Related: [doesNotContain](#doesnotcontain), [regexextract](#regexextract).
+Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 ### date
 
@@ -455,7 +461,7 @@ Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
 
 Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
-Related: [contains](#contains), [regexextract](#regexextract).
+Related: [contains](#contains), [regexExtract](#regexextract).
 
 ### domain
 
@@ -574,17 +580,17 @@ Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to
 
 Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
-### [regexextract](./expressions/regexextract.md)
+### [regexExtract](./expressions/regexextract.md)
 
-> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+> ⚠️ `regexExtract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexExtract` is only available for the Druid-JDBC driver.
 
 Extracts matching substrings according to a regular expression.
 
-Syntax: `regexextract(text, regular_expression)`
+Syntax: `regexExtract(text, regular_expression)`
 
-Example: `regexextract([Address], "[0-9]+")`
+Example: `regexExtract([Address], "[0-9]+")`
 
-Databases that don't support `regexextract`: H2, SQL Server, SQLite.
+Databases that don't support `regexExtract`: H2, SQL Server, SQLite.
 
 Related: [contains](#contains), [doesNotContain](#doesnotcontain), [substring](#substring).
 
@@ -659,7 +665,7 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
-Related: [regexextract](#regexextract), [replace](#replace).
+Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
 
@@ -805,7 +811,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
 
-Syntax: `now`
+Syntax: `now()`
 
 ### quarter
 
@@ -906,6 +912,12 @@ Syntax: `year([datetime column])`
 
 Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
+## Type-casting functions
+
+- [date](#date)
+- [integer](#integer)
+- [text](#text)
+
 ## Window functions
 
 Window functions can only be used in the **Summarize** section. They cannot be used to create a custom column or a custom filter.
@@ -916,7 +928,7 @@ For more info, check out our page on [cumulative functions](./expressions/cumula
 
 The additive total of rows across a breakout.
 
-Syntax: `CumulativeCount`
+Syntax: `CumulativeCount()`
 
 ### CumulativeSum
 
@@ -954,15 +966,15 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`.
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexExtract`.
 
 **Athena**: `convertTimezone`.
 
 **Databricks**: `convertTimezone`.
 
-**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexextract` is only available for the Druid-JDBC driver.
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexExtract` is only available for the Druid-JDBC driver.
 
-**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexextract`
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`
 
 **MariaDB**: `Median`, `Percentile`, `Offset`.
 
@@ -972,9 +984,9 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **SparkSQL**: `convertTimezone`.
 
-**SQL Server**: `Median`, `Percentile` and `regexextract`.
+**SQL Server**: `Median`, `Percentile` and `regexExtract`.
 
-**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`.
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt` and `Variance`.
 
 **Vertica**: `Median` and `Percentile`.
 

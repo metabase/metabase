@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref var])
+                            + - * / time abs concat replace ref var float])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -96,6 +96,7 @@
   avg
   count-where
   distinct
+  distinct-where
   max
   median
   min
@@ -173,11 +174,11 @@
   get-year
   get-month
   get-day
+  get-day-of-week
   get-hour
   get-minute
   get-second
   get-quarter
-  get-day-of-week
   datetime-add
   datetime-subtract
   concat
@@ -193,7 +194,8 @@
   offset
   text
   split-part
-  integer]
+  integer
+  float]
  [lib.extraction
   column-extractions
   extract

@@ -2,7 +2,6 @@
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
   (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
   (:require
-   [medley.core :as m]
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.types]))
 
@@ -43,21 +42,6 @@
       true
 
       :else false)))
-
-(defn ^:export field-type
-  "Return the category `column` belongs to.
-  The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
-  [column]
-  (m/find-first #(field-type? % column)
-                [::lib.types.constants/temporal
-                 ::lib.types.constants/location
-                 ::lib.types.constants/coordinate
-                 ::lib.types.constants/foreign_key
-                 ::lib.types.constants/primary_key
-                 ::lib.types.constants/boolean
-                 ::lib.types.constants/string
-                 ::lib.types.constants/string_like
-                 ::lib.types.constants/number]))
 
 (defn ^:export temporal?
   "Is `column` of a temporal type?"
@@ -105,9 +89,9 @@
   (field-type? ::lib.types.constants/category column))
 
 (defn ^:export location?
-  "Is `column` of a location type?"
+  "Is `column` a location?"
   [column]
-  (field-type? ::lib.types.constants/location column))
+  (clojure.core/isa? (:semantic-type column) :type/Location))
 
 (defn ^:export description?
   "Is `column` a description?"
@@ -273,7 +257,7 @@
   give it a `has-field-values` value of `:search`."
   [{:keys [base-type effective-type]}]
   ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
-  ;; filter that powers the search queries (see [[metabase.api.field/search-values]]) doesn't work on anything else
+  ;; filter that powers the search queries (see [[metabase.parameters.field/search-values]]) doesn't work on anything else
   (let [column-type (or effective-type base-type)]
     (or (clojure.core/isa? column-type :type/Text)
         (clojure.core/isa? column-type :type/TextLike))))

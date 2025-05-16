@@ -4,7 +4,6 @@
   (:require
    [medley.core :as m]
    [metabase.formatter :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -38,8 +37,8 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [cols           (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
-              pivot-grouping (qp.pivot.postprocess/pivot-grouping-key cols)]
+        (let [cols           (streaming.common/column-titles ordered-cols viz-settings format-rows?)
+              pivot-grouping (qp.pivot.postprocess/pivot-grouping-index cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (let [names (cond->> cols
                         pivot-grouping (m/remove-nth pivot-grouping))]

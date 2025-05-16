@@ -185,9 +185,8 @@ describe("issue 17524", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("1");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });
@@ -606,15 +605,6 @@ describe("issue 21665", () => {
     native: { query: "select 2" },
     display: "scalar",
   };
-  function editQ2NativeQuery(query, questionId) {
-    cy.request("PUT", `/api/card/${questionId}`, {
-      dataset_query: {
-        type: "native",
-        native: { query },
-        database: 1,
-      },
-    });
-  }
 
   beforeEach(() => {
     H.restore();
@@ -649,19 +639,6 @@ describe("issue 21665", () => {
 
     H.saveDashboard();
     cy.wait("@getDashboard");
-  });
-
-  it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
-    cy.get("@questionId").then((questionId) => {
-      editQ2NativeQuery("select order by --", questionId);
-    });
-
-    H.visitDashboard("@dashboardId");
-
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
-    cy.findByTestId("dashcard")
-      .findByText("There was a problem displaying this chart.")
-      .should("be.visible");
   });
 });
 

@@ -1,17 +1,18 @@
 (ns metabase.server.routes
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
-   how these work. `/api/` routes are in `metabase.api.routes`."
+   how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
    [compojure.core :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
    [compojure.route :as route]
-   [metabase.api.dataset :as api.dataset]
-   [metabase.api.routes :as api]
+   [metabase.api-routes.core :as api]
+   [metabase.appearance.core :as appearance]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.util.response :as response]))
@@ -26,17 +27,17 @@
 ;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} public-routes
-  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format api.dataset/export-format-regex]
+  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format qp.schema/export-formats-regex]
     [uuid export-format]
-    (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (public-settings/site-url) uuid export-format)))
+    (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
 ;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
-  (GET ["/question/:token.:export-format", :export-format api.dataset/export-format-regex]
+  (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
-    (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
+    (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
   (GET "*" [] index/embed))
 
 #_{:clj-kondo/ignore [:discouraged-var]}
@@ -44,7 +45,7 @@
   auth-wrapper/routes
   ;; ^/$ -> index.html
   (GET "/" [] index/index)
-  (GET "/favicon.ico" [] (response/resource-response (public-settings/application-favicon-url)))
+  (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" []
     (if (init-status/complete?)

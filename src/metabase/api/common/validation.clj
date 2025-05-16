@@ -2,11 +2,11 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.models.setting :as setting]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common

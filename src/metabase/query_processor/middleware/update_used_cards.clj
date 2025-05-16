@@ -21,7 +21,8 @@
                                         (fn [xs] (apply t/max (map :timestamp xs))))]
     (log/debugf "Update last_used_at of %d cards" (count card-id->timestamp))
     (try
-      (cluster-lock/with-cluster-lock ::used-at-update
+      ;; need to use a shared lock for all updates to the card table
+      (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
         (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
                     {:last_used_at (into [:case]
                                          (mapcat (fn [[id timestamp]]

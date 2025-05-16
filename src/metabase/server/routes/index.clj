@@ -6,9 +6,10 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup.util]
+   [metabase.appearance.core :as appearance]
    [metabase.core.initialization-status :as init-status]
-   [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -21,7 +22,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- base-href []
-  (let [path (some-> (public-settings/site-url) io/as-url .getPath)]
+  (let [path (some-> (system/site-url) io/as-url .getPath)]
     (str path "/")))
 
 (defn- escape-script [s]
@@ -85,11 +86,11 @@
       :bootstrapJSON        (escape-script (json/encode public-settings))
       :assetOnErrorJS       (load-inline-js "asset_loading_error")
       :userLocalizationJSON (escape-script (load-localization (when should-load-locale-params? (:locale params))))
-      :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
+      :siteLocalizationJSON (escape-script (load-localization (system/site-locale)))
       :nonceJSON            (escape-script (json/encode nonce))
-      :language             (hiccup.util/escape-html (public-settings/site-locale))
-      :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
-      :applicationName      (hiccup.util/escape-html (public-settings/application-name))
+      :language             (hiccup.util/escape-html (system/site-locale))
+      :favicon              (hiccup.util/escape-html (appearance/application-favicon-url))
+      :applicationName      (hiccup.util/escape-html (appearance/application-name))
       :uri                  (hiccup.util/escape-html uri)
       :baseHref             (hiccup.util/escape-html (base-href))
       :embedCode            (when embeddable? (embed/head uri))

@@ -2,53 +2,73 @@ import { t } from "ttag";
 
 export const questionShortcuts = {
   "query-builder-toggle-notebook-editor": {
-    name: t`Toggle Notebook`,
+    get name() {
+      return t`Toggle Notebook`;
+    },
     shortcut: ["e"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-visualization-open-filter": {
-    name: t`Open filter dropdown`,
+    get name() {
+      return t`Open filter dropdown`;
+    },
     shortcut: ["f"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-toggle-summarize-sidebar": {
-    name: t`Open summarize sidebar`,
+    get name() {
+      return t`Open summarize sidebar`;
+    },
     shortcut: ["s"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-bookmark": {
-    name: t`Bookmark Question`,
+    get name() {
+      return t`Bookmark Question`;
+    },
     shortcut: ["o"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-info-sidebar": {
-    name: t`Open question info`,
+    get name() {
+      return t`Open question info`;
+    },
     shortcut: ["]"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-data-refresh": {
-    name: t`Refetch question data`,
+    get name() {
+      return t`Refetch question data`;
+    },
     shortcut: ["r"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-toggle-visualization": {
-    name: t`Toggle viz settings`,
+    get name() {
+      return t`Toggle visualization`;
+    },
     shortcut: ["v"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
   "query-builder-toggle-viz-settings": {
-    name: t`Toggle viz settings`,
-    shortcutGroup: "question",
-    shortcut: ["z s"],
+    get name() {
+      return t`Toggle viz settings`;
+    },
+    shortcutGroup: "question" as const,
+    shortcut: ["y"],
   },
   "query-builder-toggle-viz-types": {
-    name: t`Toggle viz types`,
-    shortcutGroup: "question",
-    shortcut: ["z t"],
+    get name() {
+      return t`Toggle viz types`;
+    },
+    shortcutGroup: "question" as const,
+    shortcut: ["t"],
   },
   "query-builder-send-to-trash": {
-    name: t`Send question to trash`,
+    get name() {
+      return t`Send question to trash`;
+    },
     shortcut: ["$mod+backspace"],
-    shortcutGroup: "question",
+    shortcutGroup: "question" as const,
   },
 };

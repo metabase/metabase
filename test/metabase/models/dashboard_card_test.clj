@@ -1,17 +1,15 @@
 (ns metabase.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card-test :as card-test]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -309,7 +307,7 @@
 
 (deftest ^:parallel identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection    c1       {:name "top level" :location "/" :created_at now}
                      :model/Dashboard     dash     {:name "my dashboard"  :collection_id (:id c1) :created_at now}
                      :model/Card          card     {:name "some question" :collection_id (:id c1) :created_at now}
@@ -320,7 +318,7 @@
                                                     :col                    3
                                                     :created_at             now}]
         (is (= "1311d6dc"
-               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 now])
+               (serdes/raw-hash [(serdes/identity-hash card) (serdes/identity-hash dash) {} 6 3 (:created_at dashcard)])
                (serdes/identity-hash dashcard)))))))
 
 (deftest ^:parallel from-decoded-json-test

@@ -1,13 +1,8 @@
 import { push } from "react-router-redux";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import {
-  deleteMembership,
-  updateMembership,
-} from "metabase/admin/people/people";
-import Groups from "metabase/entities/groups";
+import { permissionApi } from "metabase/api";
 import { createThunkAction } from "metabase/lib/redux";
-import { refreshCurrentUser } from "metabase/redux/user";
 
 import {
   getRevokeManagerGroupsRedirect,
@@ -19,22 +14,22 @@ export const CONFIRM_DELETE_MEMBERSHIP =
   "metabase-enterprise/group_managers/CONFIRM_DELETE_MEMBERSHIP";
 export const confirmDeleteMembership = createThunkAction(
   CONFIRM_DELETE_MEMBERSHIP,
-  (membershipId, currentUserMemberships, view) =>
-    async (dispatch, getState) => {
-      await dispatch(deleteMembership(membershipId));
-      await dispatch(refreshCurrentUser());
+  (membership, currentUserMemberships, view) => async (dispatch, getState) => {
+    await dispatch(
+      permissionApi.endpoints.deleteMembership.initiate(membership),
+    ).unwrap();
 
-      const adminPaths = getAdminPaths(getState());
+    const adminPaths = getAdminPaths(getState());
 
-      const redirectUrl =
-        view === "people"
-          ? getRevokeManagerPeopleRedirect(currentUserMemberships, adminPaths)
-          : getRevokeManagerGroupsRedirect(currentUserMemberships, adminPaths);
+    const redirectUrl =
+      view === "people"
+        ? getRevokeManagerPeopleRedirect(currentUserMemberships, adminPaths)
+        : getRevokeManagerGroupsRedirect(currentUserMemberships, adminPaths);
 
-      if (redirectUrl) {
-        await dispatch(push(redirectUrl));
-      }
-    },
+    if (redirectUrl) {
+      await dispatch(push(redirectUrl));
+    }
+  },
 );
 
 export const CONFIRM_UPDATE_MEMBERSHIP =
@@ -42,8 +37,9 @@ export const CONFIRM_UPDATE_MEMBERSHIP =
 export const confirmUpdateMembership = createThunkAction(
   CONFIRM_UPDATE_MEMBERSHIP,
   (membership, currentUserMemberships, view) => async (dispatch, getState) => {
-    await dispatch(updateMembership(membership));
-    await dispatch(refreshCurrentUser());
+    await dispatch(
+      permissionApi.endpoints.updateMembership.initiate(membership),
+    ).unwrap();
 
     const adminPaths = getAdminPaths(getState());
 
@@ -61,12 +57,12 @@ export const confirmUpdateMembership = createThunkAction(
 export const DELETE_GROUP = "metabase-enterprise/group_managers/DELETE_GROUP";
 export const deleteGroup = createThunkAction(
   DELETE_GROUP,
-  (group) => async (dispatch, getState) => {
-    const groups = Groups.selectors.getList(getState());
-    const isLastGroup = groups.length === 1;
+  (group, groupCount) => async (dispatch, getState) => {
+    const isLastGroup = groupCount === 1;
 
-    await dispatch(Groups.actions.delete({ id: group.id }));
-    await dispatch(refreshCurrentUser());
+    await dispatch(
+      permissionApi.endpoints.deletePermissionsGroup.initiate(group.id),
+    ).unwrap();
 
     if (isLastGroup) {
       const adminPaths = getAdminPaths(getState());

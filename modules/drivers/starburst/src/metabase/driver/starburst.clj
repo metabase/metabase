@@ -1,6 +1,5 @@
 (ns metabase.driver.starburst
   "starburst driver."
-  #_{:clj-kondo/ignore [:metabase/modules]} ; api.common, For legacy impersonation
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -23,10 +22,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.system.core :as system]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -34,20 +33,8 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    SQLType
-    Time
-    Types)
-   (java.time
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLType Time Types)
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
@@ -82,7 +69,7 @@
   [_ {{:keys [card-id dashboard-id]} :info, :as query}]
   (str
    (qp.util/default-query->remark query)
-   (format-field "accountID" (public-settings/site-uuid))
+   (format-field "accountID" (system/site-uuid))
    (format-field "dashboardID" dashboard-id)
    (format-field "cardID" card-id)))
 
@@ -125,10 +112,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/->float :starburst
-  [_ value]
-  (h2x/cast :double value))
 
 (defn- format-mod
   [_fn [x y]]

@@ -9,6 +9,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -16,10 +17,11 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.secrets.core :as secret]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -29,8 +31,8 @@
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
-   (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time Instant OffsetDateTime ZonedDateTime LocalDateTime)
+   (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
+   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
@@ -40,6 +42,7 @@
                                      ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (doseq [[feature supported?] {:datetime-diff           true
+                              :expression-literals     true
                               :now                     true
                               :identifiers-with-spaces true
                               :convert-timezone        true}]
@@ -288,6 +291,10 @@
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
+(defmethod sql.qp/integer-dbtype :oracle
+  [_]
+  "NUMBER(19)")
+
 (def ^:private legacy-max-identifier-length
   "Maximal identifier length for Oracle < 12.2"
   30)
@@ -369,6 +376,14 @@
   [_driver _unit field-or-value]
   (h2x/+ [:raw "timestamp '1970-01-01 00:00:00 UTC'"]
          (num-to-ds-interval :second field-or-value)))
+
+(defmethod sql.qp/float-dbtype :oracle
+  [_]
+  :BINARY_DOUBLE)
+
+(defmethod sql.qp/->date :oracle
+  [_ value]
+  (trunc :dd value))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
@@ -494,10 +509,44 @@
                  :where  [:<= [:raw "rownum"] [:inline (+ offset items)]]}]
        :where  [:> :__rownum__ offset]})))
 
+;; Prior to version 23, Oracle does not have a separate boolean type and instead uses 0/1 which are mapped to
+;; :database-type "NUMBER" and :base-type :type/Decimal.
+(def ^:private boolean-field-types #{:type/Boolean :type/Decimal})
+
+;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
+;; drop these boolean->comparison conversions.
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
+
+(defmethod sql.qp/apply-top-level-clause [:oracle :filter]
+  [driver _ honeysql-form query]
+  (->> (update query :filter boolean->comparison)
+       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
+
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
   [_ bool]
   [:inline (if bool 1 0)])
+
+(defmethod sql.qp/->honeysql [:oracle :and]
+  [driver clause]
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+
+(defmethod sql.qp/->honeysql [:oracle :or]
+  [driver clause]
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+
+(defmethod sql.qp/->honeysql [:oracle :not]
+  [driver clause]
+  (->> (mapv boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+
+(defmethod sql.qp/->honeysql [:oracle :case]
+  [driver clause]
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
   [driver [_ expr]]
@@ -672,3 +721,6 @@
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod sql-jdbc/impl-query-canceled? :oracle [_ ^SQLException e]
+  (= (.getErrorCode e) 1013))

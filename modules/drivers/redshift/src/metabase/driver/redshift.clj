@@ -16,11 +16,10 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.upload :as upload]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -28,12 +27,7 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    Types)))
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,6 +51,11 @@
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [driver database & args]
   (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+
+;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/dynamic-database-types-lookup :redshift
+  [driver database database-types]
+  ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -297,6 +296,10 @@
   [driver [_ field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
+(defmethod sql.qp/->integer :redshift
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
+
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
 
@@ -462,7 +465,7 @@
        (json/encode {:dashboard_id        dashboard-id
                      :chart_id            card-id
                      :optional_user_id    executed-by
-                     :optional_account_id (public-settings/site-uuid)
+                     :optional_account_id (system/site-uuid)
                      :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))
@@ -474,16 +477,16 @@
 (defmethod driver/upload-type->database-type :redshift
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [[:varchar 65535]]
-    ::upload/int                      [:bigint]
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [[:varchar 65535]]
+    :metabase.upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
-    ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
-    ::upload/float                    [(keyword "double precision")]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
-    ::upload/offset-datetime          [:timestamp-with-time-zone]))
+    :metabase.upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
+    :metabase.upload/float                    [(keyword "double precision")]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp]
+    :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/allowed-promotions :redshift [_] {})
 

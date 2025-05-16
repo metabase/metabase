@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   act,
   getIcon,
@@ -7,6 +8,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
@@ -89,7 +91,6 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
-      onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       isTrashedOnRemove={false}
       onRemove={jest.fn()}
@@ -102,6 +103,7 @@ function setup({
       downloadsEnabled
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
+      onEditVisualization={jest.fn()}
     />,
     {
       storeInitialState: {
@@ -125,6 +127,7 @@ describe("DashCard", () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {
@@ -157,11 +160,14 @@ describe("DashCard", () => {
     act(() => {
       jest.runAllTimers();
     });
-    expect(screen.getByText("My Card")).toBeVisible();
-    expect(screen.getByRole("grid")).toBeVisible();
-    expect(screen.getByText("NAME")).toBeVisible();
-    expect(screen.getByText("Davy Crocket")).toBeVisible();
-    expect(screen.getByText("Daniel Boone")).toBeVisible();
+
+    // Scoping to visualization root because there can be other elements with the same text used for column widths measurements
+    const visualizationRoot = screen.getByTestId("visualization-root");
+    expect(within(visualizationRoot).getByText("My Card")).toBeVisible();
+    expect(within(visualizationRoot).getByRole("grid")).toBeVisible();
+    expect(within(visualizationRoot).getByText("NAME")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Davy Crocket")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Daniel Boone")).toBeVisible();
   });
 
   it("should show a text card", () => {
@@ -243,6 +249,62 @@ describe("DashCard", () => {
     it("should show a 'replace card' action for erroring queries", async () => {
       setup({ isEditing: true, dashcardData: erroringDashcardData });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "bar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(screen.getByLabelText("Edit visualization")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Visualize another way"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Show visualization options"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types not supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "smartscalar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(
+        screen.getByLabelText("Visualize another way"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Edit visualization"),
+      ).not.toBeInTheDocument();
     });
 
     it.each([

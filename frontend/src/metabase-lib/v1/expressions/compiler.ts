@@ -1,65 +1,66 @@
 import * as Lib from "metabase-lib";
-import type { Expression } from "metabase-types/api";
 
 import { type ExpressionError, renderError } from "./errors";
 import { compile, lexify, parse } from "./pratt";
 import { type Resolver, resolver as defaultResolver } from "./resolver";
-import type { StartRule } from "./types";
+import type { Hooks } from "./types";
 
 export type CompileResult =
   | {
       error: ExpressionError;
-      expression: null;
       expressionParts: null;
       expressionClause: null;
     }
   | {
       error: null;
-      expression: Expression;
       expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
       expressionClause: Lib.ExpressionClause;
     };
 
 export function compileExpression({
   source,
-  startRule,
+  expressionMode,
   query,
   stageIndex,
   resolver = defaultResolver({
     query,
     stageIndex,
-    startRule,
+    expressionMode,
   }),
+  hooks = {
+    error(error) {
+      throw error;
+    },
+  },
 }: {
   source: string;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   resolver?: Resolver | null;
+  hooks?: Hooks;
 }): CompileResult {
   try {
-    const { tokens } = lexify(source);
-    const { root } = parse(tokens, { throwOnError: true });
+    const tokens = lexify(source);
+
+    hooks.lexified?.({ tokens });
+
+    const root = parse(tokens, { hooks });
     const expressionParts = compile(root, {
-      startRule,
+      expressionMode,
       resolver,
     });
     const expressionClause = Lib.expressionClause(expressionParts);
-    const expression = Lib.legacyExpressionForExpressionClause(
-      query,
-      stageIndex,
-      expressionClause,
-    );
+
+    hooks.compiled?.({ expressionClause, expressionParts });
 
     return {
-      expression,
       expressionParts,
       expressionClause,
       error: null,
     };
   } catch (error) {
     return {
-      expression: null,
       expressionParts: null,
       expressionClause: null,
       error: renderError(error),

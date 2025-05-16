@@ -87,26 +87,6 @@ export function expressionClause(
   return ML.expression_clause(operatorOrParts, args, options ?? null);
 }
 
-export function expressionClauseForLegacyExpression(
-  query: Query,
-  stageIndex: number,
-  mbql: any,
-): ExpressionClause {
-  return ML.expression_clause_for_legacy_expression(query, stageIndex, mbql);
-}
-
-export function legacyExpressionForExpressionClause(
-  query: Query,
-  stageIndex: number,
-  expressionClause: ExpressionClause | AggregationClause | FilterClause,
-): any {
-  return ML.legacy_expression_for_expression_clause(
-    query,
-    stageIndex,
-    expressionClause,
-  );
-}
-
 export type ExpressionMode = "expression" | "aggregation" | "filter";
 export function diagnoseExpression(
   query: Query,

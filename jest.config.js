@@ -11,6 +11,7 @@ const esmPackages = [
   "hast.*",
   "html-void-elements",
   "is-absolute-url",
+  "jose",
   "property-information",
   "rehype-external-links",
   "screenfull",
@@ -123,6 +124,10 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
+      testPathIgnorePatterns: [
+        ...(baseConfig.testPathIgnorePatterns || []),
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+      ],
     },
   ],
 };

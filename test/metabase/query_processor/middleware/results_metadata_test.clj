@@ -197,6 +197,7 @@
           [{:base_type :type/Text
             :database_type "CHARACTER VARYING"
             :display_name "NAME"
+            :ident "native[]__NAME"
             :effective_type :type/Text
             :field_ref [:field "NAME" {:base-type :type/Text}]
             :fingerprint {:global {:distinct-count 100, :nil% 0.0}
@@ -207,14 +208,20 @@
                                              :percent-url 0.0}}}
             :name "NAME"
             :semantic_type :type/Name}]})
-        (let [result (qp/process-query
-                      (qp/userland-query
-                       (mt/native-query {:query "SELECT NAME FROM VENUES"})
-                       {:card-id    (u/the-id card)
-                        :query-hash (qp.util/query-hash {})}))]
-          (is (partial= {:status :completed}
-                        result))))
-      (is (nil? (card-metadata card))))))
+        (let [call-count (atom 0)
+              t2-update!-orig t2/update!]
+          (with-redefs [t2/update! (fn [modelable & args]
+                                     (when (= :model/Card modelable)
+                                       (swap! call-count inc))
+                                     (apply t2-update!-orig modelable args))]
+            (let [result (qp/process-query
+                          (qp/userland-query
+                           (mt/native-query {:query "SELECT NAME FROM VENUES"})
+                           {:card-id    (u/the-id card)
+                            :query-hash (qp.util/query-hash {})}))]
+              (is (partial= {:status :completed}
+                            result)))
+            (is (= 0 @call-count))))))))
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"

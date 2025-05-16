@@ -3,11 +3,13 @@ import {
   InteractiveQuestion,
   type MetabaseQuestion,
 } from "@metabase/embedding-sdk-react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -62,6 +64,20 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       cy.findByText("Product ID").should("be.visible");
       cy.findByText("Max of Quantity").should("be.visible");
+    });
+  });
+
+  it("should show a watermark in development mode", () => {
+    cy.intercept("/api/session/properties", (req) => {
+      req.continue((res) => {
+        res.body["token-features"]["development-mode"] = true;
+      });
+    });
+
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("development-watermark").should("exist");
     });
   });
 
@@ -409,5 +425,54 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.log("Visualize");
     H.visualize();
     H.cartesianChartCircle().should("have.length", LIMIT);
+  });
+
+  it("can change target collection to a different entity id without crashing (metabase#57438)", () => {
+    const TestComponent = () => {
+      const [targetCollection, setTargetCollection] = useState<string | null>(
+        FIRST_COLLECTION_ENTITY_ID!,
+      );
+
+      return (
+        <div>
+          <div>id = {targetCollection}</div>
+
+          <InteractiveQuestion
+            questionId="new"
+            targetCollection={targetCollection}
+            onSave={() => {}}
+            isSaveEnabled
+          />
+
+          <div
+            onClick={() => setTargetCollection(SECOND_COLLECTION_ENTITY_ID!)}
+          >
+            use second collection
+          </div>
+        </div>
+      );
+    };
+
+    mountSdkContent(<TestComponent />);
+
+    getSdkRoot().within(() => {
+      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
+
+      cy.log("click on the button to switch target collection");
+      cy.findByText("use second collection").click();
+      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
+    });
+
+    cy.log("close any existing open popovers to reduce flakes");
+    cy.get("body").type("{esc}");
+
+    getSdkRoot().within(() => {
+      cy.log("open the data picker");
+      cy.findByText("Pick your starting data").click();
+
+      cy.log("ensure that the interactive question still works");
+      H.popover().findByRole("link", { name: "Orders" }).click();
+      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+    });
   });
 });
