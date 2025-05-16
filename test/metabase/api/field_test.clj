@@ -2,7 +2,6 @@
   "Tests for `/api/field` endpoints."
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
@@ -21,13 +20,11 @@
 
 (defn- db-details []
   (merge
-   {:engine        "h2"
-    :name          "test-data (h2)"
-    :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :timezone      "UTC"
-    :settings      {}}
-   (select-keys (mt/db) [:id :entity_id :timezone :initial_sync_status :cache_field_values_schedule
-                         :metadata_sync_schedule])))
+   {:engine   "h2"
+    :name     "test-data (h2)"
+    :features (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
+    :settings {}}
+   (select-keys (mt/db) [:id :entity_id :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
 
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
@@ -37,7 +34,6 @@
                             :id (mt/id :users :name))
              {:table_id         (mt/id :users)
               :table            (merge
-                                 (mt/obj->json->obj (mt/object-defaults :model/Table))
                                  (t2/select-one [:model/Table :created_at :updated_at :entity_id
                                                  :initial_sync_status :view_count]
                                                 :id (mt/id :users))
