@@ -11,6 +11,7 @@ import TimelineSidebar from "metabase/query_builder/components/view/sidebars/Tim
 export const NativeQueryRightSidebar = (props) => {
   const {
     question,
+    timelineEvents,
     timelines,
     toggleTemplateTagsEditor,
     toggleDataReference,
@@ -79,6 +80,7 @@ export const NativeQueryRightSidebar = (props) => {
     .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
       <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
         question={question}
+        visibleTimelineEvents={timelineEvents}
         timelines={timelines}
         onClose={onCloseAIQuestionAnalysisSidebar}
       />

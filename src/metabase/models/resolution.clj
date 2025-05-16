@@ -14,11 +14,11 @@
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
-    :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
+    :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
-    :model/Card                              metabase.models.card
+    :model/Card                              metabase.queries.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -27,17 +27,17 @@
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
-    :model/Dashboard                         metabase.models.dashboard
+    :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
-    :model/DashboardCard                     metabase.models.dashboard-card
-    :model/DashboardCardSeries               metabase.models.dashboard-card-series
-    :model/DashboardTab                      metabase.models.dashboard-tab
+    :model/DashboardCard                     metabase.dashboards.models.dashboard-card
+    :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
+    :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
-    :model/Field                             metabase.models.field
-    :model/FieldValues                       metabase.models.field-values
+    :model/Field                             metabase.warehouse-schema.models.field
+    :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
@@ -51,7 +51,7 @@
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
     :model/NotificationSubscription          metabase.notification.models
-    :model/ParameterCard                     metabase.models.parameter-card
+    :model/ParameterCard                     metabase.queries.models.parameter-card
     :model/Permissions                       metabase.permissions.models.permissions
     :model/PermissionsGroup                  metabase.permissions.models.permissions-group
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
@@ -61,13 +61,13 @@
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
-    :model/Query                             metabase.models.query
+    :model/Query                             metabase.queries.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
     :model/QueryCache                        metabase.cache.models.query-cache
-    :model/QueryExecution                    metabase.models.query-execution
-    :model/QueryField                        metabase.models.query-field
-    :model/QueryTable                        metabase.models.query-table
+    :model/QueryExecution                    metabase.queries.models.query-execution
+    :model/QueryField                        metabase.queries.models.query-field
+    :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
@@ -75,7 +75,7 @@
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
-    :model/Table                             metabase.models.table
+    :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event

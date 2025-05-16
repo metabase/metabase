@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           queries
            query-processor
            search
            settings
@@ -96,30 +97,21 @@
 
   api
   {:api #{metabase.api.auth
-          metabase.api.card
-          metabase.api.cards
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.dashboard
           metabase.api.database
           metabase.api.dataset
           metabase.api.docs
-          metabase.api.field
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
-          metabase.api.query-metadata
           metabase.api.routes.common
-          metabase.api.table
           metabase.api.user
           metabase.api.util
           metabase.api.util.handlers}
-   :uses #{actions
-           analytics
-           analyze
+   :uses #{analytics
            api-routes
            appearance
-           channel
            classloader
            collections
            config
@@ -134,24 +126,22 @@
            logger
            model-persistence
            models
+           parameters
            permissions
            premium-features
-           pulse
+           queries
            query-processor
            request
-           revisions
            sample-data
-           search
            secrets
            server
            session
            settings
            sso
            sync
-           types
            upload
            util
-           xrays
+           warehouse-schema
            enterprise/advanced-permissions}}
 
   api-keys
@@ -189,7 +179,7 @@
   {:api  #{metabase.bookmarks.api}
    :uses #{api
            db
-           models
+           queries
            util}}
 
   bug-reporting
@@ -234,6 +224,7 @@
            appearance
            collections
            config
+           dashboards
            db
            driver
            events
@@ -242,6 +233,7 @@
            lib-be
            models
            notification
+           parameters
            permissions
            premium-features
            system
@@ -307,8 +299,10 @@
            events
            legacy-mbql
            models
+           notification
            permissions
            premium-features
+           queries
            request
            revisions
            search
@@ -330,13 +324,42 @@
   {:api  #{metabase.core.initialization-status}
    :uses :any}
 
+  dashboards
+  {:api  #{metabase.dashboards.api
+           metabase.dashboards.constants
+           metabase.dashboards.models.dashboard
+           metabase.dashboards.models.dashboard-card
+           metabase.dashboards.models.dashboard-tab}
+   :uses #{actions
+           analytics
+           api
+           audit-app
+           channel
+           collections
+           config
+           db
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           pulse
+           queries
+           query-processor
+           request
+           revisions
+           search
+           util
+           warehouse-schema
+           xrays}}
+
   database-routing
   {:api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
   db
   {:api  #{metabase.db
-           metabase.db.metadata-queries
            metabase.db.query
            metabase.db.setup}
    :uses #{auth-provider
@@ -344,9 +367,6 @@
            config
            connection-pool
            driver
-           legacy-mbql
-           lib
-           query-processor
            task
            util}}
 
@@ -397,6 +417,7 @@
            sync
            system
            upload
+           warehouse-schema
            warehouses
            util}}
 
@@ -420,8 +441,10 @@
            events
            models
            notification
+           parameters
            premium-features
            public-sharing
+           queries
            query-processor
            settings
            tiles
@@ -430,8 +453,7 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{channel
-           driver
+   :uses #{driver
            models
            util
            view-log}}
@@ -564,6 +586,7 @@
            models
            premium-features
            settings
+           queries
            query-processor
            request
            system
@@ -572,64 +595,37 @@
            util}}
 
   models
-  {:api #{metabase.models.application-permissions-revision
-          metabase.models.card
-          metabase.models.card.metadata
-          metabase.models.dashboard
-          metabase.models.dashboard-card
-          metabase.models.dashboard-tab
-          metabase.models.dashboard.constants
-          metabase.models.database
+  {:api #{metabase.models.database
           metabase.models.dispatch
-          metabase.models.field
-          metabase.models.field-values
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
-          metabase.models.params
-          metabase.models.params.chain-filter
-          metabase.models.params.custom-values
-          metabase.models.params.field-values
-          metabase.models.params.shared
-          metabase.models.query
-          metabase.models.query.permissions
           metabase.models.resolution
           metabase.models.serialization
-          metabase.models.table
           metabase.models.user
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
    :uses #{analytics
-           analyze
            api
            audit-app
-           cache
            channel
            classloader
            collections
            config
-           content-verification
            db
            driver
            events
            legacy-mbql
            lib
-           notification
            permissions
            premium-features
            secrets
            settings
-           public-sharing
-           pulse
-           query-analysis
-           query-processor
-           request
            search
            setup
            sync
            system
-           types
            util}}
 
   native-query-snippets
@@ -653,9 +649,11 @@
            appearance
            channel
            config
+           dashboards
            driver
            events
            models
+           parameters
            permissions
            premium-features
            query-processor
@@ -668,22 +666,49 @@
            task-history
            util}}
 
+  ;; TODO -- too many API namespaces
+  parameters
+  {:api  #{metabase.parameters.chain-filter
+           metabase.parameters.custom-values
+           metabase.parameters.dashboard
+           metabase.parameters.field
+           metabase.parameters.init
+           metabase.parameters.params
+           metabase.parameters.shared}
+   :uses #{api
+           classloader
+           db
+           driver
+           legacy-mbql
+           lib
+           models
+           query-processor
+           types
+           util
+           warehouse-schema}}
+
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
+           ;; TODO -- move these into the API namespace.
+           metabase.permissions.models.application-permissions-revision
            metabase.permissions.models.collection-permission-graph-revision
            metabase.permissions.models.collection.graph
            metabase.permissions.models.data-permissions
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
+           metabase.permissions.models.query.permissions
            metabase.permissions.util}
    :uses #{api
            audit-app
            collections
            config
            db
+           legacy-mbql
+           lib
            models
            premium-features
+           query-processor
            request
            server
            settings
@@ -734,9 +759,12 @@
    :uses #{actions
            analytics
            api
+           dashboards
            events
            lib
            models
+           parameters
+           queries
            query-processor
            request
            settings
@@ -767,6 +795,39 @@
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
+
+  queries
+  {:api  #{metabase.queries.api
+           metabase.queries.core
+           metabase.queries.init
+           metabase.queries.models.query ; TODO FIXME
+           metabase.queries.schema}      ; TODO FIXME
+   :uses #{analytics
+           analyze
+           api
+           audit-app
+           cache
+           channel
+           collections
+           config
+           content-verification
+           db
+           events
+           legacy-mbql
+           lib
+           models
+           parameters
+           permissions
+           premium-features
+           public-sharing
+           pulse
+           query-analysis
+           query-processor
+           request
+           revisions
+           search
+           util
+           warehouse-schema}}
 
   query-analysis
   {:api  #{metabase.query-analysis.core
@@ -833,6 +894,7 @@
            permissions
            pivot
            premium-features
+           queries
            request
            settings
            system
@@ -857,8 +919,10 @@
            metabase.revisions.init}
    :uses #{api
            config
+           dashboards
            events
            models
+           permissions
            util}}
 
   sample-data
@@ -890,6 +954,7 @@
            permissions
            premium-features
            settings
+           queries
            request
            startup
            task
@@ -919,7 +984,6 @@
    :uses #{analytics
            api
            api-keys
-           api-routes
            appearance
            config
            core
@@ -928,6 +992,7 @@
            embedding
            models
            premium-features
+           query-processor
            request
            session
            settings
@@ -1022,7 +1087,8 @@
            settings
            task
            task-history
-           util}}
+           util
+           warehouse-schema}}
 
   system
   {:api  #{metabase.system.core
@@ -1097,9 +1163,11 @@
            model-persistence
            models
            permissions
+           queries
            settings
            sync
-           util}}
+           util
+           warehouse-schema}}
 
   user-key-value
   {:api  #{metabase.user-key-value.api
@@ -1114,11 +1182,12 @@
    :uses #{classloader
            channel
            config
+           dashboards
            db
            driver
            legacy-mbql
            lib
-           models
+           parameters
            settings
            system}}
 
@@ -1139,8 +1208,38 @@
            audit-app
            events
            models
+           permissions
            premium-features
            util}}
+
+  warehouse-schema
+  {:api  #{metabase.warehouse-schema.api
+           metabase.warehouse-schema.field
+           metabase.warehouse-schema.metadata-from-qp
+           metabase.warehouse-schema.metadata-queries
+           metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-values
+           metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.table}
+   :uses #{analyze
+           api
+           audit-app
+           db
+           driver
+           events
+           lib
+           models
+           parameters
+           permissions
+           premium-features
+           query-processor
+           request
+           search
+           sync
+           types
+           upload
+           util
+           xrays}}
 
   warehouses
   {:api  #{metabase.warehouses.core
@@ -1157,13 +1256,17 @@
            appearance
            api
            collections
+           dashboards
            driver
            legacy-mbql
            lib
            models
+           permissions
            settings
+           queries
            query-processor
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
@@ -1197,9 +1300,9 @@
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-  :uses #{api
-          premium-features
-          enterprise/metabot-v3}}
+   :uses #{api
+           premium-features
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -1299,7 +1402,8 @@
            premium-features
            query-processor
            settings
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
@@ -1334,6 +1438,7 @@
            premium-features
            query-processor
            util
+           warehouse-schema
            enterprise/sandbox}}
 
   enterprise/internal-stats
@@ -1354,7 +1459,6 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
-           collections
            config
            db
            legacy-mbql
@@ -1366,7 +1470,8 @@
            query-processor
            request
            system
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/premium-features
   {:api  #{}
@@ -1397,6 +1502,7 @@
            query-processor
            request
            util
+           warehouse-schema
            enterprise/api}}
 
   enterprise/scim
@@ -1437,7 +1543,8 @@
            premium-features
            settings
            setup
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/snippet-collections
   {:api  #{}
@@ -1473,8 +1580,8 @@
            api
            collections
            embedding
-           models
            premium-features
+           queries
            request
            settings
            util}}

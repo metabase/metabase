@@ -5,18 +5,13 @@
    [metabase.activity-feed.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
-   [metabase.api.card]
-   [metabase.api.cards]
-   [metabase.api.dashboard]
    [metabase.api.database]
    [metabase.api.dataset]
    [metabase.api.docs]
-   [metabase.api.field]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.table]
    [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
@@ -27,6 +22,7 @@
    [metabase.cloud-migration.api]
    [metabase.collections.api]
    [metabase.config :as config]
+   [metabase.dashboards.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
    [metabase.geojson.api]
@@ -40,6 +36,7 @@
    [metabase.product-feedback.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
+   [metabase.queries.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -56,20 +53,16 @@
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.warehouse-schema.api]
    [metabase.xrays.api]))
 
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
-         metabase.api.card/keep-me
-         metabase.api.cards/keep-me
-         metabase.api.dashboard/keep-me
          metabase.api.database/keep-me
          metabase.api.dataset/keep-me
-         metabase.api.field/keep-me
          metabase.api.logger/keep-me
-         metabase.api.table/keep-me
          metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -77,6 +70,7 @@
          metabase.cache.api/keep-me
          metabase.cloud-migration.api/keep-me
          metabase.collections.api/keep-me
+         metabase.dashboards.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
@@ -141,19 +135,19 @@
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
-   "/card"                 (+auth 'metabase.api.card)
-   "/cards"                (+auth 'metabase.api.cards)
+   "/card"                 (+auth metabase.queries.api/card-routes)
+   "/cards"                (+auth metabase.queries.api/cards-routes)
    "/channel"              (+auth metabase.channel.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
-   "/dashboard"            (+auth 'metabase.api.dashboard)
+   "/dashboard"            (+auth 'metabase.dashboards.api)
    "/database"             (+auth 'metabase.api.database)
    "/dataset"              (+auth 'metabase.api.dataset)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
-   "/field"                (+auth 'metabase.api.field)
+   "/field"                (+auth metabase.warehouse-schema.api/field-routes)
    "/geojson"              'metabase.geojson.api
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
@@ -177,7 +171,7 @@
    "/setting"              (+auth 'metabase.settings.api)
    "/setup"                'metabase.setup.api
    "/slack"                (+auth metabase.channel.api/slack-routes)
-   "/table"                (+auth 'metabase.api.table)
+   "/table"                (+auth metabase.warehouse-schema.api/table-routes)
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)
