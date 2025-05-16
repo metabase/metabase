@@ -29,10 +29,10 @@ export function menu() {
   return cy.findByRole("menu");
 }
 
-export function modal() {
+export function modal(options = {}) {
   const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","), options);
 }
 
 export function tooltip() {

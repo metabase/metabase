@@ -153,24 +153,26 @@
 
 (declare update-send-pulse-trigger-if-needed!)
 
+(defn- active-dashsub-pcs
+  []
+  (t2/select :model/PulseChannel
+             {:select    [:pc.*]
+              :from      [[:pulse_channel :pc]]
+              :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
+                          [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+              :where     [:and
+                          [:= :pc.enabled true]
+                          ;; only do this for dashboard subscriptions, alert has been
+                          ;; migrated to notifications
+                          [:not= :p.dashboard_id nil]
+                          [:= :d.archived false]]}))
+
 (defn init-dashboard-subscription-triggers!
   "Update send pulse triggers for all active pulses.
   Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
   (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
-  (task/delete-all-triggers-of-job! send-pulse-job-key)
-  (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
-                                              {:select    [:pc.*]
-                                               :from      [[:pulse_channel :pc]]
-                                               :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
-                                                           [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
-                                               :where     [:and
-                                                           [:= :pc.enabled true]
-                                                           ;; only do this for dashboard subscriptions, alert has been
-                                                           ;; migrated to notifications
-                                                           [:not= :p.dashboard_id nil]
-                                                           [:= :d.archived false]]})
-                                   results
+  (let [trigger-slot->pc-ids (as-> (active-dashsub-pcs) results
                                (group-by #(select-keys % [:pulse_id :schedule_type :schedule_day :schedule_hour :schedule_frame]) results)
                                (update-vals results #(map :id %)))]
     (doseq [[{:keys [pulse_id] :as schedule-map} pc-ids] trigger-slot->pc-ids]
@@ -228,8 +230,14 @@
 
 (task/defjob
   ^{:doc
-    "Find all active Dashboard Subscriptino channels, group them by pulse-id and schedule time and create a trigger for each.
-    Do this every startup to make sure all active pulse channels are triggered correctly."
+    "Find all notification subscriptions with cron schedules and create a trigger for each.
+    Run once on startup.
+
+    Context: Prior to 50, the SendPulse job has a single trigger that sends all pulses, but in #42316
+    We've changed it to one trigger per PulseChannel. We need this job so that users migrate from < 50
+    have all the triggers initiated properly.
+    The fact that it runs on every startup is because we have no way to have it run only once.
+    Ideally this should be a migration."
     DisallowConcurrentExecution true}
   InitSendPulseTriggers
   [_context]
