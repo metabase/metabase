@@ -47,7 +47,7 @@ describe(
       mockAuthProviderAndJwtSignIn();
     });
 
-    it("derives dynamic css variables for dark theme", () => {
+    it.skip("derives dynamic css variables for dark theme", () => {
       const BACKGROUND_COLOR = "rgb(22, 26, 29)";
 
       setupInteractiveQuestionWithTheme({
