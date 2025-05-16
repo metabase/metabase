@@ -41,9 +41,12 @@
   [query-type model]
   (comp
    (next-method query-type model)
-    ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
-    ;; This will also help to secure properties that we set to secret in the future.
-   (map secret/clean-secret-properties-from-database)))
+   (map #(-> %
+          ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
+          ;; This will also help to secure properties that we set to secret in the future.
+             secret/clean-secret-properties-from-database
+          ;; This property is used for migration purposes only and should not be exposed
+             (dissoc :name_before_deduplication)))))
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
