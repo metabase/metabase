@@ -1560,6 +1560,7 @@
                                                   {1 {:id 1}
                                                    2 {:id 2}
                                                    3 {:id 3}}
+                                                  nil
                                                   nil))))
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
@@ -1571,7 +1572,8 @@
                                                    2 {:id 2}
                                                    3 {:id 3}}
                                                   {1 10
-                                                   2 20})))))
+                                                   2 20}
+                                                  nil)))))
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
@@ -1579,6 +1581,7 @@
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 5}
                                                      2 {:id 6}}
+                                                    nil
                                                     nil
                                                     nil)))))
     (testing "Can omit whole card with series if not copied"
@@ -1592,6 +1595,7 @@
                                                      ;; not copying id 4 which is the base of the following two
                                                      5 {:id 10}
                                                      6 {:id 11}}
+                                                    nil
                                                     nil
                                                     nil)))))
     (testing "Updates parameter mappings to new card ids"
@@ -1610,6 +1614,7 @@
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 2}}
                                                     nil
+                                                    nil
                                                     nil)))))
     (testing "Does not think action cards are text cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
@@ -1621,6 +1626,7 @@
         (is (= (butlast dashcards)
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
+                                                    nil
                                                     nil
                                                     nil)))))))
 
