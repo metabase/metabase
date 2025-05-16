@@ -1,86 +1,20 @@
-(ns metabase.db.metadata-queries
-  "Predefined MBQL queries for getting metadata about an external database.
-
-  TODO -- these have nothing to do with the application database. This namespace should moved into either `schema` or
-  `warehouses` or `sync` (TBD). Some of this stuff has already been moved into [[metabase.warehouse-schema.metadata-queries]],
-  maybe we should move the pure functions there (and move the ones that use the QP somewhere else)."
+(ns metabase.driver.common.table-rows-sample
   (:require
-   [clojure.string :as str]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
-   [metabase.lib.ident :as lib.ident]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
+   ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
+   ;; so we need to go in and update the sync code as well.
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
-
-(defn- add-breakout-idents-if-needed [{:keys [breakout] :as inner-query}]
-  (m/assoc-some inner-query :breakout-idents (lib.ident/indexed-idents breakout)))
-
-(defn table-query
-  "Runs the `mbql-query` where the source table is `table-id` and returns the result.
-  Add the required filters if the table requires it,
-  see [[metabase.warehouse-schema.metadata-queries/add-required-filters-if-needed]] for more details. Also takes an optional
-  `rff`, use the default rff if not provided."
-  ([table-id mbql-query]
-   (table-query table-id mbql-query nil))
-  ([table-id mbql-query rff]
-   {:pre [(integer? table-id)]}
-   (binding [qp.i/*disable-qp-logging* true]
-     (qp/process-query
-      {:type       :query
-       :database   (t2/select-one-fn :db_id :model/Table table-id)
-       :query      (-> mbql-query
-                       (assoc :source-table table-id)
-                       schema.metadata-queries/add-required-filters-if-needed
-                       add-breakout-idents-if-needed)
-       :middleware {:disable-remaps? true}}
-      rff))))
-
-(defn search-values-query
-  "Generate the MBQL query used to power FieldValues search in [[metabase.parameters.field/search-values]]. The actual
-  query generated differs slightly based on whether the two Fields are the same Field.
-
-  Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
-  [field search-field value limit]
-  (if-let [value->human-readable-value (schema.metadata-queries/human-readable-remapping-map (u/the-id field))]
-    (let [query (some-> value u/lower-case-en)]
-      (cond->> value->human-readable-value
-        value (filter #(str/includes? (-> % val u/lower-case-en) query))
-        true  (sort-by key)))
-    (-> (table-query (:table_id field)
-                     {:filter   (when (some? value)
-                                  [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-                      ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-                      ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-                      ;; identifiers/aliases
-                      :breakout (if (= (u/the-id field) (u/the-id search-field))
-                                  [[:field (u/the-id field) nil]]
-                                  [[:field (u/the-id field) nil]
-                                   [:field (u/the-id search-field) nil]])
-                      :limit    limit})
-        :data :rows)))
-
-(defn field-distinct-count
-  "Return the distinct count of `field`."
-  [field & [limit]]
-  (-> (table-query (:table_id field) {:aggregation        [[:distinct [:field (u/the-id field) nil]]]
-                                      :aggregation-idents (lib.ident/indexed-idents 1)
-                                      :limit              limit})
-      :data :rows first first int))
-
-(defn field-count
-  "Return the count of `field`."
-  [field]
-  (-> (table-query (:table_id field) {:aggregation        [[:count [:field (u/the-id field) nil]]]
-                                      :aggregation-idents (lib.ident/indexed-idents 1)})
-      :data :rows first first int))
 
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
@@ -142,7 +76,7 @@
                   :skip-results-metadata? true}}))
 
 (mu/defn table-rows-sample
-  "Run a basic MBQL query to fetch a sample of rows of FIELDS belonging to a TABLE.
+  "Run a basic MBQL query to fetch a sample of rows of `fields` belonging to a `table`.
 
   Options: a map of
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.

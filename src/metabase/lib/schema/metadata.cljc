@@ -50,7 +50,7 @@
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
-;;; in [[metabase.models.field-values]], [[metabase.parameters.chain-filter]],
+;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.parameters.chain-filter]],
 ;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 
@@ -110,7 +110,7 @@
    [:field-id ::lib.schema.id/field]])
 
 ;;; Internal remapping (FieldValues) for a column. From [[metabase.models.dimension]] with `type = internal` and
-;;; the [[metabase.models.field-values]] associated with a `Field` in the application database.
+;;; the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application database.
 ;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
 (mr/def ::column.remapping.internal
   [:map
@@ -289,8 +289,8 @@
     [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::table
-  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
-  but with kebab-case keys."
+  "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
+  kebab-case keys."
   [:map
    {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]

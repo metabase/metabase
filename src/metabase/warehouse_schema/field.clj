@@ -1,8 +1,8 @@
 (ns metabase.warehouse-schema.field
   (:require
    [metabase.api.common :as api]
-   [metabase.models.field :as field]
    [metabase.models.interface :as mi]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
 (defn get-field
