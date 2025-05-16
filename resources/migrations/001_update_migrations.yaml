@@ -11280,7 +11280,7 @@ databaseChangeLog:
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) as row_num
                 FROM metabase_database
               ) as d2
-              WHERE d1.id = d2.id AND d2.row_number > 1
+              WHERE d1.id = d2.id AND d2.row_num > 1
         - sql:
             dbms: mysql,mariadb
             sql: |
