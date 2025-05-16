@@ -422,7 +422,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     H.shortcutModal().should("not.exist");
 
     H.appBar().findByRole("img", { name: /gear/ }).click();
-    H.popover().findByText("Keyboard Shortcuts").click();
+    H.popover().findByText("Keyboard shortcuts").click();
     H.shortcutModal().should("exist");
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
