@@ -128,6 +128,6 @@
         (println "env:")
         (doseq [[k v] extra-env]
           (println (str "  " (c/yellow k) "=" (c/green v))))
-        (println "Socket repl will open on " socket-port)
+        (println "Socket repl will open on " socket-port ". See: https://lambdaisland.com/guides/clojure-repls/clojure-repls#org259d775")
         (println (str "\n\n   Open in browser: http://localhost:" port "\n"))
         (p/shell {:dir dir :extra-env extra-env} run-jar-cmd)))))
