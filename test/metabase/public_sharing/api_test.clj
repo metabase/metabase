@@ -8,10 +8,9 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
-   [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.config :as config]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -24,6 +23,7 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -104,7 +104,7 @@
                                                                                                 :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
                                                                      kvs))))
 
-;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
+;; TODO -- we can probably use [[metabase.dashboards.api-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
 (defmacro with-temp-public-dashboard-and-card
   {:style/indent 1}

@@ -70,7 +70,6 @@
      metabase.model-persistence.task.persist-refresh/job-init!
      metabase.model-persistence.task.persist-refresh/refresh-tables!
      metabase.model-persistence.task.persist-refresh/schedule-persistence-for-database!
-     metabase.models.field-values/create-or-update-full-field-values!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
      metabase.permissions.models.collection.graph-test/clear-graph-revisions!
      metabase.permissions.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
@@ -102,6 +101,7 @@
      metabase.sync.core/sync-database!
      metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
      metabase.sync.sync-metadata/sync-db-metadata!
+     metabase.warehouse-schema.models.field-values/create-or-update-full-field-values!
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
      metabase.task.core/delete-task!

@@ -1,4 +1,4 @@
-(ns metabase.models.dashboard-card
+(ns metabase.dashboards.models.dashboard-card
   (:require
    [clojure.set :as set]
    [medley.core :as m]

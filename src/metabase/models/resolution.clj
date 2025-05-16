@@ -27,17 +27,17 @@
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
-    :model/Dashboard                         metabase.models.dashboard
+    :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
-    :model/DashboardCard                     metabase.models.dashboard-card
-    :model/DashboardCardSeries               metabase.models.dashboard-card-series
-    :model/DashboardTab                      metabase.models.dashboard-tab
+    :model/DashboardCard                     metabase.dashboards.models.dashboard-card
+    :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
+    :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
-    :model/Field                             metabase.models.field
-    :model/FieldValues                       metabase.models.field-values
+    :model/Field                             metabase.warehouse-schema.models.field
+    :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
@@ -75,7 +75,7 @@
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
-    :model/Table                             metabase.models.table
+    :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event

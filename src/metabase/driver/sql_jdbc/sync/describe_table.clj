@@ -6,8 +6,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -15,7 +15,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
@@ -24,6 +23,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -665,11 +665,11 @@
        :join   [[{:union-all [{:nest {:select   pks-expr
                                       :from     [table-expr]
                                       :order-by (mapv #(vector % :asc) pk-identifiers)
-                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
+                                      :limit    (/ table-rows-sample/nested-field-sample-limit 2)}}
                               {:nest {:select   pks-expr
                                       :from     [table-expr]
                                       :order-by (mapv #(vector % :desc) pk-identifiers)
-                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
+                                      :limit    (/ table-rows-sample/nested-field-sample-limit 2)}}]}
                  :result]
                 (into [:and]
                       (for [pk-identifier pk-identifiers]
@@ -678,7 +678,7 @@
                          pk-identifier]))]}
       {:select json-field-exprs
        :from   [table-expr]
-       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)})))
+       :limit  (sql.qp/inline-num table-rows-sample/nested-field-sample-limit)})))
 
 (defn- sample-json-reducible-query
   [driver jdbc-spec table json-fields pks]
