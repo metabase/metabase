@@ -49,7 +49,7 @@
                   (mt/user-http-request user :get status "util/logs")))
               (get-bug-report-detail [user status]
                 (testing (format "get bug report details with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "util/bug_report_details")))
+                  (mt/user-http-request user :get status "bug-reporting/details")))
               (get-db-connection-info [user status]
                 (testing (format "get db connection info with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "util/diagnostic_info/connection_pool_info")))]

@@ -1,13 +1,16 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  FieldValue,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
   GetEmbeddableDashboard,
   GetPublicDashboard,
+  GetRemappedDashboardParameterValueRequest,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListDashboardsRequest,
@@ -25,6 +28,8 @@ import {
   provideDashboardListTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
+  provideParameterValuesTags,
+  tag,
 } from "./tags";
 
 export const dashboardApi = Api.injectEndpoints({
@@ -76,6 +81,21 @@ export const dashboardApi = Api.injectEndpoints({
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
       }),
+      getRemappedDashboardParameterValue: builder.query<
+        FieldValue,
+        GetRemappedDashboardParameterValueRequest
+      >({
+        query: ({ dashboard_id, parameter_id, ...params }) => ({
+          method: "GET",
+          url: PLUGIN_API.getRemappedDashboardParameterValueUrl(
+            dashboard_id,
+            parameter_id,
+          ),
+          params,
+        }),
+        providesTags: (_response, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
+      }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
         Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
@@ -109,7 +129,11 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            idTag("dashboard", id),
+            tag("parameter-values"),
+          ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
         query: (id) => ({
@@ -126,7 +150,10 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) =>
-          invalidateTags(error, [listTag("dashboard")]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            tag("parameter-values"),
+          ]),
       }),
       copyDashboard: builder.mutation<Dashboard, CopyDashboardRequest>({
         query: ({ id, ...body }) => ({
@@ -135,7 +162,10 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) =>
-          invalidateTags(error, [listTag("dashboard")]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            tag("parameter-values"),
+          ]),
       }),
       listEmbeddableDashboards: builder.query<GetEmbeddableDashboard[], void>({
         query: (params) => ({
@@ -203,6 +233,7 @@ export const {
   useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,
+  useGetRemappedDashboardParameterValueQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
   useSaveDashboardMutation,

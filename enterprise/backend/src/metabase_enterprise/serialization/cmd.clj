@@ -15,7 +15,7 @@
    [metabase.db :as mdb]
    [metabase.models.field :as field]
    [metabase.models.serialization :as serdes]
-   [metabase.plugins :as plugins]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]
    [metabase.setup.core :as setup]
    [metabase.util :as u]

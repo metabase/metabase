@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
-   [metabase.channel.slack :as slack]))
+   [metabase.channel.slack :as slack]
+   [metabase.config :as config]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -164,3 +167,33 @@
       "abc"    "🔔 abc"
       "abcde"  "🔔 abcde"
       "abcdef" "🔔 abcd…")))
+
+(deftest dashboard-header-branding-test
+  (letfn [(render-dashboard-links [whitelabeling?]
+            (mt/with-premium-features (if whitelabeling? #{:whitelabel} #{})
+              (mt/with-temporary-setting-values [:site-url "https://www.example.com"]
+                (let [notification {:payload_type :notification/dashboard
+                                    :payload      {:dashboard       {:id 42, :name "Test Dashboard"}
+                                                   :parameters      {}
+                                                   :dashboard_parts []}
+                                    :creator      {:common_name "Test User"}}
+                      recipient    {:type    :notification-recipient/raw-value
+                                    :details {:value "#foo"}}
+                      processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
+                                     (channel/render-notification :channel/slack notification nil [recipient]))]
+                  (->> processed first :attachments first :blocks last :fields
+                       (map :text))))))
+          (markdown-link? [s]
+            (is (string? s))
+            (let [[_whole url label] (re-find #"\<(.*)\|(.*)\>" s)]
+              (is (string? label))
+              (is (u/url? url))))]
+    (when config/ee-available?
+      (testing "When whitelabeling is enabled, branding link should not be included"
+        (let [links (render-dashboard-links true)]
+          (is (every? markdown-link? links))
+          (is (= 1 (count links))))))
+    (testing "When whitelabeling is disabled, branding link should be included"
+      (let [links (render-dashboard-links false)]
+        (is (every? markdown-link? links))
+        (is (= 2 (count links)))))))

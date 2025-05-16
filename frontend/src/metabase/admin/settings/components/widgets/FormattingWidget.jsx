@@ -20,7 +20,7 @@ const SETTING_TYPES = [
       "time_style",
     ],
     column: {
-      semantic_type: TYPE.Temporal,
+      base_type: TYPE.Temporal,
     },
   },
   {

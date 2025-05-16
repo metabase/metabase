@@ -9,7 +9,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
@@ -19,7 +19,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -102,10 +102,7 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
-      (do (sync-and-analyze-database*! database-id)
-          ;; Re-kick off the backfill entity ids job on every sync
-          ;; if a previous run is already running, this is a noop
-          (task/init! :metabase.lib-be.task.backfill-entity-ids/BackfillEntityIds)))))
+      (sync-and-analyze-database*! database-id))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Sync and analyze the database"}

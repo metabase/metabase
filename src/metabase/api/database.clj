@@ -6,7 +6,8 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.table :as api.table]
+   [metabase.classloader.core :as classloader]
+   [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.db :as mdb]
@@ -15,22 +16,19 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
    [metabase.models.database :as database]
    [metabase.models.field :refer [readable-fields-only]]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret]
    [metabase.permissions.core :as perms]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
-   [metabase.server.streaming-response]
+   [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -43,6 +41,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -144,7 +143,7 @@
 
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [card-type :- ::card/type
+  [card-type :- ::queries.schema/card-type
    & {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
@@ -177,22 +176,22 @@
 
 (mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  [card-type :- ::card/type]
+  [card-type :- ::queries.schema/card-type]
   (seq (source-query-cards card-type :xform (take 1))))
 
 (mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [card-type :- ::card/type
+  [card-type :- ::queries.schema/card-type
    & {:keys [include-fields?]}]
   (for [card (source-query-cards card-type)]
-    (api.table/card->virtual-table card :include-fields? include-fields?)))
+    (schema.table/card->virtual-table card :include-fields? include-fields?)))
 
 (mu/defn- saved-cards-virtual-db-metadata
-  [card-type :- ::card/type
+  [card-type :- ::queries.schema/card-type
    & {:keys [include-tables? include-fields?]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
@@ -403,9 +402,10 @@
 
 (api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
+  belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the
+  DB
    (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
-   returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
+   returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
    Passing include_editable_data_model will only return tables for which the current user has data model editing
    permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
@@ -1181,7 +1181,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
@@ -1191,7 +1191,7 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
@@ -1253,13 +1253,13 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [{:keys [schema]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
-          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
+          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map api.table/card->virtual-table))))
+         (map schema.table/card->virtual-table))))
 
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
@@ -1275,10 +1275,10 @@
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [{:keys [schema]}]
-  (when (public-settings/enable-nested-queries)
+  (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model
-          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
+          :additional-constraints [(if (= schema (schema.table/root-collection-schema-name))
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
-         (map api.table/card->virtual-table))))
+         (map schema.table/card->virtual-table))))

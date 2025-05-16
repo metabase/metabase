@@ -249,7 +249,11 @@ class TagEditorParamInner extends Component<Props> {
 
     // old parameters with widget-type of `location/state` etc. need be remapped to string/= so that the
     // dropdown is correctly populated with a set option
-    return isOldWidgetType ? "string/=" : widgetType;
+    if (isOldWidgetType) {
+      return "string/=";
+    }
+
+    return widgetType;
   };
 
   render() {

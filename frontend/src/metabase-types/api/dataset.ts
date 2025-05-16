@@ -1,4 +1,9 @@
-import type { CacheStrategy, LocalFieldReference } from "metabase-types/api";
+import type {
+  CacheStrategy,
+  LocalFieldReference,
+  Parameter,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
@@ -164,7 +169,7 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
-} & Pick<Dataset, "data" | "error">;
+} & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
@@ -217,3 +222,9 @@ export type TemporalUnit =
   | "week-of-year"
   | "month-of-year"
   | "quarter-of-year";
+
+export type GetRemappedParameterValueRequest = {
+  parameter: Parameter;
+  field_ids: FieldId[];
+  value: ParameterValueOrArray;
+};

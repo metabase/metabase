@@ -6,6 +6,7 @@ import { getThemeOverrides } from "metabase/ui/theme";
 
 const fontFamilyMonospace = getThemeOverrides().fontFamilyMonospace as string;
 
+// why are we overriding the default styles?
 export const getTextInputStyles = (params: {
   masked: boolean;
   disabled: boolean;

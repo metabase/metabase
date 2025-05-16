@@ -143,7 +143,7 @@ export type LoadingMessage =
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export type GdrivePayload = {
-  status: "not-connected" | "syncing" | "active" | "error";
+  status: "not-connected" | "syncing" | "active" | "paused" | "error";
   url?: string;
   message?: string; // only for errors
   created_at?: number;
@@ -400,9 +400,9 @@ interface PublicSettings {
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
-  "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
+  "enable-sandboxes?": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
@@ -440,6 +440,7 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "non-table-chart-generated": boolean;
 }
 
 export type UserSettings = {
@@ -500,6 +501,8 @@ export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 export type ColorSettings = Record<string, string>;
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
+export type TimeoutValue = { amount: number; unit: string };
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -516,6 +519,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "saml-user-provisioning-enabled?"?: boolean;
+  "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

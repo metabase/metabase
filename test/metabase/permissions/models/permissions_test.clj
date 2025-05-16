@@ -1,8 +1,8 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.audit]
-   [metabase.models.collection :as collection]
+   [metabase.audit-app.impl :as audit.impl]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
@@ -344,7 +344,7 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
-    (with-redefs [metabase.audit/is-collection-id-audit? (constantly true)]
+    (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot receive any access to the audit collection\."
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group

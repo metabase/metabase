@@ -1,6 +1,6 @@
 (ns metabase.models.resolution
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
@@ -14,18 +14,18 @@
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
-    :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
-    :model/AuditLog                          metabase.models.audit-log
+    :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
+    :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
-    :model/Card                              metabase.models.card
+    :model/Card                              metabase.queries.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
-    :model/Collection                        metabase.models.collection
+    :model/Collection                        metabase.collections.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
-    :model/CollectionPermissionGraphRevision metabase.models.collection-permission-graph-revision
+    :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/Dashboard                         metabase.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
@@ -44,14 +44,14 @@
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
-    :model/ModerationReview                  metabase.models.moderation-review
+    :model/ModerationReview                  metabase.content-verification.models.moderation-review
     :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
     :model/NotificationSubscription          metabase.notification.models
-    :model/ParameterCard                     metabase.models.parameter-card
+    :model/ParameterCard                     metabase.queries.models.parameter-card
     :model/Permissions                       metabase.permissions.models.permissions
     :model/PermissionsGroup                  metabase.permissions.models.permissions-group
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
@@ -61,17 +61,17 @@
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
-    :model/Query                             metabase.models.query
+    :model/Query                             metabase.queries.models.query
     :model/QueryAction                       metabase.actions.models
     :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
     :model/QueryCache                        metabase.cache.models.query-cache
-    :model/QueryExecution                    metabase.models.query-execution
-    :model/QueryField                        metabase.models.query-field
-    :model/QueryTable                        metabase.models.query-table
+    :model/QueryExecution                    metabase.queries.models.query-execution
+    :model/QueryField                        metabase.queries.models.query-field
+    :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
-    :model/Secret                            metabase.models.secret
+    :model/Secret                            metabase.secrets.models.secret
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting

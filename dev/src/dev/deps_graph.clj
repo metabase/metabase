@@ -65,7 +65,8 @@
   '#{require
      clojure.core/require
      classloader/require
-     metabase.plugins.classloader/require
+     metabase.classloader.core/require
+     metabase.classloader.impl/require
      requiring-resolve
      clojure.core/requiring-resolve})
 
@@ -203,7 +204,7 @@
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
   don't include them in our deps tree."
-  '{metabase.config #{metabase-enterprise.core metabase.test.core}})
+  '{metabase.config #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
 (mu/defn- file-dependencies :- [:map
                                 [:namespace simple-symbol?]
@@ -375,9 +376,17 @@
         (full-dependencies)))
 
 (defn module-dependencies-mermaid []
+  (println "flowchart TD")
   (doseq [[module deps] (module-dependencies)
           dep deps]
     (printf "%s-->%s\n" module dep)))
+
+(defn module-dependencies-graphviz []
+  (println "digraph {")
+  (doseq [[module deps] (module-dependencies)
+          dep deps]
+    (printf "  \"%s\" -> \"%s\"\n" module dep))
+  (println "}"))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."

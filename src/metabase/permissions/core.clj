@@ -2,17 +2,21 @@
   "`permissions` module API namespace."
   (:require
    [metabase.permissions.models.data-permissions]
+   [metabase.permissions.models.data-permissions.sql]
    [metabase.permissions.models.permissions]
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
+   [metabase.permissions.query]
    [metabase.permissions.util]
    [potemkin :as p]))
 
 (comment
   metabase.permissions.models.data-permissions/keep-me
+  metabase.permissions.models.data-permissions.sql/keep-me
   metabase.permissions.models.permissions/keep-me
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
+  metabase.permissions.query/keep-me
   metabase.permissions.util/keep-me)
 
 (p/import-vars
@@ -32,6 +36,10 @@
   user-has-permission-for-database?
   user-has-permission-for-table?
   with-relevant-permissions-for-user]
+ [metabase.permissions.models.data-permissions.sql
+  UserInfo
+  PermissionMapping
+  visible-table-filter-select]
  [metabase.permissions.models.permissions
   application-perms-path
   audit-namespace-clause
@@ -59,6 +67,8 @@
   remove-user-from-groups!
   throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
+ [metabase.permissions.query
+  check-run-permissions-for-query]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

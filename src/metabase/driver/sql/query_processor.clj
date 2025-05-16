@@ -417,7 +417,7 @@
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :us))
 
-;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.settings.deprecated-grab-bag/start-of-week]]
+;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.lib-be.core/start-of-week]]
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
@@ -456,7 +456,7 @@
       (truncate-fn expr))))
 
 (mu/defn adjust-day-of-week
-  "Adjust day of week to respect the [[metabase.settings.deprecated-grab-bag/start-of-week]] Setting.
+  "Adjust day of week to respect the [[metabase.lib-be.core/start-of-week]] Setting.
 
   The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
 
@@ -1287,6 +1287,10 @@
   [driver [_ value]]
   (->date driver (->honeysql driver value)))
 
+(defmethod ->honeysql [:sql :text]
+  [driver [_ value]]
+  (->honeysql driver [::cast-to-text value]))
+
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
@@ -1385,9 +1389,19 @@
     ;; Honey SQL 2
     (as [:field \"x\" {:base-type :type/Text, :temporal-unit :month}])
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
-    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\""
+    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
+
+  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
+    ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
+    ;; -> SELECT CAST(1 AS bit) AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [honeysql-form (->honeysql driver clause)
+  (let [cast-type     (-> clause mbql.u/field-options ::add-cast)
+        wrap-cast     #(vector ::cast % cast-type)
+        maybe-cast    #(cond-> % cast-type wrap-cast)
+        honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
       [honeysql-form [field-alias]]

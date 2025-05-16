@@ -5,6 +5,7 @@ import type { ParameterOptions, TemplateTag } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import {
+  BOOLEAN_OPTION,
   ID_OPTION,
   OPTIONS_WITH_OPERATOR_SUBTYPES,
   PARAMETER_OPERATOR_TYPES,
@@ -21,6 +22,7 @@ import { getTemplateTagParameter } from "./template-tags";
 export function getParameterOptions() {
   return [
     ID_OPTION,
+    BOOLEAN_OPTION,
     ...OPTIONS_WITH_OPERATOR_SUBTYPES.map(({ type, typeName }) =>
       PARAMETER_OPERATOR_TYPES[type].map((option) => ({
         ...option,

@@ -4,7 +4,7 @@
    [environ.core :as env]
    [hashp.preload]
    [metabase.core.bootstrap]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util :as u]
    [nrepl.cmdline]))
 
@@ -54,7 +54,7 @@
 (defn -main
   "This is called by the `:dev-start` cli alias.
 
-  Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev`"
+  Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev` "
   [& _args]
   (future (nrepl.cmdline/-main "-p" "50605" "-b" "0.0.0.0"))
   ((requiring-resolve 'dev/start!))

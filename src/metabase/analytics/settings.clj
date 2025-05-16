@@ -1,8 +1,8 @@
 (ns metabase.analytics.settings
   (:require
+   [metabase.appearance.core :as appearance]
    [metabase.config :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
@@ -31,7 +31,7 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-                (public-settings/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :type       :boolean
   :default    true
   :visibility :public

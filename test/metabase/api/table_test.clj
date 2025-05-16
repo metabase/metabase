@@ -20,6 +20,7 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -236,7 +237,7 @@
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
 (defn- default-dimension-options []
-  (as-> @#'api.table/dimension-options-for-response options
+  (as-> @#'schema.table/dimension-options-for-response options
     (m/map-vals #(-> %
                      (update :name str)
                      (update :type
@@ -244,7 +245,7 @@
                                (apply str
                                       ((juxt namespace (constantly "/") name) t)))))
                 options)
-    (m/map-keys #(Long/parseLong %) options)
+    (m/map-keys parse-long options)
     ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
     (lib.util.match/replace options :field (mt/obj->json->obj &match))))
 
@@ -257,7 +258,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -310,8 +311,8 @@
                                      :base_type                  "type/DateTime"
                                      :effective_type             "type/DateTime"
                                      :visibility_type            "normal"
-                                     :dimension_options          (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option   (var-get #'api.table/datetime-default-index)
+                                     :dimension_options          @#'schema.table/datetime-dimension-indexes
+                                     :default_dimension_option   @#'schema.table/datetime-default-index
                                      :has_field_values           "none"
                                      :position                   2
                                      :database_position          2
@@ -342,7 +343,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -390,8 +391,8 @@
                                      :database_type            "TIMESTAMP"
                                      :base_type                "type/DateTime"
                                      :effective_type           "type/DateTime"
-                                     :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option (var-get #'api.table/datetime-default-index)
+                                     :dimension_options        @#'schema.table/datetime-dimension-indexes
+                                     :default_dimension_option @#'schema.table/datetime-default-index
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
@@ -602,7 +603,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id :id] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -670,14 +671,6 @@
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
-(deftest ^:parallel table-metadata-has-entity-ids-test
-  (testing "GET /api/table/:id/query_metadata returns an entity id"
-    (is (=? {:entity_id some?
-             :db {:entity_id some?}
-             ;:fields api.test-util/all-have-entity-ids?
-             }
-            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
-
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
@@ -689,13 +682,13 @@
 
 (defn- with-numeric-dimension-options [field]
   (assoc field
-         :default_dimension_option (var-get #'api.table/numeric-default-index)
-         :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
+         :default_dimension_option @#'schema.table/numeric-default-index
+         :dimension_options @#'schema.table/numeric-dimension-indexes))
 
 (defn- with-coordinate-dimension-options [field]
   (assoc field
-         :default_dimension_option (var-get #'api.table/coordinate-default-index)
-         :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
+         :default_dimension_option @#'schema.table/coordinate-default-index
+         :dimension_options @#'schema.table/coordinate-dimension-indexes))
 
 ;; Make sure metadata for 'virtual' tables comes back as expected
 (deftest ^:parallel virtual-table-metadata-test
@@ -833,8 +826,8 @@
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :ident                    (lib/native-ident "LAST_LOGIN" (:entity_id card))
                                          :semantic_type            nil
-                                         :default_dimension_option (var-get #'api.table/datetime-default-index)
-                                         :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
+                                         :default_dimension_option @#'schema.table/datetime-default-index
+                                         :dimension_options        @#'schema.table/datetime-dimension-indexes
                                          :fingerprint              (:fingerprint last-login-metadata)
                                          :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
                    (mt/user-http-request :crowberto :get 200
@@ -960,15 +953,6 @@
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
                                  (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
-(deftest ^:parallel dimension-options-sort-test
-  (testing "Ensure dimensions options are sorted numerically, but returned as strings"
-    (testing "datetime indexes"
-      (is (= (map str (sort (map #(Long/parseLong %) (var-get #'api.table/datetime-dimension-indexes))))
-             (var-get #'api.table/datetime-dimension-indexes))))
-    (testing "numeric indexes"
-      (is (= (map str (sort (map #(Long/parseLong %) (var-get #'api.table/numeric-dimension-indexes))))
-             (var-get #'api.table/numeric-dimension-indexes))))))
-
 (defn field-from-response [response, ^String field-name]
   (->> response
        :fields
@@ -1042,7 +1026,7 @@
         (mt/test-drivers #{:druid}
           (tqpt/with-flattened-dbdef
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
-              (is (= @#'api.table/datetime-dimension-indexes
+              (is (= @#'schema.table/datetime-dimension-indexes
                      (dimension-options-for-field response "timestamp"))))))))))
 
 (deftest ^:parallel datetime-binning-options-test-2
@@ -1054,8 +1038,8 @@
                 field    (field-from-response response "date")]
             ;; some dbs don't have a date type and return a datetime
             (is (= (case (:effective_type field)
-                     ("type/DateTime" "type/Instant") @#'api.table/datetime-dimension-indexes
-                     "type/Date"                      @#'api.table/date-dimension-indexes
+                     ("type/DateTime" "type/Instant") @#'schema.table/datetime-dimension-indexes
+                     "type/Date"                      @#'schema.table/date-dimension-indexes
                      (throw (ex-info "Invalid type for date field or field not found"
                                      {:expected-types #{"type/DateTime" "type/Date"}
                                       :found          (:effective_type field)
@@ -1069,7 +1053,7 @@
       (testing "unix timestamps"
         (mt/dataset sad-toucan-incidents
           (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :incidents)))]
-            (is (= @#'api.table/datetime-dimension-indexes
+            (is (= @#'schema.table/datetime-dimension-indexes
                    (dimension-options-for-field response "timestamp")))))))))
 
 (deftest ^:parallel datetime-binning-options-test-4
@@ -1079,7 +1063,7 @@
         (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
           (mt/dataset time-test-data
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
-              (is (= @#'api.table/time-dimension-indexes
+              (is (= @#'schema.table/time-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))
 
 (deftest nested-queries-binning-options-test
@@ -1103,7 +1087,7 @@
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
               (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))
-              (is (= (repeat 2 (var-get #'api.table/coordinate-dimension-indexes))
+              (is (= (repeat 2 @#'schema.table/coordinate-dimension-indexes)
                      (dimension-options))))))))))
 
 (deftest ^:parallel card-type-and-dataset-query-are-returned-with-metadata
