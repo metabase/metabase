@@ -5,7 +5,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
-   [metabase.task.core :as task]
+   [metabase.task :as task]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
