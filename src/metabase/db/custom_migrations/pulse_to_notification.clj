@@ -1,6 +1,9 @@
 (ns metabase.db.custom-migrations.pulse-to-notification
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.db.custom-migrations.util :as custom-migrations.util]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -81,10 +84,17 @@
              (assoc pc :recipients (get pc-id->recipients (:id pc))))
            pcs))))
 
+(defn- send-pulse-trigger-key
+  [pulse-id schedule-map]
+  (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
+                        pulse-id (-> schedule-map
+                                     schedule-map->cron-string
+                                     (str/replace " " "_")))))
+
 (defn- alert->notification!
   "Create a new notification with `subsciptions`.
   Return the created notifications."
-  [pulse]
+  [scheduler pulse]
   (let [pulse-id   (:id pulse)
         pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id :enabled true))
         ;; alerts have one pulse-card, but to be safe we select the latest one by id
@@ -136,16 +146,18 @@
                                      {:channel_type "channel/http"
                                       :channel_id    (:channel_id pc)})))
                                 pcs)]
+         (qs/delete-trigger scheduler (send-pulse-trigger-key pulse-id pc))
          (create-notification! notification subscriptions handlers))))))
 
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
   #_{:clj-kondo/ignore [:unresolved-symbol]}
-  (run! alert->notification!
-        (t2/reducible-query {:select [:*]
-                             :from   [:pulse]
-                             :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]})))
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (run! #(alert->notification! scheduler %)
+          (t2/reducible-query {:select [:*]
+                               :from   [:pulse]
+                               :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]}))))
 
 (comment
   (t2/delete! :model/Notification)
