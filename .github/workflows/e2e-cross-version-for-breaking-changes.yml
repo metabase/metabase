@@ -95,7 +95,7 @@ jobs:
           path: .tmp/metabase-be/target/uberjar/metabase.jar
           if-no-files-found: error
 
-  run-tests:
+  run-breaking-changes-tests:
     needs: [build-jar, generate-matrix]
     runs-on: ubuntu-22.04
     timeout-minutes: 45
@@ -106,6 +106,9 @@ jobs:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix_json) }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Prepare FE environment
         uses: ./.github/actions/prepare-frontend
 
