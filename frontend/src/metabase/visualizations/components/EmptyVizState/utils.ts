@@ -14,7 +14,7 @@ type SupportedDisplayType = Exclude<
 >;
 
 type EmptyVizConfig = {
-  imgSrc: string | null;
+  imgSrc: string;
   primaryText: string;
   secondaryText: string;
   docsLink?: string;

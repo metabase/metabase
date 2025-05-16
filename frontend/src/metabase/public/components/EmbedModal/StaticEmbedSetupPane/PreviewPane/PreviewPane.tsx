@@ -1,7 +1,6 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { Flex, Loader } from "metabase/ui";
 
 import { PreviewPaneContainer } from "./PreviewPane.styled";
 
