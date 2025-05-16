@@ -18,8 +18,7 @@
    [metabase.db.liquibase :as liquibase]
    [metabase.db.setup :as mdb.setup]
    [metabase.db.spec :as mdb.spec]
-   [potemkin :as p]
-   [toucan2.connection :as t2.connection]))
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
