@@ -40,6 +40,7 @@ export const useTableCRUD = ({
     cellsWithFailedUpdatesMap,
     handleCellValueUpdateError,
     handleGenericUpdateError,
+    handleCellValueUpdateSuccess,
   } = useTableCrudOptimisticUpdate();
 
   const [deleteTableRows, { isLoading: isDeleting }] =
@@ -105,6 +106,10 @@ export const useTableCRUD = ({
 
         if (response.data?.updated) {
           stateUpdateStrategy.onRowsUpdated(response.data.updated);
+          handleCellValueUpdateSuccess({
+            columnName,
+            rowPkValue,
+          });
         }
 
         return !response.error;
@@ -120,11 +125,12 @@ export const useTableCRUD = ({
     },
     [
       datasetData,
-      handleCellValueUpdateError,
       stateUpdateStrategy,
+      updateTableRows,
       tableId,
       scope,
-      updateTableRows,
+      handleCellValueUpdateError,
+      handleCellValueUpdateSuccess,
     ],
   );
 

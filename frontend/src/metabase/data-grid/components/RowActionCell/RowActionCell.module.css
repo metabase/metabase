@@ -1,6 +1,7 @@
 .cellRoot {
   overflow: hidden;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   height: 100%;
   width: 100%;
