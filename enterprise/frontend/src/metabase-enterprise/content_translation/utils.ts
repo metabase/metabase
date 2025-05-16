@@ -1,7 +1,9 @@
 import _ from "underscore";
 
+import type { TranslateDisplayNamesFunction } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase-lib";
 import type { DictionaryArray } from "metabase-types/api";
+import { isObject, isRecord } from "metabase-types/guards";
 
 /** Translate a user-generated string
  *
@@ -40,24 +42,33 @@ export const translateContentString = <
   return msgstr;
 };
 
-/** Walk through obj and translate any display_name fields */
-export const translateDisplayNames = <T>(
-  originalObj: T,
+/** Walk through obj and translate any display name fields */
+export const translateDisplayNames: TranslateDisplayNamesFunction = <T>(
+  obj: T,
   tc: ContentTranslationFunction,
+  fieldsToTranslate: string[] = ["displayName"],
 ): T => {
-  const obj = structuredClone(originalObj);
   if (_.isArray(obj)) {
-    return obj.map((item) => translateDisplayNames(item, tc)) as T; // TODO: this could probably be avoided somehow
-  }
-  if (_.isObject(obj)) {
-    _.each(obj, (value, key) => {
-      if (key === "display_name" && typeof value === "string") {
-        obj[key] = tc(value); // FIXME
-      } else if (_.isObject(value) || _.isArray(value)) {
-        obj[key] = translateDisplayNames(value, tc);
-      }
-    });
+    return obj.map((item) => translateDisplayNames(item, tc)) as T; // FIXME: avoid this coercion
+  } else if (isRecord(obj)) {
+    return Object.entries(obj).reduce<Record<string, unknown>>(
+      (acc, [key, value]) => {
+        let newValue: unknown;
+        if (
+          fieldsToTranslate.includes(key as string) &&
+          typeof value === "string"
+        ) {
+          newValue = tc(value);
+        } else if (isObject(value)) {
+          newValue = translateDisplayNames(value, tc);
+        } else {
+          newValue = value;
+        }
+        return { ...acc, [key]: newValue };
+      },
+      {},
+    ) as T;
+  } else {
     return obj;
   }
-  return obj;
 };
