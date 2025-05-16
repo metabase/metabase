@@ -32,6 +32,7 @@ import type {
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -329,6 +330,16 @@ class TagEditorParamInner extends Component<
                   setTemplateTagConfig(tag, {
                     temporal_units: newTemporalUnits,
                   });
+
+                  if (tag.default != null) {
+                    if (
+                      !newTemporalUnits.includes(tag.default as TemporalUnit)
+                    ) {
+                      // reset value as it's not on the new list of available options
+                      this.setParameterAttribute("default", null);
+                      this.props.setParameterValue(tag.id, null);
+                    }
+                  }
                 }}
               />
             </Box>
