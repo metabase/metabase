@@ -26,6 +26,10 @@
 
 (defmethod tx/create-and-grant-roles! :mysql
   [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [statement [(format "drop user if exists '%s'@'%%';" user-name)
+                       (format "create user '%s'@'%%' identified by '';" user-name)]]
+      (jdbc/execute! spec [statement])))
   (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
   (grant-select-table-to-role! driver details roles)
   (sql-jdbc.tx/grant-role-to-user! driver details roles user-name))

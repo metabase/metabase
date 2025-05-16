@@ -296,6 +296,7 @@
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [statement [(format "DROP USER IF EXISTS %s;" role-name)
                            (format "CREATE USER %s WITH PASSWORD '%s';" role-name (:password details))]]
+          (tap> {:red1 statement})
           (jdbc/execute! spec [statement] {:transaction? false}))))))
 
 (defn grant-select-table-to-role!
@@ -312,6 +313,7 @@
                                (if (seq columns)
                                  (format "GRANT SELECT (%s) ON %s TO %s" select-cols schema-table role-name)
                                  (format "GRANT SELECT ON %s TO %s" schema-table role-name))]]
+              (tap> {:red2 statement})
               (jdbc/execute! spec [statement] {:transaction? false}))))))))
 
 (defmethod tx/create-and-grant-roles! :redshift

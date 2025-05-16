@@ -15,6 +15,7 @@
 
 (defn drop-if-exists-and-create-role!
   [driver details roles]
+  (tap> details)
   (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[user-name _] roles]
       (let [role-login (str user-name "_login")
@@ -30,6 +31,7 @@
                            (format "CREATE USER %s FOR LOGIN %s;" user-name role-login)
                            (format "DROP ROLE IF EXISTS %s;" role-name)
                            (format "CREATE ROLE %s;" role-name)]]
+          (tap> {:server2 statement})
           (jdbc/execute! spec [statement] {:transaction? false}))))))
 
 (defn grant-role-to-user!
@@ -39,15 +41,27 @@
     (doseq [[user-name _] roles]
       (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
             user-name (sql.tx/qualify-and-quote driver user-name)]
+        (tap> {:server3 (format "EXEC sp_addrolemember %s, %s" role-name user-name)})
         (jdbc/execute! spec
                        [(format "EXEC sp_addrolemember %s, %s" role-name user-name)]
                        {:transaction? false})
+        (tap> {:server4 (format "GRANT IMPERSONATE ON USER::%s TO %s" user-name db-user)})
         (jdbc/execute! spec
                        [(format "GRANT IMPERSONATE ON USER::%s TO %s" user-name db-user)]
                        {:transaction? false})))))
 
 (defmethod tx/create-and-grant-roles! :sqlserver
   [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [statement [(format (str "IF NOT EXISTS ("
+                                    "SELECT name FROM master.sys.server_principals WHERE name = '%s')"
+                                    " BEGIN CREATE LOGIN [%s] WITH PASSWORD = N'%s' END")
+                               user-name user-name
+                               (tx/db-test-env-var :sqlserver :password))
+                       (format "drop user if exists [%s];" user-name)
+                       (format "create user %s for login %s;" user-name user-name)]]
+      (tap> {:server statement})
+      (jdbc/execute! spec [statement])))
   (drop-if-exists-and-create-role! driver details roles)
   (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
   (grant-role-to-user! driver details roles user-name))

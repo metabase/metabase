@@ -6,6 +6,7 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
+   [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
@@ -93,6 +94,99 @@
                  #"Conflicting sandboxing and impersonation policies found."
                  (impersonation.driver/connection-impersonation-role (mt/db))))))))))
 
+(deftest conn-impersonation-generic-test
+  (mt/test-drivers #{:redshift} #_#{:sqlserver :postgres :mysql}
+    (mt/with-premium-features #{:advanced-permissions}
+      (let [db-name "conn_impersonation_test"
+            details (mt/dbdef->connection-details driver/*driver* :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+        (tx/with-temp-database! driver/*driver* db-name
+          (doseq [statement ["DROP TABLE IF EXISTS table_with_access;"
+                             "DROP TABLE IF EXISTS table_without_access;"
+                             "CREATE TABLE table_with_access (x INTEGER NOT NULL);"
+                             "CREATE TABLE table_without_access (y INTEGER NOT NULL);"]]
+            (jdbc/execute! spec [statement]))
+          (tx/with-temp-roles! driver/*driver*
+            details
+            {"role_a" {"table_with_access" {:columns []}}
+             "full_access_role" {"table_with_access" [] "table_without_access" []}}
+            "metabase"
+            (when (= driver/*driver* :mysql)
+              (jdbc/execute! spec [(format "set default role full_access_role %s metabase;" (if (mysql/mariadb? (mt/db)) "for" "to"))]))
+            (mt/with-temp [:model/Database database {:engine driver/*driver*, :details (if (or (= driver/*driver* :mysql)
+                                                                                               (= driver/*driver* :sqlserver))
+                                                                                         (assoc details :user "metabase")
+                                                                                         details)}]
+              (mt/with-db database
+                (sync/sync-database! (mt/db))
+                (when (= driver/*driver* :mysql)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "full_access_role")))
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" "role_a"}}
+                  (is (= []
+                         (-> {:query "SELECT * FROM table_with_access;"}
+                             mt/native-query
+                             mt/process-query
+                             mt/rows)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"denied"
+                       (-> {:query "SELECT * FROM table_without_access;"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows))))))))))))
+
+(deftest conn-impersonation-existing-db
+  (mt/test-drivers #{:postgres} #_#{:sqlserver :postgres :mysql} #_#{:redshift}
+    (mt/with-premium-features #{:advanced-permissions}
+      (let [db-name "conn_impersonation_test"
+            details (:details (mt/db)) #_(mt/dbdef->connection-details driver/*driver* :db {:database-name db-name})
+            spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+            schema (sql.tx/session-schema :redshift)]
+        ;; todo: have a multimethod in this namespace that lets drivers set up the impersonation tables
+        ;; see if mt/dataset can be used here
+        ;; try to use qualify-and-quote here for the table names
+        ; look for destroy-pool method
+        (doseq [statement (if (= driver/*driver* :redshift)
+                            [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
+                             (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
+                             (format "CREATE TABLE \"%s\".table_with_access (x INTEGER NOT NULL);" schema)
+                             (format "CREATE TABLE \"%s\".table_without_access (y INTEGER NOT NULL);" schema)]
+                            ["DROP TABLE IF EXISTS table_with_access;"
+                             "DROP TABLE IF EXISTS table_without_access;"
+                             "CREATE TABLE table_with_access (x INTEGER NOT NULL);"
+                             "CREATE TABLE table_without_access (y INTEGER NOT NULL);"])]
+          (jdbc/execute! spec [statement]))
+        (tx/with-temp-roles! driver/*driver*
+          details
+          {"user_a" {"table_with_access" {:columns []}}
+           "full_access_role" {"table_with_access" [] "table_without_access" []}}
+          "metabase"
+          (when (= driver/*driver* :mysql) ;; todo: move this into with-temp-roles! :mysql
+            (jdbc/execute! spec [(format "set default role full_access_role %s metabase;" (if (mysql/mariadb? (mt/db)) "for" "to"))]))
+          (mt/with-temp [:model/Database database {:engine driver/*driver*, :details (assoc details :user "metabase") #_(if (or (= driver/*driver* :postgres)
+                                                                                                                                (= driver/*driver* :sqlserver))
+                                                                                                                          (assoc details :user "metabase")
+                                                                                                                          details)}]
+            (mt/with-db database
+              (sync/sync-database! database {:scan :schema})
+              (when (= driver/*driver* :mysql) ;; todo: change the condition to connection-impersonation-requires-role
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "full_access_role")))
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" "user_a"}}
+                (is (= []
+                       (-> {:query "SELECT * FROM table_with_access;"}
+                           mt/native-query
+                           mt/process-query
+                           mt/rows)))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"denied"
+                     (-> {:query "SELECT * FROM table_without_access;"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))))))))))
+
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
     (mt/with-premium-features #{:advanced-permissions}
@@ -148,17 +242,17 @@
                              "drop table if exists table_b;"
                              "create table table_b (id integer primary key );"
                              "insert into table_b values (11), (22);"
-                             "drop user if exists 'default_role_user'@'%';"
-                             "create user 'default_role_user'@'%' identified by '';"]]
+                             "drop user if exists 'some_role_user'@'%';"
+                             "create user 'some_role_user'@'%' identified by '';"]]
             (jdbc/execute! spec [statement]))
           (tx/with-temp-roles! :mysql
             details
             {"role_a" {"table_a" []}
              "role_b" {"table_b" []}
              "full_access_role" {"table_a" [] "table_b" []}}
-            "default_role_user"
-            (jdbc/execute! spec [(format "set default role full_access_role %s default_role_user;" (if (mysql/mariadb? (mt/db)) "for" "to"))])
-            (mt/with-temp [:model/Database database {:engine :mysql :details (assoc details :user "default_role_user")}]
+            "some_role_user"
+            (jdbc/execute! spec [(format "set default role full_access_role %s some_role_user;" (if (mysql/mariadb? (mt/db)) "for" "to"))])
+            (mt/with-temp [:model/Database database {:engine :mysql :details (assoc details :user "some_role_user")}]
               (mt/with-db database
                 (sync/sync-database! database)
                 ;; Update the test database with a default role that has full permissions
@@ -195,72 +289,72 @@
   (mt/test-driver :sqlserver
     (mt/with-premium-features #{:advanced-permissions}
       (let [db-name "conn_impersonation_test"
-            details (mt/dbdef->connection-details :sqlserver :db {:database-name db-name})
+            details (:details (mt/db)) #_(mt/dbdef->connection-details :sqlserver :db {:database-name db-name})
             spec (sql-jdbc.conn/connection-details->spec :sqlserver details)]
-        (tx/with-temp-database! :sqlserver db-name
-          (doseq [statement ["drop table if exists [table_a];"
-                             "create table table_a ( id int primary key, foo int, bar int );"
-                             "insert into table_a values (1, 2, 3), (2, 4, 6);"
-                             "drop table if exists [table_b];"
-                             "create table table_b (id int primary key, foo int, bar int );"
-                             "insert into table_b values (11, 22, 33), (22, 44, 66);"
-                             (format (str "IF NOT EXISTS ("
-                                          "SELECT name FROM master.sys.server_principals WHERE name = 'default_role_user')"
-                                          "BEGIN CREATE LOGIN [default_role_user] WITH PASSWORD = N'%s' END")
-                                     (tx/db-test-env-var :sqlserver :password))
-                             "drop user if exists [default_role_user];"
-                             "create user default_role_user for login default_role_user;"]]
-            (jdbc/execute! spec [statement]))
-          (tx/with-temp-roles! :sqlserver
-            details
-            {"user_a" {"table_a" {:columns ["id" "foo"]}}
-             "user_b" {"table_b" {:columns ["id" "bar"]}}}
-            "default_role_user"
-            (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
-              (mt/with-db database
-                (sync/sync-database! database)
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" "user_a"}}
-                  (is (= [[1 2] [2 4]]
-                         (-> {:query "select id, foo from table_a;"}
-                             mt/native-query
-                             mt/process-query
-                             mt/rows)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"The SELECT permission was denied on the column 'bar' of the object 'table_a'"
-                       (-> {:query "select bar from table_a;"}
+        ;; (tx/with-temp-database! :sqlserver db-name
+        (doseq [statement ["drop table if exists [table_a];"
+                           "create table table_a ( id int primary key, foo int, bar int );"
+                           "insert into table_a values (1, 2, 3), (2, 4, 6);"
+                           "drop table if exists [table_b];"
+                           "create table table_b (id int primary key, foo int, bar int );"
+                           "insert into table_b values (11, 22, 33), (22, 44, 66);"
+                           (format (str "IF NOT EXISTS ("
+                                        "SELECT name FROM master.sys.server_principals WHERE name = 'default_role_user')"
+                                        "BEGIN CREATE LOGIN [default_role_user] WITH PASSWORD = N'%s' END")
+                                   (tx/db-test-env-var :sqlserver :password))
+                           "drop user if exists [default_role_user];"
+                           "create user default_role_user for login default_role_user;"]]
+          (jdbc/execute! spec [statement]))
+        (tx/with-temp-roles! :sqlserver
+          details
+          {"user_a" {"table_a" {:columns ["id" "foo"]}}
+           "user_b" {"table_b" {:columns ["id" "bar"]}}}
+          "default_role_user"
+          (mt/with-temp [:model/Database database {:engine :sqlserver :details (assoc details :user "default_role_user")}]
+            (mt/with-db database
+              (sync/sync-database! database)
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" "user_a"}}
+                (is (= [[1 2] [2 4]]
+                       (-> {:query "select id, foo from table_a;"}
                            mt/native-query
                            mt/process-query
                            mt/rows)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"The SELECT permission was denied on the object"
-                       (-> {:query "select * from table_b;"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows))))
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" "user_b"}}
-                  (is (= [[11 33] [22 66]]
-                         (-> {:query "select id, bar from table_b;"}
-                             mt/native-query
-                             mt/process-query
-                             mt/rows)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"The SELECT permission was denied on the column 'foo' of the object 'table_b'"
-                       (-> {:query "select foo from table_b;"}
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"The SELECT permission was denied on the column 'bar' of the object 'table_a'"
+                     (-> {:query "select bar from table_a;"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"The SELECT permission was denied on the object"
+                     (-> {:query "select * from table_b;"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows))))
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" "user_b"}}
+                (is (= [[11 33] [22 66]]
+                       (-> {:query "select id, bar from table_b;"}
                            mt/native-query
                            mt/process-query
                            mt/rows)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"The SELECT permission was denied on the object"
-                       (-> {:query "select * from table_a;"}
-                           mt/native-query
-                           mt/process-query
-                           mt/rows))))))))))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"The SELECT permission was denied on the column 'foo' of the object 'table_b'"
+                     (-> {:query "select foo from table_b;"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"The SELECT permission was denied on the object"
+                     (-> {:query "select * from table_a;"}
+                         mt/native-query
+                         mt/process-query
+                         mt/rows)))))))))))
 
 (deftest conn-impersonation-with-db-routing
   (mt/test-driver :postgres
