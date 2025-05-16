@@ -18,7 +18,7 @@ const TestComponent = () => {
   return <div>Test</div>;
 };
 
-const waitTime = async () => {
+const waitForElevenSeconds = async () => {
   act(() => {
     jest.advanceTimersByTime(11 * 1000);
   });
@@ -59,19 +59,19 @@ describe("useTokenRefresh", () => {
 
   it("should refetch every 10 seconds", async () => {
     await setup(true); // always start with 1 request
-    await waitTime(); // 2
+    await waitForElevenSeconds(); // 2
     expect((await findRequests("GET")).length).toBe(2);
-    await waitTime(); // 3
-    await waitTime(); // 4
+    await waitForElevenSeconds(); // 3
+    await waitForElevenSeconds(); // 4
     await waitForGets(4);
     expect((await findRequests("GET")).length).toBe(4);
   });
 
   it("should not refetch if the token lacks a refresh flag", async () => {
     await setup(false);
-    await waitTime();
-    await waitTime();
-    await waitTime();
+    await waitForElevenSeconds();
+    await waitForElevenSeconds();
+    await waitForElevenSeconds();
     const gets = await findRequests("GET");
     expect(gets.length).toBe(1);
   });
@@ -79,15 +79,15 @@ describe("useTokenRefresh", () => {
   it("should stop refetching once the token gets a refresh flag", async () => {
     await setup(true); // always start with 1 request
 
-    await waitTime();
+    await waitForElevenSeconds();
     await waitForGets(2);
 
     setupRefreshableProperties(false); // remove the refresh flag
-    await waitTime();
+    await waitForElevenSeconds();
     await waitForGets(3); // should get one more
 
-    await waitTime();
-    await waitTime();
+    await waitForElevenSeconds();
+    await waitForElevenSeconds();
 
     const gets = await findRequests("GET"); // should still be 3
     expect(gets.length).toBe(3);
