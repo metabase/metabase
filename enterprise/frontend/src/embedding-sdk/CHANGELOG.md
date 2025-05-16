@@ -1,3 +1,18 @@
+## [0.54.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.10...embedding-sdk-0.54.11) (2025-05-16)
+
+
+### Bug Fixes
+
+* **sdk:** Move @cypress/react as dev dependency for SDK ([#57962](https://github.com/metabase/metabase/issues/57962)) ([#57983](https://github.com/metabase/metabase/issues/57983)) ([5936bec](https://github.com/metabase/metabase/commit/5936becaa4ac808ce88f8fa53df0f9b9b26065a5))
+* **sdk:** table cell color is always white on the sdk ([#57770](https://github.com/metabase/metabase/issues/57770)) ([#57920](https://github.com/metabase/metabase/issues/57920)) ([06c3d65](https://github.com/metabase/metabase/commit/06c3d65af70061211a2262dfff5d560bfb99007b))
+
+
+### Features
+
+* **sdk:** theme-dependent default question toolbar colors ([#57747](https://github.com/metabase/metabase/issues/57747)) ([#57917](https://github.com/metabase/metabase/issues/57917)) ([61ec72f](https://github.com/metabase/metabase/commit/61ec72fa4bab800f69d28db501f04b4aa7d6722b))
+
+
+
 ## [0.54.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.9...embedding-sdk-0.54.10) (2025-05-13)
 
 
