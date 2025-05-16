@@ -1,7 +1,7 @@
-(ns metabase.models.dashboard-tab
+(ns metabase.dashboards.models.dashboard-tab
   (:require
    [medley.core :as m]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -20,11 +20,11 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(methodical/defmethod t2/model-for-automagic-hydration [:metabase.models.dashboard-card/DashboardCard :dashboard_tab]
+(methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
   :model/DashboardTab)
 
-(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:metabase.models.dashboard-card/DashboardCard :dashboard_tab :default]
+(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab :default]
   [_original-model _dest-key _hydrating-model]
   [:dashboard_tab_id])
 
