@@ -10634,6 +10634,7 @@ databaseChangeLog:
                     nullable: true
                     unique: true
 
+  # TODO this might make downgrade failed for the seeded notifications. Check before merging to master
   - changeSet:
       id: v54.2025-02-14T08:00:00
       author: qnkhuat
