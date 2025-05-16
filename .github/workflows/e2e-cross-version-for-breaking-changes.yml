@@ -16,7 +16,7 @@ on:
       total-shards:
         description: "Total number of parallel test shards"
         type: number
-        required: true
+        required: false
         default: 4
   workflow_call:
     inputs:
@@ -31,7 +31,7 @@ on:
       total-shards:
         description: "Total number of parallel test shards"
         type: number
-        required: true
+        required: false
 
 jobs:
   generate-matrix:
