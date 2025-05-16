@@ -52,7 +52,7 @@ export function EmbeddingDataPicker({
     isFetching: isSourceModelFetching,
   } = useSourceModelCollectionId(query);
 
-  if (isDataSourceCountLoading || isSourceModelFetching) {
+  if (isDataSourceCountLoading) {
     return null;
   }
 
@@ -83,10 +83,15 @@ export function EmbeddingDataPicker({
     );
   }
 
+  const isSourceSelected = Boolean(pickerInfo?.tableId);
   return (
     <PLUGIN_EMBEDDING.DataSourceSelector
-      key={pickerInfo?.tableId ?? sourceTable?.id}
-      isInitiallyOpen={!table}
+      key={
+        isSourceSelected
+          ? pickerInfo?.tableId
+          : `${sourceTable?.id}:${isSourceModelFetching}`
+      }
+      isInitiallyOpen={isSourceModelFetching ? false : !table}
       isQuerySourceModel={isSourceModel}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
