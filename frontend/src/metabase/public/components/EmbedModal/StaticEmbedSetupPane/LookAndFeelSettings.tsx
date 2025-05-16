@@ -90,7 +90,7 @@ export const LookAndFeelSettings = ({
             <Select
               label={
                 <Text fw="bold" mb="0.25rem" lh="1rem">
-                  Font
+                  {t`Font`}
                 </Text>
               }
               value={displayOptions.font}

@@ -27,6 +27,7 @@ import type {
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  ParameterId,
   PopularItem,
   RecentItem,
   Revision,
@@ -295,6 +296,12 @@ export function provideDashboardListTags(
     listTag("dashboard"),
     ...dashboards.map((dashboard) => idTag("dashboard", dashboard.id)),
   ];
+}
+
+export function provideParameterValuesTags(
+  parameterId: ParameterId,
+): TagDescription<TagType>[] {
+  return [idTag("parameter-values", parameterId)];
 }
 
 export function provideDashboardTags(

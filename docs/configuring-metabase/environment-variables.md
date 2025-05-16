@@ -1127,6 +1127,10 @@ The base URL where dashboard notitification links will point to instead of the M
 
 The size of the thread pool used to send notifications.
 
+If Metabase stops sending notifications like alerts, it may be because long-running
+  queries are clogging the notification queue. You may be able to unclog the queue by
+  increasing the size of the thread pool dedicated to notifications.
+
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
 - Type: string

@@ -127,7 +127,9 @@
          (sequential? collapsed-subtotal)
          (let [key-path (conj (into [] (interpose :children collapsed-subtotal))
                               :isCollapsed)]
-           (assoc-in tree key-path true))))
+           (if-not (nil? (get-in tree key-path))
+             (assoc-in tree key-path true)
+             tree))))
      tree
      parsed-collapsed-subtotals)))
 

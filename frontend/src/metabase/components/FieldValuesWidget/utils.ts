@@ -315,12 +315,11 @@ export function getValuesMode({
   return "none";
 }
 
-export function isNumeric(field: Field, parameter?: Parameter) {
-  if (parameter) {
-    return isNumberParameter(parameter);
-  }
-
-  return field.isNumeric();
+export function isNumeric(parameter: Parameter | undefined, fields: Field[]) {
+  return (
+    (parameter != null && isNumberParameter(parameter)) ||
+    (fields.length > 0 && fields.every((field) => field.isNumeric()))
+  );
 }
 
 export function getValue(option: FieldValue): RowValue {

@@ -574,7 +574,7 @@
         (assoc :column-titles titles)
         qp.pivot.postprocess/add-pivot-measures
         (assoc :aggregation-functions agg-fns)
-        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
+        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index titles)))))
 
 ;; Below, we need to provide an AreaReference to create a pivot table.
 ;; Creating an AreaReference will 'realize' every CellReference inside it, and so the larger the AreaReference,
@@ -607,7 +607,7 @@
         typed-cell-styles           (compute-typed-cell-styles wb data-format)
         data-sheet                  (spreadsheet/select-sheet "data" wb)
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
-        col-names                   (streaming.common/column-titles ordered-cols col-settings format-rows?)
+        col-names                   (streaming.common/column-titles ordered-cols viz-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
         ;; keep the initial area-ref small (only 2 rows) so that adding row and column labels keeps the pivot table
         ;; object small.
@@ -655,13 +655,13 @@
        :sheet    sheet})))
 
 (defn- init-workbook
-  [{:keys [ordered-cols col-settings format-rows?]}]
+  [{:keys [ordered-cols viz-settings format-rows?]}]
   (let [workbook (SXSSFWorkbook.)
         sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (doseq [i (range (count ordered-cols))]
       (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
     (setup-header-row! sheet (count ordered-cols))
-    (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?))
+    (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {}) format-rows?))
     {:workbook workbook
      :sheet    sheet}))
 
@@ -685,8 +685,8 @@
                                    (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                    :pivot-rows []}
                                                                   pivot-export-options) ordered-cols))
-              col-names          (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
+              col-names          (streaming.common/column-titles ordered-cols viz-settings format-rows?)
+              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index col-names)]
           (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
           (if opts
             (let [wb (init-native-pivot opts
@@ -697,7 +697,7 @@
               (vreset! workbook-data wb))
             (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
                                                      pivot-grouping-key (m/remove-nth pivot-grouping-key))
-                                     :col-settings col-settings
+                                     :viz-settings viz-settings
                                      :format-rows? true})]
               (vreset! workbook-data wb)))
 

@@ -19,7 +19,7 @@ import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionE
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { getQuestionWithParameters } from "metabase/query_builder/selectors";
+import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -68,7 +68,7 @@ export function QueryModals({
   const dispatch = useDispatch();
 
   const initialCollectionId = useGetDefaultCollectionId();
-  const questionWithParameters = useSelector(getQuestionWithParameters);
+  const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const handleSaveAndClose = useCallback(
     async (question: Question) => {
@@ -259,11 +259,11 @@ export function QueryModals({
                 : initialCollectionId,
             }}
             copy={async (formValues) => {
-              if (!questionWithParameters) {
+              if (!underlyingQuestion) {
                 return;
               }
 
-              const question = questionWithParameters
+              const question = underlyingQuestion
                 .setDisplayName(formValues.name)
                 .setCollectionId(formValues.collection_id)
                 .setDashboardId(formValues.dashboard_id)

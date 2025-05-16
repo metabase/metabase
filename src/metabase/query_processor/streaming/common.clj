@@ -105,24 +105,16 @@
       "name"
       (get-in currency/currency [(keyword currency-code) :name_plural]))))
 
+;; Forward declaration for viz-settings-for-col since we need to use it before its definition
+(declare viz-settings-for-col)
+
 (defn column-titles
   "Generates the column titles that should be used in the export, taking into account viz settings."
-  [ordered-cols col-settings format-rows?]
+  [ordered-cols viz-settings format-rows?]
   (for [col ordered-cols]
-    (let [id-or-name      (or (and (:remapped_from col) (:fk_field_id col))
-                              (:id col)
-                              (:name col))
-          col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
-          format-settings (or (get col-settings' {::mb.viz/field-id id-or-name})
-                              (get col-settings' {::mb.viz/column-name id-or-name})
-                              (get col-settings' {::mb.viz/column-name (:name col)}))
+    (let [merged-settings (viz-settings-for-col col viz-settings)
           is-currency?    (or (isa? (:semantic_type col) :type/Currency)
-                              (= (::mb.viz/number-style format-settings) "currency"))
-          merged-settings (merge
-                           (:settings col)
-                           (if is-currency?
-                             (merge-global-settings format-settings :type/Currency)
-                             format-settings))
+                              (= (::mb.viz/number-style merged-settings) "currency"))
           column-title    (or (when format-rows? (not-empty (::mb.viz/column-title merged-settings)))
                               (:display_name col)
                               (:name col))]
@@ -198,6 +190,10 @@
   [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
   (let [{::mb.viz/keys [global-column-settings] :as viz-settings} (ensure-global-viz-settings viz-settings)
         [ref-type field-id-or-name] field_ref
+        field-id-or-name (or (and (:remapped_from col) (:fk_field_id col))
+                             field-id-or-name
+                             (:id col)
+                             (:name col))
         all-cols-settings           (-> viz-settings
                                         ::mb.viz/column-settings
                                         ;; update the keys so that they will have only the :field-id or :column-name

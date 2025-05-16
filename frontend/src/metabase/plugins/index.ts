@@ -39,6 +39,7 @@ import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/compo
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
+import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -55,13 +56,14 @@ import type {
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  DashboardId,
   Database as DatabaseType,
   Dataset,
-  FieldId,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  ParameterId,
   Pulse,
   Revision,
   TableId,
@@ -592,6 +594,7 @@ type GdriveConnectionModalProps = {
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {
+  FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
@@ -617,9 +620,14 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 };
 
 export const PLUGIN_API = {
-  getFieldValuesUrl: (fieldId: FieldId) => `/api/field/${fieldId}/values`,
-  getRemappedFieldValueUrl: (fieldId: FieldId, remappedFieldId: FieldId) =>
-    `/api/field/${fieldId}/remapping/${remappedFieldId}`,
-  getSearchFieldValuesUrl: (fieldId: FieldId, searchFieldId: FieldId) =>
-    `/api/field/${fieldId}/search/${searchFieldId}`,
+  getRemappedCardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+  getRemappedDashboardParameterValueUrl: (
+    dashboardId: DashboardId,
+    parameterId: ParameterId,
+  ) =>
+    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };

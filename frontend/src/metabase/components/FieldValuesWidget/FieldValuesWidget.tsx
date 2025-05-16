@@ -27,7 +27,9 @@ import { addRemappings } from "metabase/redux/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
+  CardId,
   Dashboard,
+  DashboardId,
   FieldValue,
   Parameter,
   RowValue,
@@ -369,6 +371,9 @@ export const FieldValuesWidgetInner = forwardRef<
     valueRenderer = (value: string | number) => {
       const option = options.find((option) => getValue(option) === value);
       return renderValue({
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         fields,
         formatOptions,
         value,
@@ -382,6 +387,9 @@ export const FieldValuesWidgetInner = forwardRef<
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
       renderValue({
+        parameter,
+        cardId: question?.id(),
+        dashboardId: dashboard?.id,
         fields,
         formatOptions,
         value: option[0],
@@ -443,7 +451,7 @@ export const FieldValuesWidgetInner = forwardRef<
   });
 
   const parseFreeformValue = (value: string | undefined) => {
-    if (isNumeric(fields[0], parameter)) {
+    if (isNumeric(parameter, fields)) {
       const number = typeof value === "string" ? parseNumber(value) : null;
       return typeof number === "bigint" ? String(number) : number;
     }
@@ -632,6 +640,9 @@ function renderOptions({
 }
 
 function renderValue({
+  parameter,
+  cardId,
+  dashboardId,
   fields,
   formatOptions,
   value,
@@ -639,6 +650,9 @@ function renderValue({
   compact,
   displayValue,
 }: {
+  parameter?: Parameter;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
@@ -648,6 +662,9 @@ function renderValue({
 }) {
   return (
     <ValueComponent
+      parameter={parameter}
+      cardId={cardId}
+      dashboardId={dashboardId}
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
