@@ -51,8 +51,8 @@ function renderMessage(undo: Undo) {
 }
 
 const slideIn = {
-  in: { opacity: 1, transform: "translateY(0)" },
-  out: { opacity: 0, transform: "translateY(100px)" },
+  in: { opacity: 1, transform: "translateX(0)" },
+  out: { opacity: 0, transform: "translateX(-50px)" },
   common: { transformOrigin: "top" },
   transitionProperty: "transform, opacity",
 };
