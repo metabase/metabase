@@ -83,7 +83,22 @@
               (is (= res
                      (biginteger coerced-number))))))))))
 
-(deftest date-to-datetime-coercion-test
+(defn- date-type? [col]
+  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                       :type/Text ;; sqlite uses text :(
+                                       :type/Date]))
+
+(defn- parse-date [s]
+  (try
+    (let [instant (-> s java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
+      (is (zero? (.getHour   instant)))
+      (is (zero? (.getMinute instant)))
+      (is (zero? (.getSecond instant)))
+      (.toLocalDate instant))
+    (catch Exception _
+      (-> s java.time.LocalDate/parse))))
+
+(deftest datetime-to-date-coercion-test
   (mt/test-drivers (mt/normal-drivers)
     (doseq [[human-col table col] [["orders created_at (timestamptz)" :orders :created_at]
                                    ["users last_login (timestamp)"    :users  :last_login]]]
@@ -100,17 +115,6 @@
               cols (mt/cols result)
               rows (mt/rows result)
               col (last cols)]
-          (is (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
-                                                   :type/Text     ;; sqlite uses text :(
-                                                   :type/Date]))
+          (is (date-type? col))
           (doseq [[date-col] rows]
-            (try
-              (let [date-val (-> date-col java.time.LocalDate/parse)]
-                (is date-val))
-              (catch Exception _ nil))
-            (try
-              (let [date-val (-> date-col java.time.Instant/parse (.atZone (java.time.ZoneId/of "UTC")))]
-                (is (zero? (.getHour date-val)))
-                (is (zero? (.getMinute date-val)))
-                (is (zero? (.getSecond date-val))))
-              (catch Exception _ nil))))))))
+            (is (parse-date date-col))))))))
