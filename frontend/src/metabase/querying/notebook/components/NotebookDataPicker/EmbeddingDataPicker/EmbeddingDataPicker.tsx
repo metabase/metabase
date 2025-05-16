@@ -4,6 +4,7 @@ import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getEmbedOptions } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import { DataPickerTarget } from "../DataPickerTarget";
@@ -44,9 +45,14 @@ export function EmbeddingDataPicker({
     (state) => getEmbedOptions(state).entity_types,
   );
 
-  const metadata = useSelector(getMetadata);
+  const sourceTable = useSourceTable(query);
+  const isSourceModel = sourceTable?.type === "model";
+  const {
+    collectionId: sourceModelCollectionId,
+    isFetching: isSourceModelFetching,
+  } = useSourceModelCollectionId(query);
 
-  if (isDataSourceCountLoading) {
+  if (isDataSourceCountLoading || isSourceModelFetching) {
     return null;
   }
 
@@ -76,8 +82,6 @@ export function EmbeddingDataPicker({
       />
     );
   }
-  const sourceTable = metadata.table(Lib.sourceTableOrCardId(query));
-  const isSourceModel = sourceTable?.type === "model";
 
   return (
     <PLUGIN_EMBEDDING.DataSourceSelector
@@ -87,7 +91,7 @@ export function EmbeddingDataPicker({
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
-      selectedCollectionId={card?.collection_id}
+      selectedCollectionId={card?.collection_id ?? sourceModelCollectionId}
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       triggerElement={
@@ -100,4 +104,22 @@ export function EmbeddingDataPicker({
       setSourceTableFn={onChange}
     />
   );
+}
+
+function useSourceTable(query: Lib.Query) {
+  const metadata = useSelector(getMetadata);
+  return metadata.table(Lib.sourceTableOrCardId(query));
+}
+
+function useSourceModelCollectionId(query: Lib.Query) {
+  const sourceTable = useSourceTable(query);
+  const isSourceModel = sourceTable?.type === "model";
+  const modelId = isSourceModel
+    ? getQuestionIdFromVirtualTableId(sourceTable?.id)
+    : undefined;
+  const { data: modelCard, isFetching } = useGetCardQuery(
+    modelId ? { id: modelId } : skipToken,
+  );
+
+  return { collectionId: modelCard?.collection_id, isFetching };
 }
