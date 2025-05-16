@@ -13,6 +13,7 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
+   [metabase.db :as mdb]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [potemkin :as p])
@@ -42,10 +43,14 @@
 (defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
   We use grouper for fire-and-forget scenarios, so we don't care about the result."
-  [& args]
-  (let [p (apply grouper/submit! args)]
-    (when (synchronous-batch-updates)
+  [^Grouper grouper & args]
+  (let [p            (apply grouper/submit! grouper args)
+        synchronous? (or (synchronous-batch-updates)
+                         ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
+                         ;; back the transaction at the end (as we do in tests)
+                         (mdb/in-transaction?))]
+    (when synchronous?
       ;; wake up the group immediately and wait for it to finish
-      (.wakeUp ^Grouper (first args))
+      (.wakeUp grouper)
       (deref p))
     nil))

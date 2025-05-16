@@ -27,6 +27,7 @@
   application-db
   data-source
   db-type
+  in-transaction?
   quoting-style
   unique-identifier]
 

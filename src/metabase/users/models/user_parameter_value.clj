@@ -7,7 +7,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -70,9 +69,13 @@
 
 (mu/defn store!
   "Asynchronously delete params with a nil `value` and upsert the rest."
-  [user-id         :- ms/PositiveInt
-   dashboard-id    :- ms/PositiveInt
-   parameters      :- [:sequential :map]]
+  [user-id         :- pos-int?
+   dashboard-id    :- pos-int?
+   parameters      :- [:sequential [:map
+                                    [:id      [:string {:min 1}]]
+                                    ;; TODO -- not sure whether these are optional or not
+                                    [:value   {:optional true} any?]
+                                    [:default {:optional true} some?]]]]
   (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                 :dashboard-id dashboard-id
                                                 :parameters   parameters}))
