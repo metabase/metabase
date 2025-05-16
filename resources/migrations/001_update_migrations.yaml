@@ -11266,7 +11266,7 @@ databaseChangeLog:
             sql: >-
               SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
               FROM (
-                SELECT ROW_NUMBER() OVER (PARTITION BY name, engine) as row_num
+                SELECT ROW_NUMBER() OVER (PARTITION BY name, engine) AS row_num
                 FROM metabase_database
               ) AS d
               WHERE d.row_num > 1;
