@@ -78,6 +78,7 @@ import type {
   Revision,
   TableId,
   Timeline,
+  TimelineEvent,
   User,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -683,6 +684,7 @@ export interface AIQuestionAnalysisSidebarProps {
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
 }
 
 export type PluginAIEntityAnalysis = {

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
    [metabase.audit-app.core :as audit]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -24,15 +25,6 @@
       (doseq [run-type [:admin :non-admin]]
         (mt/with-temp [:model/User                  {user-id :id} {}
                        :model/Card                  {card-id :id} {}
-                       ;; Alert, created by a different User
-                       :model/Pulse                 {alert-id :id}         {:alert_condition  "rows"
-                                                                            :alert_first_only false
-                                                                            :name             nil}
-                       :model/PulseCard             _                      {:pulse_id alert-id
-                                                                            :card_id  card-id}
-                       :model/PulseChannel          {alert-chan-id :id}    {:pulse_id alert-id}
-                       :model/PulseChannelRecipient _                      {:user_id          user-id
-                                                                            :pulse_channel_id alert-chan-id}
                        ;; DashboardSubscription, created by this User; multiple recipients
                        :model/Dashboard             {dashboard-id :id}      {}
                        :model/DashboardCard         {dashcard-id :id}      {:dashboard_id dashboard-id
@@ -47,46 +39,51 @@
                                                                             :pulse_channel_id dash-sub-chan-id}
                        :model/PulseChannelRecipient _                      {:user_id          (mt/user->id :rasta)
                                                                             :pulse_channel_id dash-sub-chan-id}]
-          (letfn [(describe-objects []
-                    {:num-subscriptions                (t2/count :model/PulseChannelRecipient :user_id user-id)
-                     :alert-archived?                  (t2/select-one-fn :archived :model/Pulse :id alert-id)
-                     :dashboard-subscription-archived? (t2/select-one-fn :archived :model/Pulse :id dash-sub-id)})
-                  (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
-                    (mt/user-http-request request-user-name-or-id
-                                          :delete expected-status-code
-                                          (format "ee/audit-app/user/%d/subscriptions" user-id)))]
-            (testing "Sanity check: User should have 2 subscriptions (1 Alert, 1 DashboardSubscription)"
-              (is (= {:num-subscriptions                2
-                      :alert-archived?                  false
-                      :dashboard-subscription-archived? false}
-                     (describe-objects))))
-            (case run-type
-              :non-admin
-              (testing "Non-admin"
-                (testing "should not be allowed to delete all subscriptions for another User"
-                  (is (= "You don't have permissions to do that."
-                         (api-delete-subscriptions! :rasta 403)))
-                  (is (= {:num-subscriptions                2
-                          :alert-archived?                  false
-                          :dashboard-subscription-archived? false}
-                         (describe-objects))))
-                (testing "should be allowed to delete all subscriptions for themselves."
-                  (is (nil? (api-delete-subscriptions! user-id 204)))
-                  (testing (str "\nAlert should get archived because this User was the last subscriber."
-                                "\nDashboardSubscription should get archived because this User created it.")
+          (notification.tu/with-card-notification [alert {:notification {:creator_id user-id}
+                                                          :handlers    [{:channel_type :channel/email
+                                                                         :recipients [{:type :notification-recipient/user
+                                                                                       :user_id user-id}]}]}]
+            (letfn [(describe-objects []
+                      {:num-subscriptions                (+ (t2/count :model/PulseChannelRecipient :user_id user-id)
+                                                            (t2/count :model/NotificationRecipient :user_id user-id))
+                       :alert-archived?                  (t2/select-one-fn (comp not :active) :model/Notification (:id alert))
+                       :dashboard-subscription-archived? (t2/select-one-fn :archived :model/Pulse :id dash-sub-id)})
+                    (api-delete-subscriptions! [request-user-name-or-id expected-status-code]
+                      (mt/user-http-request request-user-name-or-id
+                                            :delete expected-status-code
+                                            (format "ee/audit-app/user/%d/subscriptions" user-id)))]
+              (testing "Sanity check: User should have 2 subscriptions (1 Alert, 1 DashboardSubscription)"
+                (is (= {:num-subscriptions                2
+                        :alert-archived?                  false
+                        :dashboard-subscription-archived? false}
+                       (describe-objects))))
+              (case run-type
+                :non-admin
+                (testing "Non-admin"
+                  (testing "should not be allowed to delete all subscriptions for another User"
+                    (is (= "You don't have permissions to do that."
+                           (api-delete-subscriptions! :rasta 403)))
+                    (is (= {:num-subscriptions                2
+                            :alert-archived?                  false
+                            :dashboard-subscription-archived? false}
+                           (describe-objects))))
+                  (testing "should be allowed to delete all subscriptions for themselves."
+                    (is (nil? (api-delete-subscriptions! user-id 204)))
+                    (testing (str "\nAlert should get archived because this User was the last subscriber."
+                                  "\nDashboardSubscription should get archived because this User created it.")
+                      (is (= {:num-subscriptions                0
+                              :alert-archived?                  true
+                              :dashboard-subscription-archived? true}
+                             (describe-objects))))))
+
+                :admin
+                (testing "Admin should be allowed to delete all subscriptions for another User"
+                  (is (nil? (api-delete-subscriptions! :crowberto 204)))
+                  (testing "\nAlert and DashboardSubscription should have gotten archived as well"
                     (is (= {:num-subscriptions                0
                             :alert-archived?                  true
                             :dashboard-subscription-archived? true}
-                           (describe-objects))))))
-
-              :admin
-              (testing "Admin should be allowed to delete all subscriptions for another User"
-                (is (nil? (api-delete-subscriptions! :crowberto 204)))
-                (testing "\nAlert and DashboardSubscription should have gotten archived as well"
-                  (is (= {:num-subscriptions                0
-                          :alert-archived?                  true
-                          :dashboard-subscription-archived? true}
-                         (describe-objects))))))))))))
+                           (describe-objects)))))))))))))
 
 (deftest get-audit-info-test
   (testing "GET /api/ee/audit-app/user/audit-info"
