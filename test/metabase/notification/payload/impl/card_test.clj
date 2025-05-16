@@ -210,7 +210,7 @@
           (testing "sanity check that the file exists in the first place"
             (is (notification.payload/is-cleanable? @f)))
           (testing "the files are cleaned up"
-            (is (not (.exists (.file @f))))))))))
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"

@@ -25,7 +25,7 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type { RawSeries } from "metabase-types/api";
 
-import Styles from "./DimensionsWidget.modules.css";
+import Styles from "./DimensionsWidget.module.css";
 import { PieRowsPicker } from "./PieRowsPicker";
 
 function DimensionPicker({

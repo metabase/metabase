@@ -9,6 +9,7 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [metabase.config :as config]
+   [metabase.util.format :as u.format]
    [metabase.util.log.capture]
    [net.cgrand.macrovich :as macros])
   (:import
@@ -222,7 +223,7 @@
    ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
   [context-map & body]
   (macros/case
-    :clj `(let [ctx-map# ~context-map
+    :clj `(let [ctx-map# ~(update-keys context-map #(str "mb-" (u.format/qualified-name %)))
                 ctx-keys# (keys ctx-map#)
                 ;; Store original values before modifying
                 original-values# (into {}

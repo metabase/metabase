@@ -39,6 +39,7 @@ export const ModalHeader = ({
     >
       <Flex
         align="center"
+        gap="sm"
         className={cx(S.HeaderTextContainer, {
           [S.clickable]: !!onBack,
         })}

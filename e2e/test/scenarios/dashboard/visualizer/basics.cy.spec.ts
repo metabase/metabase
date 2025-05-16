@@ -22,6 +22,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
+    cy.intercept("GET", "/api/setting/version-info", {});
 
     cy.signInAsNormalUser();
 
@@ -440,6 +441,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.switchToAddMoreData();
     H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+    H.assertWellItemsCount({ vertical: 2 });
     H.saveDashcardVisualizerModal();
     H.saveDashboard();
 
@@ -486,6 +488,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.modal().within(() => {
         H.switchToAddMoreData();
         H.addDataset("Products by Created At (Month)");
+        H.assertWellItems({
+          vertical: ["Count", "Count (Products by Created At (Month))"],
+        });
       });
       H.saveDashcardVisualizerModal("create");
       H.saveDashboard();
@@ -500,9 +505,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
         expect(Object.keys(visualizerSettings)).to.have.length(3);
         expect(visualizerSettings).to.eql({
-          "card.title": "Orders by Created At (Month)",
           "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
           "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+          "card.title": "Orders by Created At (Month)",
         });
       });
     });

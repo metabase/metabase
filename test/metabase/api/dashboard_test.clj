@@ -8,7 +8,6 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
@@ -23,14 +22,16 @@
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.chain-filter-test :as chain-filter-test]
+   [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -47,7 +48,9 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest update-colvalmap-setting-test
+(use-fixtures :once (fixtures/initialize :test-users))
+
+(deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
     (let [id->new-card {123 {:id 456}
                         789 {:id 987}}
@@ -74,14 +77,6 @@
 
       (testing "should handle items without sourceId"
         (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
-
-(use-fixtures
-  :once
-  (fixtures/initialize :test-users))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Helper Fns & Macros                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- remove-ids-and-booleanize-timestamps [x]
   (cond
@@ -666,7 +661,7 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :error]]
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
                   :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
@@ -2967,15 +2962,6 @@
                  3
                  (mt/user-http-request :rasta :get 200 (chain-filter-values-url dash-id "__ID__")))))))))
 
-(deftest combined-chained-filter-results-test
-  (testing "dedupes and sort by value, then by label if exists"
-    (is (= [[1] [2 "B"] [3] [4 "A"] [5 "C"] [6 "D"]]
-           (#'api.dashboard/combine-chained-fitler-results
-            [{:values [[1] [2] [4]]}
-             {:values [[4 "A"] [5 "C"] [6 "D"]]}
-             {:values [[1] [2] [3]]}
-             {:values [[4 "A"] [2 "B"] [5 "C"]]}])))))
-
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
     (when config/ee-available?
@@ -3282,36 +3268,6 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest param->fields-test
-  (testing "param->fields"
-    (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (let [dashboard (t2/hydrate dashboard :resolved-params)]
-        (testing "Should correctly retrieve fields"
-          (is (=? [{:op := :options nil}]
-                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_NAME_"]))))
-          (is (=? [{:op :contains :options {:case-sensitive false}}]
-                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])))))))))
-
-(deftest chain-filter-constraints-test
-  (testing "chain-filter-constraints"
-    (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (let [dashboard (t2/hydrate dashboard :resolved-params)]
-        (testing "Should return correct constraints with =/!="
-          (is (=? [{:op := :value "ood" :options nil}]
-                  (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})))
-          (is (=? [{:op :!= :value "ood" :options nil}]
-                  (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"}))))
-        (testing "Should return correct constraints with a few filters"
-          (is (=? [{:op := :value "foo" :options nil}
-                   {:op :!= :value "bar" :options nil}
-                   {:op :contains :value "buzz" :options {:case-sensitive false}}]
-                  (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_"     "foo"
-                                                                       "_NOT_CATEGORY_NAME_" "bar"
-                                                                       "_CATEGORY_CONTAINS_" "buzz"}))))
-        (testing "Should ignore incorrect/unknown filters"
-          (is (= []
-                 (#'api.dashboard/chain-filter-constraints dashboard {"qqq" "www"}))))))))
-
 ;; See the commented-out test below which calls this helper, and the TODO on why it's disabled.
 #_(defn- card-fields-from-table-metadata
     [card-id]
@@ -3336,7 +3292,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [api.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (with-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card       {card-id :id} {}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"

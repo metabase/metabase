@@ -469,7 +469,7 @@
                            {:id 2 :deadline later}]
                           (map #(#'notification.send/->NotificationQueueEntry (:id %) (:deadline %)))
                           (sort @#'notification.send/deadline-comparator))]
-      (is (= [1 2 3] (map #(.id %) items))))))
+      (is (= [1 2 3] (map #(.id ^metabase.notification.send.NotificationQueueEntry %) items))))))
 
 (deftest notification-dedup-dispatcher-test
   (testing "notification dedup dispatcher"

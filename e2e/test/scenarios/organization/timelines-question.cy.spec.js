@@ -423,7 +423,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
       H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").realClick();
+      H.echartsIcon("star").click();
 
       // event should be selected in sidebar
       timelineEventCard("RC1").should("be.visible");
