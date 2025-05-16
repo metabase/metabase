@@ -105,6 +105,7 @@ const config = {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
+    "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -224,6 +225,7 @@ const config = {
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
+      "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
   },
   optimization: {
@@ -278,6 +280,12 @@ const config = {
       filename: "../../embed.html",
       chunksSortMode: "manual",
       chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-sdk.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin({
@@ -379,4 +387,11 @@ if (devMode) {
   );
 }
 
-module.exports = config;
+const additionalRspackConfig = [];
+
+if (process.env.MB_EDITION === "ee") {
+  // Build the embed.js script for the sdk iframe embedding.
+  additionalRspackConfig.push(require("./rspack.iframe-sdk-embed.config"));
+}
+
+module.exports = [config, ...additionalRspackConfig];

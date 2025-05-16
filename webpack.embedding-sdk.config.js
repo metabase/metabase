@@ -38,7 +38,7 @@ const BABEL_CONFIG = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: isDevMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -49,7 +49,7 @@ const CSS_CONFIG = {
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
-module.exports = env => {
+module.exports = (env) => {
   const config = {
     ...mainConfig,
 
@@ -189,6 +189,9 @@ module.exports = env => {
     ...mainConfig.resolve.alias,
     "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+
+    // Allows importing side effects that applies only to the SDK.
+    "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
   };
 
   if (config.cache) {
@@ -207,8 +210,8 @@ class TypescriptConvertErrorsToWarnings {
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 
-    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", issues =>
-      issues.map(issue => ({ ...issue, severity: "warning" })),
+    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", (issues) =>
+      issues.map((issue) => ({ ...issue, severity: "warning" })),
     );
   }
 }
