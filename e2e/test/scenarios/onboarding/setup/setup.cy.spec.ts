@@ -301,7 +301,7 @@ describe("scenarios > setup", () => {
     cy.log("Locale is preserved upon succesful setup");
     cy.location("pathname").should("eq", "/");
     H.main()
-      .findByText("Aan de slag met het insluiten van Metabase in uw app")
+      .findByText("Aan de slag met het opnemen van Metabase in uw app")
       .should("be.visible");
   });
 
