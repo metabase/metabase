@@ -221,13 +221,18 @@
     ~dashboard
     (fn [~binding] ~@body)))
 
+(def ^:private branding-mrkdwn
+  {:text (str "<" channel.slack/metabase-branding-link "|" channel.slack/metabase-branding-copy ">")
+   :type "mrkdwn"})
+
 (defn- default-slack-blocks
   [dashboard-id card-ids]
   (concat
    [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
     {:type "section"
      :fields
-     [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}]
+     [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
+      branding-mrkdwn]}]
    (apply concat
           (for [card-id card-ids]
             [{:type "section"
@@ -391,7 +396,8 @@
          (is (= {:channel "#general"
                  :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
                            {:type "section"
-                            :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}
+                            :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
+                                     branding-mrkdwn]}
                            {:type "section"
                             :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                            {:type "section" :text {:type "plain_text" :text "1,000"}}
@@ -429,7 +435,8 @@
          (is (= {:channel "#general"
                  :blocks [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
                           {:type "section"
-                           :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}]}
+                           :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
+                                    branding-mrkdwn]}
                           {:type "section"
                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                           {:type "section" :text {:type "plain_text" :text "1,000"}}
@@ -471,7 +478,8 @@
                               [{:type "mrkdwn"
                                 :text
                                 (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
-                                        dashboard-id)}]}
+                                        dashboard-id)}
+                               branding-mrkdwn]}
                              {:type "section"
                               :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
                              {:type "section" :text {:type "plain_text" :text "1,000"}}]}
@@ -533,7 +541,8 @@
                           [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                            {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                          {:type "section", :fields [{:type "mrkdwn"
-                                                     :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}
+                                                     :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}
+                                                    branding-mrkdwn]}
                          {:type "section"
                           :text {:type "mrkdwn" :text #"<https://testmb\.com/question/\d+\|Test card>"}}
                          {:type "section", :text {:type "plain_text", :text "1,000"}}
@@ -578,7 +587,8 @@
       :assert
       {:slack
        (fn [_object-ids [message]]
-         (is (= {:type "section", :fields [{:type "mrkdwn", :text "(URL exce…"}]}
+         (is (= {:type "section", :fields [{:type "mrkdwn", :text "(URL exce…"}
+                                           {:type "mrkdwn", :text "(URL exce…"}]}
                 (second (:blocks message)))))}})))
 
 (deftest archived-dashboard-test
@@ -933,7 +943,8 @@
                            [{:type "mrkdwn"
                              :text
                              (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
-                                     dashboard-id)}]}
+                                     dashboard-id)}
+                            branding-mrkdwn]}
                           {:type "section" :text {:type "mrkdwn" :text "*The first tab*"}}
                           {:type "section"
                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id)}}
@@ -945,13 +956,13 @@
                           {:type "section" :text {:type "mrkdwn" :text "Card 2 tab-2"}}]}
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
-(defn- result-attachment
+(defn- result-attachment!
   [part]
   (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
          (with-open [os baos]
-           (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
+           (#'email.result-attachment/stream-api-results-to-export-format! os {:export-format :csv :format-rows? true} result)
            (let [output-string (.toString baos "UTF-8")]
              {:type         :attachment
               :content-type :csv
@@ -983,7 +994,7 @@
                            :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
-              (with-redefs [email.result-attachment/result-attachment result-attachment]
+              (with-redefs [email.result-attachment/result-attachment result-attachment!]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
                        (-> @mt/inbox
@@ -999,7 +1010,7 @@
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"
-    (let [tmp (#'email.result-attachment/create-temp-file ".tmp")
+    (let [tmp (#'email.result-attachment/create-temp-file! ".tmp")
           {:keys [file-name]} (#'email.result-attachment/create-result-attachment-map :csv "テストSQL質問" tmp)]
       (is (= "テストSQL質問" (first (str/split file-name #"_")))))))
 
@@ -1216,12 +1227,13 @@
                                                    #"<a href=\"https://testmb.com/question/\d+\""))))
      :slack
      (fn [_ [message]]
-       (is (=? [{:text {:emoji true :text "Aviary KPIs" :type "plain_text"}
-                 :type "header"}
-                {:fields [{:text (mt/malli=? :string)
-                           :type "mrkdwn"}]
-                 :type "section"}
-                {:text {:text "My Card" :type "mrkdwn"}
-                 :type "section"}
-                {:alt_text "My Card" :slack_file {:id "My Card.png"} :type "image"}]
+       (is (=? [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
+                {:type "section"
+                 :fields
+                 [{:type "mrkdwn" :text #"<https://testmb\.com/dashboard/\d+\|\*Sent from Metabase Test by Rasta Toucan\*>"}
+                  {:type "mrkdwn"
+                   :text
+                   "<https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack|Made with Metabase :blue_heart:>"}]}
+                {:type "section" :text {:type "mrkdwn" :text "My Card"}}
+                {:type "image" :slack_file {:id "My Card.png"} :alt_text "My Card"}]
                (:blocks message))))}}))

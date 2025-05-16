@@ -8,7 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.settings :as channel.settings]
-   [metabase.models.params.shared :as shared.params]
+   [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
    [ring.util.codec :as codec]))
 

@@ -17,8 +17,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import (org.quartz TriggerKey)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -282,7 +281,7 @@
   ([subscription-id cron-schedule]
    (subscription->trigger-info subscription-id cron-schedule "UTC"))
   ([subscription-id cron-schedule timezone]
-   {:key      (.getName ^TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
+   {:key      (.getName ^org.quartz.TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
     :data     {"subscription-id" subscription-id}
     :timezone timezone}))

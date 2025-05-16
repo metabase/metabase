@@ -117,6 +117,52 @@
             (is (= {}
                    @mt/inbox))))))))
 
+(deftest login-email-fall-back-name-test
+  (mt/test-helpers-set-global-values!
+    (let [original-maybe-send (var-get #'metabase.login-history.record/maybe-send-login-from-new-device-email)
+          new-login-email (fn [user-id]
+                            (mt/with-fake-inbox
+                              (with-redefs [request/geocode-ip-addresses (fn [ip-addresses]
+                                                                           (into {} (for [ip-address ip-addresses]
+                                                                                      [ip-address
+                                                                                       {:description "San Francisco, California, United States"
+                                                                                        :timezone    (t/zone-id "America/Los_Angeles")}])))
+                                            metabase.login-history.record/maybe-send-login-from-new-device-email
+                                            (fn [login-history]
+                                              (when-let [futur (original-maybe-send login-history)]
+                                                ;; block in tests
+                                                (u/deref-with-timeout futur 10000)))]
+                                (let [device (str (random-uuid))]
+                                  (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
+                                                                        :device_id (str (random-uuid))}
+                                                 :model/LoginHistory _ {:user_id   user-id
+                                                                        :device_id device
+                                                                        :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
+                                    (#'metabase.login-history.record/maybe-send-login-from-new-device-email
+                                     {:user_id user-id
+                                      :device_id device
+                                      :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
+                                      :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
+                                    (ffirst (vals @mt/inbox)))))))]
+      (testing "Use first name if exists"
+        (mt/with-temp [:model/User {user-id :id} {:first_name "Ngoc"
+                                                  :last_name  "Khuat"}]
+          (is (= "We've Noticed a New Metabase Login, Ngoc"
+                 (:subject (new-login-email user-id))))))
+
+      (testing "fallback to last name if user has no first_name"
+        (mt/with-temp [:model/User {user-id :id} {:first_name nil
+                                                  :last_name  "Khuat"}]
+          (is (= "We've Noticed a New Metabase Login, Khuat"
+                 (:subject (new-login-email user-id))))))
+
+      (testing "Else Use email if both first_name and last_name are null"
+        (mt/with-temp [:model/User {user-id :id} {:first_name nil
+                                                  :last_name  nil
+                                                  :email      "cto@metabase.com"}]
+          (is (= "We've Noticed a New Metabase Login, cto@metabase.com"
+                 (:subject (new-login-email user-id)))))))))
+
 (deftest create-session-test
   (mt/with-temp [:model/User {user-id :id}]
     (let [session

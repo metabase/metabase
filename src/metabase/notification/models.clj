@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
@@ -671,3 +672,12 @@
               :notification_handler_id [:in {:select [:id]
                                              :from   [:notification_handler]
                                              :where  [:= :notification_id notification-id]}]))
+
+(defn delete-card-notifications-and-notify!
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor card]
+  (when-let [card-notifications (seq (notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (events/publish-event! topic {:card          card
+                                  :actor         actor
+                                  :notifications card-notifications})))

@@ -16,6 +16,7 @@
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.payload.impl.system-event :as notification.system-event]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -178,7 +179,7 @@
     :notification/system-event
     (channel/template-context (:payload_type notification)
                               channel-type
-                              (notification/sample-payload notification))
+                              (notification.system-event/sample-payload notification))
 
     ;; else
     (binding [notification.payload.execute/*query-max-bare-rows* 2]
