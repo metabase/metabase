@@ -990,3 +990,7 @@
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
   (get-in database [:details :user]))
+
+(defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

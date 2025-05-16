@@ -45,7 +45,8 @@
                               :expression-literals     true
                               :now                     true
                               :identifiers-with-spaces true
-                              :convert-timezone        true}]
+                              :convert-timezone        true
+                              :expressions/date        false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -548,9 +549,9 @@
   (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
        ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
-(defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
+(defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
   [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]
