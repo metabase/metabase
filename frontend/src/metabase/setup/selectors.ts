@@ -133,24 +133,20 @@ export const getSteps = createSelector(
     const maybeAddStep = (step: SetupStep, condition: boolean): SetupStep[] =>
       condition ? [step] : [];
 
-    const baseSteps: SetupStep[] = [
+    const regularSteps: SetupStep[] = [
       "welcome",
       "language",
       "user_info",
       "usage_question",
+      ...maybeAddStep("db_connection", shouldShowDBConnectionStep),
+      ...maybeAddStep("license_token", shouldShowLicenseStep),
+      ...maybeAddStep("data_usage", shouldShowDataUsageStep),
+      "completed",
     ];
-    const completionStep: SetupStep[] = ["completed"];
-    const embeddingSteps: SetupStep[] = ["user_info", ...completionStep];
 
-    const steps = isEmbeddingUseCase
-      ? embeddingSteps
-      : [
-          ...baseSteps,
-          ...maybeAddStep("db_connection", shouldShowDBConnectionStep),
-          ...maybeAddStep("license_token", shouldShowLicenseStep),
-          ...maybeAddStep("data_usage", shouldShowDataUsageStep),
-          ...completionStep,
-        ];
+    const embeddingSteps: SetupStep[] = ["user_info", "completed"];
+
+    const steps = isEmbeddingUseCase ? embeddingSteps : regularSteps;
 
     return steps.map((key) => ({
       key,
