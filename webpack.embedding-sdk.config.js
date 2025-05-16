@@ -194,6 +194,9 @@ module.exports = (env) => {
     ...mainConfig.resolve.alias,
     "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+
+    // Allows importing side effects that applies only to the SDK.
+    "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
   };
 
   if (config.cache) {

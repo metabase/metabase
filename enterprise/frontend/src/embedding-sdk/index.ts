@@ -3,17 +3,9 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
-// polyfills useSyncExternalStore for React 17
-import "./lib/polyfill/use-sync-external-store";
-
 import "metabase/lib/dayjs";
 
-import "sdk-ee-plugins";
-
-// we need to manually import them here to make sure they are included in the bundle
-// as they're dynamically loaded in the main codebase
-import "html2canvas-pro";
-import "jspdf";
+import "sdk-specific-imports";
 
 export * from "./hooks/public";
 export * from "./components/public";

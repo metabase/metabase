@@ -566,6 +566,11 @@ export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK = {
+  hasValidLicense: () => false,
+  SdkIframeEmbedRoute: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,

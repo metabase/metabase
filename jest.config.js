@@ -48,6 +48,12 @@ const baseConfig = {
      * for any component under tests.
      */
     "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    /**
+     * Imports which are only applicable to the embedding sdk.
+     * As we use SDK components in new iframe embedding, we need to import them here.
+     **/
+    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,

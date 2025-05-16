@@ -33,9 +33,12 @@
     (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (system/site-url) uuid export-format)))
   (GET "*" [] index/public))
 
-;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
+;; /embed routes.
+;; /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
+;; /embed/sdk/v1 -> new iframe embedding based on embedding sdk components
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
+  (GET "/sdk/v1" [] index/embed-sdk)
   (GET ["/question/:token.:export-format", :export-format qp.schema/export-formats-regex]
     [token export-format]
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
@@ -57,44 +60,23 @@
   ([_request respond _raise]
    (respond (health-handler))))
 
-(mu/defn- api-handler :- ::api.macros/handler
-  [api-routes :- ::api.macros/handler]
-  (fn api-handler* [request respond raise]
-    ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
-    ;;
-    ;; if Metabase is not finished initializing, return a generic error message rather than
-    ;; something potentially confusing like "DB is not set up"
-    (if-not (init-status/complete?)
-      (respond {:status 503, :body "Metabase is still initializing. Please sit tight..."})
-      (api-routes request respond raise))))
-
-(mu/defn make-routes :- ::api.macros/handler
-  "Create the top-level Ring route handler for Metabase."
-  [api-routes :- ::api.macros/handler]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (compojure/routes
-   auth-wrapper/routes
-   ;; ^/$ -> index.html
-   (GET "/" [] index/index)
-   (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
-   ;; ^/api/health -> Health Check Endpoint
-   (GET "/api/health" [] health-handler)
-
-   (OPTIONS "/api/*" [] {:status 200 :body ""})
-
-   ;; ^/api/ -> All other API routes
-   (context "/api" [] (api-handler api-routes))
-   ;; ^/app/ -> static files under frontend_client/app
-   (context "/app" []
-     (route/resources "/" {:root "frontend_client/app"})
-     ;; return 404 for anything else starting with ^/app/ that doesn't exist
-     (route/not-found {:status 404, :body "Not found."}))
-   ;; ^/public/ -> Public frontend and download routes
-   (context "/public" [] public-routes)
-   ;; ^/emebed/ -> Embed frontend and download routes
-   (context "/embed" [] embed-routes)
-   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
-   (GET "*" [] index/index)))
-
-;;; TODO -- if anything changes here we should rebuild these routes? We need a version
-;;; of [[metabase.server.handler/dev-handler]] for these routes
+  ;; ^/api/ -> All other API routes
+  (context "/api" [] (fn [request respond raise]
+                       ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
+                       ;;
+                       ;; if Metabase is not finished initializing, return a generic error message rather than
+                       ;; something potentially confusing like "DB is not set up"
+                       (if-not (init-status/complete?)
+                         (respond {:status 503, :body "Metabase is still initializing. Please sit tight..."})
+                         (api/routes request respond raise))))
+  ;; ^/app/ -> static files under frontend_client/app
+  (context "/app" []
+    (route/resources "/" {:root "frontend_client/app"})
+    ;; return 404 for anything else starting with ^/app/ that doesn't exist
+    (route/not-found {:status 404, :body "Not found."}))
+  ;; ^/public/ -> Public frontend and download routes
+  (context "/public" [] public-routes)
+  ;; ^/embed/ -> Embed frontend and download routes
+  (context "/embed" [] embed-routes)
+  ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
+  (GET "*" [] index/index))
