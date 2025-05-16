@@ -113,58 +113,67 @@ export const MetabotChat = () => {
           ref={messagesRef}
           data-testid="metabot-chat-messages"
         >
-          <Box className={Styles.messages}>
-            {/* empty state with no sugggested prompts */}
-            {!hasMessages && !hasSuggestions && (
-              <Flex h="100%" direction="column" align="center" justify="center">
-                <Box
-                  component="img"
-                  src={EmptyDashboardBot}
-                  w="6rem"
-                  alt={t`Empty metabot conversation`}
-                />
-                <Text
-                  c="text-light"
-                  maw="19rem"
-                  ta="center"
-                >{t`I can tell you about what you’re looking at, or help you explore your models and metrics. empty state`}</Text>
-              </Flex>
-            )}
-
-            {/* empty state with sugggested prompts */}
-            {!hasMessages && hasSuggestions && (
-              <Stack gap="sm">
-                <>
-                  <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
-                  {metabot.suggestedPrompts.isLoading && <Loader />}
-                  {suggestedPrompts.map(({ prompt }, index) => (
-                    <Box key={index}>
-                      <Button
-                        fz="sm"
-                        size="xs"
-                        onClick={() => handleSubmitInput(prompt)}
-                      >
-                        {prompt}
-                      </Button>
-                    </Box>
-                  ))}
-                </>
-              </Stack>
-            )}
-
-            {/* conversation messages */}
-            {metabot.messages.map(({ actor, message }, index) => (
-              <Message
-                key={index}
-                data-testid="metabot-chat-message"
-                actor={actor}
-                message={message}
+          {/* empty state with no sugggested prompts */}
+          {!hasMessages && !hasSuggestions && (
+            <Flex h="100%" direction="column" align="center" justify="center">
+              <Box
+                component="img"
+                src={EmptyDashboardBot}
+                w="6rem"
+                alt={t`Empty metabot conversation`}
               />
-            ))}
+              <Text
+                c="text-light"
+                maw="19rem"
+                ta="center"
+              >{t`I can tell you about what you’re looking at, or help you explore your models and metrics. empty state`}</Text>
+            </Flex>
+          )}
 
-            {/* TODO: remove */}
-            {false && <Message actor="agent" message={testMarkdown} />}
-          </Box>
+          {/* empty state with sugggested prompts */}
+          {!hasMessages && hasSuggestions && (
+            <Stack gap="sm">
+              <>
+                <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
+                {metabot.suggestedPrompts.isLoading && <Loader />}
+                {suggestedPrompts.map(({ prompt }, index) => (
+                  <Box key={index}>
+                    <Button
+                      fz="sm"
+                      size="xs"
+                      onClick={() => handleSubmitInput(prompt)}
+                    >
+                      {prompt}
+                    </Button>
+                  </Box>
+                ))}
+              </>
+            </Stack>
+          )}
+
+          {hasMessages && (
+            <Box className={Styles.messages}>
+              {/* conversation messages */}
+              {metabot.messages.map(({ actor, message }, index) => (
+                <Message
+                  key={index}
+                  data-testid="metabot-chat-message"
+                  actor={actor}
+                  message={message}
+                  isLastMessage={index === metabot.messages.length - 1}
+                />
+              ))}
+
+              {/* TODO: remove */}
+              {false && (
+                <Message
+                  actor="agent"
+                  message={testMarkdown}
+                  isLastMessage={false}
+                />
+              )}
+            </Box>
+          )}
         </Box>
 
         {/* conversation status container */}
@@ -233,10 +242,12 @@ const Message = ({
   actor,
   message,
   className,
+  isLastMessage,
   ...props
 }: BoxProps & {
   actor: "agent" | "user";
   message: string;
+  isLastMessage: boolean;
 }) => {
   const clipboard = useClipboard();
 
@@ -244,7 +255,9 @@ const Message = ({
     <Flex
       className={cx(
         Styles.messageContainer,
-        actor === "user" && Styles.messageContainerUser,
+        actor === "user"
+          ? Styles.messageContainerUser
+          : Styles.messageContainerAgent,
         className,
       )}
       direction="column"
@@ -259,9 +272,11 @@ const Message = ({
       >
         {message}
       </Markdown>
-      <ActionIcon onClick={() => clipboard.copy(message)} h="md">
-        <Icon name="copy" size="1rem" />
-      </ActionIcon>
+      <Flex className={Styles.messageActions}>
+        <ActionIcon onClick={() => clipboard.copy(message)} h="sm">
+          <Icon name="copy" size="1rem" />
+        </ActionIcon>
+      </Flex>
     </Flex>
   );
 };
