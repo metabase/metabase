@@ -11256,7 +11256,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T01:00:00
-      validCheckSum: 8:d04207471480e335f14094e9a7a5d293
+      validCheckSum: ANY
       author: ranquild
       comment: Deduplicate metabase_database on (name, engine)
       preConditions:
