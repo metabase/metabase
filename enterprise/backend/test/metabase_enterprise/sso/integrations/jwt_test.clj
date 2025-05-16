@@ -444,7 +444,7 @@
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
 
 (deftest jwt-token-test
-  (testing "should return a session token when token=true"
+  (testing "should return a session token when sdk headers are passed"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
@@ -458,9 +458,9 @@
                              :iat        jwt-iat-time
                              :exp        jwt-exp-time}
                             default-jwt-secret)
-              result       (client/client-real-response :get 200 "/auth/sso"
-                                                        :token true
-                                                        :jwt   jwt-payload)]
+result (client/client-real-response :get 200 "/auth/sso"
+                                   {:headers {"x-metabase-client" "embedding-sdk-react"}}
+                                   :jwt jwt-payload)]
           (is
            (=?
             {:id  (mt/malli=? ms/UUIDString)
@@ -482,9 +482,9 @@
                              :iat        jwt-iat-time
                              :exp        jwt-exp-time}
                             default-jwt-secret)
-              result       (client/client-real-response :get 402 "/auth/sso"
-                                                        :token true
-                                                        :jwt   jwt-payload)]
+result (client/client-real-response :get 200 "/auth/sso"
+                                   {:headers {"x-metabase-client" "embedding-sdk-react"}}
+                                   :jwt jwt-payload)]
           (is result nil)))))
 
   (testing "should not return a session token when token=false"
