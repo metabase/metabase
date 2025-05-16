@@ -31,48 +31,46 @@
 
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
-    (is (=? (-> (merge
-                 (t2/select-one [:model/Field :id :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
-                                 :database_position :database_required :database_is_auto_increment :entity_id
-                                 :name :table_id :parent_id]
-                                :id (mt/id :users :name))
-                 {:table_id         (mt/id :users)
-                  :table            (merge
-                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                     (t2/select-one [:model/Table :id :created_at :updated_at :entity_id
-                                                     :initial_sync_status :view_count :schema :name :db_id]
-                                                    :id (mt/id :users))
-                                     {:description             nil
-                                      :entity_type             "entity/UserTable"
-                                      :visibility_type         nil
-                                      :db                      (db-details)
-                                      :schema                  "PUBLIC"
-                                      :name                    "USERS"
-                                      :display_name            "Users"
-                                      :active                  true
-                                      :id                      (mt/id :users)
-                                      :db_id                   (mt/id)
-                                      :caveats                 nil
-                                      :points_of_interest      nil
-                                      :show_in_getting_started false})
-                  :semantic_type    "type/Name"
-                  :name             "NAME"
-                  :display_name     "Name"
-                  :position         1
-                  :target           nil
-                  :id               (mt/id :users :name)
-                  :visibility_type  "normal"
-                  :database_type    "CHARACTER VARYING"
-                  :base_type        "type/Text"
-                  :effective_type   "type/Text"
-                  :has_field_values "list"
-                  :database_required false
-                  ;; Index sync is turned off across the application as it is not used ATM.
-                  #_#_:database_indexed  false
-                  :database_is_auto_increment false
-                  :dimensions       []
-                  :name_field       nil})
-                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
+    (is (=? (merge
+             (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
+                             :database_position :database_required :database_is_auto_increment :entity_id]
+                            :id (mt/id :users :name))
+             {:table_id         (mt/id :users)
+              :table            (merge
+                                 (mt/obj->json->obj (mt/object-defaults :model/Table))
+                                 (t2/select-one [:model/Table :created_at :updated_at :entity_id
+                                                 :initial_sync_status :view_count]
+                                                :id (mt/id :users))
+                                 {:description             nil
+                                  :entity_type             "entity/UserTable"
+                                  :visibility_type         nil
+                                  :db                      (db-details)
+                                  :schema                  "PUBLIC"
+                                  :name                    "USERS"
+                                  :display_name            "Users"
+                                  :active                  true
+                                  :id                      (mt/id :users)
+                                  :db_id                   (mt/id)
+                                  :caveats                 nil
+                                  :points_of_interest      nil
+                                  :show_in_getting_started false})
+              :semantic_type    "type/Name"
+              :name             "NAME"
+              :display_name     "Name"
+              :position         1
+              :target           nil
+              :id               (mt/id :users :name)
+              :visibility_type  "normal"
+              :database_type    "CHARACTER VARYING"
+              :base_type        "type/Text"
+              :effective_type   "type/Text"
+              :has_field_values "list"
+              :database_required false
+              ;; Index sync is turned off across the application as it is not used ATM.
+              #_#_:database_indexed  false
+              :database_is_auto_increment false
+              :dimensions       []
+              :name_field       nil})
             (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
                 (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
 

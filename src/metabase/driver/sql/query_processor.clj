@@ -1287,6 +1287,10 @@
   [driver [_ value]]
   (->date driver (->honeysql driver value)))
 
+(defmethod ->honeysql [:sql :text]
+  [driver [_ value]]
+  (->honeysql driver [::cast-to-text value]))
+
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
@@ -1385,9 +1389,19 @@
     ;; Honey SQL 2
     (as [:field \"x\" {:base-type :type/Text, :temporal-unit :month}])
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
-    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\""
+    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
+
+  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
+    ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
+    ;; -> SELECT CAST(1 AS bit) AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [honeysql-form (->honeysql driver clause)
+  (let [cast-type     (-> clause mbql.u/field-options ::add-cast)
+        wrap-cast     #(vector ::cast % cast-type)
+        maybe-cast    #(cond-> % cast-type wrap-cast)
+        honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
       [honeysql-form [field-alias]]
