@@ -142,7 +142,6 @@
            upload
            util
            warehouse-schema
-           xrays
            enterprise/advanced-permissions}}
 
   api-keys
@@ -352,6 +351,7 @@
            revisions
            search
            util
+           warehouse-schema
            xrays}}
 
   database-routing
@@ -622,13 +622,11 @@
            premium-features
            secrets
            settings
-           query-processor
            search
            setup
            sync
            system
-           util
-           warehouse-schema}}
+           util}}
 
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
