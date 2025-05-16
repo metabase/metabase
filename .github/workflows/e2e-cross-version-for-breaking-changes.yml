@@ -32,6 +32,7 @@ on:
         description: "Total number of parallel test shards"
         type: number
         required: false
+        default: 4
 
 jobs:
   generate-matrix:
