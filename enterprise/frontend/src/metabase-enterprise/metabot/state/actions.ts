@@ -1,3 +1,4 @@
+import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
@@ -6,6 +7,7 @@ import {
   EnterpriseApi,
   METABOT_TAG,
   metabotAgent,
+  metabotApi,
 } from "metabase-enterprise/api";
 import type { MetabotChatContext, MetabotReaction } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
@@ -15,6 +17,8 @@ import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { metabot } from "./reducer";
 import { getIsProcessing, getMetabotConversationId } from "./selectors";
+
+const isAbortError = isMatching({ name: "AbortError" });
 
 export const {
   addAgentMessage,
@@ -58,7 +62,6 @@ export const submitInput = createAsyncThunk(
     const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
-      // TODO: if the request fails, do we want to put the message back into the input?
     });
     return sendMessageRequestPromise;
   },
@@ -74,7 +77,7 @@ export const sendMessageRequest = createAsyncThunk(
       state: any;
       metabot_id?: string;
     },
-    { dispatch, getState, signal },
+    { dispatch, getState },
   ) => {
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -95,47 +98,52 @@ export const sendMessageRequest = createAsyncThunk(
       ),
     );
 
-    let isAborted = false;
-    signal.addEventListener("abort", () => {
-      // This flag is needed, so other async actions are not dispatched
-      isAborted = true;
-      // Need to abort the request so, the hook's `isDoingScience` is false
-      metabotRequestPromise.abort();
-    });
-
     const result = await metabotRequestPromise;
-    if (isAborted) {
-      return;
-    }
 
     if (result.error) {
-      console.error("Metabot request returned error: ", result.error);
-      const message =
-        (result.error as any).status >= 500 ? getErrorMessage() : undefined;
-      dispatch(stopProcessingAndNotify(message));
-    } else {
-      const reactions = result.data?.reactions || [];
-      await dispatch(processMetabotReactions(reactions));
-      return result;
+      const didUserAbort = isAbortError(result.error);
+      if (didUserAbort) {
+        dispatch(stopProcessing());
+      } else {
+        console.error("Metabot request returned error: ", result.error);
+        const message =
+          (result.error as any).status >= 500 ? getErrorMessage() : undefined;
+        dispatch(stopProcessingAndNotify(message));
+      }
     }
+
+    const reactions = result.data?.reactions || [];
+    await dispatch(processMetabotReactions(reactions));
+    return result;
   },
 );
 
-export const resetConversation = () => (dispatch: Dispatch, getState: any) => {
-  // TODO: figure out how to cancel current request... for now just ignore the reset
-  const isProcessing = getIsProcessing(getState() as any);
-  if (isProcessing) {
-    return console.error("Metabot is actively serving a request");
-  }
+export const cancelInflightAgentRequests = createAsyncThunk(
+  "metabase-enterprise/metabot/cancelInflightAgentRequests",
+  (_args, { dispatch }) => {
+    const requests = dispatch(EnterpriseApi.util.getRunningMutationsThunk());
+    const agentRequests = requests.filter(
+      (req) => req.arg.endpointName === metabotApi.endpoints.metabotAgent.name,
+    );
+    agentRequests.forEach((req) => req.abort());
+  },
+);
 
-  dispatch(
-    EnterpriseApi.internalActions.removeMutationResult({
-      fixedCacheKey: METABOT_TAG,
-    }),
-  );
-  dispatch(clearMessages());
-  dispatch(resetConversationId());
-};
+export const resetConversation = createAsyncThunk(
+  "metabase-enterprise/metabot/resetConversation",
+  (_args, { dispatch }) => {
+    dispatch(cancelInflightAgentRequests());
+    // clear previous agent request state so history value is empty for future requests
+    dispatch(
+      EnterpriseApi.internalActions.removeMutationResult({
+        fixedCacheKey: METABOT_TAG,
+      }),
+    );
+
+    dispatch(clearMessages());
+    dispatch(resetConversationId());
+  },
+);
 
 export const processMetabotReactions = createAsyncThunk(
   "metabase-enterprise/metabot/processMetabotReactions",
@@ -168,8 +176,12 @@ export const processMetabotReactions = createAsyncThunk(
   },
 );
 
+export const stopProcessing = () => (dispatch: Dispatch) => {
+  dispatch(setIsProcessing(false));
+};
+
 export const stopProcessingAndNotify =
   (message?: string) => (dispatch: Dispatch) => {
-    dispatch(setIsProcessing(false));
+    dispatch(stopProcessing());
     dispatch(addAgentMessage(message || t`I can’t do that, unfortunately.`));
   };
