@@ -392,6 +392,26 @@
                                  :notification {:payload_type :notification/system-event
                                                 :payload      {:event_name :event/row.created}}}))))
 
+(deftest preview-notification-nice-error-message-test
+  (testing "invalide handlebars template"
+    (is (=? "Failed to render template: found: '}'\n{{}\n  ^"
+            (mt/user-http-request :crowberto :post 400 "notification/preview_template"
+                                  {:template     {:channel_type :channel/email
+                                                  :details {:type    :email/handlebars-text
+                                                            :subject "subject"
+                                                            :body    "{{}"}}
+                                   :notification {:payload_type :notification/system-event
+                                                  :payload      {:event_name :event/row.created}}}))))
+  (testing "invalid subject template"
+    (is (=? "Failed to render template: Invalid query: found '[[' or '{{' with no matching ']]' or '}}'"
+            (mt/user-http-request :crowberto :post 400 "notification/preview_template"
+                                  {:template     {:channel_type :channel/email
+                                                  :details {:type    :email/handlebars-text
+                                                            :subject "{{"
+                                                            :body    "{{}"}}
+                                   :notification {:payload_type :notification/system-event
+                                                  :payload      {:event_name :event/row.created}}})))))
+
 (deftest preview-notification-custom-payload-test
   (testing "use the custom context if it's valid"
     (is (=? {:context  (mt/malli=? :map)
