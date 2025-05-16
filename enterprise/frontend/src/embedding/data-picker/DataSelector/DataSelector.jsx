@@ -96,6 +96,7 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableDatabase: PropTypes.bool,
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
+    isQuerySourceModel: PropTypes.bool,
     tableFilter: PropTypes.func,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
@@ -342,12 +343,15 @@ export class UnconnectedDataSelector extends Component {
     return this.hasModels() && this.props.hasNestedQueriesEnabled;
   };
 
+  isJoinStep() {
+    return !this.props.canChangeDatabase;
+  }
+
   getDatabases = () => {
     const { databases } = this.state;
-    const { canChangeDatabase, selectedDatabaseId } = this.props;
+    const { selectedDatabaseId } = this.props;
 
-    const isJoiningData = !canChangeDatabase;
-    if (isJoiningData) {
+    if (this.isJoinStep()) {
       return databases
         .filter((db) => !db.is_saved_questions)
         .filter((db) => db.id === selectedDatabaseId);
@@ -366,12 +370,25 @@ export class UnconnectedDataSelector extends Component {
     } else if (
       // Schema id is explicitly set when going through the New > Question/Model flow,
       // whereas we have to obtain it from the state when opening a saved question.
-      (this.state.selectedSchemaId || this.state.selectedSchema?.id) &&
-      steps.includes(TABLE_STEP)
+      this.state.selectedSchemaId ||
+      this.state.selectedSchema?.id
     ) {
       await this.switchToStep(TABLE_STEP);
-    } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
-      await this.switchToStep(SCHEMA_STEP);
+    } else if (this.isJoinStep()) {
+      const isQuerySourceModel = this.props.isQuerySourceModel;
+
+      if (isQuerySourceModel) {
+        await this.switchToStep(
+          DATABASE_STEP,
+          {
+            selectedDataBucketId: "models",
+          },
+          false,
+        );
+      } else {
+        // query source is a table
+        await this.switchToStep(SCHEMA_STEP);
+      }
     } else if (!this.hasUsableModels()) {
       await this.switchToStep(DATABASE_STEP);
     } else {
