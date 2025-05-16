@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.types :as types]
    [metabase.util :as u]))
@@ -782,3 +783,42 @@
             (is (types/field-is-type? :type/Text (last cols)))
             (doseq [[_uncasted-value casted-value] rows]
               (is (string? casted-value)))))))))
+
+(deftest ^:parallel datetime-cast
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T17:20:01Z" "")
+                                              :mode :iso
+                                              :expected "2025-05-15T17:20:01Z"
+                                              :limit 1}]]]
+              {:keys [expression mode expected limit]} expressions]
+        (testing (str "Parsing " expression " as datetime with " mode ".")
+          (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
+                          (lib/expression "DATETIME_PARSE" (lib/datetime expression mode))
+                          (lib/limit limit))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (types/field-is-type? :type/DateTime (last cols)))
+            (doseq [[_id casted-value] rows]
+              (is (= expected casted-value)))))))))
+
+(deftest ^:parallel datetime-cast-from-datetime
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime :expressions/text)
+    (let [mp (mt/metadata-provider)]
+      (doseq [[table expressions] [[:people [{:field :created_at
+                                              :mode :iso}]]]
+              {:keys [field mode]} expressions]
+        (testing (str "Parsing " table "." field " as datetime with " mode ".")
+          (let [field (lib.metadata/field mp (mt/id table field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                          (lib/with-fields [field])
+                          (lib/expression "DATETIME_PARSE" (lib/datetime (lib/text field) mode))
+                          (lib/limit 100))
+                result (-> query qp/process-query)
+                cols (mt/cols result)
+                rows (mt/rows result)]
+            (is (types/field-is-type? :type/DateTime (last cols)))
+            (doseq [[uncasted-value casted-value] rows]
+              (is (= uncasted-value casted-value)))))))))

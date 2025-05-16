@@ -432,7 +432,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -728,7 +728,7 @@
   mode   LiteralDatetimeModeString)
 
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 

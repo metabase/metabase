@@ -61,7 +61,7 @@
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
 (mbql-clause/define-tuple-mbql-clause :datetime :- :type/DateTime
-  #_:value [:schema [:ref ::expression/*]] ;; need to support bytes type
+  #_:value [:schema [:ref ::expression/string]] ;; need to support bytes type
   #_:modestring [:enum {:error/message "datetime mode string"
                         :decode/normalize common/normalize-keyword-lower}
                  :iso
