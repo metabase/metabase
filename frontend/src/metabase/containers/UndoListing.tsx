@@ -1,4 +1,4 @@
-import { type HTMLAttributes, useState } from "react";
+import { type HTMLAttributes, useLayoutEffect, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -169,6 +169,8 @@ export function UndoListing() {
   );
 }
 
+const target = document.createElement("div");
+
 export function UndoListOverlay({
   undos,
   onUndo,
@@ -181,8 +183,17 @@ export function UndoListOverlay({
   // Reverse the list so new todos are rendered on top
   const reversed = Array.from(undos).reverse();
 
+  // lastId changes when a new undo is added
+  const lastId = undos.at(-1)?._domId;
+
+  useLayoutEffect(() => {
+    // When a new undo is added, we move the target to the
+    // end of the body so that it is always on top
+    document.body.appendChild(target);
+  }, [lastId]);
+
   return (
-    <Portal>
+    <Portal target={target}>
       <UndoList
         data-testid="undo-list"
         aria-label="undo-list"
