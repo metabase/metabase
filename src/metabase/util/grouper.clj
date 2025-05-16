@@ -42,13 +42,21 @@
 
 (defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
-  We use grouper for fire-and-forget scenarios, so we don't care about the result."
-  [^Grouper grouper & args]
-  (let [p            (apply grouper/submit! grouper args)
-        synchronous? (or (synchronous-batch-updates)
+   We use grouper for fire-and-forget scenarios, so we don't care about the result."
+  [^Grouper grouper thunk & options]
+  (let [synchronous? (or (synchronous-batch-updates)
                          ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
                          ;; back the transaction at the end (as we do in tests)
-                         (mdb/in-transaction?))]
+                         (mdb/in-transaction?))
+        ;; If we're running synchronously, capture all the currently bound dynamic variables, including the current
+        ;; connection (so we can reuse it for doing Grouper stuff). If we're running asynchronously, capture everything
+        ;; but the current Toucan 2 connection and transaction depth (used to track whether we're in a transaction
+        ;; already or not).
+        thunk        (if synchronous?
+                       (bound-fn* thunk)
+                       (mdb/with-ignored-current-connection
+                         (bound-fn* thunk)))
+        p            (apply grouper/submit! grouper thunk options)]
     (when synchronous?
       ;; wake up the group immediately and wait for it to finish
       (.wakeUp grouper)

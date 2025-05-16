@@ -18,7 +18,8 @@
    [metabase.db.liquibase :as liquibase]
    [metabase.db.setup :as mdb.setup]
    [metabase.db.spec :as mdb.spec]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [toucan2.connection :as t2.connection]))
 
 (set! *warn-on-reflection* true)
 
@@ -136,3 +137,12 @@
   {:style/indent [:defn]}
   [application-db & body]
   `(do-with-application-db ~application-db (^:once fn* [] ~@body)))
+
+(defmacro with-ignored-current-connection
+  "Execute `body` with the current connection's dynamic vars reset. Do this before capturing dynamic vars in tasks we
+  submit to async thread pools."
+  {:style/indent 0}
+  [& body]
+  `(binding [t2.connection/*current-connectable* nil
+             mdb.connection/*transaction-depth* 0]
+     ~@body))

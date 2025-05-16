@@ -55,7 +55,10 @@
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
-          increment-view-counts!*
+          ;; Grouper disallows vars so this wrapper will let us picc up local changes to [[increment-view-counts!*]].
+          #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
+          (fn [items]
+            (increment-view-counts!*  items))
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
