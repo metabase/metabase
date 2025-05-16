@@ -77,6 +77,7 @@
     :model/Secret
     :model/Session
     :model/TaskHistory
+    :model/Tenant
     :model/TimelineEvent
     :model/User
     :model/UserParameterValue

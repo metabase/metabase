@@ -687,6 +687,12 @@
      :perms/manage-table-metadata :no
      :perms/manage-database :no}))
 
+(defn set-external-group-permissions!
+  "Sets the appropriate data permissions for a new external group or database - always the minimum possible data permissions."
+  [group-or-id db-id]
+  (doseq [[perm-type perm-value] (m/map-vals (fn [{:keys [values]}] (last values)) Permissions)]
+    (set-database-permission! group-or-id db-id perm-type perm-value)))
+
 (defn set-new-group-permissions!
   "Sets permissions for a newly-added group to their appropriate values for a single database. This is generally based
   on the permissions of the All Users group."

@@ -117,6 +117,7 @@
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
+                                (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
         (perms/without-is-superuser-sync-on-add-to-admin-group
@@ -313,7 +314,8 @@
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]
+   [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
