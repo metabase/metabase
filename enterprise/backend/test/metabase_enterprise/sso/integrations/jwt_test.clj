@@ -482,9 +482,9 @@ result (client/client-real-response :get 200 "/auth/sso"
                              :iat        jwt-iat-time
                              :exp        jwt-exp-time}
                             default-jwt-secret)
-result (client/client-real-response :get 200 "/auth/sso"
+             result       (client/client-real-response :get 402 "/auth/sso"
                                    {:headers {"x-metabase-client" "embedding-sdk-react"}}
-                                   :jwt jwt-payload)]
+                                                        :jwt   jwt-payload)]
           (is result nil)))))
 
   (testing "should not return a session token when token=false"
