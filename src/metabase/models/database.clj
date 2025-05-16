@@ -284,7 +284,10 @@
            (not *normalizing-details*))
       normalize-details
 
-      true serdes/add-entity-id)))
+      true serdes/add-entity-id
+
+      ;; this property is used for migration purposes only
+      true (dissoc :name_before_deduplication))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
