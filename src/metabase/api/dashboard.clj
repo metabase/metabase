@@ -370,25 +370,35 @@
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
-  Returns a map of {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
+  Returns a map of {:copied {old-card-id duplicated-card}
+                    :entity-id->new-card {old-entity-id duplicated-card}
+                    :discarded [card]
+                    :referenced reference}
+  so that the new dashboard can adjust accordingly.
 
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
-    {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/create-card!
-                                 (cond-> to-copy
-                                   true                    (assoc :collection_id dest-coll-id)
-                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                 @api/*current-user*
-                                 ;; creating cards from a transaction. wait until tx complete to signal event
-                                 true
-                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                 false)]))
-     :discarded  discard
-     :referenced reference}))
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))
+        id->new-card                     (into {} (for [[id to-copy] copy]
+                                                    [id (queries/create-card!
+                                                         (cond-> to-copy
+                                                           true                    (assoc :collection_id dest-coll-id)
+                                                           same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                                           (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                                         @api/*current-user*
+                                                        ;; creating cards from a transaction. wait until tx complete to signal event
+                                                         true
+                                                        ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                                         false)]))
+        entity-id->new-card              (into {} (for [[id to-copy] copy
+                                                        :let [new-card (get id->new-card id)]
+                                                        :when (and new-card (:entity_id to-copy))]
+                                                    [(:entity_id to-copy) new-card]))]
+    {:copied              id->new-card
+     :entity-id->new-card entity-id->new-card
+     :discarded           discard
+     :referenced          reference}))
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
@@ -401,17 +411,17 @@
 
 (defn- update-colvalmap-setting
   "Visualizer dashcards have unique visualization settings which embed column id remapping metadata
-  This function iterates through the `:columnValueMapping` viz setting and updates referenced card ids
+  This function iterates through the `:columnValueMapping` viz setting and updates referenced card entity ids
 
   col->val-source can look like:
-  {:COLUMN_2 [{:sourceId 'card:<OLD_CARD_ID>', :originalName 'sum', :name 'COLUMN_2'}], ...}"
-  [col->val-source id->new-card]
+  {:COLUMN_2 [{:sourceId 'card:<OLD_ENTITY_ID>', :originalName 'sum', :name 'COLUMN_2'}], ...}"
+  [col->val-source entity-id->new-card]
   (let [update-cvm-item (fn [item]
                           (if-let [source-id (:sourceId item)]
-                            (if-let [[_ card-id] (and (string? source-id)
-                                                      (re-find #"^card:(\d+)$" source-id))]
-                              (if-let [new-card (get id->new-card (Long/parseLong card-id))]
-                                (assoc item :sourceId (str "card:" (:id new-card)))
+                            (if-let [[_ entity-id] (and (string? source-id)
+                                                        (re-find #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
+                              (if-let [new-card (get entity-id->new-card entity-id)]
+                                (assoc item :sourceId (str "card:" (:entity_id new-card)))
                                 item)
                               item)
                             item))
@@ -426,7 +436,7 @@
   Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
   If there is no new id, it means user lacked curate permissions for the cards
   collections and it is omitted."
-  [dashcards id->new-card id->referenced-card id->new-tab-id]
+  [dashcards id->new-card id->referenced-card id->new-tab-id entity-id->new-card]
   (let [dashcards (if (seq id->new-tab-id)
                     (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
                          dashcards)
@@ -466,7 +476,7 @@
                                                    (assoc card :id id')))
                                                series)))
                     (m/update-existing-in [:visualization_settings :visualization :columnValuesMapping]
-                                          update-colvalmap-setting id->new-card)))))
+                                          update-colvalmap-setting entity-id->new-card)))))
           dashcards)))
 
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
@@ -504,6 +514,7 @@
                         ;; Ok, now save the Dashboard
                          (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
                                {id->new-card :copied
+                                entity-id->new-card :entity-id->new-card
                                 id->referenced-card :referenced
                                 uncopied :discarded}
                                (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
@@ -514,7 +525,8 @@
                            (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
                                                                             id->new-card
                                                                             id->referenced-card
-                                                                            id->new-tab-id))]
+                                                                            id->new-tab-id
+                                                                            entity-id->new-card))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                            (cond-> dash
                              (seq uncopied)

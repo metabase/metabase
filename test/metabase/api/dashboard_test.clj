@@ -52,28 +52,33 @@
 
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
-    (let [id->new-card {123 {:id 456}
-                        789 {:id 987}}
-          col->val-source {:COLUMN_1 [{:sourceId "card:123" :originalName "sum" :name "COLUMN_1"}]
-                           :COLUMN_2 [{:sourceId "card:789" :originalName "count" :name "COLUMN_2"}]
-                           :COLUMN_3 [{:sourceId "card:999" :originalName "avg" :name "COLUMN_3"}]
-                           :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
-                           :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
-                           :COLUMN_6 [{:name "No source ID"}]}
-          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
+    (let [entity-id-a           "pWBdh4crM7C_1l-kzJeFv"
+          entity-id-b           "xA2dF8gHj3K_4m-nzPqRs"
+          entity-id-c           "tY7uI9oP0L_5v-wXzCbNm"
+          entity-id->new-card   {entity-id-a {:entity_id "aB3cD5eF6g_7h-iJkLmNo"}
+                                 entity-id-b {:entity_id "pQ8rS9tU0v_1w-xYzAbCd"}}
+          col->val-source       {:COLUMN_1 [{:sourceId (str "card:" entity-id-a) :originalName "sum" :name "COLUMN_1"}]
+                                 :COLUMN_2 [{:sourceId (str "card:" entity-id-b) :originalName "count" :name "COLUMN_2"}]
+                                 :COLUMN_3 [{:sourceId (str "card:" entity-id-c) :originalName "avg" :name "COLUMN_3"}]
+                                 :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
+                                 :COLUMN_5 [{:sourceId "card:invalid!id@format" :originalName "invalid" :name "COLUMN_5"}]
+                                 :COLUMN_6 [{:name "No source ID"}]}
+          result                (#'api.dashboard/update-colvalmap-setting col->val-source entity-id->new-card)]
 
-      (testing "should update valid card IDs that exist in the map"
-        (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
-        (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
+      (testing "should update valid entity IDs that exist in the map"
+        (is (= (str "card:" (:entity_id (get entity-id->new-card entity-id-a)))
+               (-> result :COLUMN_1 first :sourceId)))
+        (is (= (str "card:" (:entity_id (get entity-id->new-card entity-id-b)))
+               (-> result :COLUMN_2 first :sourceId))))
 
-      (testing "should not modify card IDs that don't exist in the map"
-        (is (= "card:999" (-> result :COLUMN_3 first :sourceId))))
+      (testing "should not modify entity IDs that don't exist in the map"
+        (is (= (str "card:" entity-id-c) (-> result :COLUMN_3 first :sourceId))))
 
       (testing "should not modify non-card sourceIds"
         (is (= "not-a-card" (-> result :COLUMN_4 first :sourceId))))
 
-      (testing "should not modify invalid card IDs (non-numeric)"
-        (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
+      (testing "should not modify invalid entity IDs (wrong format)"
+        (is (= "card:invalid!id@format" (-> result :COLUMN_5 first :sourceId))))
 
       (testing "should handle items without sourceId"
         (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
@@ -304,7 +309,7 @@
                   #{crowberto-dash-id archived-dash-id}
                   (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
 
-    (testing "f=archvied return archived dashboards"
+    (testing "f=archived return archived dashboards"
       (is (= #{archived-dash-id}
              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
 
