@@ -1,0 +1,21 @@
+.cellRoot {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+  border-bottom: unset;
+  padding: 0;
+}
+
+.headerRoot {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+  padding: 0 12px;
+  border-bottom: unset;
+}

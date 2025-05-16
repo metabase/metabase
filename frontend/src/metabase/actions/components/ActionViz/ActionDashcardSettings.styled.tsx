@@ -31,11 +31,9 @@ const fade = (side: "top" | "bottom") => `
 `;
 
 export const ActionSettingsLeft = styled.div`
-  padding-left: ${space(3)};
-  padding-top: ${space(3)};
-  padding-bottom: ${space(3)};
   width: 20rem;
   overflow-y: auto;
+  border-right: 1px solid var(--mb-color-border);
 
   &:before {
     ${fade("top")}
@@ -53,12 +51,11 @@ export const ActionSettingsLeft = styled.div`
 `;
 
 export const ActionSettingsRight = styled.div`
-  max-width: 30rem;
+  width: 30rem;
   display: flex;
   flex: 1;
   flex-direction: column;
   padding-top: ${space(3)};
-  border-left: 1px solid var(--mb-color-border);
 `;
 
 export const ParameterMapperContainer = styled.div`
