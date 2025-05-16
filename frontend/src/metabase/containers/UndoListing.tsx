@@ -1,4 +1,4 @@
-import { type HTMLAttributes, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -59,13 +59,15 @@ const slideIn = {
 
 const TOAST_TRANSITION_DURATION = 300;
 
-interface UndoToastProps extends HTMLAttributes<HTMLDivElement> {
+function UndoToast({
+  undo,
+  onUndo,
+  onDismiss,
+}: {
   undo: Undo;
   onUndo: () => void;
   onDismiss: () => void;
-}
-
-function UndoToast({ undo, onUndo, onDismiss, ...divProps }: UndoToastProps) {
+}) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -109,7 +111,6 @@ function UndoToast({ undo, onUndo, onDismiss, ...divProps }: UndoToastProps) {
           className={CS.toast}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          {...divProps}
         >
           {undo.showProgress && (
             <Progress
