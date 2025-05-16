@@ -12,6 +12,8 @@ import {
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { maybeTranslateDisplayNames } from "metabase/i18n/utils";
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
@@ -356,6 +358,9 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  const tc = useTranslateContent();
+  const maybeTranslatedSeries = maybeTranslateDisplayNames(series, tc);
+
   return (
     <Visualization
       className={cx(CS.flexFull, {
@@ -365,7 +370,7 @@ export function DashCardVisualization({
       })}
       dashboard={dashboard}
       dashcard={dashcard}
-      rawSeries={series}
+      rawSeries={maybeTranslatedSeries}
       visualizerRawSeries={
         isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
       }

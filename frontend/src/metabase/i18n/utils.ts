@@ -5,8 +5,11 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 import type { ContentTranslationFunction } from "./types";
 
-/** In EE, return a function that translates strings. Otherwise return a
- * function that returns its input unchanged. */
-export const useTranslateContent = (): ContentTranslationFunction => {
-  return PLUGIN_CONTENT_TRANSLATION.useTranslateContent();
+/** In EE, translate displayName fields in the object. Otherwise return the
+ * object unchanged. */
+export const maybeTranslateDisplayNames = <T extends object>(
+  obj: T,
+  tc: ContentTranslationFunction,
+) => {
+  return PLUGIN_CONTENT_TRANSLATION.translateDisplayNames(obj, tc);
 };

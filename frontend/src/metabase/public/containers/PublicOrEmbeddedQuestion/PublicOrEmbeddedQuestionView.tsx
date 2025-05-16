@@ -4,6 +4,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { maybeTranslateDisplayNames } from "metabase/i18n/utils";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
@@ -21,8 +23,6 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import { translateDisplayNames } from "metabase-enterprise/content_translation/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
@@ -80,8 +80,7 @@ export function PublicOrEmbeddedQuestionView({
     ) : null;
   const rawSeries = [{ card, data: result?.data }] as RawSeries;
   const tc = useTranslateContent();
-  const translatedRawSeries = translateDisplayNames(rawSeries, tc);
-  console.log("@mak02gqo", "translatedRawSeries", translatedRawSeries);
+  const maybeTranslatedRawSeries = maybeTranslateDisplayNames(rawSeries, tc);
 
   return (
     <EmbedFrame
@@ -113,7 +112,7 @@ export function PublicOrEmbeddedQuestionView({
           <Visualization
             isNightMode={theme === "night"}
             error={result?.error?.toString()}
-            rawSeries={translatedRawSeries}
+            rawSeries={maybeTranslatedRawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,

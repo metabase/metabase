@@ -114,6 +114,7 @@ const RowChartVisualization = ({
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
+
   const [chartSeries] = rawMultipleSeries;
 
   const data = useMemo(
