@@ -8,14 +8,14 @@ import {
   useDispatch,
   useStore,
 } from "metabase/lib/redux";
-import { commonReducers } from "metabase/reducers-common";
+import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
 import type { SdkStoreState } from "./types";
 
 export const sdkReducers = {
-  ...commonReducers,
+  ...mainReducers,
   sdk,
 } as unknown as Record<string, Reducer>;
 
