@@ -11,6 +11,7 @@ import { cardApi } from "metabase/api";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { copy } from "metabase/lib/utils";
 import { isCartesianChart } from "metabase/visualizations";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
@@ -221,9 +222,40 @@ export const addDataSource = createAsyncThunk(
         ...copy(state),
         settings,
       },
+      settings,
       dataSource,
       dataset,
     );
+  },
+);
+
+export const addColumn = createAsyncThunk(
+  "visualizer/addColumn",
+  async (
+    payload: { column: DatasetColumn; dataSource: VisualizerDataSource },
+    { dispatch, getState },
+  ) => {
+    const settings = getVisualizerComputedSettingsForFlatSeries(getState());
+    dispatch(_addColumn({ ...payload, settings }));
+  },
+);
+
+export const removeColumn = createAsyncThunk(
+  "visualizer/removeColumn",
+  async (
+    payload: { name: string; well?: "bubble" | "all" },
+    { dispatch, getState },
+  ) => {
+    const settings = getVisualizerComputedSettingsForFlatSeries(getState());
+    dispatch(_removeColumn({ ...payload, settings }));
+  },
+);
+
+export const handleDrop = createAsyncThunk(
+  "visualizer/handleDrop",
+  async (event: DragEndEvent, { dispatch, getState }) => {
+    const settings = getVisualizerComputedSettingsForFlatSeries(getState());
+    dispatch(_handleDrop({ event, settings }));
   },
 );
 
@@ -303,14 +335,15 @@ const visualizerSlice = createSlice({
         ...action.payload,
       };
     },
-    addColumn: (
+    _addColumn: (
       state,
       action: PayloadAction<{
         column: DatasetColumn;
         dataSource: VisualizerDataSource;
+        settings: ComputedVisualizationSettings;
       }>,
     ) => {
-      const { column: originalColumn, dataSource } = action.payload;
+      const { column: originalColumn, dataSource, settings } = action.payload;
 
       if (!state.display) {
         return;
@@ -344,6 +377,7 @@ const visualizerSlice = createSlice({
       if (state.display === "funnel") {
         addColumnToFunnel(
           state,
+          settings,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -356,6 +390,7 @@ const visualizerSlice = createSlice({
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(
           state,
+          settings,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -373,50 +408,61 @@ const visualizerSlice = createSlice({
           >;
           maybeImportDimensionsFromOtherDataSources(
             state,
+            settings,
             column,
             datasetMap,
             dataSourceMap,
           );
         }
       } else if (state.display === "pie") {
-        addColumnToPieChart(state, column);
+        addColumnToPieChart(state, settings, column);
       }
     },
-    removeColumn: (
+    _removeColumn: (
       state,
-      action: PayloadAction<{ name: string; well?: "bubble" | "all" }>,
+      action: PayloadAction<{
+        name: string;
+        settings: ComputedVisualizationSettings;
+        well?: "bubble" | "all";
+      }>,
     ) => {
-      const { name, well } = action.payload;
+      const { name, well, settings } = action.payload;
       if (!state.display) {
         return;
       }
 
       if (isCartesianChart(state.display)) {
         if (well === "all") {
-          removeColumnFromCartesianChart(state, name);
-          removeBubbleSizeFromCartesianChart(state, name);
+          removeColumnFromCartesianChart(state, settings, name);
+          removeBubbleSizeFromCartesianChart(state, name); // TODO Add settings for consistency?
         } else if (well === "bubble") {
-          removeBubbleSizeFromCartesianChart(state, name);
+          removeBubbleSizeFromCartesianChart(state, name); // TODO Add settings for consistency?
         } else {
-          removeColumnFromCartesianChart(state, name);
+          removeColumnFromCartesianChart(state, settings, name);
         }
       } else if (state.display === "funnel") {
-        removeColumnFromFunnel(state, name);
+        removeColumnFromFunnel(state, settings, name);
       } else if (state.display === "pie") {
-        removeColumnFromPieChart(state, name);
+        removeColumnFromPieChart(state, settings, name);
       }
     },
-    handleDrop: (state, action: PayloadAction<DragEndEvent>) => {
+    _handleDrop: (
+      state,
+      action: PayloadAction<{
+        event: DragEndEvent;
+        settings: ComputedVisualizationSettings;
+      }>,
+    ) => {
       state.draggedItem = null;
 
       if (!state.display) {
         return;
       }
 
-      const event = action.payload;
+      const { event, settings } = action.payload;
 
       if (isCartesianChart(state.display)) {
-        cartesianDropHandler(state, event, {
+        cartesianDropHandler(state, settings, event, {
           // Prevents "Type instantiation is excessively deep" error
           datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
           dataSourceMap: Object.fromEntries(
@@ -431,9 +477,9 @@ const visualizerSlice = createSlice({
           ),
         });
       } else if (state.display === "funnel") {
-        funnelDropHandler(state, event);
+        funnelDropHandler(state, settings, event);
       } else if (state.display === "pie") {
-        pieDropHandler(state, event);
+        pieDropHandler(state, settings, event);
       }
     },
     removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
@@ -570,6 +616,7 @@ const visualizerSlice = createSlice({
 
 function maybeCombineDataset(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
 ) {
@@ -581,42 +628,40 @@ function maybeCombineDataset(
     isCartesianChart(state.display) &&
     isCompatibleWithCartesianChart(state, dataset)
   ) {
-    combineWithCartesianChart(state, dataset, dataSource);
+    combineWithCartesianChart(state, settings, dataset, dataSource);
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, dataset, dataSource);
+    combineWithPieChart(state, settings, dataset, dataSource);
   }
 
   if (state.display === "funnel") {
-    combineWithFunnel(state, dataset, dataSource);
+    combineWithFunnel(state, settings, dataset, dataSource);
   }
 
   return state;
 }
 
-const { _resetVisualizer } = visualizerSlice.actions;
+const { _addColumn, _handleDrop, _removeColumn, _resetVisualizer } =
+  visualizerSlice.actions;
 
 export const {
-  addColumn,
   setTitle,
   updateSettings,
-  removeColumn,
   removeDataSource,
   setDisplay,
   setDraggedItem,
-  handleDrop,
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
   filter: includeAction([
     initializeVisualizer.fulfilled.type,
-    addColumn.type,
+    _addColumn.type,
     setTitle.type,
     updateSettings.type,
-    removeColumn.type,
+    _removeColumn.type,
     setDisplay.type,
-    handleDrop.type,
+    _handleDrop.type,
     removeDataSource.type,
     addDataSource.fulfilled.type,
   ]),

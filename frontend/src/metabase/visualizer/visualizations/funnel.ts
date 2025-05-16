@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   addColumnMapping,
@@ -28,6 +29,7 @@ import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const funnelDropHandler = (
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   { active, over }: DragEndEvent,
 ) => {
   if (!over || !isDraggedColumnItem(active)) {
@@ -37,7 +39,7 @@ export const funnelDropHandler = (
   const { column, dataSource } = active.data.current;
 
   if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
-    addScalarToFunnel(state, dataSource, column);
+    addScalarToFunnel(state, settings, dataSource, column);
   }
 
   const columnRef = createVisualizerColumnReference(
@@ -51,7 +53,7 @@ export const funnelDropHandler = (
     isDimension(column) &&
     !isMetric(column)
   ) {
-    let dimensionColumnName = state.settings["funnel.dimension"];
+    let dimensionColumnName = settings["funnel.dimension"];
     if (!dimensionColumnName) {
       dimensionColumnName = columnRef.name;
       state.columns.push(
@@ -79,7 +81,7 @@ export const funnelDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL && isMetric(column)) {
-    let metricColumnName = state.settings["funnel.metric"];
+    let metricColumnName = settings["funnel.metric"];
     if (!metricColumnName) {
       metricColumnName = columnRef.name;
       state.columns.push(
@@ -117,6 +119,7 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
 
 export function addScalarToFunnel(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
 ) {
@@ -126,8 +129,8 @@ export function addScalarToFunnel(
     extractReferencedColumns(state.columnValuesMapping),
   );
 
-  let metricColumnName = state.settings["funnel.metric"];
-  let dimensionColumnName = state.settings["funnel.dimension"];
+  let metricColumnName = settings["funnel.metric"];
+  let dimensionColumnName = settings["funnel.dimension"];
 
   if (!metricColumnName) {
     metricColumnName = "METRIC";
@@ -154,6 +157,7 @@ export function addColumnToFunnel(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
@@ -162,7 +166,7 @@ export function addColumnToFunnel(
   const isEmpty = state.columns.length === 0;
 
   if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(dataset)) {
-    addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
+    addScalarToFunnel(state, settings, dataSource, dataset.data.cols[0]);
     return;
   }
 
@@ -170,12 +174,12 @@ export function addColumnToFunnel(
     state.columns.push(column);
     state.columnValuesMapping[column.name] = [columnRef];
 
-    const metric = state.settings["funnel.metric"];
+    const metric = settings["funnel.metric"];
     if (!metric && isMetric(column)) {
       state.settings["funnel.metric"] = column.name;
     }
 
-    const dimension = state.settings["funnel.dimension"];
+    const dimension = settings["funnel.dimension"];
     if (!dimension && isDimension(column) && !isMetric(column)) {
       state.settings["funnel.dimension"] = column.name;
     }
@@ -184,6 +188,7 @@ export function addColumnToFunnel(
 
 export function removeColumnFromFunnel(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   columnName: string,
 ) {
   if (isScalarFunnel(state)) {
@@ -201,10 +206,10 @@ export function removeColumnFromFunnel(
       }
     }
   } else {
-    if (state.settings["funnel.metric"] === columnName) {
+    if (settings["funnel.metric"] === columnName) {
       delete state.settings["funnel.metric"];
     }
-    if (state.settings["funnel.dimension"] === columnName) {
+    if (settings["funnel.dimension"] === columnName) {
       delete state.settings["funnel.dimension"];
     }
   }
@@ -252,18 +257,18 @@ export function isScalarFunnel(
 
 export function combineWithFunnel(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
   const { data } = dataset;
 
-  const isEmpty =
-    !state.settings["funnel.metric"] && !state.settings["funnel.dimension"];
+  const isEmpty = !settings["funnel.metric"] && !settings["funnel.dimension"];
   const isMadeOfScalars = state.columnValuesMapping.METRIC?.length >= 1;
 
   if ((isEmpty || isMadeOfScalars) && canCombineCardWithFunnel(dataset)) {
     const [column] = data.cols;
-    addScalarToFunnel(state, dataSource, column);
+    addScalarToFunnel(state, settings, dataSource, column);
     return state;
   }
 
@@ -273,7 +278,7 @@ export function combineWithFunnel(
       (col) => isDimension(col) && !isMetric(col),
     );
 
-    if (!state.settings["funnel.metric"] && metrics.length === 1) {
+    if (!settings["funnel.metric"] && metrics.length === 1) {
       const [metric] = metrics;
       const columnRef = createVisualizerColumnReference(
         dataSource,
@@ -294,7 +299,7 @@ export function combineWithFunnel(
       state.settings["funnel.metric"] = columnRef.name;
     }
 
-    if (!state.settings["funnel.dimension"] && dimensions.length === 1) {
+    if (!settings["funnel.dimension"] && dimensions.length === 1) {
       const [dimension] = dimensions;
       const columnRef = createVisualizerColumnReference(
         dataSource,

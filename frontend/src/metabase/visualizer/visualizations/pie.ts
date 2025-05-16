@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   copyColumn,
@@ -25,6 +26,7 @@ import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
 export const pieDropHandler = (
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   { active, over }: DragEndEvent,
 ) => {
   if (!over || !isDraggedColumnItem(active)) {
@@ -39,7 +41,7 @@ export const pieDropHandler = (
   );
 
   if (over.id === DROPPABLE_ID.PIE_METRIC && isNumeric(column)) {
-    let metricColumnName = state.settings["pie.metric"];
+    let metricColumnName = settings["pie.metric"];
 
     if (!metricColumnName) {
       metricColumnName = columnRef.name;
@@ -64,7 +66,7 @@ export const pieDropHandler = (
   }
 
   if (over.id === DROPPABLE_ID.PIE_DIMENSION) {
-    const dimensions = state.settings["pie.dimension"] ?? [];
+    const dimensions = settings["pie.dimension"] ?? [];
     const isInUse = dimensions.includes(columnRef.name);
     if (isInUse) {
       return;
@@ -87,26 +89,28 @@ export const pieDropHandler = (
 
 export function addColumnToPieChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   column: DatasetColumn,
 ) {
-  const metric = state.settings["pie.metric"];
+  const metric = settings["pie.metric"];
   if (!metric && isMetric(column)) {
     state.settings["pie.metric"] = column.name;
   }
 
   if (isDimension(column) && !isMetric(column)) {
-    const dimensions = state.settings["pie.dimension"] ?? [];
+    const dimensions = settings["pie.dimension"] ?? [];
     state.settings["pie.dimension"] = [...dimensions, column.name];
   }
 }
 
 export function removeColumnFromPieChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   columnName: string,
 ) {
-  const dimensions = Array.isArray(state.settings["pie.dimension"])
-    ? state.settings["pie.dimension"]
-    : [state.settings["pie.dimension"]].filter(isNotNull);
+  const dimensions = Array.isArray(settings["pie.dimension"])
+    ? settings["pie.dimension"]
+    : [settings["pie.dimension"]].filter(isNotNull);
 
   if (dimensions.includes(columnName)) {
     state.settings["pie.dimension"] = dimensions.filter(
@@ -114,7 +118,7 @@ export function removeColumnFromPieChart(
     );
   }
 
-  if (state.settings["pie.metric"] === columnName) {
+  if (settings["pie.metric"] === columnName) {
     delete state.settings["pie.metric"];
   }
 
@@ -126,6 +130,7 @@ export function removeColumnFromPieChart(
 
 export function combineWithPieChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
@@ -134,7 +139,7 @@ export function combineWithPieChart(
     (col) => isDimension(col) && !isMetric(col),
   );
 
-  if (!state.settings["pie.metric"] && metrics.length === 1) {
+  if (!settings["pie.metric"] && metrics.length === 1) {
     const [metric] = metrics;
     const columnRef = createVisualizerColumnReference(
       dataSource,
@@ -149,10 +154,10 @@ export function combineWithPieChart(
     );
     state.columns.push(column);
     state.columnValuesMapping[column.name] = [columnRef];
-    addColumnToPieChart(state, column);
+    addColumnToPieChart(state, settings, column);
   }
 
-  if (_.isEmpty(state.settings["pie.dimension"]) && dimensions.length === 1) {
+  if (_.isEmpty(settings["pie.dimension"]) && dimensions.length === 1) {
     const [dimension] = dimensions;
     const columnRef = createVisualizerColumnReference(
       dataSource,
@@ -167,6 +172,6 @@ export function combineWithPieChart(
     );
     state.columns.push(column);
     state.columnValuesMapping[column.name] = [columnRef];
-    addColumnToPieChart(state, column);
+    addColumnToPieChart(state, settings, column);
   }
 }

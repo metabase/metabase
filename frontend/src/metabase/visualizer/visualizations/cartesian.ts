@@ -7,6 +7,7 @@ import {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   copyColumn,
@@ -36,6 +37,7 @@ export const cartesianDropHandler = (
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   { active, over }: DragEndEvent,
   {
     dataSourceMap,
@@ -69,9 +71,16 @@ export const cartesianDropHandler = (
     const isSuitableColumn = getDefaultDimensionFilter(state.display);
 
     if (isSuitableColumn(column)) {
-      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+      addDimensionColumnToCartesianChart(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
       maybeImportDimensionsFromOtherDataSources(
         state,
+        settings,
         column,
         _.omit(datasetMap, dataSource.id),
         dataSourceMap,
@@ -83,13 +92,20 @@ export const cartesianDropHandler = (
     const isSuitableColumn = getDefaultMetricFilter(state.display);
 
     if (isSuitableColumn(column)) {
-      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+      addMetricColumnToCartesianChart(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
     }
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
     replaceMetricColumnAsScatterBubbleSize(
       state,
+      settings,
       column,
       columnRef,
       dataSource,
@@ -99,13 +115,14 @@ export const cartesianDropHandler = (
 
 export function replaceMetricColumnAsScatterBubbleSize(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const metrics = state.settings["graph.metrics"] ?? [];
-  const dimensions = state.settings["graph.dimensions"] ?? [];
-  const currentBubbleName = state.settings["scatter.bubble"];
+  const metrics = settings["graph.metrics"] ?? [];
+  const dimensions = settings["graph.dimensions"] ?? [];
+  const currentBubbleName = settings["scatter.bubble"];
 
   // Remove the current bubble column if it's not in use elsewhere
   if (
@@ -135,11 +152,12 @@ export function replaceMetricColumnAsScatterBubbleSize(
 
 export function addMetricColumnToCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const metrics = state.settings["graph.metrics"] ?? [];
+  const metrics = settings["graph.metrics"] ?? [];
   const isInUse = metrics.includes(columnRef.name);
   if (isInUse) {
     return;
@@ -161,11 +179,12 @@ export function addMetricColumnToCartesianChart(
 
 export function addDimensionColumnToCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const dimensions = state.settings["graph.dimensions"] ?? [];
+  const dimensions = settings["graph.dimensions"] ?? [];
   const isInUse = dimensions.includes(columnRef.name);
   if (isInUse) {
     return;
@@ -194,55 +213,66 @@ export function addColumnToCartesianChart(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  if (
-    !state.display ||
-    !["area", "bar", "line", "scatter"].includes(state.display)
-  ) {
+  if (!state.display) {
     return;
   }
 
   if (state.display === "scatter") {
-    const metrics = state.settings["graph.metrics"] ?? [];
-    const dimensions = state.settings["graph.dimensions"] ?? [];
-    const bubble = state.settings["scatter.bubble"];
+    const metrics = settings["graph.metrics"] ?? [];
+    const dimensions = settings["graph.dimensions"] ?? [];
+    const bubble = settings["scatter.bubble"];
 
     const couldBeMetric = getDefaultMetricFilter("scatter")(column);
     const couldBeDimension = getDefaultDimensionFilter("scatter")(column);
 
     if (metrics.length === 0 && couldBeMetric) {
-      addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+      addMetricColumnToCartesianChart(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
     } else if (dimensions.length === 0 && couldBeDimension) {
-      addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+      addDimensionColumnToCartesianChart(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
     } else if (!bubble && couldBeMetric) {
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        settings,
         column,
         columnRef,
         dataSource,
       );
     }
   } else {
-    const ownDimensions = state.settings["graph.dimensions"] ?? [];
-
-    if (
-      ownDimensions.length === 0 ||
-      isCompatibleWithCartesianChart(state, dataset)
-    ) {
-      if (isDimension(column) && !isMetric(column)) {
-        addDimensionColumnToCartesianChart(
-          state,
-          column,
-          columnRef,
-          dataSource,
-        );
-      } else if (isMetric(column)) {
-        addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
-      }
+    if (isDimension(column) && !isMetric(column)) {
+      addDimensionColumnToCartesianChart(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
+    } else if (isMetric(column)) {
+      addMetricColumnToCartesianChart(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
     }
   }
 }
@@ -276,6 +306,7 @@ export function removeBubbleSizeFromCartesianChart(
  */
 export function removeColumnFromCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   columnName: string,
 ) {
   const isMultiseries =
@@ -283,26 +314,26 @@ export function removeColumnFromCartesianChart(
     isCartesianChart(state.display) &&
     shouldSplitVisualizerSeries(state.columnValuesMapping, state.settings);
 
-  if (state.settings["graph.dimensions"]) {
-    const dimensions = state.settings["graph.dimensions"];
+  if (settings["graph.dimensions"]) {
+    const dimensions = settings["graph.dimensions"];
     const isDimension = dimensions.includes(columnName);
 
     if (isDimension) {
       if (isMultiseries) {
-        removeDimensionFromMultiSeriesChart(state, columnName);
+        removeDimensionFromMultiSeriesChart(state, settings, columnName);
       } else {
-        state.settings["graph.dimensions"] = dimensions.filter(
-          (dimension) => dimension !== columnName,
-        );
+        state.settings["graph.dimensions"] = dimensions
+          .filter((dimension) => dimension !== columnName)
+          .filter(Boolean);
       }
     }
   }
 
-  if (state.settings["graph.metrics"]) {
-    const metrics = state.settings["graph.metrics"];
-    state.settings["graph.metrics"] = metrics.filter(
-      (metric) => metric !== columnName,
-    );
+  if (settings["graph.metrics"]) {
+    const metrics = settings["graph.metrics"];
+    state.settings["graph.metrics"] = metrics
+      .filter((metric) => metric !== columnName)
+      .filter(Boolean);
   }
 
   removeColumnFromStateUnlessUsedElseWhere(state, columnName, [
@@ -314,9 +345,10 @@ export function removeColumnFromCartesianChart(
 
 function removeDimensionFromMultiSeriesChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   columnName: string,
 ) {
-  const originalDimensions = [...(state.settings["graph.dimensions"] ?? [])];
+  const originalDimensions = settings["graph.dimensions"] ?? [];
 
   const dimensionColumnMap = Object.fromEntries(
     originalDimensions.map((dimension) => [
@@ -340,7 +372,7 @@ function removeDimensionFromMultiSeriesChart(
   }
 
   const removedColumns = originalDimensions.filter(
-    (name) => !state.settings["graph.dimensions"]?.includes(name),
+    (name) => !settings["graph.dimensions"]?.includes(name),
   );
 
   removedColumns.forEach((name) => {
@@ -353,6 +385,7 @@ export function maybeImportDimensionsFromOtherDataSources(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   newDimension: DatasetColumn,
   datasetMap: Record<string, Dataset>,
   dataSourceMap: Record<string, VisualizerDataSource>,
@@ -380,6 +413,7 @@ export function maybeImportDimensionsFromOtherDataSources(
       );
       addDimensionColumnToCartesianChart(
         state,
+        settings,
         matchingDimension,
         columnRef,
         dataSource,
@@ -424,6 +458,7 @@ export function isCompatibleWithCartesianChart(
 
 export function combineWithCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
@@ -438,7 +473,13 @@ export function combineWithCartesianChart(
       column,
       extractReferencedColumns(state.columnValuesMapping),
     );
-    addMetricColumnToCartesianChart(state, column, columnRef, dataSource);
+    addMetricColumnToCartesianChart(
+      state,
+      settings,
+      column,
+      columnRef,
+      dataSource,
+    );
   });
 
   dimensions.forEach((column) => {
@@ -447,6 +488,12 @@ export function combineWithCartesianChart(
       column,
       extractReferencedColumns(state.columnValuesMapping),
     );
-    addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
+    addDimensionColumnToCartesianChart(
+      state,
+      settings,
+      column,
+      columnRef,
+      dataSource,
+    );
   });
 }
