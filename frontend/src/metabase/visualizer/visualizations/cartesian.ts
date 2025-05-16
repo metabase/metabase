@@ -372,7 +372,7 @@ function removeDimensionFromMultiSeriesChart(
   }
 
   const removedColumns = originalDimensions.filter(
-    (name) => !settings["graph.dimensions"]?.includes(name),
+    (name) => !state.settings["graph.dimensions"]?.includes(name),
   );
 
   removedColumns.forEach((name) => {
