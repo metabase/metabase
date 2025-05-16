@@ -2,7 +2,7 @@
   "Tests for On-Demand FieldValues updating behavior for Cards and Dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]

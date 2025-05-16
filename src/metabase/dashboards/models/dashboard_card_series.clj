@@ -1,4 +1,4 @@
-(ns metabase.models.dashboard-card-series
+(ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
