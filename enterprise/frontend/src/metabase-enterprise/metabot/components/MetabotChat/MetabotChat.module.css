@@ -1,7 +1,7 @@
 /* TODO: rtl support */
 
 .container {
-  --paddxing-x: 1rem;
+  --paddxing-x: 1.5rem;
 
   width: 100%;
   height: 100%;
@@ -10,21 +10,10 @@
 }
 
 .header {
-  padding: 1rem var(--paddxing-x);
+  padding: 2rem var(--paddxing-x) 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.headerWithScrollContent {
-  border-bottom: 1px solid var(--border-color);
-}
-
-.conversationStatusContainer {
-  margin: 1rem var(--paddxing-x) 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 @keyframes rotate-background {
@@ -59,20 +48,57 @@
   font-weight: bold;
 }
 
-.input {
-  & > div {
-    --input-size: 3rem;
-  }
-
+.inputContainer {
+  padding: 0 0.75rem 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
   box-shadow: 0 3px 6px 0 #0000000d;
+  min-height: 3rem;
+  border: 1px solid var(--mb-color-border);
+
+  &:has(.textarea textarea:focus) {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.inputContainerLoading {
+  background: var(--mb-color-bg-light);
+}
+
+.inputContainerExpanded {
+  padding: 1rem var(--paddxing-x);
+  align-items: flex-start;
+  height: 8rem;
+}
+
+.textarea textarea {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  padding: 0.5rem 0;
+  line-height: 1.7;
+  color: var(--mb-color-text-dark);
 
   &:focus {
     border-color: var(--mb-color-brand);
   }
 }
 
+.textareaExpanded textarea {
+  padding: 0;
+}
+
+.textareaLoading textarea:disabled {
+  opacity: 1;
+  background: transparent;
+}
+
 .messagesContainer {
-  padding: 1rem var(--paddxing-x);
+  padding: 1rem var(--paddxing-x) 0.5rem;
   height: 100%;
   display: flex;
   flex-direction: column-reverse;
@@ -117,6 +143,16 @@
 .messageContainer:hover .messageActions,
 .messageContainer:last-child.messageContainerAgent .messageActions {
   opacity: 1;
+}
+
+.loadingContainer {
+  /* negative margin accounts for odd spacing due to hidden copy button
+   * for the message the user just sent */
+  margin: -2rem var(--paddxing-x) 0;
+}
+
+.textInputContainer {
+  padding: 1rem;
 }
 
 .markdown {
