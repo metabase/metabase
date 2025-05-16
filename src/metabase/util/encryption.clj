@@ -92,9 +92,11 @@
   (^String [^String s]
    (encrypt default-secret-key s))
   (^String [^String secret-key, ^String s]
-   (->> (codecs/to-bytes s)
-        (encrypt-bytes secret-key)
-        codec/base64-encode)))
+   (if (nil? s)
+     nil
+     (->> (codecs/to-bytes s)
+          (encrypt-bytes secret-key)
+          codec/base64-encode))))
 
 (defn decrypt-bytes
   "Decrypt bytes `b` using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
@@ -163,7 +165,8 @@
   (^String [^String s]
    (decrypt default-secret-key s))
   (^String [secret-key, ^String s]
-   (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s)))))
+   (if (nil? s) nil
+       (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s))))))
 
 (defn maybe-encrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s`; otherwise return `s` as-is."
@@ -230,7 +233,7 @@
   {:arglists '([secret-key? s])}
   [& args]
   ;; secret-key as an argument so that tests can pass it directly without using `with-redefs` to run in parallel
-  (let [[secret-key v]     (if (and (bytes? (first args)) (string? (second args)))
+  (let [[secret-key v]     (if (= 2 (count args))
                              args
                              (cons default-secret-key args))
         log-error-fn (fn [kind ^Throwable e]
@@ -239,6 +242,9 @@
                                   kind))]
 
     (cond (nil? secret-key)
+          v
+
+          (nil? v)
           v
 
           (possibly-encrypted-string? v)
