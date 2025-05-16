@@ -1,4 +1,4 @@
-(ns metabase.models.dashboard
+(ns metabase.dashboards.models.dashboard
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -6,10 +6,10 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
-   [metabase.models.dashboard-card :as dashboard-card]
-   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

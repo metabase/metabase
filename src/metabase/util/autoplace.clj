@@ -3,7 +3,7 @@
   ideally this namespace should be kept in sync with
   [the frontend version](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dashboard_grid.js)."
   (:require
-   [metabase.models.dashboard.constants :as dashboard.constants]))
+   [metabase.dashboards.constants :as dashboard.constants]))
 
 (def ^:constant default-grid-width
   "The default grid width."

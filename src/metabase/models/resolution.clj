@@ -14,7 +14,7 @@
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
     :model/ApiKey                            metabase.api-keys.models.api-key
-    :model/ApplicationPermissionsRevision    metabase.models.application-permissions-revision
+    :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
@@ -27,11 +27,11 @@
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
-    :model/Dashboard                         metabase.models.dashboard
+    :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
-    :model/DashboardCard                     metabase.models.dashboard-card
-    :model/DashboardCardSeries               metabase.models.dashboard-card-series
-    :model/DashboardTab                      metabase.models.dashboard-tab
+    :model/DashboardCard                     metabase.dashboards.models.dashboard-card
+    :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
+    :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model

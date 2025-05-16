@@ -796,29 +796,6 @@
                                                      :widget-type  :id
                                                      :default      nil}}}})))))
 
-(deftest ^:parallel dataset-metadata-has-entity-ids-test
-  (testing "MBQL query"
-    (is (=? {:databases api.test-util/all-have-entity-ids?
-             :tables    api.test-util/all-have-entity-ids?
-             :fields    api.test-util/all-have-entity-ids?}
-            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                  (mt/mbql-query products)))))
-  (testing "Parameterized native query"
-    (is (=? {:databases api.test-util/all-have-entity-ids?
-             :tables    api.test-util/all-have-entity-ids?
-             :fields    api.test-util/all-have-entity-ids?}
-            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                  {:database (mt/id)
-                                   :type     :native
-                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
-                                              :template-tags
-                                              {"id" {:name         "id"
-                                                     :display-name "Id"
-                                                     :type         :dimension
-                                                     :dimension    [:field (mt/id :people :id) nil]
-                                                     :widget-type  :id
-                                                     :default      nil}}}})))))
-
 (deftest dataset-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp

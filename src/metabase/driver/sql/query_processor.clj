@@ -1287,6 +1287,10 @@
   [driver [_ value]]
   (->date driver (->honeysql driver value)))
 
+(defmethod ->honeysql [:sql :text]
+  [driver [_ value]]
+  (->honeysql driver [::cast-to-text value]))
+
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)

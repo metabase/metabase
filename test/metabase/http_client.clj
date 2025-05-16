@@ -11,8 +11,8 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -334,7 +334,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                        (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
+                        ((server.test-handler/test-handler) request coerce-mock-response-body (fn raise [e] (throw e)))
                         (catch clojure.lang.ExceptionInfo e
                           (log/debug e method-name url)
                           (ex-data e))

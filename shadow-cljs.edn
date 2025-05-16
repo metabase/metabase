@@ -17,12 +17,12 @@
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
-   :entries    [metabase.legacy-mbql.js
+   :entries    [metabase.dashboards.constants
+                metabase.legacy-mbql.js
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
-                metabase.models.dashboard.constants
                 metabase.parameters.shared
                 metabase.pivot.core
                 metabase.pivot.js
