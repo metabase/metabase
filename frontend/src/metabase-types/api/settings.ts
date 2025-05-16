@@ -163,6 +163,7 @@ const tokenStatusFeatures = [
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
+  "refresh-token-features",
   "sandboxes",
   "scim",
   "serialization",
