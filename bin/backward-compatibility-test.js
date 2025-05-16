@@ -29,9 +29,10 @@ const JAR_PATH = path.join(BE_FOLDER, "target/uberjar/metabase.jar");
 // Test files configuration
 const TEST_TO_RUN = [
   "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
-  "e2e/test/scenarios/question/caching.cy.spec.js",
-  "e2e/test/scenarios/question/native-query-drill.cy.spec.ts",
-  "e2e/test/scenarios/question/offset.cy.spec.ts",
+  // "e2e/test/scenarios/question/caching.cy.spec.js",
+  // "e2e/test/scenarios/question/native-query-drill.cy.spec.ts",
+  // "e2e/test/scenarios/question/offset.cy.spec.ts",
+  "e2e/test/scenarios/question/*",
 ];
 const COMMA_SEPARATED_TESTS_TO_RUN = TEST_TO_RUN.join(",");
 
