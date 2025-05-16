@@ -300,7 +300,10 @@
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :entity_id]
-   :skip      [:estimated_row_count :view_count]
+   :skip      [:estimated_row_count
+               :view_count
+               ;; used for migration only
+               :name_before_deduplication]
    :transform {:created_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})
 
