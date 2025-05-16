@@ -94,7 +94,7 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
   map: {
     imgSrc: mapEmptyState,
     get primaryText() {
-      return t`Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column.`;
+      return t`Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a column with region names.`;
     },
     get secondaryText() {
       return t`Read the docs`;
