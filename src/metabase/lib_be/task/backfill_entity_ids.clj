@@ -74,7 +74,8 @@
             (recur model row conn savepoint end-retry-count))))))
 
 (defn- backfill-entity-ids!-inner
-  "Given a model, gets a batch of objects from the db and adds entity-ids"
+  "Given a model, gets a batch of objects from the db and adds entity-ids. Returns whether there is more rows to
+  backfill."
   [model]
   (try
     (t2/with-transaction [^java.sql.Connection conn]
@@ -108,9 +109,9 @@
                   (log/error failure)))))
           true)))
     (catch Exception e
-      ;; If we error outside of updating a single entity id, stop.  We'll retry on next sync.
       (log/error (str "Exception updating entity-ids for " model))
-      (log/error e))))
+      (log/error e)
+      true)))
 
 (def ^:private job-key "metabase.lib-be.task.backfill-entity-ids.job")
 (def ^:private database-trigger-key "metabase.lib-be.task.backfill-entity-ids.trigger.database")
@@ -126,6 +127,8 @@
   {:model/Database :model/Table
    :model/Table :model/Field})
 
+;; this var is only used in temporarily commented-out code, so the linter complains
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private initial-model :model/Database)
 
 (comment
@@ -189,4 +192,5 @@
                   (task/schedule-task! job trigger))))))
 
 (defmethod task/init! ::BackfillEntityIds [_]
-  (start-job! initial-model))
+  ;; job is currently disabled, see SEM-319 in linear
+  #_(start-job! initial-model))
