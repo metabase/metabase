@@ -173,7 +173,7 @@ export function addMetricColumnToCartesianChart(
   state.columnValuesMapping[newMetric.name] = [columnRef];
   state.settings = {
     ...state.settings,
-    "graph.metrics": [...metrics, newMetric.name],
+    "graph.metrics": [...metrics, newMetric.name].filter(Boolean),
   };
 }
 
@@ -200,7 +200,7 @@ export function addDimensionColumnToCartesianChart(
   state.columnValuesMapping[newDimension.name] = [columnRef];
   state.settings = {
     ...state.settings,
-    "graph.dimensions": [...dimensions, newDimension.name],
+    "graph.dimensions": [...dimensions, newDimension.name].filter(Boolean),
   };
 }
 
