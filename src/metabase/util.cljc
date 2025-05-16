@@ -6,14 +6,15 @@
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
              [metabase.config :as config]
+             [clojure.pprint :as pprint]
              #_{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]
-             [ring.util.codec :as codec]))
+             [ring.util.codec :as codec])
+       :cljs-dev ([clojure.pprint :as pprint]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
-   [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -307,8 +308,8 @@
      (log/infof "Maximum memory available to JVM: %s" (u.format/format-bytes (.maxMemory (Runtime/getRuntime))))))
 
 ;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
-#?(:clj  (alter-var-root #'pprint/*print-right-margin* (constantly 120))
-   :cljs (set! pprint/*print-right-margin* (constantly 120)))
+#?(:clj      (alter-var-root #'pprint/*print-right-margin* (constantly 120))
+   :cljs-dev (set! pprint/*print-right-margin* (constantly 120)))
 
 (defn email?
   "Is `s` a valid email address string?"
@@ -667,19 +668,22 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (#?@
-     (:clj
+   #?(:clj
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
 
-      :cljs
-     ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
-     ;; default value wastes too much space, 120 is a little easier to read actually.
+      :cljs-dev
+      ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
+      ;; default value wastes too much space, 120 is a little easier to read actually.
       (binding [pprint/*print-right-margin* 120]
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
-          (pprint/pprint x))))))
+          (pprint/pprint x)))
+
+      :default
+      ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
+      (str x)))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
