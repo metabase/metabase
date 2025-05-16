@@ -11256,6 +11256,36 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T01:00:00
+      author: ranquild
+      comment: Add a column to be able to roll back metabase_database(name, engine) deduplication
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: name_before_deduplication
+                  remarks: The name of the database before deduplication
+                  type: ${text.type}
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: name_before_deduplication
+
+  - changeSet:
+      id: v55.2025-05-16T02:00:00
+      author: ranquild
+      comment: Set the database name before deduplication to be able to roll back
+      changes:
+        - sql: >-
+            UPDATE metabase_database
+            SET name_before_deduplication = name;
+      rollback:
+        - sql: >-
+            UPDATE metabase_database
+            SET name_before_deduplication = NULL;
+
+  - changeSet:
+      id: v55.2025-05-16T03:00:00
       validCheckSum: ANY
       author: ranquild
       comment: Deduplicate metabase_database on (name, engine)
@@ -11303,12 +11333,16 @@ databaseChangeLog:
                 ) AS d2
                 WHERE d1.id = d2.id
               );
-      rollback: # cannot roll back
+      rollback:
+        - sql: >-
+            UPDATE metabase_database
+            SET name = name_before_deduplication
+            WHERE name_before_deduplication IS NOT NULL;
 
   - changeSet:
-      id: v55.2025-05-16T02:00:00
+      id: v55.2025-05-16T04:00:00
       author: ranquild
-      comment: Add unique constraint on metabase_database (name, engine)
+      comment: Add unique constraint on metabase_database(name, engine)
       changes:
         - addUniqueConstraint:
             tableName: metabase_database
