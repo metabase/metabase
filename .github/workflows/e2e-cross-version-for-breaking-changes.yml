@@ -42,21 +42,23 @@ jobs:
     steps:
       - name: Set up shard matrix
         id: set_matrix
-        run: |
-          const totalShards = parseInt(process.env.TOTAL_SHARDS_INPUT, 10);
-          if (isNaN(totalShards) || totalShards <= 0) {
-            console.error(`Invalid total-shards input: ${process.env.TOTAL_SHARDS_INPUT}`);
-            process.exit(1);
-          }
-          const shardArray = Array.from({ length: totalShards }, (_, i) => i + 1);
-          const matrix = { shard: shardArray };
-          const matrixJson = JSON.stringify(matrix);
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const totalShards = parseInt(process.env.TOTAL_SHARDS_INPUT, 10);
+            if (isNaN(totalShards) || totalShards <= 0) {
+              console.error(`Invalid total-shards input: ${process.env.TOTAL_SHARDS_INPUT}`);
+              process.exit(1);
+            }
+            const shardArray = Array.from({ length: totalShards }, (_, i) => i + 1);
+            const matrix = { shard: shardArray };
+            const matrixJson = JSON.stringify(matrix);
 
-          console.log(`Generated matrix JSON: ${matrixJson}`);
-          console.log(`Total shards: ${totalShards}`);
+            console.log(`Generated matrix JSON: ${matrixJson}`);
+            console.log(`Total shards: ${totalShards}`);
 
-          console.log(`::set-output name=matrix_json::${matrixJson}`);
-          console.log(`::set-output name=shards_total::${totalShards}`);
+            core.setOutput('matrix_json', matrixJson);
+            core.setOutput('shards_total', totalShards);
         env:
           TOTAL_SHARDS_INPUT: ${{ inputs.total-shards }}
 
