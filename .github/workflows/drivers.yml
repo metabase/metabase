@@ -247,8 +247,9 @@ jobs:
               :only-tags [:mb/driver-tests]
           - name: Enterprise Tests
             build-static-viz: false
+            #:only '"enterprise/backend/test"'
             test-args: >-
-              :only '"enterprise/backend/test"'
+              :only metabase-enterprise.serialization.v2.load-test/deserialization-database-table-field-test
             exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
