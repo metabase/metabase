@@ -11268,8 +11268,8 @@ databaseChangeLog:
               FROM (
                 SELECT ROW_NUMBER() OVER (PARTITION by name, engine) as row_num
                 FROM metabase_database
-              )
-              WHERE row_num > 1
+              ) AS d
+              WHERE d.row_num > 1
       changes:
         - sql:
             dbms: postgresql
