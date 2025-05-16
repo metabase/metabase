@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
+import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import Markdown from "metabase/core/components/Markdown";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
@@ -26,10 +27,8 @@ import Styles from "./MetabotChat.module.css";
 import { useIsScrollable } from "./hooks";
 import { testMarkdown } from "./utils";
 
-const MIN_INPUT_HEIGHT = 42;
-
 export const MetabotChat = () => {
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isMessagesScrollable = useIsScrollable(messagesRef);
 
@@ -37,9 +36,16 @@ export const MetabotChat = () => {
 
   const metabot = useMetabotAgent();
 
+  const hasMessages = metabot.messages.length > 0;
+  const suggestedPrompts = metabot.suggestedPrompts.data?.prompts ?? [
+    { prompt: "Sales totals by week" },
+    { prompt: "Top 10 customers by number of orders" },
+    { prompt: "Country distribution of customers" },
+  ];
+  const hasSuggestions = suggestedPrompts.length > 0;
+
   const resetInput = useCallback(() => {
     setMessage("");
-    setInputExpanded(false);
   }, []);
 
   const handleSubmitInput = (input: string) => {
@@ -59,21 +65,6 @@ export const MetabotChat = () => {
     resetInput();
     setVisible(false);
   }, [resetInput, setVisible]);
-
-  const [inputExpanded, setInputExpanded] = useState(false);
-  const handleMaybeExpandInput = () => {
-    const textarea = inputRef.current;
-    if (!textarea) {
-      return;
-    }
-
-    const isMultiRow = textarea.scrollHeight > MIN_INPUT_HEIGHT;
-    if (inputExpanded !== isMultiRow) {
-      setInputExpanded(isMultiRow);
-    }
-    // keep scrolled to bottom
-    textarea.scrollTop = Math.max(MIN_INPUT_HEIGHT, textarea.scrollHeight);
-  };
 
   useEffect(
     function handleAutoscroll() {
@@ -123,29 +114,45 @@ export const MetabotChat = () => {
           data-testid="metabot-chat-messages"
         >
           <Box className={Styles.messages}>
-            {metabot.messages.length === 0 &&
-              !metabot.suggestedPrompts.error && (
-                <Stack gap="sm">
-                  <>
-                    <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
-                    {metabot.suggestedPrompts.isLoading && <Loader />}
-                    {metabot.suggestedPrompts.data?.prompts.map(
-                      ({ prompt }, index) => (
-                        <Box key={index}>
-                          <Button
-                            fz="sm"
-                            size="xs"
-                            onClick={() => handleSubmitInput(prompt)}
-                          >
-                            {prompt}
-                          </Button>
-                        </Box>
-                      ),
-                    )}
-                  </>
-                </Stack>
-              )}
+            {/* empty state with no sugggested prompts */}
+            {!hasMessages && !hasSuggestions && (
+              <Flex h="100%" direction="column" align="center" justify="center">
+                <Box
+                  component="img"
+                  src={EmptyDashboardBot}
+                  w="6rem"
+                  alt={t`Empty metabot conversation`}
+                />
+                <Text
+                  c="text-light"
+                  maw="19rem"
+                  ta="center"
+                >{t`I can tell you about what you’re looking at, or help you explore your models and metrics. empty state`}</Text>
+              </Flex>
+            )}
 
+            {/* empty state with sugggested prompts */}
+            {!hasMessages && hasSuggestions && (
+              <Stack gap="sm">
+                <>
+                  <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
+                  {metabot.suggestedPrompts.isLoading && <Loader />}
+                  {suggestedPrompts.map(({ prompt }, index) => (
+                    <Box key={index}>
+                      <Button
+                        fz="sm"
+                        size="xs"
+                        onClick={() => handleSubmitInput(prompt)}
+                      >
+                        {prompt}
+                      </Button>
+                    </Box>
+                  ))}
+                </>
+              </Stack>
+            )}
+
+            {/* conversation messages */}
             {metabot.messages.map(({ actor, message }, index) => (
               <Message
                 key={index}
@@ -154,31 +161,34 @@ export const MetabotChat = () => {
                 message={message}
               />
             ))}
+
             {/* TODO: remove */}
             {false && <Message actor="agent" message={testMarkdown} />}
           </Box>
         </Box>
 
         {/* conversation status container */}
-        <Box className={Styles.conversationStatusContainer}>
-          {metabot.isDoingScience && (
-            <Text className={Styles.thinkingText}>{t`Thinking...`}</Text>
-          )}
-
-          <Flex justify="space-between" align-items="center">
-            <MetabotIcon
-              width="40px"
-              height="30px"
-              isLoading={metabot.isDoingScience}
-            />
-
-            {metabot.messages.length > 0 && (
-              <Text fz="sm" c="text-light">
-                {t`Metabot isn't perfect. Double-check results.`}
-              </Text>
+        {(hasMessages || hasSuggestions) && (
+          <Box className={Styles.conversationStatusContainer}>
+            {metabot.isDoingScience && (
+              <Text className={Styles.thinkingText}>{t`Thinking...`}</Text>
             )}
-          </Flex>
-        </Box>
+
+            <Flex justify="space-between" align-items="center">
+              <MetabotIcon
+                width="40px"
+                height="30px"
+                isLoading={metabot.isDoingScience}
+              />
+
+              {metabot.messages.length > 0 && (
+                <Text fz="sm" c="text-light">
+                  {t`Metabot isn't perfect. Double-check results.`}
+                </Text>
+              )}
+            </Flex>
+          </Box>
+        )}
 
         {/* long convo warning */}
         {metabot.isLongConversation && (
@@ -204,8 +214,6 @@ export const MetabotChat = () => {
             disabled={metabot.isDoingScience}
             placeholder={t`Tell me to do something, or ask a question`}
             onChange={(e) => handleInputChange(e.target.value)}
-            // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
-            onHeightChange={handleMaybeExpandInput}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 // prevent event from inserting new line + interacting with other content

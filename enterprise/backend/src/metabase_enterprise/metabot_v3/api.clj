@@ -63,9 +63,7 @@
    _query-params
    _body]
   (metabot-v3.context/log {:api :get-prompts} :llm.log/fe->be)
-  {:prompts [{:prompt "Sales totals by week"}
-             {:prompt "Top 10 customers by number of orders"}
-             {:prompt "Country distribution of customers"}]})
+  {:prompts []})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
