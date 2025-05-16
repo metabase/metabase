@@ -11256,6 +11256,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T01:00:00
+      validCheckSum: 9:262d7291fe73fbe78d721b2dda7cc49d
       author: ranquild
       comment: Add a column to be able to roll back metabase_database(name, engine) deduplication
       changes:
@@ -11273,6 +11274,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T02:00:00
+      validCheckSum: 9:c3aaa9dfe9bb6d95d08671be3c007d35
       author: ranquild
       comment: Set the database name before deduplication to be able to roll back
       changes:
@@ -11341,6 +11343,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T04:00:00
+      validCheckSum: 9:16d65c55fbc032157bedfd9038b6c039
       author: ranquild
       comment: Add unique constraint on metabase_database(name, engine)
       changes:
