@@ -29,7 +29,7 @@ import { testMarkdown } from "./utils";
 const MIN_INPUT_HEIGHT = 42;
 
 export const MetabotChat = () => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const isMessagesScrollable = useIsScrollable(messagesRef);
 
@@ -51,7 +51,7 @@ export const MetabotChat = () => {
     metabot
       .submitInput(trimmedInput)
       .catch((err) => console.error(err))
-      .finally(() => textareaRef.current?.focus());
+      .finally(() => inputRef.current?.focus());
   };
 
   const { setVisible } = metabot;
@@ -62,7 +62,7 @@ export const MetabotChat = () => {
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
-    const textarea = textareaRef.current;
+    const textarea = inputRef.current;
     if (!textarea) {
       return;
     }
@@ -200,6 +200,7 @@ export const MetabotChat = () => {
             className={Styles.input}
             autoFocus
             value={input}
+            ref={inputRef}
             disabled={metabot.isDoingScience}
             placeholder={t`Tell me to do something, or ask a question`}
             onChange={(e) => handleInputChange(e.target.value)}
