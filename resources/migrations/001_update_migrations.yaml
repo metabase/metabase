@@ -11274,7 +11274,7 @@ databaseChangeLog:
         - sql: |
             UPDATE metabase_database as d1
             SET name = (
-              SELECT CASE WHEN row_num > 1 THEN CONCAT(d1.name, ' ', d2.row_num) ELSE name END
+              SELECT CASE WHEN d2.row_num > 1 THEN CONCAT(d1.name, ' ', d2.row_num) ELSE d1.name END
               FROM (
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) as row_num
                 FROM metabase_database
