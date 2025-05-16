@@ -79,7 +79,7 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
     }
 
     return (
-      <SidebarContent title={t`Variables`} onClose={onClose}>
+      <SidebarContent title={t`Variables and parameters`} onClose={onClose}>
         <div data-testid="tag-editor-sidebar">
           <div
             className={cx(

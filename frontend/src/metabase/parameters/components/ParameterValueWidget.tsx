@@ -16,6 +16,7 @@ import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source"
 import {
   isDateParameter,
   isStringParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -318,7 +319,7 @@ export const ParameterValueWidget = ({
 function hasNoPopover(parameter: UiParameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter)) {
+  if (isDateParameter(parameter) || isTemporalUnitParameter(parameter)) {
     return false;
   }
   return isTextWidget(parameter);

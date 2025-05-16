@@ -350,6 +350,7 @@ export default class NativeQuery {
       .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
       .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter((dimension) => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,
