@@ -349,7 +349,7 @@
     "swc-loader": "^0.2.6",
     "terser-webpack-plugin": "^5.3.9",
     "ts-morph": "^25.0.0",
-    "tsup": "^8.0.2",
+    "tsup": "^8.5.0",
     "tsx": "^4.19.3",
     "typedoc": "0.28.2",
     "typedoc-plugin-dt-links": "^2.0.0",
