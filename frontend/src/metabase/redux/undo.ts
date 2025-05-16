@@ -57,6 +57,7 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, (undo) => {
   return (dispatch) => {
     return {
       ...undo,
+      pausedAt: null,
       timeoutId: setTimeout(
         () => dispatch(dismissUndo({ undoId: undo.id })),
         restTime,

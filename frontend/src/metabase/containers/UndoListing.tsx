@@ -1,5 +1,5 @@
-import { useLayoutEffect, useState } from "react";
-import { useMount } from "react-use";
+import { useMounted } from "@mantine/hooks";
+import { useLayoutEffect } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -69,28 +69,18 @@ function UndoToast({
   onDismiss: () => void;
 }) {
   const dispatch = useDispatch();
-  const [mounted, setMounted] = useState(false);
-  const [paused, setPaused] = useState(false);
-
-  useMount(() => {
-    setMounted(true);
-  });
+  const mounted = useMounted();
 
   const handleMouseEnter = () => {
-    if (!undo.showProgress) {
-      return;
+    if (undo.showProgress) {
+      dispatch(pauseUndo(undo));
     }
-    setPaused(true);
-    dispatch(pauseUndo(undo));
   };
 
   const handleMouseLeave = () => {
-    if (!undo.showProgress) {
-      return;
+    if (undo.showProgress) {
+      dispatch(resumeUndo(undo));
     }
-
-    setPaused(false);
-    dispatch(resumeUndo(undo));
   };
 
   return (
@@ -115,7 +105,7 @@ function UndoToast({
           {undo.showProgress && (
             <Progress
               size="sm"
-              color={paused ? "bg-dark" : "brand"}
+              color={undo.pausedAt ? "bg-dark" : "brand"}
               /* we intentionally break a11y - css animation is smoother */
               value={100}
               pos="absolute"
