@@ -41,12 +41,9 @@
   [query-type model]
   (comp
    (next-method query-type model)
-   (map #(-> %
-          ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
-          ;; This will also help to secure properties that we set to secret in the future.
-             secret/clean-secret-properties-from-database
-          ;; This property is used for migration purposes only and should not be exposed
-             (dissoc :name_before_deduplication)))))
+    ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
+    ;; This will also help to secure properties that we set to secret in the future.
+   (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
@@ -287,7 +284,10 @@
            (not *normalizing-details*))
       normalize-details
 
-      true serdes/add-entity-id)))
+      true serdes/add-entity-id
+
+      ;; this property is used for migration purposes only
+      true (dissoc :name_before_deduplication))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
