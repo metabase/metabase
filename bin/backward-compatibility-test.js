@@ -2,6 +2,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-undef -- avoid errors on process */
 
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
