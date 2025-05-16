@@ -23,10 +23,11 @@ export const getActionsIdColumn = <TRow, TValue>({
     enablePinning: true,
     cell: ({ row }) => (
       <BaseCell data-testid="row-id-cell" className={S.cellRoot}>
-        <Group>
+        <Group wrap="nowrap">
           {actions.map((action) => (
             <Button
               key={action.id}
+              size="compact-sm"
               variant="subtle"
               onClick={(e) => {
                 e.stopPropagation();

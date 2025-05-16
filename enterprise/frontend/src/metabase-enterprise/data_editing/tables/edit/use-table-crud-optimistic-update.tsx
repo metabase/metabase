@@ -94,9 +94,29 @@ export const useTableCrudOptimisticUpdate = () => {
     [dispatch],
   );
 
+  const handleCellValueUpdateSuccess = useCallback(
+    ({
+      rowPkValue,
+      columnName,
+    }: {
+      rowPkValue: RowPkValue;
+      columnName: string;
+    }) => {
+      const cellUniqKey = getCellUniqKey(rowPkValue, columnName);
+      setCellsWithFailedUpdatesMap((prevState) => {
+        const newMap = { ...prevState };
+        delete newMap[cellUniqKey];
+
+        return newMap;
+      });
+    },
+    [],
+  );
+
   return {
     cellsWithFailedUpdatesMap: remappedCellsWithFailedUpdatesMap,
     handleCellValueUpdateError,
     handleGenericUpdateError,
+    handleCellValueUpdateSuccess,
   };
 };
