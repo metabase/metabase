@@ -556,8 +556,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         size_y: 12,
       },
     }).then(({ body: { dashboard_id } }) => {
-      const wrappedRowInitialHeight = 104;
-      const updatedRowHeight = 87;
+      const wrappedRowInitialHeight = 87;
+      const updatedRowHeight = 70;
       H.visitDashboard(dashboard_id);
 
       H.assertRowHeight(0, wrappedRowInitialHeight);
