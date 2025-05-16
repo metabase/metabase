@@ -1,5 +1,3 @@
-import { CompileError } from "../errors";
-
 export class Token {
   type: NodeType;
   text: string;
@@ -80,32 +78,4 @@ export interface NodeType {
 
   // The precedence to use for operator parsing conflicts. Higher wins.
   precedence: number;
-}
-
-/**
- * Assert compiler invariants and assumptions.
- * Throws a non-friendly error if the condition is false.
- */
-export function assert(
-  condition: any,
-  msg: string,
-  data?: any,
-): asserts condition {
-  if (!condition) {
-    throw new Error(msg, data || {});
-  }
-}
-
-/**
- * Check assumptions that might fail based on the query source.
- * Throws a user-friendly error if the condition is false.
- */
-export function check(
-  condition: any,
-  msg: string,
-  node: Node,
-): asserts condition {
-  if (!condition) {
-    throw new CompileError(msg, node);
-  }
 }

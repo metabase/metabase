@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { CompileError } from "../errors";
 import type { Hooks } from "../types";
+import { assert } from "../utils";
 
 import {
   ADD,
@@ -15,7 +16,6 @@ import {
   SUB,
 } from "./syntax";
 import type { Node, NodeType, Token } from "./types";
-import { assert } from "./types";
 
 interface ParserOptions {
   maxIterations?: number;
