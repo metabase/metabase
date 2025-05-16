@@ -44,7 +44,8 @@ title: Driver interface changelog
 
 - `metabase.driver.sql.query-processor/->honeysql` is no longer supported for `:model/Table` (support for this was
   deprecated in 0.48.0) -- methods for this will no longer be used; if you have such a method, migrate it to
-  `:metadata/table` instead.
+  `:metadata/table` instead. If you have a `:model/Table` and need a `:metadata/table` instead (such as in
+  implementations of `metabase.driver/table-rows-seq`) you can use `metabase.lib.metadata/table`.
 
 - `metabase.db.metadata-queries` has been removed; the parts meant for usage by drivers have been moved to
   `metabase.driver.common.table-rows-sample`.

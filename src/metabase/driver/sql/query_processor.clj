@@ -1772,6 +1772,13 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
+;;; This was deprecated in 0.48.0 but not removed until 0.55.0; if any drivers were still using it give them a useful
+;;; error. We can probably take this out in 0.56.0
+(defmethod ->honeysql [:sql :model/Table]
+  [driver _table]
+  (throw (ex-info "metabase.driver.sql.query-processor/->honeysql is no longer supported for :model/Table, use :metadata/table instead"
+                  {:driver driver, :type qp.error-type/driver})))
+
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
   (let [{table-name :name, schema :schema} table]
