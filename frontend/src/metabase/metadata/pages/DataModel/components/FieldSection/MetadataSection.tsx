@@ -4,6 +4,7 @@ import {
   useListDatabaseIdFieldsQuery,
   useUpdateFieldMutation,
 } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -29,6 +30,10 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
   });
   const [updateField] = useUpdateFieldMutation();
   const id = getRawTableFieldId(field);
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message, icon: "check" });
+  }
 
   return (
     <Stack gap="md">
@@ -47,8 +52,9 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
           return isNewValueEmpty ? field.display_name : newValue.trim();
         }}
         value={field.display_name}
-        onBlurChange={(event) => {
-          updateField({ id, display_name: event.target.value });
+        onBlurChange={async (event) => {
+          await updateField({ id, display_name: event.target.value });
+          confirm(t`Display name for ${event.target.value} updated`);
         }}
       />
 
@@ -57,13 +63,14 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
         minRows={3}
         placeholder={t`What is this field about?`}
         value={field.description ?? ""}
-        onBlurChange={(event) => {
+        onBlurChange={async (event) => {
           const newValue = event.target.value;
 
-          updateField({
+          await updateField({
             id,
             description: newValue.trim().length > 0 ? newValue : null,
           });
+          confirm(t`Description for ${field.display_name} updated`);
         }}
       />
 
@@ -72,10 +79,11 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
-        onUpdateField={(field, updates) => {
+        onUpdateField={async (field, updates) => {
           const { id: _id, ...fieldAttributes } = field;
           const id = getRawTableFieldId(field);
-          updateField({ id, ...fieldAttributes, ...updates });
+          await updateField({ id, ...fieldAttributes, ...updates });
+          confirm(t`Semantic type for ${field.display_name} updated`);
         }}
       />
     </Stack>

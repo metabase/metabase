@@ -4,6 +4,7 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import {
   DiscardTableFieldValuesButton,
   FieldOrderPicker,
@@ -26,6 +27,10 @@ export const TableSection = ({ params, table }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message, icon: "check" });
+  }
 
   return (
     <Stack gap="lg">
@@ -34,11 +39,13 @@ export const TableSection = ({ params, table }: Props) => {
         descriptionPlaceholder={t`Give this table a description`}
         name={table.display_name}
         namePlaceholder={t`Give this table a name`}
-        onDescriptionChange={(description) => {
-          updateTable({ id: table.id, description });
+        onDescriptionChange={async (description) => {
+          await updateTable({ id: table.id, description });
+          confirm(t`Table description updated`);
         }}
-        onNameChange={(name) => {
-          updateTable({ id: table.id, display_name: name });
+        onNameChange={async (name) => {
+          await updateTable({ id: table.id, display_name: name });
+          confirm(t`Table name updated`);
         }}
       />
 
@@ -50,9 +57,13 @@ export const TableSection = ({ params, table }: Props) => {
             checked={table.visibility_type === "hidden"}
             label={t`Hide this table`}
             size="sm"
-            onChange={(event) => {
+            onChange={async (event) => {
               const visibilityType = event.target.checked ? "hidden" : null;
-              updateTable({ id: table.id, visibility_type: visibilityType });
+              await updateTable({
+                id: table.id,
+                visibility_type: visibilityType,
+              });
+              confirm(t`Table visibility updated`);
             }}
           />
         </Card>
@@ -66,6 +77,7 @@ export const TableSection = ({ params, table }: Props) => {
             value={table.field_order}
             onChange={(fieldOrder) => {
               updateTable({ id: table.id, field_order: fieldOrder });
+              confirm(t`Field order updated`);
             }}
           />
         </Flex>
@@ -74,12 +86,13 @@ export const TableSection = ({ params, table }: Props) => {
           activeFieldId={fieldId}
           getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
           table={table}
-          onChange={(fieldOrder) => {
-            updateTableFieldsOrder({
+          onChange={async (fieldOrder) => {
+            await updateTableFieldsOrder({
               id: table.id,
               // in this context field id will never be a string because it's a raw table field, so it's ok to cast
               field_order: fieldOrder as FieldId[],
             });
+            confirm(t`Field order updated`);
           }}
         />
       </Stack>

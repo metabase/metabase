@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Stack } from "metabase/ui";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
@@ -27,6 +28,10 @@ export const FormattingSection = ({ field }: Props) => {
       : new Set(["column_title"]);
   }, [field]);
   const inheritedSettings = useMemo(() => getGlobalSettingsForColumn(), []);
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message, icon: "check" });
+  }
 
   return (
     <Stack gap="md">
@@ -41,8 +46,9 @@ export const FormattingSection = ({ field }: Props) => {
         inheritedSettings={inheritedSettings}
         style={{ maxWidth: undefined }}
         value={field.settings ?? {}}
-        onChange={(settings: FieldSettings) => {
-          updateField({ id, settings });
+        onChange={async (settings: FieldSettings) => {
+          await updateField({ id, settings });
+          confirm(t`Field formatting for ${field.display_name} updated`);
         }}
       />
     </Stack>
