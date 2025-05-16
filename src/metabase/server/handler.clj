@@ -46,10 +46,14 @@
 
 (def wrap-reload-dev-mw
   "In dev, reload files on the fly if they've changed. Returns nil in prod."
-  (when-let [wrap-reload (and config/is-dev?
-                              (not *compile-files*)
-                              (try (requiring-resolve 'ring.middleware.reload/wrap-reload)
-                                   (catch Exception _e nil)))]
+  (when-let [wrap-reload (try (and
+                               config/is-dev?
+                               (not *compile-files*)
+                               ;; `*enable-wrap-reload*` is set to true `dev.clj` when the `--hot-reload` flag is passed to the :dev-start alias
+                               (true? @(requiring-resolve 'user/*enable-hot-reload*))
+                               ;; this middleware is only available in dev
+                               (requiring-resolve 'ring.middleware.reload/wrap-reload))
+                              (catch Exception _ nil))]
     wrap-reload))
 
 (def ^:private middleware
