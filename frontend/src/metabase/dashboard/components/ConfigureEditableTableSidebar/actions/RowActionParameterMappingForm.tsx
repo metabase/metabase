@@ -40,7 +40,7 @@ export const RowActionParameterMappingForm = ({
     const actionParameters = action?.parameters ?? [];
 
     return actionParameters && action?.visualization_settings?.fields
-      ? [...actionParameters].sort(
+      ? actionParameters.toSorted(
           sortActionParams(action?.visualization_settings),
         )
       : actionParameters || [];
