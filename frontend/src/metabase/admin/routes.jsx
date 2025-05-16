@@ -40,12 +40,12 @@ import { createAdminRouteGuard } from "metabase/admin/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
-  PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
+  PLUGIN_METABOT,
 } from "metabase/plugins";
 
 import { PerformanceTabId } from "./performance/types";
@@ -177,6 +177,13 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           ))}
         </Route>
       </Route>
+      {PLUGIN_METABOT.AdminRoute}
+      {/* {MetabotRoute} */}
+      {/* <Route
+        key="metabot-admin"
+        path="metabot"
+        component={() => <div>inline</div>}
+      /> */}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={Tools}>
           <IndexRedirect to="errors" />
@@ -197,10 +204,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
-      {/* PLUGINS */}
-      <Fragment>
-        {PLUGIN_ADMIN_ROUTES.map((getRoutes) => getRoutes(store))}
-      </Fragment>
     </Route>
   </Route>
 );
