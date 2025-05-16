@@ -88,6 +88,9 @@ jobs:
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             build
 
+          # Debug: Check if jar exists and its size
+          ls -lh .tmp/metabase-be/target/uberjar/metabase.jar
+
       - name: Upload Uberjar
         uses: actions/upload-artifact@v4
         with:
@@ -121,6 +124,12 @@ jobs:
         with:
           name: metabase-jar-cross-version
           path: .tmp/metabase-be/target/uberjar/metabase.jar
+
+      # Debug: Check if jar exists and its size after download
+      - name: Debug jar file
+        run: |
+          ls -lh .tmp/metabase-be/target/uberjar/metabase.jar
+          file .tmp/metabase-be/target/uberjar/metabase.jar
 
       - name: Download FE repo
         run: |
