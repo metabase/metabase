@@ -114,7 +114,6 @@
            classloader
            collections
            config
-           db
            driver
            embedding
            events
@@ -133,10 +132,7 @@
            session
            settings
            sso
-           sync
-           upload
            util
-           warehouse-schema
            enterprise/advanced-permissions}}
 
   api-keys
@@ -591,7 +587,6 @@
 
   models
   {:api #{metabase.models.dispatch
-          metabase.models.dispatch
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
@@ -602,7 +597,6 @@
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
    :uses #{api
-           audit-app
            channel
            classloader
            collections
@@ -614,12 +608,10 @@
            lib
            permissions
            premium-features
-           search
            settings
            setup
            system
-           util
-           warehouses}}
+           util}}
 
   native-query-snippets
   {:api  #{metabase.native-query-snippets.api
@@ -1235,6 +1227,7 @@
            types
            upload
            util
+           warehouses
            xrays}}
 
   warehouses
