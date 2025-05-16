@@ -4,6 +4,7 @@ import { parsePunctuator } from "../punctuator";
 import { unquoteString } from "../string";
 import { tokenize } from "../tokenizer";
 
+import type { NodeType } from "./node";
 import {
   BAD_TOKEN,
   BOOLEAN,
@@ -14,7 +15,7 @@ import {
   NUMBER,
   STRING,
 } from "./syntax";
-import { type NodeType, Token } from "./types";
+import { Token } from "./token";
 
 export function lexify(source: string) {
   const lexs: Token[] = [];

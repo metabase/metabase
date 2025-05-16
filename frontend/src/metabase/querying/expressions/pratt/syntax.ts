@@ -1,4 +1,4 @@
-import type { Node, NodeType } from "./types";
+import type { Node, NodeType } from "./node";
 
 /*
  * This file specifies most of the syntax for the Metabase handwritten custom

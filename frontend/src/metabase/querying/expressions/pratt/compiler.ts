@@ -16,6 +16,7 @@ import type { Resolver } from "../resolver";
 import type { ExpressionType } from "../types";
 import { assert, check } from "../utils";
 
+import type { Node, NodeType } from "./node";
 import {
   ADD,
   ARG_LIST,
@@ -36,7 +37,6 @@ import {
   STRING,
   SUB,
 } from "./syntax";
-import type { Node, NodeType } from "./types";
 
 type CompileFn = (
   node: Node,

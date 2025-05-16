@@ -1,4 +1,5 @@
 import { lexify } from "./lexifier";
+import type { NodeType } from "./node";
 import {
   ADD,
   BAD_TOKEN,
@@ -19,7 +20,7 @@ import {
   STRING,
   SUB,
 } from "./syntax";
-import { type NodeType, Token } from "./types";
+import { Token } from "./token";
 
 function asToken(token: {
   type: NodeType;

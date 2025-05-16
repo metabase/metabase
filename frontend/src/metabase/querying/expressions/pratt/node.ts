@@ -1,57 +1,6 @@
-export class Token {
-  type: NodeType;
-  text: string;
-  value?: string;
+import type { Token } from "./token";
 
-  pos: number;
-  length: number;
-
-  constructor({
-    type,
-    pos,
-    length,
-    text,
-    value,
-  }: {
-    type: NodeType;
-    text: string;
-    value?: string;
-    length: number;
-    pos: number;
-  }) {
-    this.type = type;
-    this.pos = pos;
-    this.length = length;
-
-    this.text = text;
-    this.value = value;
-  }
-  get len(): number {
-    return this.length;
-  }
-  get start(): number {
-    return this.pos;
-  }
-  get end(): number {
-    return this.pos + this.length;
-  }
-  get from(): number {
-    return this.start;
-  }
-  get to(): number {
-    return this.end;
-  }
-}
-
-export interface Node {
-  type: NodeType;
-  children: Node[];
-  complete: boolean;
-  parent: Node | null;
-  token: Token | null;
-}
-
-export interface NodeType {
+export type NodeType = {
   name?: string;
 
   // Number of operands to expect for this node on the left side
@@ -78,4 +27,12 @@ export interface NodeType {
 
   // The precedence to use for operator parsing conflicts. Higher wins.
   precedence: number;
-}
+};
+
+export type Node = {
+  type: NodeType;
+  children: Node[];
+  complete: boolean;
+  parent: Node | null;
+  token: Token | null;
+};

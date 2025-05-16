@@ -4,6 +4,7 @@ import { CompileError } from "../errors";
 import type { Hooks } from "../types";
 import { assert } from "../utils";
 
+import type { Node, NodeType } from "./node";
 import {
   ADD,
   ARG_LIST,
@@ -15,7 +16,7 @@ import {
   ROOT,
   SUB,
 } from "./syntax";
-import type { Node, NodeType, Token } from "./types";
+import type { Token } from "./token";
 
 interface ParserOptions {
   maxIterations?: number;
