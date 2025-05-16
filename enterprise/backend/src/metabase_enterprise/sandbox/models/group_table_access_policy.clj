@@ -9,7 +9,6 @@
    [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -19,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

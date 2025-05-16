@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.models.database-test
+(ns ^:mb/driver-tests metabase.warehouses.models.database-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -9,7 +9,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
@@ -24,6 +23,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

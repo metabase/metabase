@@ -1,4 +1,4 @@
-(ns metabase.api.database
+(ns metabase.warehouses.api
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
@@ -19,7 +19,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -42,6 +41,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -296,8 +296,8 @@
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
 
   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
-  [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
-  in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+  in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
   database details."
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
@@ -413,8 +413,8 @@
    and tables, with no additional metadata.
 
    Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
-   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
-   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+   in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
