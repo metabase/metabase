@@ -77,6 +77,7 @@
         p            (apply grouper/submit! grouper {:object object, :do-in-context do-in-context} options)]
     (when synchronous?
       ;; wake up the group immediately and wait for it to finish
+      (.wakeUp grouper)
       (let [result (deref p)]
         (when (instance? Throwable result)
           (throw result))))
