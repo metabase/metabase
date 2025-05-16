@@ -156,7 +156,7 @@
           (is (= "We've Noticed a New Metabase Login, Khuat"
                  (:subject (new-login-email user-id))))))
 
-      (testing "Else Use eamil if both first_name and last_name are null"
+      (testing "Else Use email if both first_name and last_name are null"
         (mt/with-temp [:model/User {user-id :id} {:first_name nil
                                                   :last_name  nil
                                                   :email      "cto@metabase.com"}]
