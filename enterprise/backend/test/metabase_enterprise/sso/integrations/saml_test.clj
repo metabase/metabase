@@ -783,3 +783,57 @@
             (let [req-options (assoc-in {} [:request-options :cookies request/metabase-session-cookie :value] session-key)]
               (client/client :post "/auth/sso/logout" req-options)
               (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))))))))))
+
+
+(deftest saml-embedding-sdk-integration-tests
+  (testing "should return IdP URL and method info when embedding SDK header is present"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (let [result (client/client-real-response 
+                       :get 200 "/auth/sso"
+                       {:headers {"x-metabase-client" "embedding-sdk-react"}})]
+          (is (partial= {:status 200
+                         :body {:method "saml"
+                                :url default-idp-uri}
+                         :headers {"Content-Type" "application/json"}}
+                        result))))))
+  
+  (testing "should include origin in the redirect URL when embedding SDK header is present with origin"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (let [result (client/client-real-response 
+                       :get 200 "/auth/sso"
+                       {:headers {"x-metabase-client" "embedding-sdk-react"
+                                  "origin" "https://app.example.com"}})]
+          (is (partial= {:status 200
+                         :body {:method "saml"
+                                :url default-idp-uri}
+                         :headers {"Content-Type" "application/json"}}
+                        result))))))
+  
+  (testing "should redirect to IdP when no embedding SDK header is present"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (let [result (client/client-real-response 
+                       :get 302 "/auth/sso"
+                       {:request-options {:redirect-strategy :none}})]
+          (is (partial= {:status 302}
+                        result))
+          (is (str/starts-with? (get-in result [:headers "Location"]) default-idp-uri))))))
+  
+  (testing "should return a token when token=true in relay state and embedding SDK header"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-state (u/encode-base64 
+                              (str (acs-url) "?token=true&origin=https%3A%2F%2Fapp.example.com"))
+                 req-options (saml-post-request-options 
+                              (saml-test-response)
+                              relay-state)
+                 response (client/client-real-response :post 200 "/auth/sso" req-options)]
+             (is (partial= {:status 200
+                           :headers {"Content-Type" "text/html"}}
+                          response))
+             (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
+             (is (str/includes? (:body response) "authData"))))))))))

@@ -444,7 +444,17 @@
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
 
 (deftest jwt-token-test
-  (testing "should return a session token when sdk headers are passed"
+  (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
+    (with-jwt-default-setup!
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+        (let [result (client/client-real-response 
+                       :get 200 "/auth/sso"
+                       {:headers {"x-metabase-client" "embedding-sdk-react"}})]
+          (is (= {:url (sso-settings/jwt-identity-provider-uri) 
+                  :method "jwt"}
+                 (:body result)))))))
+
+  (testing "should return a session token when a JWT token and sdk headers are passed"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
