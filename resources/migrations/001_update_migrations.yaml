@@ -11259,6 +11259,12 @@ databaseChangeLog:
       validCheckSum: 9:262d7291fe73fbe78d721b2dda7cc49d
       author: ranquild
       comment: Add a column to be able to roll back metabase_database(name, engine) deduplication
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: name_before_deduplication
       changes:
         - addColumn:
             tableName: metabase_database
