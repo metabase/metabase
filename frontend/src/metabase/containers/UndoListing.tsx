@@ -1,9 +1,4 @@
-import {
-  type HTMLAttributes,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { type HTMLAttributes, type ReactNode, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -170,20 +165,8 @@ export function UndoListing() {
   const dispatch = useDispatch();
   const undos = useSelector((state) => state.undo);
 
-  const [lastId, setLastId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLastId(`${undos.at(-1)?.id}`);
-  }, [undos]);
-
   return (
-    <UndoListOverlay
-      key={
-        // Remount the list when an undo is added so that the
-        // listing appears on top
-        lastId
-      }
-    >
+    <UndoListOverlay>
       {undos.map((undo) => (
         <UndoToast
           key={undo._domId}
