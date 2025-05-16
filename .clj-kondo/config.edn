@@ -528,7 +528,6 @@
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.collections.models.collection-test/with-collection-in-location               clojure.core/let
-  metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.db.custom-migrations.util/with-temp-scheduler!                               clojure.core/fn
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
@@ -542,12 +541,13 @@
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
-  metabase.notification.test-util/with-temp-notification                                clojure.core/let
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
+  metabase.notification.test-util/with-temp-notification                                clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
-  metabase.premium-features.settings/define-premium-feature                             clojure.core/def
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
+  metabase.premium-features.settings/define-premium-feature                             clojure.core/def
+  metabase.pulse.dashboard-subscription-test/with-dashboard-sub-for-card                clojure.core/let
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
@@ -556,10 +556,10 @@
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
-  metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all
   metabase.settings.core/define-multi-setting                                           clojure.core/def
-  metabase.settings.models.setting/defsetting                                           clj-kondo.lint-as/def-catch-all
+  metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all
   metabase.settings.models.setting.multi-setting/define-multi-setting                   clojure.core/def
+  metabase.settings.models.setting/defsetting                                           clj-kondo.lint-as/def-catch-all
   metabase.sso.ldap/with-ldap-connection                                                clojure.core/fn
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
@@ -631,9 +631,8 @@
    metabase.collections.api-test/with-french-user-and-personal-collection!                                                   hooks.common/with-two-top-level-bindings
    metabase.collections.models.collection-test/with-collection-hierarchy!                                                    hooks.common/let-one-with-optional-value
    metabase.collections.models.collection-test/with-personal-and-impersonal-collections                                      hooks.common/with-two-bindings
-   metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
-   metabase.dashboards.api-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
-   metabase.dashboards.api-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
+   metabase.dashboards.api-test/with-chain-filter-fixtures                                                                   hooks.common/let-one-with-optional-value
+   metabase.dashboards.api-test/with-simple-dashboard-with-tabs                                                              hooks.common/with-one-binding
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
@@ -660,17 +659,18 @@
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
-   metabase.queries.api.card-test/with-card-param-values-fixtures                                                            hooks.common/let-one-with-optional-value
-   metabase.queries.api.card-test/with-temp-native-card!                                                                     hooks.common/with-two-bindings
-   metabase.queries.api.card-test/with-temp-native-card-with-params!                                                         hooks.common/with-two-bindings
    metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding
    metabase.public-sharing.api-test/with-temp-public-card                                                                    hooks.common/let-one-with-optional-value
    metabase.public-sharing.api-test/with-temp-public-dashboard                                                               hooks.common/let-one-with-optional-value
    metabase.public-sharing.api-test/with-temp-public-dashboard-and-card                                                      hooks.common/with-three-bindings
    metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
+   metabase.pulse.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                           hooks.common/let-second
    metabase.pulse.models.pulse-test/with-dashboard-subscription-in-collection!                                               hooks.common/with-four-bindings
    metabase.pulse.models.pulse-test/with-pulse-in-collection!                                                                hooks.common/with-four-bindings
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
+   metabase.queries.api.card-test/with-card-param-values-fixtures                                                            hooks.common/let-one-with-optional-value
+   metabase.queries.api.card-test/with-temp-native-card!                                                                     hooks.common/with-two-bindings
+   metabase.queries.api.card-test/with-temp-native-card-with-params!                                                         hooks.common/with-two-bindings
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
