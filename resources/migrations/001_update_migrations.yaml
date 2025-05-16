@@ -11319,6 +11319,71 @@ databaseChangeLog:
             tableName: metabase_database
             constraintName: idx_unique_database
 
+  - changeSet:
+      id: v55.2025-05-16T03:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Deduplicate metabase_table on (db_id, schema, name)
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: >-
+              SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+              FROM (
+                SELECT ROW_NUMBER() OVER (PARTITION BY db_id, schema, name) AS row_num
+                FROM metabase_table
+              ) AS t
+              WHERE t.row_num > 1;
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table AS t1
+              SET name = CONCAT(t1.name, ' ', t2.row_num)
+              FROM (
+                SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
+                FROM metabase_table
+              ) AS t2
+              WHERE t1.id = t2.id AND t2.row_num > 1;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table AS t1
+              INNER JOIN (
+                SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
+                FROM metabase_table
+              ) AS t2 ON t1.id = t2.id
+              SET name = CONCAT(t1.name, ' ', t2.row_num)
+              WHERE t2.row_num > 1;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_table AS t1
+              SET name = (
+                SELECT CASE WHEN t2.row_num > 1 THEN CONCAT(t1.name, ' ', t2.row_num) ELSE t1.name END
+                FROM (
+                  SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) AS row_num
+                  FROM metabase_table
+                ) AS t2
+                WHERE t1.id = t2.id
+              );
+      rollback: # cannot roll back
+
+  - changeSet:
+      id: v55.2025-05-16T04:00:00
+      author: ranquild
+      comment: Add unique constraint on metabase_table (db_id, schema, name)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+            columnNames: db_id, schema, name
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
