@@ -111,7 +111,7 @@
 
 .messageActions {
   opacity: 0;
-  transition: all 100ms linear;
+  transition: all 150ms linear;
 }
 
 .messageContainer:hover .messageActions,

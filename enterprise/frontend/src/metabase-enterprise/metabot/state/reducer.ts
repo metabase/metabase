@@ -50,7 +50,6 @@ export const metabot = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(sendMessageRequest.pending, (state, action) => {
-        // @ts-expect-error -- infinitely deep type
         state.lastSentContext = action.meta.arg.context;
       })
       .addCase(logout.pending, () => metabotInitialState);

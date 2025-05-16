@@ -25,7 +25,6 @@ import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
 import { useIsScrollable } from "./hooks";
-import { testMarkdown } from "./utils";
 
 export const MetabotChat = () => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -163,15 +162,6 @@ export const MetabotChat = () => {
                   isLastMessage={index === metabot.messages.length - 1}
                 />
               ))}
-
-              {/* TODO: remove */}
-              {false && (
-                <Message
-                  actor="agent"
-                  message={testMarkdown}
-                  isLastMessage={false}
-                />
-              )}
             </Box>
           )}
         </Box>
