@@ -74,8 +74,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server.handler :as handler]
-   [metabase.server.instance :as server]
+   [metabase.server.core :as server]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -170,7 +170,7 @@
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! #'handler/app)
+  (server/start-web-server! (server.test-handler/test-handler))
   (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
