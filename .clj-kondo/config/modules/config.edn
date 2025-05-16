@@ -99,7 +99,6 @@
   {:api #{metabase.api.auth
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.dashboard
           metabase.api.database
           metabase.api.dataset
           metabase.api.docs
@@ -111,10 +110,8 @@
           metabase.api.table
           metabase.api.util
           metabase.api.util.handlers}
-   :uses #{actions
-           analytics
+   :uses #{analytics
            api-routes
-           channel
            classloader
            collections
            config
@@ -132,11 +129,9 @@
            parameters
            permissions
            premium-features
-           pulse
            queries
            query-processor
            request
-           revisions
            sample-data
            secrets
            server
@@ -230,6 +225,7 @@
            appearance
            collections
            config
+           dashboards
            db
            driver
            events
@@ -329,6 +325,35 @@
   core
   {:api  #{metabase.core.initialization-status}
    :uses :any}
+
+  dashboards
+  {:api  #{metabase.dashboards.api
+           metabase.dashboards.constants
+           metabase.dashboards.models.dashboard
+           metabase.dashboards.models.dashboard-card
+           metabase.dashboards.models.dashboard-tab}
+   :uses #{actions
+           analytics
+           api
+           audit-app
+           channel
+           collections
+           config
+           db
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           pulse
+           queries
+           query-processor
+           request
+           revisions
+           search
+           util
+           xrays}}
 
   database-routing
   {:api  #{metabase.database-routing.core}
@@ -575,11 +600,7 @@
            util}}
 
   models
-  {:api #{metabase.models.dashboard
-          metabase.models.dashboard-card
-          metabase.models.dashboard-tab
-          metabase.models.dashboard.constants
-          metabase.models.database
+  {:api #{metabase.models.database
           metabase.models.dispatch
           metabase.models.field
           metabase.models.field-values
@@ -596,21 +617,14 @@
            api
            audit-app
            classloader
-           collections
-           config
            db
            driver
-           events
            legacy-mbql
            lib
            permissions
            premium-features
            secrets
            settings
-           parameters
-           public-sharing
-           pulse
-           queries
            query-processor
            search
            sync
@@ -637,6 +651,7 @@
            appearance
            channel
            config
+           dashboards
            driver
            events
            models
@@ -747,6 +762,7 @@
    :uses #{actions
            analytics
            api
+           dashboards
            events
            lib
            models
@@ -907,6 +923,7 @@
            metabase.revisions.init}
    :uses #{api
            config
+           dashboards
            events
            models
            permissions
@@ -1193,11 +1210,11 @@
    :uses #{classloader
            channel
            config
+           dashboards
            db
            driver
            legacy-mbql
            lib
-           models
            parameters
            settings
            system}}
@@ -1249,6 +1266,7 @@
            appearance
            api
            collections
+           dashboards
            driver
            legacy-mbql
            lib

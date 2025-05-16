@@ -27,11 +27,11 @@
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
-    :model/Dashboard                         metabase.models.dashboard
+    :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
-    :model/DashboardCard                     metabase.models.dashboard-card
-    :model/DashboardCardSeries               metabase.models.dashboard-card-series
-    :model/DashboardTab                      metabase.models.dashboard-tab
+    :model/DashboardCard                     metabase.dashboards.models.dashboard-card
+    :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
+    :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
