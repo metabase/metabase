@@ -1,7 +1,7 @@
 (ns metabase.parameters.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [toucan2.core :as t2]))
 

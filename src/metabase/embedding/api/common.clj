@@ -108,8 +108,8 @@
 (mu/defn- resolve-dashboard-parameters :- [:sequential [:map
                                                         [:id ms/NonBlankString]]]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
-  that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  [[metabase.api.dashboard/process-query-for-dashcard]]."
+  that can be passed to various functions in the [[metabase.dashboards.api]] namespace such as
+  [[metabase.dashboards.api/process-query-for-dashcard]]."
   [dashboard-id :- ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
