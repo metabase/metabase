@@ -178,6 +178,9 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
+  // Reverse the list so new todos are rendered on top
+  const reversed = Array.from(undos).reverse();
+
   return (
     <Portal>
       <UndoList
@@ -185,7 +188,7 @@ export function UndoListOverlay({
         aria-label="undo-list"
         className={ZIndex.Overlay}
       >
-        {undos.map((undo) => (
+        {reversed.map((undo) => (
           <UndoToast
             key={undo._domId}
             undo={undo}
