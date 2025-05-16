@@ -1365,7 +1365,7 @@
 
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
 
-  It's here instead of [[metabase.models.dashboard-card]] to avoid cyclic deps."
+  It's here instead of [[metabase.dashboards.models.dashboard-card]] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :model/Collection
