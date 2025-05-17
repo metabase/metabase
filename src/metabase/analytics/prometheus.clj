@@ -248,20 +248,31 @@
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
-   (prometheus/counter :metabase-search/index
-                       {:description "Number of entries indexed for search"
-                        :labels      [:model]})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason]})
+   (prometheus/counter :metabase-search/index-reindexes
+                       {:description "Number of reindexed search entries"
+                        :labels      [:model]})
+   (prometheus/counter :metabase-search/index-updates
+                       {:description "Number of updated search entries"
+                        :labels      [:model]})
    (prometheus/counter :metabase-search/index-error
                        {:description "Number of errors encountered when indexing for search"})
-   (prometheus/counter :metabase-search/index-ms
-                       {:description "Total number of ms indexing took"})
-   (prometheus/histogram :metabase-search/index-duration-ms
-                         {:description "Duration in milliseconds that indexing jobs take."
+   (prometheus/counter :metabase-search/index-update-ms
+                       {:description "Total number of ms updating the index"})
+   (prometheus/histogram :metabase-search/index-update-duration-ms
+                         {:description "Duration in milliseconds that index update jobs took."
       ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-search/index-reindex-ms
+                       {:description "Total number of ms reindexing the index"})
+   (prometheus/histogram :metabase-search/index-reindex-duration-ms
+                         {:description "Duration in milliseconds that index reindex jobs took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/gauge :metabase-search/appdb-index-size
+                     {:description "Number of rows in the active index table."})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -496,6 +507,9 @@
   ;; want to see what's in the registry?
   (require 'iapetos.export)
   (spit "metrics" (iapetos.export/text-format (:registry system)))
+
+  ;; See all metrics that match a given prefix:
+  ; (filter #(.startsWith % "metabase_search_") (clojure.string/split-lines (iapetos.export/text-format (:registry system))))
 
   ;; need to restart the server to see the metrics? use:
   (shutdown!)
