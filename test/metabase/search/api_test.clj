@@ -10,7 +10,6 @@
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -25,6 +24,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -933,7 +933,7 @@
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
-    (mt/with-temp [:model/Database                   {db-id :id} {:name "test-data (h2)"}
+    (mt/with-temp [:model/Database                   {db-id :id} {:name "test-data 2 (h2)"}
                    :model/Table                      table {:name "RoundTable" :db_id db-id}
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
@@ -941,9 +941,9 @@
         (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
-                 (binding [*search-request-results-database-id* db-id]
-                   (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable"))))))))))
+          (is (=? [{:name "RoundTable", :database_name "test-data 2 (h2)"}]
+                  (binding [*search-request-results-database-id* db-id]
+                    (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable"))))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"

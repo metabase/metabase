@@ -99,58 +99,40 @@
   {:api #{metabase.api.auth
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.dashboard
-          metabase.api.database
           metabase.api.dataset
           metabase.api.docs
-          metabase.api.field
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
           metabase.api.routes.common
-          metabase.api.table
           metabase.api.user
           metabase.api.util
           metabase.api.util.handlers}
-   :uses #{actions
-           analytics
+   :uses #{analytics
            api-routes
            appearance
-           channel
            classloader
            collections
            config
-           database-routing
-           db
            driver
            embedding
            events
            legacy-mbql
            lib
-           lib-be
            logger
            model-persistence
            models
            parameters
            permissions
            premium-features
-           pulse
            queries
            query-processor
            request
-           revisions
-           sample-data
-           secrets
            server
            session
            settings
            sso
-           sync
-           types
-           upload
            util
-           warehouse-schema
-           xrays
            enterprise/advanced-permissions}}
 
   api-keys
@@ -233,6 +215,7 @@
            appearance
            collections
            config
+           dashboards
            db
            driver
            events
@@ -332,13 +315,42 @@
   {:api  #{metabase.core.initialization-status}
    :uses :any}
 
+  dashboards
+  {:api  #{metabase.dashboards.api
+           metabase.dashboards.constants
+           metabase.dashboards.models.dashboard
+           metabase.dashboards.models.dashboard-card
+           metabase.dashboards.models.dashboard-tab}
+   :uses #{actions
+           analytics
+           api
+           audit-app
+           channel
+           collections
+           config
+           db
+           events
+           lib
+           models
+           parameters
+           permissions
+           public-sharing
+           pulse
+           queries
+           query-processor
+           request
+           revisions
+           search
+           util
+           warehouse-schema
+           xrays}}
+
   database-routing
   {:api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
   db
   {:api  #{metabase.db
-           metabase.db.metadata-queries
            metabase.db.query
            metabase.db.setup}
    :uses #{auth-provider
@@ -346,12 +358,8 @@
            config
            connection-pool
            driver
-           legacy-mbql
-           lib
-           query-processor
            task
-           util
-           warehouse-schema}}
+           util}}
 
   driver
   {:api #{metabase.driver
@@ -400,6 +408,7 @@
            sync
            system
            upload
+           warehouse-schema
            warehouses
            util}}
 
@@ -577,28 +586,17 @@
            util}}
 
   models
-  {:api #{metabase.models.dashboard
-          metabase.models.dashboard-card
-          metabase.models.dashboard-tab
-          metabase.models.dashboard.constants
-          metabase.models.database
-          metabase.models.dispatch
-          metabase.models.field
-          metabase.models.field-values
+  {:api #{metabase.models.dispatch
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
           metabase.models.resolution
           metabase.models.serialization
-          metabase.models.table
           metabase.models.user
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
-   :uses #{analytics
-           analyze
-           api
-           audit-app
+   :uses #{api
            channel
            classloader
            collections
@@ -610,16 +608,8 @@
            lib
            permissions
            premium-features
-           secrets
            settings
-           parameters
-           public-sharing
-           pulse
-           queries
-           query-processor
-           search
            setup
-           sync
            system
            util}}
 
@@ -644,6 +634,7 @@
            appearance
            channel
            config
+           dashboards
            driver
            events
            models
@@ -679,7 +670,8 @@
            query-processor
            types
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -753,6 +745,7 @@
    :uses #{actions
            analytics
            api
+           dashboards
            events
            lib
            models
@@ -912,6 +905,7 @@
            metabase.revisions.init}
    :uses #{api
            config
+           dashboards
            events
            models
            permissions
@@ -950,7 +944,8 @@
            request
            startup
            task
-           util}}
+           util
+           warehouses}}
 
   secrets
   {:api  #{metabase.secrets.core}
@@ -1079,7 +1074,9 @@
            settings
            task
            task-history
-           util}}
+           util
+           warehouse-schema
+           warehouses}}
 
   system
   {:api  #{metabase.system.core
@@ -1157,7 +1154,8 @@
            queries
            settings
            sync
-           util}}
+           util
+           warehouse-schema}}
 
   user-key-value
   {:api  #{metabase.user-key-value.api
@@ -1172,11 +1170,11 @@
    :uses #{classloader
            channel
            config
+           dashboards
            db
            driver
            legacy-mbql
            lib
-           models
            parameters
            settings
            system}}
@@ -1203,22 +1201,66 @@
            util}}
 
   warehouse-schema
-  {:api  #{metabase.warehouse-schema.field
-           metabase.warehouse-schema.table
-           metabase.warehouse-schema.metadata-queries}
-   :uses #{api
+  {:api  #{metabase.warehouse-schema.api
+           metabase.warehouse-schema.field
+           metabase.warehouse-schema.metadata-from-qp
+           metabase.warehouse-schema.metadata-queries
+           metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-values
+           metabase.warehouse-schema.models.table
+           metabase.warehouse-schema.table}
+   :uses #{analyze
+           api
+           audit-app
+           db
            driver
+           events
+           lib
            models
+           parameters
+           permissions
            premium-features
+           query-processor
+           request
+           search
+           sync
            types
-           util}}
+           upload
+           util
+           warehouses
+           xrays}}
 
   warehouses
-  {:api  #{metabase.warehouses.core
-           metabase.warehouses.init}
-   :uses #{premium-features
+  {:api  #{metabase.warehouses.api
+           metabase.warehouses.core
+           metabase.warehouses.init
+           metabase.warehouses.models.database}
+   :uses #{analytics
+           api
+           audit-app
+           classloader
+           collections
+           config
+           database-routing
+           db
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           request
+           sample-data
+           search
+           secrets
            settings
-           util}}
+           sync
+           upload
+           util
+           warehouse-schema
+           enterprise/advanced-permissions}}
 
   xrays
   {:api  #{metabase.xrays.api
@@ -1228,6 +1270,7 @@
            appearance
            api
            collections
+           dashboards
            driver
            legacy-mbql
            lib
@@ -1236,7 +1279,8 @@
            settings
            queries
            query-processor
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
@@ -1262,17 +1306,17 @@
    :uses #{api
            enterprise/impersonation
            lib
-           models
            permissions
            premium-features
            query-processor
-           util}}
+           util
+           warehouses}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
-  :uses #{api
-          premium-features
-          enterprise/metabot-v3}}
+   :uses #{api
+           premium-features
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-fixer
   {:api #{metabase-enterprise.ai-sql-fixer.api}
@@ -1372,7 +1416,9 @@
            premium-features
            query-processor
            settings
-           util}}
+           util
+           warehouse-schema
+           warehouses}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
@@ -1407,6 +1453,7 @@
            premium-features
            query-processor
            util
+           warehouse-schema
            enterprise/sandbox}}
 
   enterprise/internal-stats
@@ -1438,7 +1485,8 @@
            query-processor
            request
            system
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/premium-features
   {:api  #{}
@@ -1470,6 +1518,7 @@
            request
            util
            warehouse-schema
+           warehouses
            enterprise/api}}
 
   enterprise/scim
@@ -1510,7 +1559,8 @@
            premium-features
            settings
            setup
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/snippet-collections
   {:api  #{}

@@ -4,12 +4,12 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

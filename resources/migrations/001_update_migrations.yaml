@@ -11288,6 +11288,10 @@ databaseChangeLog:
             UPDATE metabase_database
             SET name_before_deduplication = NULL;
 
+  # Try to deduplicate based on row_number() first. It would cover cases like ["a", "a", "b"] -> ["a", "a 2", "b"], but
+  # not ["a", "a", "b", "a 2"] -> ["a", "a 2", "b", "a 2"]. If there are still duplicates after the initial attempt, add
+  # the db id to every name to ensure uniqueness, e.g. ["a", "a", "b", "a 2"] -> ["a 1", "a 2", "b 3", "a 2 4"]. We do
+  # not expect it to happen, but the migration should cover all cases, even theoretical.
   - changeSet:
       id: v55.2025-05-16T03:00:00
       validCheckSum: ANY
@@ -11315,6 +11319,17 @@ databaseChangeLog:
                 FROM metabase_database
               ) AS d2
               WHERE d1.id = d2.id AND d2.row_num > 1;
+
+              UPDATE metabase_database
+              SET name = CONCAT(name_before_deduplication, ' ', id)
+              WHERE EXISTS (
+                SELECT d.row_num
+                FROM (
+                  SELECT ROW_NUMBER() OVER (PARTITION BY name, engine) AS row_num
+                  FROM metabase_database
+                ) AS d
+                WHERE d.row_num > 1
+              );
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -11325,6 +11340,17 @@ databaseChangeLog:
               ) AS d2 ON d1.id = d2.id
               SET name = CONCAT(d1.name, ' ', d2.row_num)
               WHERE d2.row_num > 1;
+
+              UPDATE metabase_database
+              SET name = CONCAT(name_before_deduplication, ' ', id)
+              WHERE EXISTS (
+                SELECT d.row_num
+                FROM (
+                  SELECT ROW_NUMBER() OVER (PARTITION BY name, engine) AS row_num
+                  FROM metabase_database
+                ) AS d
+                WHERE d.row_num > 1
+              );
         - sql:
             dbms: h2
             sql: >-
@@ -11336,6 +11362,17 @@ databaseChangeLog:
                   FROM metabase_database
                 ) AS d2
                 WHERE d1.id = d2.id
+              );
+
+              UPDATE metabase_database
+              SET name = CONCAT(name_before_deduplication, ' ', id)
+              WHERE EXISTS (
+                SELECT d.row_num
+                FROM (
+                  SELECT ROW_NUMBER() OVER (PARTITION BY name, engine) AS row_num
+                  FROM metabase_database
+                ) AS d
+                WHERE d.row_num > 1
               );
       rollback:
         - sql: >-
