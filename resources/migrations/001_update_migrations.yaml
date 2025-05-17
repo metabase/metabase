@@ -11409,6 +11409,7 @@ databaseChangeLog:
               FROM (
                 SELECT ROW_NUMBER() OVER (PARTITION BY db_id, schema, name) AS row_num
                 FROM metabase_table
+                WHERE active = TRUE
               ) AS t
               WHERE t.row_num > 1;
       changes:
@@ -11420,6 +11421,7 @@ databaseChangeLog:
               FROM (
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
                 FROM metabase_table
+                WHERE active = TRUE
               ) AS t2
               WHERE t1.id = t2.id AND t2.row_num > 1;
         - sql:
@@ -11429,6 +11431,7 @@ databaseChangeLog:
               INNER JOIN (
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
                 FROM metabase_table
+                WHERE active = TRUE
               ) AS t2 ON t1.id = t2.id
               SET active = FALSE
               WHERE t2.row_num > 1;
@@ -11441,9 +11444,11 @@ databaseChangeLog:
                 FROM (
                   SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) AS row_num
                   FROM metabase_table
+                  WHERE active = TRUE
                 ) AS t2
                 WHERE t1.id = t2.id
-              );
+              )
+              WHERE active = TRUE;
       rollback: # TBD
 
   - changeSet:
