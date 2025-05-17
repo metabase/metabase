@@ -11398,7 +11398,7 @@ databaseChangeLog:
   - changeSet:
       id: v55.2025-05-16T05:00:00
       author: ranquild
-      comment: Add a column to be able to roll back metabase_table(db_id, schema, name) deduplication
+      comment: Add a column to track the previous metabase_table.active state before deduplication and deactivation
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -11411,13 +11411,15 @@ databaseChangeLog:
             columns:
               - column:
                   name: active_before_deduplication
-                  remarks: The active state of the table before deduplication
+                  remarks: The active state of the table before deduplication and deactivation
                   type: ${boolean.type}
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v55.2025-05-16T06:00:00
       author: ranquild
-      comment: Set the active state of the table before deduplication to be able to roll back
+      comment: Set the metabase_table.active_before_deduplication state before deduplication and deactivation
       changes:
         - sql: >-
             UPDATE metabase_table
@@ -11429,9 +11431,31 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T07:00:00
+      author: ranquild
+      comment: Add metabase_table.is_defective_duplicate
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: is_defective_duplicate
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_defective_duplicate
+                  type: ${boolean.type}
+                  remarks: "Indicates whether table is a defective duplicate table that should never have been created."
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  - changeSet:
+      id: v55.2025-05-16T08:00:00
       validCheckSum: ANY
       author: ranquild
-      comment: Deactivate duplicate metabase_table entries on (db_id, schema, name)
+      comment: Compute metabase_table.is_effective_duplicate based on (db_id, schema, name) uniqueness
       preConditions:
         - onFail: MARK_RAN
         - sqlCheck:
@@ -11441,7 +11465,6 @@ databaseChangeLog:
               FROM (
                 SELECT ROW_NUMBER() OVER (PARTITION BY db_id, schema, name) AS row_num
                 FROM metabase_table
-                WHERE active = TRUE
               ) AS t
               WHERE t.row_num > 1;
       changes:
@@ -11449,11 +11472,13 @@ databaseChangeLog:
             dbms: postgresql
             sql: >-
               UPDATE metabase_table AS t1
-              SET active = FALSE
+              SET is_effective_duplicate = TRUE
               FROM (
-                SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
+                SELECT id, ROW_NUMBER() OVER (
+                  PARTITION BY db_id, schema, name
+                  ORDER BY CASE WHEN active = TRUE THEN 0 ELSE 1 END, created_at
+                ) AS row_num
                 FROM metabase_table
-                WHERE active = TRUE
               ) AS t2
               WHERE t1.id = t2.id AND t2.row_num > 1;
         - sql:
@@ -11461,58 +11486,51 @@ databaseChangeLog:
             sql: >-
               UPDATE metabase_table AS t1
               INNER JOIN (
-                SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
+                SELECT id, ROW_NUMBER() OVER (
+                  PARTITION BY db_id, schema, name
+                  ORDER BY CASE WHEN active = TRUE THEN 0 ELSE 1 END, created_at
+                ) AS row_num
                 FROM metabase_table
-                WHERE active = TRUE
               ) AS t2 ON t1.id = t2.id
-              SET active = FALSE
+              SET is_effective_duplicate = TRUE
               WHERE t2.row_num > 1;
         - sql:
             dbms: h2
             sql: >-
               UPDATE metabase_table AS t1
-              SET active = (
-                SELECT CASE WHEN t2.row_num > 1 THEN FALSE ELSE TRUE END
+              SET is_effective_duplicate = (
+                SELECT CASE WHEN t2.row_num > 1 THEN TRUE ELSE FALSE END
                 FROM (
-                  SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) AS row_num
+                  SELECT id, ROW_NUMBER() OVER (
+                    PARTITION BY db_id, schema, name
+                    ORDER BY CASE WHEN active = TRUE THEN 0 ELSE 1 END, created_at
+                  ) AS row_num
                   FROM metabase_table
-                  WHERE active = TRUE
                 ) AS t2
                 WHERE t1.id = t2.id
-              )
-              WHERE active = TRUE;
+              );
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET is_effective_duplicate = FALSE;
+
+  - changeSet:
+      id: v55.2025-05-16T09:00:00
+      author: ranquild
+      comment: Deactivate duplicate metabase_table entries based on metabase_table.is_effective_duplicate
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET active = FALSE
+              WHERE is_effective_duplicate = TRUE;
       rollback:
         - sql:
             sql: >-
               UPDATE metabase_table
               SET active = active_before_deduplication
               WHERE active_before_deduplication IS NOT NULL;
-
-  - changeSet:
-      id: v55.2025-05-16T08:00:00
-      author: ranquild
-      comment: Add unique index on metabase_table (db_id, schema, name)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabase_table
-                indexName: idx_unique_table
-      changes:
-        - sql:
-            dbms: postgresql,mysql,mariadb
-            sql: >-
-              CREATE UNIQUE INDEX idx_unique_table
-              ON metabase_table (db_id, schema, name)
-              WHERE active = TRUE;
-        - sql:
-            dbms: h2
-            sql: >-
-              CREATE UNIQUE INDEX idx_unique_table
-              ON metabase_table (db_id, schema, name);
-      rollback:
-        - sql: >-
-            DROP INDEX idx_unique_table;
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
