@@ -112,8 +112,10 @@
          :model/Dashboard  {dashboard-old :id} {:name       search-term
                                                 :created_at two-years-ago}
          :model/Database   {db-new :id}       {:name       search-term
+                                               :engine     :postgres
                                                :created_at new}
          :model/Database   {db-old :id}      {:name       search-term
+                                              :engine     :mysql
                                               :created_at two-years-ago}
          :model/Table      {table-new :id}    {:name       search-term
                                                :db_id      db-new
