@@ -45,7 +45,7 @@ docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase met
 
 ## Environment variables on Metabase Cloud
 
-If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help-premium) to adjust environment variables for your Metabase.
 
 ---
 
