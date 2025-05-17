@@ -110,7 +110,6 @@
    :uses #{analytics
            api-routes
            classloader
-           collections
            config
            driver
            embedding
@@ -121,11 +120,9 @@
            model-persistence
            models
            parameters
-           permissions
            premium-features
            queries
            query-processor
-           request
            server
            settings
            util
@@ -598,8 +595,6 @@
            driver
            legacy-mbql
            lib
-           permissions
-           premium-features
            settings
            util}}
 
