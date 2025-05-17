@@ -1,10 +1,8 @@
 const { H } = cy;
-
 import _ from "underscore";
 
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
-import type { Database } from "metabase-types/api";
 
 import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
 
@@ -34,59 +32,57 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       cy.createUserFromRawData(user);
     });
 
-    H.addPostgresDatabase("lead", false, "lead", "leadDbId").then(
-      ({ body: leadDb }) => {
-        configurDbRoutingViaAPI({
-          router_database_id: leadDb.id,
-          user_attribute: "destination_database",
-        });
-        createDestinationDatabasesViaAPI({
-          router_database_id: leadDb.id,
-          databases: [
-            {
-              ...BASE_POSTGRES_MIRROR_DB_INFO,
-              name: "destination_one",
-              details: {
-                ...BASE_POSTGRES_MIRROR_DB_INFO.details,
-                dbname: "destination_one",
-              },
+    H.addPostgresDatabase("lead", false, "lead", "leadDbId").then(function () {
+      configurDbRoutingViaAPI({
+        router_database_id: this.leadDbId,
+        user_attribute: "destination_database",
+      });
+      createDestinationDatabasesViaAPI({
+        router_database_id: this.leadDbId,
+        databases: [
+          {
+            ...BASE_POSTGRES_MIRROR_DB_INFO,
+            name: "destination_one",
+            details: {
+              ...BASE_POSTGRES_MIRROR_DB_INFO.details,
+              dbname: "destination_one",
             },
-            {
-              ...BASE_POSTGRES_MIRROR_DB_INFO,
-              name: "destination_two",
-              details: {
-                ...BASE_POSTGRES_MIRROR_DB_INFO.details,
-                dbname: "destination_two",
-              },
+          },
+          {
+            ...BASE_POSTGRES_MIRROR_DB_INFO,
+            name: "destination_two",
+            details: {
+              ...BASE_POSTGRES_MIRROR_DB_INFO.details,
+              dbname: "destination_two",
             },
-          ],
-        });
+          },
+        ],
+      });
 
-        cy.request(
-          "GET",
-          `/api/database/${leadDb.id}/metadata?include_hidden=true`,
-        ).then(({ body }) => {
-          const dbIdentifierTable = _.findWhere(body.tables, {
-            name: "db_identifier",
-          });
-          cy.wrap(dbIdentifierTable.id).as("leadDb_db_identifier_table_ID");
-          const colorField = _.findWhere(dbIdentifierTable.fields, {
-            name: "color",
-          });
-          cy.wrap(colorField.id).as("leadDb_color_field_ID");
-        });
-      },
-    );
-
-    cy.request("GET", "/api/database").then(({ body }) => {
-      const databases = body.data;
-      const destinationOneDbId = databases.find(
-        (db: Database) => db.name === "destination_one",
-      );
-      cy.wrap(destinationOneDbId).as("destinationOneDbId");
       cy.request(
         "GET",
-        `/api/database/${destinationOneDbId}/metadata?include_hidden=true`,
+        `/api/database/${this.leadDbId}/metadata?include_hidden=true`,
+      ).then(({ body }) => {
+        const dbIdentifierTable = _.findWhere(body.tables, {
+          name: "db_identifier",
+        });
+        cy.wrap(dbIdentifierTable.id).as("leadDb_db_identifier_table_ID");
+        const colorField = _.findWhere(dbIdentifierTable.fields, {
+          name: "color",
+        });
+        cy.wrap(colorField.id).as("leadDb_color_field_ID");
+      });
+    });
+
+    H.addPostgresDatabase(
+      "destination_one_db",
+      false,
+      "destination_one",
+      "destinationOneDbId",
+    ).then(function () {
+      cy.request(
+        "GET",
+        `/api/database/${this.destinationOneDbId}/metadata?include_hidden=true`,
       ).then(({ body }) => {
         const dbIdentifierTable = _.findWhere(body.tables, {
           name: "db_identifier",
