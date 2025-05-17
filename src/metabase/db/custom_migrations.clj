@@ -1782,7 +1782,7 @@
 
 (defn- generate-database-entity-id
   [database]
-  (-> database (select-keys [:name :engine]) raw-hash generate-nano-id))
+  (-> [(:name database) (:engine database)] raw-hash generate-nano-id))
 
 (defn- backfill-database-entity-ids!
   []
