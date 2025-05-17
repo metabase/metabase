@@ -11442,7 +11442,7 @@ databaseChangeLog:
               INNER JOIN (
                 SELECT id, ROW_NUMBER() OVER (
                   PARTITION BY db_id, schema, name
-                  ORDER BY CASE WHEN active = TRUE THEN 0 ELSE 1 END, created_at
+                  ORDER BY CASE WHEN active THEN 0 ELSE 1 END, created_at
                 ) AS row_num
                 FROM metabase_table
               ) AS t2 ON t1.id = t2.id
