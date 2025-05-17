@@ -75,7 +75,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
     });
 
     H.addPostgresDatabase(
-      "destination_one",
+      "destination_one_db",
       false,
       "destination_one",
       "destinationOneDbId",
