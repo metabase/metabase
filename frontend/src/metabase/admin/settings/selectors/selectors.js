@@ -205,6 +205,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
             window.location.reload();
           }
         },
+        enableKeyboardNavigation: true,
       },
       {
         key: "report-timezone",
