@@ -11395,6 +11395,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T05:00:00
+      validCheckSum: 9:85e9ad7b60db0cd795254ca52d6dd5a7
       author: ranquild
       comment: Add metabase_table.is_defective_duplicate
       preConditions:
@@ -11470,6 +11471,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T07:00:00
+      validCheckSum: ANY
       author: ranquild
       comment: Add metabase_table.unique_table_helper to create an index that ignores EXISTING duplicates
       preConditions:
@@ -11497,6 +11499,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T08:00:00
+      validCheckSum: 9:098c5d56aac1b613d8bd03d423a4aa8e
       author: ranquild
       comment: Add unique constraint on metabase_table(db_id, schema, name, unique_table_helper)
       changes:
@@ -11508,7 +11511,6 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: metabase_table
             constraintName: idx_unique_table
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
