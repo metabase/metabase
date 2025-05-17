@@ -9,6 +9,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { TemporalUnit } from "./dataset";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -168,7 +169,7 @@ export type ColumnFormattingSetting =
   | ColumnSingleFormattingSetting
   | ColumnRangeFormattingSetting;
 
-export type ColumnNameColumnSplitSetting = {
+export type ColumnNameSplitSetting = {
   rows: string[];
   columns: string[];
   values: string[];
@@ -180,11 +181,39 @@ export type FieldRefColumnSplitSetting = {
   values: (FieldReference | null)[];
 };
 
+type BinningInfo = {
+  displayName: string;
+  numBins?: number;
+  strategy?: string;
+};
+
+export type ColumnNameAndBinning = {
+  name: string;
+  binning: BinningInfo | TemporalUnit | null;
+};
+
+export type PivotAggregation = {
+  name: string;
+  column?: ColumnNameAndBinning;
+};
+
+export type ColumnNameAndBinningSplitSetting = {
+  rows: ColumnNameAndBinning[];
+  columns: ColumnNameAndBinning[];
+  values: PivotAggregation[];
+};
+
+// Pre-aggregated pivots use plain column names in split settings;
+// unaggregated pivots also need to store binning information.
+export type PivotTableColumnSplitSetting =
+  | ColumnNameSplitSetting
+  | ColumnNameAndBinningSplitSetting;
+
 // Field ref-based visualization settings are considered legacy and are not used
 // for new questions. To not break existing questions we need to support both
 // old- and new-style settings until they are fully migrated.
-export type PivotTableColumnSplitSetting =
-  | ColumnNameColumnSplitSetting
+export type MaybeLegacyPivotTableColumnSplitSetting =
+  | PivotTableColumnSplitSetting
   | FieldRefColumnSplitSetting;
 
 export type ColumnNameCollapsedRowsSetting = {

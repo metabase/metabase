@@ -1,6 +1,10 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
+import {
+  PREAGG_COLUMN_SPLIT_SETTING,
+  UNAGG_COLUMN_SPLIT_SETTING,
+} from "metabase/lib/data_grid";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
@@ -68,21 +72,32 @@ function checkShouldRerunPivotTableQuestion({
   currentQuestion?: Question;
   question: Question;
 }) {
-  const isValidPivotTable = isPivot && hasBreakouts;
-  const displayChange =
-    (!wasPivot && isValidPivotTable) || (wasPivot && !isPivot);
+  const currentSettings = question?.settings();
 
+  const displayChange = (!wasPivot && isPivot) || (wasPivot && !isPivot);
   if (displayChange) {
     return true;
   }
 
-  const currentPivotSettings = currentQuestion?.setting(
-    "pivot_table.column_split",
-  );
+  const isUnaggregatedData = !hasBreakouts;
 
-  const newPivotSettings = question.setting("pivot_table.column_split");
+  const prevSettings = currentQuestion?.settings();
+  if (isUnaggregatedData) {
+    const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
+    const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
+    const areCurrentSettingsValid =
+      (currentPivotSettings.rows?.length > 0 ||
+        currentPivotSettings.cols?.length > 0) &&
+      currentPivotSettings.values?.length > 0;
 
-  return (
-    isValidPivotTable && !_.isEqual(currentPivotSettings, newPivotSettings)
-  );
+    return (
+      areCurrentSettingsValid &&
+      !_.isEqual(currentPivotSettings, prevPivotSettings)
+    );
+  } else {
+    const currentPivotSettings = currentSettings[PREAGG_COLUMN_SPLIT_SETTING];
+    const prevPivotSettings = prevSettings?.[PREAGG_COLUMN_SPLIT_SETTING];
+
+    return !_.isEqual(currentPivotSettings, prevPivotSettings);
+  }
 }

@@ -1038,8 +1038,7 @@
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]
                        [nil       "Widget" 1 498.59]
-                       ["Twitter" nil      2 900.1]
-                       [nil       nil      3 900.1]]
+                       ["Twitter" nil      2 900.1]]
                       (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
                                      sort-str   (fn [s]
                                                   (cond
@@ -1048,18 +1047,17 @@
                                                     :else      "Z"))]
                                  (fn [[x y group]]
                                    [group (sort-str x) (sort-str y)]))))
-                 (mt/formatted-rows
-                  [str str int 2.0]
-                  (qp.pivot/run-pivot-query
-                   (mt/mbql-query orders
-                     {:joins       [{:source-table $$people
-                                     :fields       :all
-                                     :condition    [:= $user_id &P.people.id]
-                                     :alias        "P"}]
-                      :aggregation [[:sum $total]]
-                      :breakout    [&P.people.source
-                                    $product_id->products.category]
-                      :limit       5}))))))))))
+                 (->> (qp.pivot/run-pivot-query
+                       (mt/mbql-query orders
+                         {:joins       [{:source-table $$people
+                                         :fields       :all
+                                         :condition    [:= $user_id &P.people.id]
+                                         :alias        "P"}]
+                          :aggregation [[:sum $total]]
+                          :breakout    [&P.people.source
+                                        $product_id->products.category]}))
+                      (mt/formatted-rows [str str int 2.0])
+                      (take 5)))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"

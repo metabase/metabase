@@ -3,7 +3,7 @@ import _ from "underscore";
 import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+// import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -11,23 +11,43 @@ export function isPivotGroupColumn(col) {
 
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
-export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const PREAGG_COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const UNAGG_COLUMN_SPLIT_SETTING =
+  "pivot_table.unaggregated_column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  if (!settings[COLUMN_SPLIT_SETTING]) {
+  if (
+    !settings[PREAGG_COLUMN_SPLIT_SETTING] ||
+    !settings[UNAGG_COLUMN_SPLIT_SETTING]
+  ) {
     return null;
   }
-  const columnSplit = migratePivotColumnSplitSetting(
-    settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-    data.cols,
+
+  // TODO: add this back when it's a pre-aggregated pivot
+  // const columnSplit = migratePivotColumnSplitSetting(
+  //   settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+  //   data.pivot_cols,
+  // );
+
+  const columnSplit = _.mapObject(
+    settings[UNAGG_COLUMN_SPLIT_SETTING],
+    (partition) =>
+      partition.map((col) => {
+        if (typeof col === "string") {
+          return col;
+        } else {
+          return col.name;
+        }
+      }),
   );
 
-  const columns = Pivot.columns_without_pivot_group(data.cols);
+  const columns = Pivot.columns_without_pivot_group(data.pivot_cols);
 
+  // TODO: standardize on cols vs columns
   const {
     columns: columnIndexes,
     rows: rowIndexes,

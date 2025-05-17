@@ -67,8 +67,8 @@
   The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
   to split apart the data and convert field refs to indices"
   [data]
-  (let [group-index   (u/index-of pivot-group-column? (:cols data))
-        columns       (columns-without-pivot-group (:cols data))
+  (let [group-index   (u/index-of pivot-group-column? (:pivot_cols data))
+        columns       (columns-without-pivot-group (:pivot_cols data))
         breakouts     (filter #(= (keyword (:source %)) :breakout) columns)
         num-breakouts (count breakouts)
         pivot-data    (->> (:rows data)
@@ -415,6 +415,13 @@
                                settings))
                (transient []) row-tree)))))
 
+(defn- update-node
+  [node leaf-nodes]
+  (let [new-children (if (empty? (:children node))
+                       leaf-nodes
+                       (map #(update-node % leaf-nodes) (:children node)))]
+    (merge node {:children new-children})))
+
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"
   [column col-settings format-values?]
@@ -426,13 +433,6 @@
          (:display_name column))
         (:display_name column))
       (i18n/tru "(empty)")))
-
-(defn- update-node
-  [node leaf-nodes]
-  (let [new-children (if (empty? (:children node))
-                       leaf-nodes
-                       (map #(update-node % leaf-nodes) (:children node)))]
-    (merge node {:children new-children})))
 
 (defn add-value-column-nodes
   "This might add value column(s) to the bottom of the top header tree. We
