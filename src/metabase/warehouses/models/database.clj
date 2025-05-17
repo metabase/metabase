@@ -1,4 +1,4 @@
-(ns metabase.models.database
+(ns metabase.warehouses.models.database
   (:require
    [clojure.core.match :refer [match]]
    [clojure.data :as data]
@@ -300,7 +300,7 @@
     (catch Throwable e
       (log/error e "Error sending database deletion notification"))))
 
-(defn- handle-uploads-enabled!
+(defn- maybe-disable-uploads-for-all-dbs!
   "This function maintains the invariant that only one database can have uploads_enabled=true."
   [db]
   (when (:uploads_enabled db)
@@ -309,13 +309,13 @@
 
 (t2/define-before-update :model/Database
   [database]
-  (let [changes                              (t2/changes database)
-        {new-engine               :engine
-         new-settings             :settings} changes
-        {is-sample?               :is_sample
-         existing-settings        :settings
-         existing-engine          :engine}   (t2/original database)
-        new-engine                       (some-> new-engine keyword)]
+  (let [changes                       (t2/changes database)
+        {new-engine        :engine
+         new-settings      :settings} changes
+        {is-sample?        :is_sample
+         existing-settings :settings
+         existing-engine   :engine}   (t2/original database)
+        new-engine                    (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
              (not= new-engine existing-engine))
@@ -342,7 +342,7 @@
                  secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
-                 handle-uploads-enabled!)
+                 maybe-disable-uploads-for-all-dbs!)
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
@@ -368,7 +368,7 @@
        (not details)             (assoc :details {})
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       secret/handle-incoming-client-secrets!
-      handle-uploads-enabled!
+      maybe-disable-uploads-for-all-dbs!
       infer-db-schedules))
 
 (defmethod serdes/hash-fields :model/Database

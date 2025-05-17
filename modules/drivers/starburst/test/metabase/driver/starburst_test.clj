@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.api.database :as api.database]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -19,6 +18,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.api :as api.database]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import

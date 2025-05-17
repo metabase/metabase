@@ -99,7 +99,6 @@
   {:api #{metabase.api.auth
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.database
           metabase.api.dataset
           metabase.api.docs
           metabase.api.logger
@@ -115,14 +114,11 @@
            classloader
            collections
            config
-           database-routing
-           db
            driver
            embedding
            events
            legacy-mbql
            lib
-           lib-be
            logger
            model-persistence
            models
@@ -132,16 +128,11 @@
            queries
            query-processor
            request
-           sample-data
-           secrets
            server
            session
            settings
            sso
-           sync
-           upload
            util
-           warehouse-schema
            enterprise/advanced-permissions}}
 
   api-keys
@@ -595,8 +586,7 @@
            util}}
 
   models
-  {:api #{metabase.models.database
-          metabase.models.dispatch
+  {:api #{metabase.models.dispatch
           metabase.models.humanization
           metabase.models.init
           metabase.models.interface
@@ -606,9 +596,7 @@
           metabase.models.user-parameter-value
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
-   :uses #{analytics
-           api
-           audit-app
+   :uses #{api
            channel
            classloader
            collections
@@ -620,11 +608,8 @@
            lib
            permissions
            premium-features
-           secrets
            settings
-           search
            setup
-           sync
            system
            util}}
 
@@ -685,7 +670,8 @@
            query-processor
            types
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses}}
 
   permissions
   {:api  #{metabase.permissions.api
@@ -958,7 +944,8 @@
            request
            startup
            task
-           util}}
+           util
+           warehouses}}
 
   secrets
   {:api  #{metabase.secrets.core}
@@ -1088,7 +1075,8 @@
            task
            task-history
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses}}
 
   system
   {:api  #{metabase.system.core
@@ -1239,14 +1227,40 @@
            types
            upload
            util
+           warehouses
            xrays}}
 
   warehouses
-  {:api  #{metabase.warehouses.core
-           metabase.warehouses.init}
-   :uses #{premium-features
+  {:api  #{metabase.warehouses.api
+           metabase.warehouses.core
+           metabase.warehouses.init
+           metabase.warehouses.models.database}
+   :uses #{analytics
+           api
+           audit-app
+           classloader
+           collections
+           config
+           database-routing
+           db
+           driver
+           events
+           lib
+           lib-be
+           models
+           permissions
+           premium-features
+           queries
+           request
+           sample-data
+           search
+           secrets
            settings
-           util}}
+           sync
+           upload
+           util
+           warehouse-schema
+           enterprise/advanced-permissions}}
 
   xrays
   {:api  #{metabase.xrays.api
@@ -1292,11 +1306,11 @@
    :uses #{api
            enterprise/impersonation
            lib
-           models
            permissions
            premium-features
            query-processor
-           util}}
+           util
+           warehouses}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
@@ -1403,7 +1417,8 @@
            query-processor
            settings
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses}}
 
   enterprise/enhancements
   {:api  #{metabase-enterprise.enhancements.init}
@@ -1503,6 +1518,7 @@
            request
            util
            warehouse-schema
+           warehouses
            enterprise/api}}
 
   enterprise/scim
