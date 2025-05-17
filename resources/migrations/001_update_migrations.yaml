@@ -11499,10 +11499,17 @@ databaseChangeLog:
                 tableName: metabase_table
                 indexName: idx_unique_table
       changes:
-        - sql: >-
-            CREATE UNIQUE INDEX idx_unique_table
-            ON metabase_table (db_id, schema, name)
-            WHERE active = TRUE;
+        - sql:
+            dbms: postgresql,mysql,mariadb
+            sql: >-
+              CREATE UNIQUE INDEX idx_unique_table
+              ON metabase_table (db_id, schema, name)
+              WHERE active = TRUE;
+        - sql:
+            dbms: h2
+            sql: >-
+              CREATE UNIQUE INDEX idx_unique_table
+              ON metabase_table (db_id, schema, name);
       rollback:
         - sql: >-
             DROP INDEX idx_unique_table;
