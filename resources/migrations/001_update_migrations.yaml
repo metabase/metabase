@@ -11387,9 +11387,9 @@ databaseChangeLog:
   # Add a unique constraint on metabase_table(db_id, schema, name). Before, there was no constraint, so we need to
   # handle potential duplicates.
   # v55.2025-05-16T05:00:00 - Add is_defective_duplicate, FALSE by default
-  # v55.2025-05-16T07:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
+  # v55.2025-05-16T06:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
   # take priority over inactive ones.
-  # v55.2025-05-16T06:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. H2 doesn't
+  # v55.2025-05-16T07:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. H2 doesn't
   # support the WHERE clause in indexes. unique_table_helper is NULL when is_defective_duplicate = TRUE, otherwise TRUE.
   # v55.2025-05-16T08:00:00 - Add a unique constraint (db_id, schema, name, unique_table_helper)
 
