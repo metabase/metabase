@@ -57,7 +57,7 @@
 (t2/define-after-select :model/Table
   [table]
   ;; this property is used for migration purposes only
-  (dissoc table :name_before_deduplication))
+  (dissoc table :active_before_deduplication))
 
 (t2/define-before-insert :model/Table
   [table]
@@ -303,7 +303,7 @@
    :skip      [:estimated_row_count
                :view_count
                ;; used for migration only
-               :name_before_deduplication]
+               :active_before_deduplication]
    :transform {:created_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})
 
