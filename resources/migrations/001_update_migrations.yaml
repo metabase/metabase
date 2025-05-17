@@ -11488,7 +11488,7 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_field ADD COLUMN unique_table_helper ${boolean.type} GENERATED ALWAYS AS (
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${boolean.type} GENERATED ALWAYS AS (
                 CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE TRUE END
               );
       rollback:
