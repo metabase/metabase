@@ -512,4 +512,49 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       });
     });
   });
+
+  describe("public sharing and embedding", () => {
+    function ensureVisualizerCardsAreRendered() {
+      // Checks a cartesian chart has an axis name
+      H.getDashboardCard(0).within(() => {
+        H.echartsContainer().findByText("Count").should("be.visible");
+      });
+
+      // Checks a funnel has a step name
+      H.getDashboardCard(5)
+        .findByText("Checkout Page")
+        .scrollIntoView()
+        .should("be.visible");
+    }
+
+    it("visualizer cards should work in public dashboards", () => {
+      cy.signInAsAdmin();
+      createDashboardWithVisualizerDashcards();
+      cy.log("Visit public dashboard");
+      cy.get("@dashboardId")
+        .then((dashboardId) => {
+          H.createPublicDashboardLink(dashboardId);
+        })
+        .then(({ body: { uuid } }: any) => {
+          cy.visit(`/public/dashboard/${uuid}`);
+        });
+
+      ensureVisualizerCardsAreRendered();
+    });
+
+    it("visualizer cards should work in embedded dashboards", () => {
+      cy.signInAsAdmin();
+      createDashboardWithVisualizerDashcards({ enable_embedding: true });
+      cy.log("Visit public dashboard");
+
+      cy.get("@dashboardId").then((dashboard: any) => {
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboard },
+          params: {},
+        });
+      });
+
+      ensureVisualizerCardsAreRendered();
+    });
+  });
 });
