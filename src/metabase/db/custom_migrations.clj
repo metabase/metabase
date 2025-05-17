@@ -34,10 +34,11 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
-   (java.util Locale)
+   (java.util Locale Random)
    (javax.sql DataSource)
    (liquibase Scope)
    (liquibase.change Change)
@@ -1759,3 +1760,38 @@
 ;; [[metabase.notification.task.send/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
+
+(defn- raw-hash
+  [target]
+  (format "%08x" (hash target)))
+
+(defn- generate-nano-id
+  [seed-str]
+  (let [seed (Long/parseLong seed-str 16)
+        rnd  (Random. seed)
+        gen  (nano-id/custom
+              "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+              21
+              (fn [len]
+                (let [ba (byte-array len)]
+                  (.nextBytes rnd ba)
+                  ba)))]
+    (gen)))
+
+(defn- generate-database-entity-id
+  [database]
+  (-> database (select-keys [:name :engine]) raw-hash generate-nano-id))
+
+(defn- backfill-database-entity-ids!
+  []
+  (run!
+   (fn [database]
+     (t2/query {:update :metabase_database
+                :set    {:entity_id (generate-database-entity-id database)}
+                :where  [:= :id (:id database)]}))
+   (t2/reducible-query {:select [:id :name :engine]
+                        :from   [:metabase_database]
+                        :where  [:= :entity_id nil]})))
+
+(define-migration BackfillDatabaseEntityIds
+  (backfill-database-entity-ids!))
