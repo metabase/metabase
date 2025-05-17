@@ -4,6 +4,11 @@
       <tr>
         <td>
           <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
+            {{#if context.include_branding}}
+              <div style="text-align: right; font-size: 12px;">
+                Made with <a href="https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=email">Metabase &#x1F499;</a>
+              </div>
+            {{/if}}
             <table class="header">
               <tr>
                 <td width="28px" style="vertical-align: top;">
