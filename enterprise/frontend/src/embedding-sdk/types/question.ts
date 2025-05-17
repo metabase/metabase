@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -18,7 +19,7 @@ export interface SdkQuestionState {
   queryResults?: any[];
 }
 
-export interface LoadSdkQuestionParams {
+export type LoadSdkQuestionParams = {
   /**
    * For SQL questions only. A mapping of SQL parameter names to parameter values, such as `{ product_id: "42"}`
    */
@@ -38,7 +39,12 @@ export interface LoadSdkQuestionParams {
    * @internal
    */
   questionId?: SdkQuestionId | null;
-}
+
+  /**
+   * @internal
+   */
+  onRun?: (question: MetabaseQuestion | undefined) => void;
+};
 
 export interface NavigateToNewCardParams {
   nextCard: Card;
