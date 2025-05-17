@@ -44,6 +44,7 @@ export const ENGINE_LOGO: Record<string, string> = {
   mongo: "mongo.svg",
   mysql: "mysql.svg",
   oracle: "oracle.svg",
+  pinot: "pinot.svg",
   postgres: "postgres.svg",
   presto: "presto.svg",
   "presto-jdbc": "presto.svg",

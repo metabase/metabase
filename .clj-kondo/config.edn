@@ -196,6 +196,7 @@
               :hive-like
               :mongo
               :oracle
+              :pinot
               :presto-jdbc
               :redshift
               :snowflake
