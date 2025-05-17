@@ -6,8 +6,9 @@
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
              [metabase.config :as config]
+             ^{:clj-kondo/ignore [:discouraged-namespace]}
              [clojure.pprint :as pprint]
-             #_{:clj-kondo/ignore [:discouraged-namespace]}
+             ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]

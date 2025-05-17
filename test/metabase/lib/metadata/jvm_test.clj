@@ -1,5 +1,4 @@
 (ns metabase.lib.metadata.jvm-test
-  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
@@ -12,10 +11,12 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as table]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (deftest ^:parallel fetch-field-test
