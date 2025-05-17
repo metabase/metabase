@@ -124,6 +124,7 @@ export const TableNotificationsTrigger = ({
     <>
       <Tooltip label={hasNotifications ? t`Edit alerts` : t`Create alert`}>
         <ActionIcon
+          data-testid="table-notifications-trigger"
           className={S.alertIcon}
           variant="subtle"
           size="lg"
