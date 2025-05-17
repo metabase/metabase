@@ -13,6 +13,11 @@ on:
         type: string
         required: true
         default: "master"
+      total-shards:
+        description: "Total number of parallel test shards"
+        type: number
+        required: false
+        default: 4
   workflow_call:
     inputs:
       fe-ref:
@@ -23,9 +28,42 @@ on:
         description: "Backend git ref to use"
         type: string
         required: true
+      total-shards:
+        description: "Total number of parallel test shards"
+        type: number
+        required: false
+        default: 4
 
 jobs:
-  cross-version-for-breaking-changes:
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.set_matrix.outputs.matrix_json }}
+      shards_total: ${{ steps.set_matrix.outputs.shards_total }}
+    steps:
+      - name: Set up shard matrix
+        id: set_matrix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const totalShards = parseInt(process.env.TOTAL_SHARDS_INPUT, 10);
+            if (isNaN(totalShards) || totalShards <= 0) {
+              console.error(`Invalid total-shards input: ${process.env.TOTAL_SHARDS_INPUT}`);
+              process.exit(1);
+            }
+            const shardArray = Array.from({ length: totalShards }, (_, i) => i + 1);
+            const matrix = { shard: shardArray };
+            const matrixJson = JSON.stringify(matrix);
+
+            console.log(`Generated matrix JSON: ${matrixJson}`);
+            console.log(`Total shards: ${totalShards}`);
+
+            core.setOutput('matrix_json', matrixJson);
+            core.setOutput('shards_total', totalShards);
+        env:
+          TOTAL_SHARDS_INPUT: ${{ inputs.total-shards }}
+
+  build-jar:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
@@ -46,13 +84,66 @@ jobs:
           MB_EDITION: ee
           CYPRESS_CI: true
         run: |
-          bash bin/backward-compatibility-test.sh \
+          node bin/backward-compatibility-test.js \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             build
+
+          # Debug: Check if jar exists and its size
+          ls -lh .tmp/metabase-be/target/uberjar/metabase.jar
+
+      - name: Upload Uberjar
+        uses: actions/upload-artifact@v4
+        with:
+          name: metabase-jar-cross-version
+          path: .tmp/metabase-be/target/uberjar/metabase.jar
+          if-no-files-found: error
+
+  run-breaking-changes-tests:
+    needs: [build-jar, generate-matrix]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      TOTAL_SHARDS: ${{ needs.generate-matrix.outputs.shards_total }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix_json) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare FE environment
+        uses: ./.github/actions/prepare-frontend
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: cross-version-uberjar
+
+      - name: Download Uberjar
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-jar-cross-version
+          path: .tmp/metabase-be/target/uberjar/
+
+      # Debug: Check if jar exists and its size after download
+      - name: Debug jar file
+        run: |
+          ls -lh .tmp/metabase-be/target/uberjar/metabase.jar
+          file .tmp/metabase-be/target/uberjar/metabase.jar
+
+      - name: Download FE repo
+        run: |
+          git clone --depth 1 -b ${{ inputs.fe-ref }} https://github.com/metabase/metabase.git .tmp/metabase-fe
+
+      - name: Prepare FE environment
+        run: |
+          cd .tmp/metabase-fe
+          yarn install
 
       - name: Run the tests
         env:
@@ -61,9 +152,9 @@ jobs:
           CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
           CYPRESS_CI: true
         run: |
-          bash bin/backward-compatibility-test.sh \
+          node bin/backward-compatibility-test.js \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             start > /dev/null & \
-            bash bin/backward-compatibility-test.sh \
+            node bin/backward-compatibility-test.js \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
-            test
+            test ${{ matrix.shard}}/${{ env.TOTAL_SHARDS }}
