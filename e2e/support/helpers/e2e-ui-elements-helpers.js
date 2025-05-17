@@ -431,6 +431,13 @@ export function assertRowHeight(index, height) {
     .should("have.css", "height", `${height}px`);
 }
 
+export function getColumnWidth(columnId) {
+  return cy
+    .findAllByTestId("header-cell")
+    .filter(`:contains(${columnId})`)
+    .invoke("width");
+}
+
 export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }

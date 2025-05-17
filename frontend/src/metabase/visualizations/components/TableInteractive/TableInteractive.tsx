@@ -166,6 +166,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
   const isClientSideSortingEnabled = isDashboard;
+  const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { rows, cols } = data;
@@ -554,7 +555,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
       const columnIndex = cols.findIndex((col) => col.name === columnName);
-      if (columnIndex == null) {
+      if (columnIndex == null || isDashcardViewTable) {
         return;
       }
       const columnWidthsSetting = (
@@ -567,7 +568,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         "table.column_widths": columnWidthsSetting,
       });
     },
-    [cols, onUpdateVisualizationSettings, settings],
+    [cols, isDashcardViewTable, onUpdateVisualizationSettings, settings],
   );
 
   const rowId: RowIdColumnOptions | undefined = useMemo(() => {
@@ -662,6 +663,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return undefined;
   }, [height, settings]);
 
+  const minGridWidth = useMemo(() => {
+    return isDashcardViewTable ? width : undefined;
+  }, [isDashcardViewTable, width]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -673,6 +678,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
     pageSize,
+    minGridWidth,
   });
   const { virtualGrid } = tableProps;
 

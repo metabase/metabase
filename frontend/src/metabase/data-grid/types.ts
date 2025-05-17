@@ -178,6 +178,9 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width in pixels at which to truncate long cell content */
   truncateLongCellWidth?: number;
 
+  /** Minimum width in pixels for the table. Expands table columns to fit the table. */
+  minGridWidth?: number;
+
   /** Data grid theme */
   theme?: DataGridTheme;
 
