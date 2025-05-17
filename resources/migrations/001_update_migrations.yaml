@@ -11461,10 +11461,20 @@ databaseChangeLog:
                 columnName: unique_table_helper
       changes:
         - sql:
-            dbms: postgresql,mysql,mariadb
+            dbms: postgresql
             sql: >-
               ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
                 CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
+                CASE
+                  WHEN is_defective_duplicate = TRUE THEN NULL
+                  WHEN schema IS NULL THEN ''
+                  ELSE schema
+                END
               ) STORED;
         - sql:
             dbms: h2
