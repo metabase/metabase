@@ -564,7 +564,7 @@
                                 (assoc :id id
                                        :table_id (mt/id :venues)
                                        :field_ref [:field id nil])
-                                (dissoc :fk_target_field_id :ident))))]
+                                (dissoc :fk_target_field_id))))]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                           :attributes {"cat" 50}}
