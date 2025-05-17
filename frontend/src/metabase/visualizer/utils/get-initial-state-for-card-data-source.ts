@@ -31,6 +31,7 @@ import {
   isVisualizerSupportedVisualization,
 } from "./dashboard-card-supports-visualizer";
 import { createDataSource, createDataSourceNameRef } from "./data-source";
+import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
 import { getColumnVizSettings } from "./viz-settings";
 
 function pickColumnsFromTableToBarChart(
@@ -134,6 +135,7 @@ export function getInitialStateForCardDataSource(
     }
   }
 
+  const columnsToRefs: Record<string, string> = {};
   const columns = pickColumns(card.display, originalColumns);
 
   columns.forEach((column) => {
@@ -146,6 +148,7 @@ export function getInitialStateForCardDataSource(
       copyColumn(columnRef.name, column, dataSource.name, state.columns),
     );
     state.columnValuesMapping[columnRef.name] = [columnRef];
+    columnsToRefs[column.name] = columnRef.name;
   });
 
   const computedSettings: ComputedVisualizationSettings =
@@ -195,7 +198,7 @@ export function getInitialStateForCardDataSource(
     .filter(isNotNull);
 
   state.settings = {
-    ...card.visualization_settings,
+    ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
     "card.title": card.name,
   };
