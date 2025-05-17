@@ -11470,7 +11470,7 @@ databaseChangeLog:
             dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table ADD COLUMN unique_field_helper ${text.type} GENERATED ALWAYS AS (
-                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE (CASE WHEN schema IS NULL THEN '' ELSE schema END) END
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(`schema`, '') END
               ) STORED;
         - sql:
             dbms: h2
