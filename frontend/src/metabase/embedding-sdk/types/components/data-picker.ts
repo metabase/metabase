@@ -2,6 +2,7 @@ import type { TableId } from "metabase-types/api";
 
 export interface DataSourceSelectorProps {
   isInitiallyOpen: boolean;
+  isQuerySourceModel: boolean;
   /** false when joining data, true otherwise */
   canChangeDatabase: boolean;
   selectedDatabaseId: number | null;
