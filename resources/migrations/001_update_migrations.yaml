@@ -11396,44 +11396,10 @@ databaseChangeLog:
             constraintName: idx_unique_database
 
   - changeSet:
-      id: v55.2025-05-16T05:00:00
-      validCheckSum: ABC
-      author: ranquild
-      comment: Add a column to be able to roll back metabase_table(db_id, schema, name) deduplication
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: name_before_deduplication
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: name_before_deduplication
-                  remarks: The name of the table before deduplication
-                  type: ${text.type}
-
-  - changeSet:
-      id: v55.2025-05-16T06:00:00
-      validCheckSum: ABC
-      author: ranquild
-      comment: Set the table name before deduplication to be able to roll back
-      changes:
-        - sql: >-
-            UPDATE metabase_table
-            SET name_before_deduplication = name;
-      rollback:
-        - sql: >-
-            UPDATE metabase_table
-            SET name_before_deduplication = NULL;
-
-  - changeSet:
       id: v55.2025-05-16T07:00:00
       validCheckSum: ANY
       author: ranquild
-      comment: Deduplicate metabase_table on (db_id, schema, name)
+      comment: Deactivate duplicate metabase_table entries on (db_id, schema, name)
       preConditions:
         - onFail: MARK_RAN
         - sqlCheck:
@@ -11450,7 +11416,7 @@ databaseChangeLog:
             dbms: postgresql
             sql: >-
               UPDATE metabase_table AS t1
-              SET name = CONCAT(t1.name, ' ', t2.row_num)
+              SET active = FALSE
               FROM (
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
                 FROM metabase_table
@@ -11464,29 +11430,24 @@ databaseChangeLog:
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY db_id, schema, name ORDER BY created_at) AS row_num
                 FROM metabase_table
               ) AS t2 ON t1.id = t2.id
-              SET name = CONCAT(t1.name, ' ', t2.row_num)
+              SET active = FALSE
               WHERE t2.row_num > 1;
         - sql:
             dbms: h2
             sql: >-
               UPDATE metabase_table AS t1
-              SET name = (
-                SELECT CASE WHEN t2.row_num > 1 THEN CONCAT(t1.name, ' ', t2.row_num) ELSE t1.name END
+              SET active = (
+                SELECT CASE WHEN t2.row_num > 1 THEN FALSE ELSE TRUE END
                 FROM (
                   SELECT id, ROW_NUMBER() OVER (PARTITION BY name, engine ORDER BY created_at) AS row_num
                   FROM metabase_table
                 ) AS t2
                 WHERE t1.id = t2.id
               );
-      rollback:
-        - sql: >-
-            UPDATE metabase_table
-            SET name = name_before_deduplication
-            WHERE name_before_deduplication IS NOT NULL;
+      rollback: # TBD
 
   - changeSet:
       id: v55.2025-05-16T08:00:00
-      validCheckSum: ABC
       author: ranquild
       comment: Add unique constraint on metabase_table (db_id, schema, name)
       changes:
