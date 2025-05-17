@@ -2,11 +2,11 @@
   (:require
    [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]))
 
