@@ -11398,7 +11398,7 @@ databaseChangeLog:
   - changeSet:
       id: v55.2025-05-16T05:00:00
       author: ranquild
-      comment: Add a column to be able to roll back metabase_database(db_id, schema, name) deduplication
+      comment: Add a column to be able to roll back metabase_table(db_id, schema, name) deduplication
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -11407,7 +11407,7 @@ databaseChangeLog:
                 columnName: active_before_deduplication
       changes:
         - addColumn:
-            tableName: metabase_database
+            tableName: metabase_table
             columns:
               - column:
                   name: active_before_deduplication
