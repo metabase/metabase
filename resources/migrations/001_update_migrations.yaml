@@ -11463,19 +11463,19 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: >-
-              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper CHARACTER VARYING(254) GENERATED ALWAYS AS (
                 CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
               ) STORED;
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper VARCHAR(254) GENERATED ALWAYS AS (
                 CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(`schema`, '') END
               ) STORED;
         - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper CHARACTER VARYING(254) GENERATED ALWAYS AS (
                 CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
               );
       rollback:
