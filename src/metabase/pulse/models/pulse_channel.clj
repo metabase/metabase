@@ -2,9 +2,8 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.notification.models :as notification.models]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -165,13 +164,6 @@
   ;; remove this pulse from its existing trigger
   (update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
 
-;; we want to load this at the top level so the Setting the namespace defines gets loaded
-(def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
-  (or (when config/ee-available?
-        (classloader/require 'metabase-enterprise.advanced-config.models.pulse-channel)
-        (resolve 'metabase-enterprise.advanced-config.models.pulse-channel/validate-email-domains))
-      (constantly nil)))
-
 (defn validate-email-domains
   "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
   the [[metabase-enterprise.advanced-config.models.pulse-channel/subscription-allowed-domains]] Setting, if set. This
@@ -191,7 +183,7 @@
     (let [raw-email-recipients (remove :id recipients)
           user-recipients      (filter :id recipients)
           emails               (concat emails (map :email raw-email-recipients))]
-      (validate-email-domains* emails)
+      (notification.models/validate-email-domains! emails)
       ;; validate User `:id` & `:email` match up for User recipients. This is mostly to make sure people don't try to
       ;; be sneaky and pass in a valid User ID but different email so they can send test Pulses out to arbitrary email
       ;; addresses
