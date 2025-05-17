@@ -272,16 +272,17 @@
 
 (defn- pulse-card-query-results
   {:arglists '([card])}
-  [{query :dataset_query, card-id :id}]
+  [{query :dataset_query, card-id :id, card-entity-id :entity_id}]
   (binding [qp.perms/*card-id* card-id]
     (qp/process-query
      (qp/userland-query
       (assoc query
              :middleware {:process-viz-settings? true
                           :js-int-to-string?     false})
-      {:executed-by api/*current-user-id*
-       :context     :pulse
-       :card-id     card-id}))))
+      {:executed-by    api/*current-user-id*
+       :context        :pulse
+       :card-id        card-id
+       :card-entity-id card-entity-id}))))
 
 (api.macros/defendpoint :get "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
