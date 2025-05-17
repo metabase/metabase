@@ -32,6 +32,7 @@ export type ExpressionWidgetProps = {
   reportTimezone?: string;
   header?: ReactNode;
   expressionIndex?: number;
+  initialSource?: string;
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -50,6 +51,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     expressionIndex,
     onChangeClause,
     onClose,
+    initialSource,
   } = props;
 
   const [name, setName] = useState(initialName || "");
@@ -183,6 +185,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         id="expression-content"
         expressionMode={expressionMode}
         clause={clause}
+        initialSource={initialSource}
         onChange={handleExpressionChange}
         query={query}
         stageIndex={stageIndex}

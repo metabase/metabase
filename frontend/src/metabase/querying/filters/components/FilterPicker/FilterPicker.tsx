@@ -93,6 +93,15 @@ export function FilterPicker({
     [onSelect, onClose],
   );
 
+  const [initialSource, setInitialSource] = useState("");
+
+  const handleOpenExpressionEditor = (source?: string) => {
+    if (source) {
+      setInitialSource(source);
+    }
+    openExpressionEditor();
+  };
+
   if (isEditingExpression) {
     return (
       <ExpressionWidget
@@ -103,6 +112,7 @@ export function FilterPicker({
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
+        initialSource={initialSource}
       />
     );
   }
@@ -116,7 +126,7 @@ export function FilterPicker({
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleSegmentSelect}
-        onExpressionSelect={openExpressionEditor}
+        onExpressionSelect={handleOpenExpressionEditor}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}
