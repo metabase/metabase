@@ -11395,42 +11395,17 @@ databaseChangeLog:
             tableName: metabase_database
             constraintName: idx_unique_database
 
+  # Add a unique constraint on metabase_table(db_id, schema, name). Before there was no constraint, so we need to handle
+  # potential duplicates.
+  # v55.2025-05-16T05:00:00 - Add is_defective_duplicate, FALSE by default
+  # v55.2025-05-16T07:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
+  # take priority over inactive ones.
+  # v55.2025-05-16T06:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. H2 doesn't
+  # support the WHERE clause in indexes. unique_table_helper is NULL when is_defective_duplicate = TRUE, otherwise TRUE.
+  # v55.2025-05-16T08:00:00 - Add a unique constraint (db_id, schema, name, unique_table_helper)
+
   - changeSet:
       id: v55.2025-05-16T05:00:00
-      author: ranquild
-      comment: Add a column to track the previous metabase_table.active state before deduplication and deactivation
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: active_before_deduplication
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: active_before_deduplication
-                  remarks: The active state of the table before deduplication and deactivation
-                  type: ${boolean.type}
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v55.2025-05-16T06:00:00
-      author: ranquild
-      comment: Set the metabase_table.active_before_deduplication state before deduplication and deactivation
-      changes:
-        - sql: >-
-            UPDATE metabase_table
-            SET active_before_deduplication = active;
-      rollback:
-        - sql: >-
-            UPDATE metabase_table
-            SET active_before_deduplication = NULL;
-
-  - changeSet:
-      id: v55.2025-05-16T07:00:00
       author: ranquild
       comment: Add metabase_table.is_defective_duplicate
       preConditions:
@@ -11446,27 +11421,16 @@ databaseChangeLog:
               - column:
                   name: is_defective_duplicate
                   type: ${boolean.type}
-                  remarks: "Indicates whether table is a defective duplicate table that should never have been created."
+                  remarks: "Indicates whether the table is a defective duplicate that should never have been created."
                   constraints:
                     nullable: false
                   defaultValue: false
 
   - changeSet:
-      id: v55.2025-05-16T08:00:00
+      id: v55.2025-05-16T06:00:00
       validCheckSum: ANY
       author: ranquild
       comment: Compute metabase_table.is_effective_duplicate based on (db_id, schema, name) uniqueness
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 1
-            sql: >-
-              SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
-              FROM (
-                SELECT ROW_NUMBER() OVER (PARTITION BY db_id, schema, name) AS row_num
-                FROM metabase_table
-              ) AS t
-              WHERE t.row_num > 1;
       changes:
         - sql:
             dbms: postgresql
@@ -11516,21 +11480,45 @@ databaseChangeLog:
               SET is_effective_duplicate = FALSE;
 
   - changeSet:
-      id: v55.2025-05-16T09:00:00
+      id: v55.2025-05-16T07:00:00
       author: ranquild
-      comment: Deactivate duplicate metabase_table entries based on metabase_table.is_effective_duplicate
+      comment: Add metabase_table.unique_table_helper to create an index that ignores EXISTING duplicates
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: unique_table_helper
       changes:
         - sql:
+            dbms: postgresql,mysql,mariadb
             sql: >-
-              UPDATE metabase_table
-              SET active = FALSE
-              WHERE is_effective_duplicate = TRUE;
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${boolean.type} GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE TRUE END
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_field ADD COLUMN unique_field_helper ${boolean.type} GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE TRUE END
+              );
       rollback:
         - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET active = active_before_deduplication
-              WHERE active_before_deduplication IS NOT NULL;
+            sql: ALTER TABLE metabase_table DROP COLUMN unique_table_helper;
+
+  - changeSet:
+      id: v55.2025-05-16T08:00:00
+      author: ranquild
+      comment: Add unique constraint on metabase_table(db_id, schema, name, unique_table_helper)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+            columnNames: db_id, schema, name, unique_table_helper
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
