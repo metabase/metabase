@@ -11395,8 +11395,8 @@ databaseChangeLog:
             tableName: metabase_database
             constraintName: idx_unique_database
 
-  # Add a unique constraint on metabase_table(db_id, schema, name). Before there was no constraint, so we need to handle
-  # potential duplicates.
+  # Add a unique constraint on metabase_table(db_id, schema, name). Before, there was no constraint, so we need to
+  # handle potential duplicates.
   # v55.2025-05-16T05:00:00 - Add is_defective_duplicate, FALSE by default
   # v55.2025-05-16T07:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
   # take priority over inactive ones.
@@ -11430,13 +11430,13 @@ databaseChangeLog:
       id: v55.2025-05-16T06:00:00
       validCheckSum: ANY
       author: ranquild
-      comment: Compute metabase_table.is_effective_duplicate based on (db_id, schema, name) uniqueness
+      comment: Compute metabase_table.is_defective_duplicate based on (db_id, schema, name) uniqueness
       changes:
         - sql:
             dbms: postgresql
             sql: >-
               UPDATE metabase_table AS t1
-              SET is_effective_duplicate = TRUE
+              SET is_defective_duplicate = TRUE
               FROM (
                 SELECT id, ROW_NUMBER() OVER (
                   PARTITION BY db_id, schema, name
@@ -11456,13 +11456,13 @@ databaseChangeLog:
                 ) AS row_num
                 FROM metabase_table
               ) AS t2 ON t1.id = t2.id
-              SET is_effective_duplicate = TRUE
+              SET is_defective_duplicate = TRUE
               WHERE t2.row_num > 1;
         - sql:
             dbms: h2
             sql: >-
               UPDATE metabase_table AS t1
-              SET is_effective_duplicate = (
+              SET is_defective_duplicate = (
                 SELECT CASE WHEN t2.row_num > 1 THEN TRUE ELSE FALSE END
                 FROM (
                   SELECT id, ROW_NUMBER() OVER (
@@ -11477,7 +11477,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               UPDATE metabase_table
-              SET is_effective_duplicate = FALSE;
+              SET is_defective_duplicate = FALSE;
 
   - changeSet:
       id: v55.2025-05-16T07:00:00
