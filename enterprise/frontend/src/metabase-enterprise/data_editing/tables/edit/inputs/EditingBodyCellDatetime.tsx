@@ -1,4 +1,5 @@
-import { type KeyboardEvent, useCallback, useState } from "react";
+import dayjs from "dayjs";
+import { type KeyboardEvent, useCallback, useMemo, useState } from "react";
 
 import {
   DEFAULT_DATE_STYLE,
@@ -24,21 +25,57 @@ export const EditingBodyCellDatetime = ({
     datasetColumn.effective_type === "type/DateTime" ||
     datasetColumn.effective_type === "type/DateTimeWithLocalTZ";
 
-  const initialDateValue = initialValue
-    ? new Date(initialValue?.toString())
-    : null;
+  const { restoreTimezone, initialDateWithOffset } = useMemo(() => {
+    // Used for rendering the date input with the correct offset
+    // For new rows, the date offset is 0
+    let dateOffset = 0;
+    let dateUtcOffset = 0;
+    let initialDateWithOffset = null;
+
+    if (initialValue) {
+      const browserUtcOffset = dayjs(initialValue.toString()).utcOffset();
+      dateUtcOffset = dayjs.parseZone(initialValue.toString()).utcOffset();
+      dateOffset = dateUtcOffset - browserUtcOffset;
+
+      const initialDate = new Date(initialValue.toString());
+      initialDateWithOffset = new Date(
+        initialDate.getTime() + dateOffset * 60 * 1000,
+      );
+    }
+
+    return {
+      dateOffset,
+      initialDateWithOffset,
+      restoreTimezone: (date: Date | null) => {
+        if (!date) {
+          return null;
+        }
+
+        // Keep browser timezone for new rows
+        if (!initialValue) {
+          return date.toISOString();
+        }
+
+        // Restore the date to the original timezone
+        const restoredDate = new Date(date.getTime() - dateOffset * 60 * 1000);
+        return dayjs(restoredDate)
+          .utcOffset(dateUtcOffset)
+          .format("YYYY-MM-DDTHH:mm:ss.SSSZ");
+      },
+    };
+  }, [initialValue]);
 
   const valueFormat = isDateTime ? DEFAULT_DATETIME_STYLE : DEFAULT_DATE_STYLE;
 
-  const [value, setValue] = useState<Date | null>(initialDateValue);
+  const [value, setValue] = useState<Date | null>(initialDateWithOffset);
   const [isFocused, setFocused] = useState(false);
 
   const handleChange = useCallback(
     (value: Date | null) => {
       setValue(value);
-      onChangeValue?.(value ? value.toISOString() : null);
+      onChangeValue?.(restoreTimezone(value));
     },
-    [onChangeValue],
+    [onChangeValue, restoreTimezone],
   );
 
   const handleFocus = useCallback(() => {
@@ -47,18 +84,18 @@ export const EditingBodyCellDatetime = ({
 
   const handleBlur = useCallback(() => {
     setFocused(false);
-    onSubmit(value ? value.toISOString() : null);
-  }, [value, onSubmit]);
+    onSubmit(restoreTimezone(value));
+  }, [value, onSubmit, restoreTimezone]);
 
   const handleKeyUp = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onCancel();
       } else if (event.key === "Enter") {
-        onSubmit(value ? value.toISOString() : null);
+        onSubmit(restoreTimezone(value));
       }
     },
-    [value, onCancel, onSubmit],
+    [value, onCancel, onSubmit, restoreTimezone],
   );
 
   return (
