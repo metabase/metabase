@@ -3,9 +3,9 @@
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
-   [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 

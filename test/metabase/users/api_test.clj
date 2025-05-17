@@ -1,19 +1,19 @@
-(ns metabase.api.user-test
+(ns metabase.users.api-test
   "Tests for /api/user endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.user :as api.user]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.interface :as mi]
-   [metabase.models.user :as user]
-   [metabase.models.user-test :as user-test]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.api :as api.user]
+   [metabase.users.models.user :as user]
+   [metabase.users.models.user-test :as user-test]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
@@ -775,7 +775,7 @@
                    mt/boolean-ids-and-timestamps)))))))
 
 (deftest ^:parallel updated-user-name-test
-  (testing "Test that `metabase.api.user/updated-user-name` works as intended."
+  (testing "Test that `metabase.users.api/updated-user-name` works as intended."
     (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
           nonames   {:first_name nil :last_name nil}
           firstname {:first_name "Test" :last_name nil}

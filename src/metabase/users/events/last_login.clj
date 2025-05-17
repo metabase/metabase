@@ -1,4 +1,4 @@
-(ns metabase.events.last-login
+(ns metabase.users.events.last-login
   (:require
    [metabase.events.core :as events]
    [metabase.util.log :as log]

@@ -1,4 +1,4 @@
-(ns macros.metabase.models.user-test)
+(ns macros.metabase.users.models.user-test)
 
 (defmacro with-groups! [bindings & body]
   `(let ~(into []
