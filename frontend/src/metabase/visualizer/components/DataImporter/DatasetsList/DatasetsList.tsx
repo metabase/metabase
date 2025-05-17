@@ -59,8 +59,8 @@ export function DatasetsList({
   );
 
   const handleRemoveDataSource = useCallback(
-    (source: VisualizerDataSource) => {
-      dispatch(removeDataSource(source));
+    (source: VisualizerDataSource, forget?: boolean) => {
+      dispatch(removeDataSource({ source, forget }));
       setDataSourceCollapsed(source.id, true);
     },
     [dispatch, setDataSourceCollapsed],
@@ -69,7 +69,7 @@ export function DatasetsList({
   const handleToggleDataSource = useCallback(
     (item: VisualizerCardDataSource) => {
       if (dataSourceIds.has(item.id)) {
-        handleRemoveDataSource(item);
+        handleRemoveDataSource(item, true);
       } else {
         handleAddDataSource(item);
       }
@@ -80,7 +80,7 @@ export function DatasetsList({
   const handleSwapDataSources = useCallback(
     (item: VisualizerCardDataSource) => {
       dataSources.forEach((dataSource) => {
-        handleRemoveDataSource(dataSource);
+        handleRemoveDataSource(dataSource, true);
       });
       handleAddDataSource(item);
     },

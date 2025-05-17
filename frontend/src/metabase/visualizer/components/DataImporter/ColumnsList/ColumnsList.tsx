@@ -92,7 +92,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                   size={12}
                   aria-label={t`Remove`}
                   cursor="pointer"
-                  onClick={() => dispatch(removeDataSource(source))}
+                  onClick={() => dispatch(removeDataSource({ source }))}
                 />
               )}
             </Flex>
