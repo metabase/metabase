@@ -1,8 +1,7 @@
 import type { TextInputProps } from "@mantine/core";
 import { TextInput } from "@mantine/core";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
@@ -11,22 +10,25 @@ type TextInputRestProps = Omit<TextInputProps, "onBlur" | "ref">;
 export type TextInputBlurChangeProps<
   T extends TextInputRestProps = TextInputRestProps,
 > = T & {
+  normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
   value: T["value"] | undefined;
   onBlurChange: (event: { target: HTMLInputElement }) => void;
-  normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
 };
 
 /**
  * A wrapper around TextInput to be used with onBlurChange prop.
  *
  * In case you don't need it, use TextInput directly.
+ *
+ * If you're modifying this component, make the same change in TextareaBlurChange.
  */
 export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
-  value,
-  onChange,
-  onBlurChange,
   normalize = (value) => value,
-  ...restProps
+  value,
+  onBlur,
+  onBlurChange,
+  onChange,
+  ...props
 }: TextInputBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>();
   const ref = useRef<HTMLInputElement>(null);
@@ -46,13 +48,15 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   );
 
   const handleBlur = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: FocusEvent<HTMLInputElement>) => {
+      onBlur?.(event);
+
       if (onBlurChange && (value || "") !== event.target.value) {
         onBlurChange(event);
         setInternalValue(normalize(event.target.value) ?? undefined);
       }
     },
-    [normalize, onBlurChange, value],
+    [normalize, onBlur, onBlurChange, value],
   );
 
   useUnmountLayout(() => {
@@ -66,15 +70,13 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     }
   });
 
-  const inputProps = _.omit(restProps, "onBlur", "onChange", "ref");
-
   return (
     <TextInput
-      {...inputProps}
+      {...props}
       ref={ref}
       value={internalValue}
-      onChange={handleChange}
       onBlur={handleBlur}
+      onChange={handleChange}
     />
   );
 }
