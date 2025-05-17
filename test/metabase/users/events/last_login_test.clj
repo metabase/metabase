@@ -1,4 +1,4 @@
-(ns metabase.events.last-login-test
+(ns metabase.users.events.last-login-test
   (:require
    [clojure.test :refer :all]
    [metabase.events.core :as events]

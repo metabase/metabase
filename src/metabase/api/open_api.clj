@@ -18,7 +18,7 @@
   (open-api-spec [this prefix]
     "Get the OpenAPI spec base object (as a Clojure data structure) associated with a Ring handler. `prefix` is the
     route prefix in the Compojure `context` sense, e.g. `/api/` for [[metabase.api-routes.core/routes]], or
-    `/api/user/` by the time we get to [[metabase.api.user]], etc."))
+    `/api/user/` by the time we get to [[metabase.users.api]], etc."))
 
 (extend-protocol OpenAPISpec
   nil

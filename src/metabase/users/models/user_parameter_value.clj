@@ -1,4 +1,4 @@
-(ns metabase.models.user-parameter-value
+(ns metabase.users.models.user-parameter-value
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -7,7 +7,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -49,30 +48,36 @@
         (t2/insert! :model/UserParameterValue
                     (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch))))))
 
+(defn- update-user-parameter-values* [inputs]
+  (try
+    (batched-upsert!
+     (->> (for [input     inputs
+                parameter (:parameters input)]
+            {:user_id      (:user-id input)
+             :dashboard_id (:dashboard-id input)
+             :parameter_id (:id parameter)
+             :value        (:value parameter)
+             :default      (:default parameter)})
+          (m/index-by (juxt :user_id :dashboard_id :parameter_id))
+          vals))
+    (catch Exception e
+      (log/error e "Error saving user parameters for a dashboard"))))
+
 (defonce ^:private user-parameter-value-queue
   (delay (grouper/start!
-          (fn [inputs]
-            (try
-              (batched-upsert!
-               (->> (for [input     inputs
-                          parameter (:parameters input)]
-                      {:user_id      (:user-id input)
-                       :dashboard_id (:dashboard-id input)
-                       :parameter_id (:id parameter)
-                       :value        (:value parameter)
-                       :default      (:default parameter)})
-                    (m/index-by (juxt :user_id :dashboard_id :parameter_id))
-                    vals))
-              (catch Exception e
-                (log/error e "Error saving user parameters for a dashboard"))))
+          #'update-user-parameter-values*
           :capacity 5000
           :interval 5000)))
 
 (mu/defn store!
   "Asynchronously delete params with a nil `value` and upsert the rest."
-  [user-id         :- ms/PositiveInt
-   dashboard-id    :- ms/PositiveInt
-   parameters      :- [:sequential :map]]
+  [user-id         :- pos-int?
+   dashboard-id    :- pos-int?
+   parameters      :- [:sequential [:map
+                                    [:id      [:string {:min 1}]]
+                                    ;; TODO -- not sure whether these are optional or not
+                                    [:value   {:optional true} any?]
+                                    [:default {:optional true} some?]]]]
   (grouper/submit! @user-parameter-value-queue {:user-id      user-id
                                                 :dashboard-id dashboard-id
                                                 :parameters   parameters}))
