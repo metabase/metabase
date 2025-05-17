@@ -282,7 +282,10 @@
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
-      normalize-details)))
+      normalize-details
+
+      ;; this property is used for migration purposes only
+      true (dissoc :name_before_deduplication))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -471,7 +474,9 @@
                :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
-               :cache_ttl]
+               :cache_ttl
+               ;; used for migration only
+               :name_before_deduplication]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context
