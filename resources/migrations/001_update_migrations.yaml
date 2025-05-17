@@ -11389,9 +11389,10 @@ databaseChangeLog:
   # v55.2025-05-16T05:00:00 - Add is_defective_duplicate, FALSE by default
   # v55.2025-05-16T06:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
   # take priority over inactive ones.
-  # v55.2025-05-16T07:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. H2 doesn't
-  # support the WHERE clause in indexes. unique_table_helper is NULL when is_defective_duplicate = TRUE, otherwise TRUE.
-  # v55.2025-05-16T08:00:00 - Add a unique constraint (db_id, schema, name, unique_table_helper)
+  # v55.2025-05-16T07:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. We need to
+  # handle 3 cases - H2 doesn't support WHERE in indexes, metabase_table.schema is a nullable field and needs to
+  # be coalesced to an empty string, ignore duplicate tables.
+  # v55.2025-05-16T08:00:00 - Add a unique constraint (db_id, name, unique_table_helper)
 
   - changeSet:
       id: v55.2025-05-16T05:00:00
@@ -11416,9 +11417,10 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: false
 
+  # metabase_table.schema is nullable
   - changeSet:
       id: v55.2025-05-16T06:00:00
-      validCheckSum: 9:7a17bff97f39527bfa1c98d74a000b50
+      validCheckSum: 9:bece48e1dd30c59d4dae56346363f5b4
       author: ranquild
       comment: Compute metabase_table.is_defective_duplicate based on (db_id, schema, name) uniqueness
       changes:
@@ -11431,7 +11433,7 @@ databaseChangeLog:
                     SELECT
                         mt.id,
                         ROW_NUMBER() OVER (
-                            PARTITION BY mt.db_id, mt.schema, mt.name
+                            PARTITION BY mt.db_id, COALESCE(mt.schema, ''), mt.name
                             ORDER BY
                                 CASE WHEN mt.active THEN 0 ELSE 1 END,
                                 mt.created_at
@@ -11461,14 +11463,14 @@ databaseChangeLog:
         - sql:
             dbms: postgresql,mysql,mariadb
             sql: >-
-              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${boolean.type} GENERATED ALWAYS AS (
-                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE TRUE END
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
               ) STORED;
         - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${boolean.type} GENERATED ALWAYS AS (
-                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE TRUE END
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper ${text.type} GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
               );
       rollback:
         - sql:
@@ -11476,14 +11478,14 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T08:00:00
-      validCheckSum: 9:098c5d56aac1b613d8bd03d423a4aa8e
+      validCheckSum: 9:848d1cb748064b5de423139fbbbc2876
       author: ranquild
-      comment: Add unique constraint on metabase_table(db_id, schema, name, unique_table_helper)
+      comment: Add unique constraint on metabase_table(db_id, name, unique_table_helper)
       changes:
         - addUniqueConstraint:
             tableName: metabase_table
             constraintName: idx_unique_table
-            columnNames: db_id, schema, name, unique_table_helper
+            columnNames: db_id, name, unique_table_helper
       rollback:
         - dropUniqueConstraint:
             tableName: metabase_table
