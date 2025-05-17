@@ -135,7 +135,7 @@
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
-  [_dashboard]
+  [_model]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------

@@ -144,6 +144,10 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
+(defn- set-database-entity-id
+  [database]
+  (assoc database :entity_id (serdes/backfill-entity-id :model/Database database 0)))
+
 (defn- is-destination?
   "Is this database a destination database for some router database?"
   [db]
@@ -369,7 +373,8 @@
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       secret/handle-incoming-client-secrets!
       maybe-disable-uploads-for-all-dbs!
-      infer-db-schedules))
+      infer-db-schedules
+      set-database-entity-id))
 
 (defmethod serdes/hash-fields :model/Database
   [_database]

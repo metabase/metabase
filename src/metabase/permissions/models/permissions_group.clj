@@ -31,7 +31,7 @@
   (derive :hook/entity-id))
 
 (defmethod serdes/hash-fields :model/PermissionsGroup
-  [_user]
+  [_model]
   [:name])
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------

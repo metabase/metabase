@@ -49,7 +49,7 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 (defmethod serdes/hash-fields :model/DashboardTab
-  [_dashboard-tab]
+  [_model]
   [:name
    (comp serdes/identity-hash
          #(t2/select-one :model/Dashboard :id %)

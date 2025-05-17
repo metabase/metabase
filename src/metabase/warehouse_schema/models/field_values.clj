@@ -224,7 +224,7 @@
                                        [])))))
 
 (defmethod serdes/hash-fields :model/FieldValues
-  [_field-values]
+  [_model]
   [(serdes/hydrated-hash :field)])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -1426,7 +1426,7 @@
       :else           (serdes/identity-hash parent))))
 
 (defmethod serdes/hash-fields :model/Collection
-  [_collection]
+  [_model]
   [:name :namespace parent-identity-hash :created_at])
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where]}]

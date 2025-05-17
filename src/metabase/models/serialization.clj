@@ -182,8 +182,9 @@
 (defmulti hash-fields
   "Returns a seq of functions which will be transformed into a seq of values for hash calculation by calling each
    function on an entity map."
-  {:arglists '([model-or-instance])}
-  mi/dispatch-on-model)
+  {:arglists '([model])}
+  (fn [model]
+    model))
 
 (defn- increment-hash-values
   "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
@@ -204,8 +205,11 @@
    (identity-hash entity 0))
   ([entity increment]
    {:pre [(some? entity)]}
-   (-> (for [f (hash-fields entity)]
-         (f entity))
+   (identity-hash (t2/model entity) entity increment))
+  ([model instance increment]
+   {:pre [(some? instance)]}
+   (-> (for [f (hash-fields model)]
+         (f instance))
        (increment-hash-values increment)
        raw-hash)))
 
@@ -216,9 +220,11 @@
   ([entity]
    (backfill-entity-id entity 0))
   ([entity increment]
-   (or (:entity_id entity)
-       (:entity-id entity)
-       (u/generate-nano-id (identity-hash entity increment)))))
+   (backfill-entity-id (t2/model entity) entity increment))
+  ([model instance increment]
+   (or (:entity_id instance)
+       (:entity-id instance)
+       (u/generate-nano-id (identity-hash model instance increment)))))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."

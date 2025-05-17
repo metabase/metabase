@@ -179,7 +179,7 @@
    (mi/can-write? (t2/select-one model pk))))
 
 (defmethod serdes/hash-fields :model/Field
-  [_field]
+  [_model]
   [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

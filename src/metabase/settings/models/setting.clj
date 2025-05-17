@@ -77,7 +77,7 @@
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
 (defmethod serdes/hash-fields :model/Setting
-  [_setting]
+  [_model]
   [:key])
 
 (declare export?)

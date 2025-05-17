@@ -65,7 +65,7 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
+(defmethod serdes/hash-fields :model/Channel [_model] [:name :type])
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]

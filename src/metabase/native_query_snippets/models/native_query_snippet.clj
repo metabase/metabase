@@ -37,7 +37,7 @@
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet
-  [_snippet]
+  [_model]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/can-read? :model/NativeQuerySnippet

@@ -207,7 +207,7 @@
 (t2.default-fields/define-default-fields :model/User default-user-columns)
 
 (defmethod serdes/hash-fields :model/User
-  [_user]
+  [_model]
   [:email])
 
 (defn group-ids

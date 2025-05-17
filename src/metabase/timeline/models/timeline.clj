@@ -40,7 +40,7 @@
 ;;;; serialization
 
 (defmethod serdes/hash-fields :model/Timeline
-  [_timeline]
+  [_model]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]

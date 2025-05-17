@@ -151,7 +151,7 @@
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Segment
-  [_segment]
+  [_model]
   [:name (serdes/hydrated-hash :table) :created_at])
 
 (defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]

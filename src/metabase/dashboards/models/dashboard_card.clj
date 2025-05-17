@@ -69,7 +69,7 @@
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields :model/DashboardCard
-  [_dashboard-card]
+  [_model]
   [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
    (comp serdes/identity-hash
          #(t2/select-one 'Dashboard :id %)

@@ -604,6 +604,12 @@
         (is (partial= {:details {}}
                       db))))))
 
+(deftest create-database-entity-id
+  (testing "Databases should get :entity_id on creation"
+    (mt/with-model-cleanup [:model/Database]
+      (let [db (first (t2/insert-returning-instances! :model/Database (mt/with-temp-defaults :model/Database)))]
+        (is (some? (:entity_id db)))))))
+
 (deftest ^:parallel after-select-driver-features-realize-db-row-test
   ;; This test is necessary because driver multimethods should be able to assume that the db argument is a Database
   ;; instance, not a transient row. Otherwise a call like `(mi/instance-of :model/Database db)` will return false
