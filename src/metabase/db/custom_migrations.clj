@@ -1761,10 +1761,12 @@
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 
+;; copied from metabase.models.serialization
 (defn- raw-hash
   [target]
   (format "%08x" (hash target)))
 
+;; copied from metabase.models.serialization
 (defn- generate-nano-id
   [seed-str]
   (let [seed (Long/parseLong seed-str 16)

@@ -11395,6 +11395,15 @@ databaseChangeLog:
             tableName: metabase_database
             constraintName: idx_unique_database
 
+  - changeSet:
+      id: v55.2025-05-16T05:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Backfill metabase_database.entity_id
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.BackfillDatabaseEntityIds"
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
