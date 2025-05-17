@@ -51,7 +51,7 @@
     ;; fields *SHOULD* have semantic types now
     (is (= #{{:name "LATITUDE", :semantic_type :type/Latitude, :last_analyzed true}
              {:name "ID", :semantic_type :type/PK, :last_analyzed false}
-             {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
+             {:name "PRICE", :semantic_type nil, :last_analyzed true}
              {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
              {:name "CATEGORY_ID", :semantic_type :type/FK, :last_analyzed true}
              {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
@@ -253,3 +253,26 @@
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))
+
+(deftest classify-numeric-values
+  (testing "Make sure Integer fields are not classified as Category"
+    (let [field (mi/instance :model/Field {:base_type :type/Integer})
+          fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
+          threshold classifiers.category/category-cardinality-threshold]
+
+      (are [card]
+
+           (->
+            (classifiers.category/infer-is-category field (fingerprint card))
+            :semantic_type
+            (not= :type/Category))
+
+        (dec threshold)
+        threshold
+        (inc threshold)))))
+
+(deftest classify-bool-values
+  (testing "Make sure Boolean fields are not classified as Category"
+    (let [field (mi/instance :model/Field {:base_type :type/Boolean})]
+      (is (not= :type/Category
+                (:semantic_type (classifiers.category/infer-is-category field {})))))))
