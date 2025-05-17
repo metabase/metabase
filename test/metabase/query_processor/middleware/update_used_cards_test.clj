@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.query-processor :as qp]
