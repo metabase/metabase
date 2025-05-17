@@ -989,7 +989,7 @@
   (when email
     (or (*import-fk-keyed* email 'User :email)
         ;; Need to break a circular dependency here.
-        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
+        (:id ((resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
 ;;; ## Tables
 

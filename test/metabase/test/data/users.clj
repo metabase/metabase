@@ -85,20 +85,37 @@
   [username :- TestUserName]
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(def ^{:arglists '([] [user-name])} user->id
-  "Creates user if needed. With zero args, returns map of user name to ID. With 1 arg, returns ID of that User. Creates
-  User(s) if needed. Memoized.
+;;; Memoize results the first time we run outside of a transaction (i.e., outside of `with-temp`) -- the users will
+;;; be created globally and can be used from this point on regardless of transaction status.
+;;;
+;;; If we run INSIDE of a transaction before the test users have been created globally then do not memoize the IDs,
+;;; since the users will get discarded and we will need to recreate them next time around.
+(let [f                 (fn []
+                          (zipmap usernames
+                                  (map (comp u/the-id fetch-user) usernames)))
+      memoized          (mdb/memoize-for-application-db f)
+      created-globally? (atom false)
+      f*                (fn []
+                          (cond
+                            @created-globally?
+                            (memoized)
 
-    (user->id)        ; -> {:rasta 4, ...}
+                            (mdb/in-transaction?)
+                            (f)
+
+                            :else
+                            (u/prog1 (memoized)
+                              (reset! created-globally? true))))]
+  (mu/defn user->id
+    "Creates user if needed. With zero args, returns map of user name to ID. With 1 arg, returns ID of that User. Creates
+  User(s) if needed. Memoized if not ran inside of a transaction.
+
+    (user->id) ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (mdb/memoize-for-application-db
-   (fn
-     ([]
-      (zipmap usernames (map user->id usernames)))
-
-     ([user-name]
-      {:pre [(contains? usernames user-name)]}
-      (u/the-id (fetch-user user-name))))))
+    ([]
+     (f*))
+    ([user-name :- TestUserName]
+     (get (f*) user-name))))
 
 (defn user-descriptor
   "Returns \"admin\" or \"non-admin\" for a given user.

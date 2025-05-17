@@ -1,9 +1,9 @@
-(ns metabase.models.user-parameter-value-test
+(ns metabase.users.models.user-parameter-value-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models.user-parameter-value :as upv]
    [metabase.test :as mt]
+   [metabase.users.models.user-parameter-value :as upv]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

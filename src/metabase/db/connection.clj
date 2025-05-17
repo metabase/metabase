@@ -133,6 +133,11 @@
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 
+(defn in-transaction?
+  "Whether we are currently in a transaction."
+  []
+  (pos? *transaction-depth*))
+
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
             (let [savepoint (.setSavepoint connection)]

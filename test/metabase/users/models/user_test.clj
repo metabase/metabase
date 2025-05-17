@@ -1,4 +1,4 @@
-(ns metabase.models.user-test
+(ns metabase.users.models.user-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,7 +10,6 @@
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.http-client :as client]
    [metabase.models.serialization :as serdes]
-   [metabase.models.user :as user]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -18,11 +17,11 @@
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
-   [metabase.sso.init]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -32,10 +31,6 @@
 (use-fixtures
   :once
   (fixtures/initialize :test-users :notifications))
-
-(comment
-  ;; this has to be loaded for the Google Auth tests to work (not sure if this is still true)
-  metabase.sso.init/keep-me)
 
 ;;; Tests for permissions-set
 
@@ -528,34 +523,6 @@
       (mt/with-temp [:model/User {user-id :id} {}]
         (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
-
-(deftest last-used-native-database-id-can-be-read-and-set
-  (testing "last-used-native-database-id can be read and set"
-    (mt/with-test-user :rasta
-      (let [initial-value  (user/last-used-native-database-id)
-            existing-db-id (:id (t2/select-one :model/Database))
-            wrong-db-id    -999]
-        (is (nil? initial-value))
-        (user/last-used-native-database-id! existing-db-id)
-        (is (= existing-db-id (user/last-used-native-database-id)))
-        (testing "returns nil if the database doesn't exist"
-          (user/last-used-native-database-id! wrong-db-id)
-          (is (nil? (user/last-used-native-database-id)))))))
-
-  (testing "last-used-native-database-id should be a user-local setting"
-    (is (=? {:user-local :only}
-            (setting/resolve-setting :last-used-native-database-id)))
-    (mt/with-temp [:model/Database {id1 :id} {:name "DB1"}
-                   :model/Database {id2 :id} {:name "DB2"}]
-      (mt/with-test-user :rasta
-        (mt/discard-setting-changes [last-used-native-database-id]
-          (user/last-used-native-database-id! id1)
-          (mt/with-test-user :crowberto
-            (mt/discard-setting-changes [last-used-native-database-id]
-              (user/last-used-native-database-id! id2)
-              (is (= (user/last-used-native-database-id) id2))
-              (mt/with-test-user :rasta
-                (is (= (user/last-used-native-database-id) id1))))))))))
 
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"

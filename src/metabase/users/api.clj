@@ -1,4 +1,4 @@
-(ns metabase.api.user
+(ns metabase.users.api
   "/api/user endpoints"
   (:require
    [honey.sql.helpers :as sql.helpers]
@@ -12,13 +12,13 @@
    [metabase.config :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :refer [defsetting]]
    [metabase.sso.core :as sso]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
