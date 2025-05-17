@@ -11396,6 +11396,38 @@ databaseChangeLog:
             constraintName: idx_unique_database
 
   - changeSet:
+      id: v55.2025-05-16T05:00:00
+      author: ranquild
+      comment: Add a column to be able to roll back metabase_database(db_id, schema, name) deduplication
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: active_before_deduplication
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: active_before_deduplication
+                  remarks: The active state of the table before deduplication
+                  type: ${boolean.type}
+
+  - changeSet:
+      id: v55.2025-05-16T06:00:00
+      author: ranquild
+      comment: Set the active state of the table before deduplication to be able to roll back
+      changes:
+        - sql: >-
+            UPDATE metabase_table
+            SET active_before_deduplication = active;
+      rollback:
+        - sql: >-
+            UPDATE metabase_table
+            SET active_before_deduplication = NULL;
+
+  - changeSet:
       id: v55.2025-05-16T07:00:00
       validCheckSum: ANY
       author: ranquild
@@ -11449,21 +11481,31 @@ databaseChangeLog:
                 WHERE t1.id = t2.id
               )
               WHERE active = TRUE;
-      rollback: # TBD
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET active = active_before_deduplication
+              WHERE active_before_deduplication IS NOT NULL;
 
   - changeSet:
       id: v55.2025-05-16T08:00:00
       author: ranquild
-      comment: Add unique constraint on metabase_table (db_id, schema, name)
+      comment: Add unique index on metabase_table (db_id, schema, name)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_table
+                indexName: idx_unique_table
       changes:
-        - addUniqueConstraint:
-            tableName: metabase_table
-            constraintName: idx_unique_table
-            columnNames: db_id, schema, name
+        - sql: >-
+            CREATE UNIQUE INDEX idx_unique_table
+            ON metabase_table (db_id, schema, name)
+            WHERE active = TRUE;
       rollback:
-        - dropUniqueConstraint:
-            tableName: metabase_table
-            constraintName: idx_unique_table
+        - sql: >-
+            DROP INDEX idx_unique_table;
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
