@@ -11418,7 +11418,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v55.2025-05-16T06:00:00
-      validCheckSum: ANY
+      validCheckSum: 9:7a17bff97f39527bfa1c98d74a000b50
       author: ranquild
       comment: Compute metabase_table.is_defective_duplicate based on (db_id, schema, name) uniqueness
       changes:
