@@ -5,14 +5,14 @@ import type { MetabotStoreState } from "./types";
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
 
-export const getMetabotVisisble = createSelector(
+export const getMetabotVisible = createSelector(
   getMetabot,
   (metabot) => metabot.visible,
 );
 
-export const getUserMessages = createSelector(
+export const getMessages = createSelector(
   getMetabot,
-  (metabot) => metabot.userMessages,
+  (metabot) => metabot.messages,
 );
 
 export const getIsProcessing = createSelector(
@@ -23,11 +23,6 @@ export const getIsProcessing = createSelector(
 export const getLastSentContext = createSelector(
   getMetabot,
   (metabot) => metabot.lastSentContext,
-);
-
-export const getLastHistoryValue = createSelector(
-  getMetabot,
-  (metabot) => metabot.lastHistoryValue,
 );
 
 export const getMetabotConversationId = createSelector(

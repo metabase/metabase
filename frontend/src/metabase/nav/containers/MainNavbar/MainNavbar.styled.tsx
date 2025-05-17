@@ -12,7 +12,11 @@ import { Box, type BoxProps } from "metabase/ui";
 import { SidebarLink } from "./SidebarItems";
 import { ExpandToggleButton } from "./SidebarItems/SidebarItems.styled";
 
-export const Sidebar = styled.aside<{ isOpen: boolean }>`
+export const Sidebar = styled.aside<{
+  isOpen: boolean;
+  side: "left" | "right";
+  width?: string;
+}>`
   ${({ isOpen }) => (isOpen ? "" : "display: none")};
 
   height: 100%;
@@ -21,14 +25,18 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   align-items: center;
   background-color: var(--mb-color-bg-white);
   z-index: 4;
-  width: ${NAV_SIDEBAR_WIDTH};
-  border-inline-end: 1px solid var(--mb-color-border);
+  width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
+  ${(props) =>
+    props.side === "left"
+      ? "border-inline-end: 1px solid var(--mb-color-border);"
+      : "border-inline-start: 1px solid var(--mb-color-border);"}
 
   ${breakpointMaxSmall} {
     width: 90vw;
     position: absolute;
     top: 0;
-    inset-inline-start: 0;
+    ${(props) =>
+      props.side === "left" ? "inset-inline-start: 0;" : "inset-inline-end: 0;"}
   }
 `;
 
