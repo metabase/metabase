@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
+import Markdown from "metabase/core/components/Markdown";
 import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
 
 import { useMetabotAgent } from "../../hooks";
@@ -84,7 +85,9 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
               key={msg}
               data-testid="metabot-chat-message"
             >
-              <Box>{msg}</Box>
+              <Markdown unstyleLinks className={Styles.responseMessage}>
+                {msg}
+              </Markdown>
               <UnstyledButton
                 className={Styles.responseDismissBtn}
                 onClick={() => metabot.dismissUserMessage(index)}
