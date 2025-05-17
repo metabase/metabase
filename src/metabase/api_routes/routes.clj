@@ -5,7 +5,6 @@
    [metabase.activity-feed.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
-   [metabase.api.database]
    [metabase.api.dataset]
    [metabase.api.docs]
    [metabase.api.logger]
@@ -54,13 +53,13 @@
    [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.warehouse-schema.api]
+   [metabase.warehouses.api]
    [metabase.xrays.api]))
 
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
-         metabase.api.database/keep-me
          metabase.api.dataset/keep-me
          metabase.api.logger/keep-me
          metabase.api.util/keep-me
@@ -88,7 +87,8 @@
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
-         metabase.users.api/keep-me)
+         metabase.users.api/keep-me
+         metabase.warehouses.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -141,7 +141,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.dashboards.api)
-   "/database"             (+auth 'metabase.api.database)
+   "/database"             (+auth 'metabase.warehouses.api)
    "/dataset"              (+auth 'metabase.api.dataset)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api

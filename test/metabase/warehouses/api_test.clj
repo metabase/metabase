@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.database-test
+(ns ^:mb/driver-tests metabase.warehouses.api-test
   "Tests for /api/database endpoints."
   (:require
    [clojure.string :as str]
@@ -6,7 +6,6 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.database :as api.database]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -39,6 +38,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.api :as api.database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -81,7 +81,7 @@
    (merge
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
-                     :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
+                     :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
     {:engine                (u/qualified-name (:engine db))
      :settings              {}
      :features              (map u/qualified-name (driver.u/features driver db))
