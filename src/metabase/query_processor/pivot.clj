@@ -4,6 +4,7 @@
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
   (:require
+   #_:clj-kondo/ignore
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -24,13 +25,15 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -191,7 +194,22 @@
                           (-> query
                               remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)
-                              (add-pivot-group-breakout group-bitmask)))]
+                              (add-pivot-group-breakout group-bitmask)))
+          hash->avg-execution-time (into {}
+                                         (map (juxt (comp vec :query_hash) :average_execution_time))
+                                         (t2/select
+                                          :model/Query
+                                          ;; I expect all queries to be on scale of 10s at most
+                                          ;; TODO: More reasonable way? Better place to do this?
+                                          :query_hash [:in (map qp.util/query-hash all-queries)]))
+          all-queries (map (fn [q]
+                             (or (when-some [avg-execution-time
+                                             (get hash->avg-execution-time (vec (qp.util/query-hash q)))]
+                                   ;; TODO: How about non-ttl?
+                                   (when (contains? q :cache-strategy)
+                                     (assoc-in q [:cache-strategy :avg-execution-ms] avg-execution-time)))
+                                 q))
+                           all-queries)]
       (conj (rest all-queries)
             (assoc-in (first all-queries) [:info :pivot/original-query] query)))
     (catch Throwable e
