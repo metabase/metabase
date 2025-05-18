@@ -1,12 +1,12 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
+   [metabase.classloader.core :as classloader]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.plugins.classloader :as classloader]
    [metabase.secrets.core :as secret]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
@@ -271,7 +271,7 @@
                       (assoc :field_id (get new-field-name->id field-name))
             ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
             ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
-            ;; NULL like [[metabase.models.params.chain-filter/search-cached-field-values?]]
+            ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
                       (update :human_readable_values not-empty))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.events.core :as events]
    [metabase.http-client :as client]

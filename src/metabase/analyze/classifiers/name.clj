@@ -133,7 +133,7 @@
           pattern+base-types+semantic-type)))
 
 (def ^:private FieldOrColumn
-  "Schema that allows a `metabase.models.field/Field` or a column from a query resultset"
+  "Schema that allows a `:model/Field` or a column from a query resultset"
   [:and
    [:map
     ;; Some DBs such as MSSQL can return columns with blank name

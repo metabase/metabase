@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.http-client]
-   [metabase.server.handler :as handler]
    [metabase.server.middleware.json :as mw.json]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.util.json :as json]))
 
 (comment mw.json/keep-me) ; so custom Cheshire encoders are loaded
@@ -21,14 +21,15 @@
 (defn- raw-json-req
   "Kind of `mt/http-request`, but is less picky about body :)"
   [method url ^String body]
-  (handler/app {:method method
-                :uri     (str metabase.http-client/*url-prefix* url)
-                :headers {"content-type" "application/json"}
-                :body    (io/input-stream (.getBytes body))}
-               #(-> (:body %)
-                    io/reader
-                    json/decode+kw)
-               (fn raise [e] (throw e))))
+  ((server.test-handler/test-handler)
+   {:method method
+    :uri     (str metabase.http-client/*url-prefix* url)
+    :headers {"content-type" "application/json"}
+    :body    (io/input-stream (.getBytes body))}
+   #(-> (:body %)
+        io/reader
+        json/decode+kw)
+   (fn raise [e] (throw e))))
 
 (deftest json-error-test
   (testing "Parsing invalid JSON returns messages with some details"

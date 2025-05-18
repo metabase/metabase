@@ -10,7 +10,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -22,19 +22,20 @@
 
 ;;; TODO -- by convention these should either have class-like names e.g. `JSONQuery` and `SupportedActionType` or we
 ;;; should use [[metabase.util.malli.registry/def]] and register them and make them namespaced keywords
-(def ^:private json-query-schema
+(def ^:private JSONQuery
   [:and
    string?
    (mu/with-api-error-message
     [:fn #(actions.http-action/apply-json-query {} %)]
     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
-(def ^:private supported-action-type
+(def ^:private SupportedActionType
   (mu/with-api-error-message
+   ;; TODO -- make this a keyword and let coercion convert it automatically
    [:enum "http" "query" "implicit"]
    (deferred-tru "Unsupported action type")))
 
-(def ^:private implicit-action-kind
+(def ^:private ImplicitActionKind
   (mu/with-api-error-message
    (into [:enum]
          (for [ns ["row" "bulk"]
@@ -42,7 +43,7 @@
            (str ns "/" action)))
    (deferred-tru "Unsupported implicit action kind")))
 
-(def ^:private http-action-template
+(def ^:private HTTPActionTemplate
   [:map {:closed true}
    [:method                              [:enum "GET" "POST" "PUT" "DELETE" "PATCH"]]
    [:url                                 [string? {:min 1}]]
@@ -106,29 +107,30 @@
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [type model_id parameters database_id]
+   {:keys [model_id parameters database_id]
+    action-type :type
     :as action} :- [:map
                     [:name                   :string]
                     [:model_id               ms/PositiveInt]
-                    [:type                   {:optional true} [:maybe supported-action-type]]
+                    [:type                   {:optional true} [:maybe SupportedActionType]]
                     [:description            {:optional true} [:maybe :string]]
                     [:parameters             {:optional true} [:maybe [:sequential map?]]]
                     [:parameter_mappings     {:optional true} [:maybe map?]]
                     [:visualization_settings {:optional true} [:maybe map?]]
-                    [:kind                   {:optional true} [:maybe implicit-action-kind]]
+                    [:kind                   {:optional true} [:maybe ImplicitActionKind]]
                     [:database_id            {:optional true} [:maybe ms/PositiveInt]]
                     [:dataset_query          {:optional true} [:maybe map?]]
-                    [:template               {:optional true} [:maybe http-action-template]]
-                    [:response_handle        {:optional true} [:maybe json-query-schema]]
-                    [:error_handle           {:optional true} [:maybe json-query-schema]]]]
+                    [:template               {:optional true} [:maybe HTTPActionTemplate]]
+                    [:response_handle        {:optional true} [:maybe JSONQuery]]
+                    [:error_handle           {:optional true} [:maybe JSONQuery]]]]
   (when (and (nil? database_id)
-             (= "query" type))
+             (= "query" action-type))
     (throw (ex-info (tru "Must provide a database_id for query actions")
-                    {:type        type
+                    {:type        action-type
                      :status-code 400})))
   (let [model (api/write-check :model/Card model_id)]
-    (when (and (= "implicit" type)
-               (not (card/model-supports-implicit-actions? model)))
+    (when (and (= "implicit" action-type)
+               (not (queries/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
@@ -137,14 +139,14 @@
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
-                             :type           type
+                             :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
       ;; t2/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/select-actions nil :type type)))))
+      (last (action/select-actions nil :type action-type)))))
 
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
@@ -156,15 +158,15 @@
               [:database_id            {:optional true} [:maybe ms/PositiveInt]]
               [:dataset_query          {:optional true} [:maybe :map]]
               [:description            {:optional true} [:maybe :string]]
-              [:error_handle           {:optional true} [:maybe json-query-schema]]
-              [:kind                   {:optional true} [:maybe implicit-action-kind]]
+              [:error_handle           {:optional true} [:maybe JSONQuery]]
+              [:kind                   {:optional true} [:maybe ImplicitActionKind]]
               [:model_id               {:optional true} [:maybe ms/PositiveInt]]
               [:name                   {:optional true} [:maybe :string]]
               [:parameter_mappings     {:optional true} [:maybe :map]]
               [:parameters             {:optional true} [:maybe [:sequential :map]]]
-              [:response_handle        {:optional true} [:maybe json-query-schema]]
-              [:template               {:optional true} [:maybe http-action-template]]
-              [:type                   {:optional true} [:maybe supported-action-type]]
+              [:response_handle        {:optional true} [:maybe JSONQuery]]
+              [:template               {:optional true} [:maybe HTTPActionTemplate]]
+              [:type                   {:optional true} [:maybe SupportedActionType]]
               [:visualization_settings {:optional true} [:maybe :map]]]]
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]

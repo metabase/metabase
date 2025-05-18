@@ -1,11 +1,8 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -13,14 +10,17 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.custom-values :as custom-values]
+   [metabase.parameters.field :as parameters.field]
+   [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -29,7 +29,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.regex :as u.regex]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -98,14 +97,6 @@
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
-(def export-formats
-  "Valid export formats for downloading query results."
-  (mapv u/qualified-name (qp.streaming/export-formats)))
-
-(def ExportFormat
-  "Schema for valid export formats for downloading query results."
-  (into [:enum {:api/regex (u.regex/re-or export-formats)}] export-formats))
-
 (mu/defn export-format->context :- ::lib.schema.info/context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
   in `export-format`.
@@ -113,13 +104,6 @@
     (export-format->context :json) ;-> :json-download"
   [export-format]
   (keyword (str (u/qualified-name export-format) "-download")))
-
-(def export-format-regex
-  "Regex for matching valid export formats (e.g., `json`) for queries.
-   Inteneded for use in an endpoint definition:
-
-     (api.macros/defendpoint :post [\"/:export-format\", :export-format export-format-regex]"
-  (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
 
 (def ^:private column-ref-regex #"^\[.+\]$")
 
@@ -131,10 +115,10 @@
     json-key
     (keyword json-key)))
 
-(api.macros/defendpoint :post ["/:export-format", :export-format export-format-regex]
+(api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
-                               [:export-format ExportFormat]]
+                               [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
     format-rows                   :format_rows
@@ -179,7 +163,7 @@
    _query-params
    query :- [:map
              [:database ms/PositiveInt]]]
-  (api.query-metadata/batch-fetch-query-metadata [query]))
+  (queries/batch-fetch-query-metadata [query]))
 
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
@@ -218,7 +202,7 @@
     (throw (ex-info (tru "Missing field-ids for parameter")
                     {:status-code 400})))
   (-> (reduce (fn [resp id]
-                (let [{values :values more? :has_more_values} (api.field/search-values-from-field-id id query)]
+                (let [{values :values more? :has_more_values} (parameters.field/search-values-from-field-id id query)]
                   (-> resp
                       (update :values concat values)
                       (update :has_more_values #(or % more?)))))

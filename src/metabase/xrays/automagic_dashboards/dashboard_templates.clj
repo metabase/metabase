@@ -7,7 +7,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.models.dashboard.constants :as dashboards.constants]
+   [metabase.dashboards.constants :as dashboards.constants]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
