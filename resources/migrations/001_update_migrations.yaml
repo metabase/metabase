@@ -11386,16 +11386,50 @@ databaseChangeLog:
 
   # Add a unique constraint on metabase_table(db_id, schema, name). Before, there was no constraint, so we need to
   # handle potential duplicates.
-  # v55.2025-05-16T05:00:00 - Add is_defective_duplicate, FALSE by default
-  # v55.2025-05-16T06:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
+  # v55.2025-05-16T05:00:00 - Make metabase_table.name and schema case-sensitive for MySQL
+  # v55.2025-05-16T06:00:00 - Add is_defective_duplicate, FALSE by default
+  # v55.2025-05-16T07:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
   # take priority over inactive ones.
-  # v55.2025-05-16T07:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. We need to
+  # v55.2025-05-16T08:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. We need to
   # handle 3 cases - H2 doesn't support WHERE in indexes, metabase_table.schema is a nullable field and needs to
   # be coalesced to an empty string, ignore duplicate tables.
-  # v55.2025-05-16T08:00:00 - Add a unique constraint (db_id, name, unique_table_helper)
+  # v55.2025-05-16T09:00:00 - Add a unique constraint (db_id, name, unique_table_helper)
 
+  # This is necessary to make unique indexes using metabase_table.name and schema case-sensitive for MySQL.
   - changeSet:
       id: v55.2025-05-16T05:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Make metabase_table.name and schema use case-sensitive collation for MySQL
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table MODIFY
+              name varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+
+              ALTER TABLE metabase_table MODIFY
+              schema varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table MODIFY
+              name VARCHAR(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+              ALTER TABLE metabase_table MODIFY
+              schema varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v55.2025-05-16T06:00:00
       validCheckSum: 9:85e9ad7b60db0cd795254ca52d6dd5a7
       author: ranquild
       comment: Add metabase_table.is_defective_duplicate
@@ -11419,7 +11453,7 @@ databaseChangeLog:
 
   # metabase_table.schema is nullable
   - changeSet:
-      id: v55.2025-05-16T06:00:00
+      id: v55.2025-05-16T07:00:00
       validCheckSum: 9:bece48e1dd30c59d4dae56346363f5b4
       author: ranquild
       comment: Compute metabase_table.is_defective_duplicate based on (db_id, schema, name) uniqueness
@@ -11449,7 +11483,7 @@ databaseChangeLog:
               SET is_defective_duplicate = FALSE;
 
   - changeSet:
-      id: v55.2025-05-16T07:00:00
+      id: v55.2025-05-16T08:00:00
       validCheckSum: ANY
       author: ranquild
       comment: Add metabase_table.unique_table_helper to create an index that ignores EXISTING duplicates
@@ -11483,7 +11517,7 @@ databaseChangeLog:
             sql: ALTER TABLE metabase_table DROP COLUMN unique_table_helper;
 
   - changeSet:
-      id: v55.2025-05-16T08:00:00
+      id: v55.2025-05-16T09:00:00
       validCheckSum: 9:848d1cb748064b5de423139fbbbc2876
       author: ranquild
       comment: Add unique constraint on metabase_table(db_id, name, unique_table_helper)
