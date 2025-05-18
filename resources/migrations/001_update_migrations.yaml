@@ -11406,12 +11406,12 @@ databaseChangeLog:
             dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
-              name varchar(254)
+              `name` varchar(254)
               CHARACTER SET utf8mb4
               COLLATE utf8mb4_bin;
 
               ALTER TABLE metabase_table MODIFY
-              schema varchar(254)
+              `schema` varchar(254)
               CHARACTER SET utf8mb4
               COLLATE utf8mb4_bin;
       rollback:
@@ -11419,12 +11419,12 @@ databaseChangeLog:
             dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
-              name VARCHAR(254)
+              `name` VARCHAR(254)
               CHARACTER SET utf8mb4
               COLLATE utf8mb4_unicode_ci;
 
               ALTER TABLE metabase_table MODIFY
-              schema varchar(254)
+              `schema` varchar(254)
               CHARACTER SET utf8mb4
               COLLATE utf8mb4_unicode_ci;
 
