@@ -881,15 +881,15 @@
 (deftest ^:parallel normalize-use-password-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (mt/with-temp [:model/Database db1 {:name    "Legacy Snowflake DB 1"
-                                          :engine  :snowflake
+      (mt/with-temp [:model/Database db1 {:name    "Legacy Snowflake DB"
+                                          :engine  :snowflake,
                                           :details {:password "abc"}}
-                     :model/Database db2 {:name    "Legacy Snowflake DB 2"
-                                          :engine  :snowflake
+                     :model/Database db2 {:name    "Legacy Snowflake DB"
+                                          :engine  :snowflake,
                                           :details {:password "abc"
                                                     :private-key-path "def"}}
-                     :model/Database db3 {:name    "Legacy Snowflake DB 3"
-                                          :engine  :snowflake
+                     :model/Database db3 {:name    "Legacy Snowflake DB"
+                                          :engine  :snowflake,
                                           :details {:use-password false
                                                     :password "abc"}}]
         (is (= {:password "abc" :use-password true} (:details db1)))
