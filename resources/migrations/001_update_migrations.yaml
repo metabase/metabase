@@ -11267,7 +11267,7 @@ databaseChangeLog:
       changes:
         - dropColumn:
             tableName: metabase_database
-            column: name_before_deduplication
+            columnName: name_before_deduplication
       rollback: # nothing to do
 
   - changeSet:
