@@ -11526,7 +11526,7 @@ databaseChangeLog:
         - not:
             - uniqueConstraintExists:
                 tableName: metabase_table
-                columnName: idx_unique_table
+                constraintName: idx_unique_table
       changes:
         - addUniqueConstraint:
             tableName: metabase_table
