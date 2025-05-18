@@ -11284,6 +11284,7 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: metabase_database
             constraintName: idx_unique_database
+      rollback: # nothing to do
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
