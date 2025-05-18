@@ -11268,6 +11268,7 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_database
             column: name_before_deduplication
+      rollback: # nothing to do
 
   - changeSet:
       id: v55.2025-05-18T02:00:00
