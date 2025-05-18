@@ -11521,6 +11521,12 @@ databaseChangeLog:
       validCheckSum: 9:848d1cb748064b5de423139fbbbc2876
       author: ranquild
       comment: Add unique constraint on metabase_table(db_id, name, unique_table_helper)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: metabase_table
+                columnName: idx_unique_table
       changes:
         - addUniqueConstraint:
             tableName: metabase_table
