@@ -345,10 +345,7 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
-        original-db (-> old-db
-                        copy-secrets
-                        (select-keys [:details :engine :name :settings])
-                        (update :name str "_copy"))
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! :model/Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)

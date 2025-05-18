@@ -173,7 +173,7 @@
                (select-keys (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
                             [:tables])))
         (testing "Schemas are always empty strings, not nil"
-          (mt/with-temp [:model/Database db  {:name "My DB 2" :engine ::test-driver}
+          (mt/with-temp [:model/Database db  {:name "My DB" :engine ::test-driver}
                          :model/Table    {}  {:name "Table 1" :db_id (:id db) :schema nil}]
             (is (= [""]
                    (->> (mt/user-http-request :lucky :get 200 (format "database/%d?include=tables" (:id db)))
