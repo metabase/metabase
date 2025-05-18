@@ -11254,37 +11254,6 @@ databaseChangeLog:
                 'type/Number'
               )
 
-  - changeSet:
-      id: v55.2025-05-18T01:00:00
-      validCheckSum: ANY
-      author: ranquild
-      comment: Drop metabase_database.name_before_deduplication
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: metabase_database
-            columnName: name_before_deduplication
-      changes:
-        - dropColumn:
-            tableName: metabase_database
-            columnName: name_before_deduplication
-      rollback: # nothing to do
-
-  - changeSet:
-      id: v55.2025-05-18T02:00:00
-      validCheckSum: ANY
-      author: ranquild
-      comment: Drop idx_unique_database
-      preConditions:
-        - onFail: MARK_RAN
-        - uniqueConstraintExists:
-            tableName: metabase_database
-            constraintName: idx_unique_database
-      changes:
-        - dropUniqueConstraint:
-            tableName: metabase_database
-            constraintName: idx_unique_database
-      rollback: # nothing to do
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
