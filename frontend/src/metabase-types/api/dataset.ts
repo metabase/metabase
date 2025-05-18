@@ -60,6 +60,7 @@ export interface DatasetColumn {
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
   field_ref?: DimensionReference;
+  // Deprecated. Columns from old saved questions might have expression_name, but new columns do not.
   expression_name?: any;
   base_type?: string;
   semantic_type?: string | null;
