@@ -221,19 +221,20 @@ await build({
         })
       : null,
   ],
-});
+  onSuccess: async () => {
+    // Cleanup index.css file, styles are injected into .js file
+    fs.rmSync(path.join(BUILD_PATH, "index.css"));
 
-// Cleanup index.css file, styles are injected into .js file
-fs.rmSync(path.join(BUILD_PATH, "index.css"));
-
-const cssModulesInjectCode = await getCssModulesInjectCode();
-await setupBanners({
-  buildPath: BUILD_PATH,
-  getBanners: ({ isMainBundle }) => {
-    return [
-      LICENSE_BANNER,
-      // Right now all css modules are in the main bundle
-      isMainBundle ? cssModulesInjectCode : null,
-    ];
+    const cssModulesInjectCode = await getCssModulesInjectCode();
+    await setupBanners({
+      buildPath: BUILD_PATH,
+      getBanners: ({ isMainBundle }) => {
+        return [
+          LICENSE_BANNER,
+          // Right now all css modules are in the main bundle
+          isMainBundle ? cssModulesInjectCode : null,
+        ];
+      },
+    });
   },
 });
