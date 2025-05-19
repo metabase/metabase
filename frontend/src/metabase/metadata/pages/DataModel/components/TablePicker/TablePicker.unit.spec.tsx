@@ -49,6 +49,7 @@ const PRIVATE = createMockSchema({
 const FOO = createMockTable({
   id: nextId(),
   name: "FOO",
+  display_name: "Foo",
   schema: PRIVATE.id,
   fields: [],
 });
@@ -56,6 +57,7 @@ const FOO = createMockTable({
 const BAR = createMockTable({
   id: nextId(),
   name: "BAR",
+  display_name: "Bar",
   schema: PUBLIC.id,
   fields: [],
 });
@@ -74,12 +76,14 @@ const SINGLE_SCHEMA = createMockSchema({
 const QUU = createMockTable({
   id: nextId(),
   name: "QUU",
+  display_name: "Quu",
   schema: SINGLE_SCHEMA.name,
 });
 
 const QUX = createMockTable({
   id: nextId(),
   name: "QUX",
+  display_name: "Qux",
   schema: SINGLE_SCHEMA.name,
 });
 
@@ -103,18 +107,21 @@ const CORGE = createMockTable({
   id: nextId(),
   schema: UNNAMED_SCHEMA.name,
   name: "CORGE",
+  display_name: "Corge",
 });
 
 const GRAULT = createMockTable({
   id: nextId(),
   schema: UNNAMED_SCHEMA.name,
   name: "GRAULT",
+  display_name: "Grault",
 });
 
 const GLORP = createMockTable({
   id: nextId(),
   schema: NAMED_SCHEMA.name,
   name: "GLORP",
+  display_name: "Glorp",
 });
 
 const DATABASE_WITH_UNNAMED_SCHEMA = createMockDatabase({
@@ -244,8 +251,7 @@ describe("TablePicker", () => {
         schemaId: SINGLE_SCHEMA.name,
       });
 
-      // the schema is expanded and renders its children tables
-      expect(item(SINGLE_SCHEMA)).toBeInTheDocument();
+      // the schema is flattened into the parent
       expect(item(QUU)).toBeInTheDocument();
       expect(item(QUX)).toBeInTheDocument();
     });
@@ -273,26 +279,23 @@ describe("TablePicker", () => {
 
       // arrow down moves focus down
       await userEvent.keyboard("{ArrowDown}");
-      expect(item(SINGLE_SCHEMA)).toHaveFocus();
+      expect(item(QUU)).toHaveFocus();
 
-      // it opens single child automatically
-      expect(item(SINGLE_SCHEMA)?.dataset.open).toBe("true");
-
-      // left arrow closes the node
-      await userEvent.keyboard("{ArrowLeft}");
-      expect(item(SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
-
-      // arrow left again moves the cursor to the parent node
+      // left moves focus to the parent node
       await userEvent.keyboard("{ArrowLeft}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
 
-      // space toggles the node
-      await userEvent.keyboard(" ");
+      // left arrow closes the node
+      await userEvent.keyboard("{ArrowLeft}");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
 
       // space toggles the node
       await userEvent.keyboard(" ");
       expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
+
+      // space toggles the node
+      await userEvent.keyboard(" ");
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
 
       // enter selects the node
       await userEvent.keyboard("{Enter}");
@@ -308,14 +311,16 @@ describe("TablePicker", () => {
     const FOO_RESULT = createMockSearchResult({
       id: nextId(),
       model: "table",
-      name: "FOO",
+      name: "Foo",
+      table_name: "FOO",
       table_schema: SCHEMA,
       database_name: DATABASE,
     });
     const BAR_RESULT = createMockSearchResult({
       id: nextId(),
       model: "table",
-      name: "BAR",
+      name: "Bar",
+      table_name: "BAR",
       table_schema: SCHEMA,
       database_name: DATABASE,
     });
@@ -376,11 +381,6 @@ describe("TablePicker", () => {
   });
 });
 
-async function clickItem({ name }: { name: string }) {
-  const node = await screen.findByText(name);
-  await userEvent.click(node);
-}
-
 function searchInput() {
   return screen.getByRole("textbox");
 }
@@ -394,11 +394,22 @@ async function waitLoading() {
   });
 }
 
-function item(input: string | { name: string } | null) {
+function item(input: string | { display_name?: string; name: string } | null) {
   if (input === null) {
     throw new Error("item() was called with null");
   }
-  const name = typeof input === "string" ? input : input.name;
+  const name =
+    typeof input === "string" ? input : (input.display_name ?? input.name);
   return (screen.queryByText(name)?.parentNode?.parentNode ??
     null) as HTMLDivElement | null;
+}
+
+async function clickItem(
+  input: string | { display_name?: string; name: string } | null,
+) {
+  const node = item(input);
+  expect(node).toBeInTheDocument();
+  if (node) {
+    await userEvent.click(node);
+  }
 }

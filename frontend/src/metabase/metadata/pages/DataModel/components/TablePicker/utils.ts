@@ -328,11 +328,20 @@ export function flatten(
   opts: {
     addLoadingNodes?: boolean;
     isExpanded?: (key: string) => boolean;
+    isSingleSchema?: boolean;
     level?: number;
     parent?: NodeKey;
+    canFlattenSingleSchema?: boolean;
   } = {},
 ): FlatItem[] {
-  const { addLoadingNodes, isExpanded, level = 0, parent } = opts;
+  const {
+    addLoadingNodes,
+    isExpanded,
+    isSingleSchema,
+    canFlattenSingleSchema,
+    level = 0,
+    parent,
+  } = opts;
   if (node.type === "root") {
     // root node doesn't render a title and is always expanded
     if (addLoadingNodes && node.children.length === 0) {
@@ -345,7 +354,11 @@ export function flatten(
     return sort(node.children).flatMap((child) => flatten(child, opts));
   }
 
-  if (node.type === "schema" && node.label === UNNAMED_SCHEMA_NAME) {
+  if (
+    node.type === "schema" &&
+    (node.label === UNNAMED_SCHEMA_NAME ||
+      (isSingleSchema && canFlattenSingleSchema))
+  ) {
     // Hide nameless schemas in the tree
     return [
       ...sort(node.children).flatMap((child) =>
@@ -380,6 +393,7 @@ export function flatten(
         ...opts,
         level: level + 1,
         parent: node.key,
+        isSingleSchema: node.type === "database" && node.children.length === 1,
       }),
     ),
   ];

@@ -51,7 +51,11 @@ function Tree({
   const { isExpanded, toggle } = useExpandedState(value);
   const { tree } = useTableLoader(value);
 
-  const items = flatten(tree, { isExpanded, addLoadingNodes: true });
+  const items = flatten(tree, {
+    isExpanded,
+    addLoadingNodes: true,
+    canFlattenSingleSchema: true,
+  });
   const isEmpty = items.length === 0;
 
   useEffect(() => {
