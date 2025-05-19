@@ -9,8 +9,10 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -56,6 +58,59 @@
          (request body)
          :conversation_id conversation_id)
     (metabot-v3.context/log :llm.log/be->fe)))
+
+(def ^:private metabots [{:id 1 :name "Internal Metabot"}
+                         {:id 2 :name "Embedding Metabot"}])
+
+(api.macros/defendpoint :get "/metabots"
+  "List configured metabot instances"
+  []
+  (api/check-superuser)
+  [{:id 1 :name "Internal Metabot"}
+   {:id 2 :name "Embedding Metabot"}])
+
+(api.macros/defendpoint :get "/metabots/:id"
+  "Retrieve one metabot instance"
+  [{:keys [id]} :- [:map [:id pos-int?]]]
+  (api/check-superuser)
+  (get metabots (dec id)))
+
+(api.macros/defendpoint :get "/metabots/:id/entities"
+  "List the entities this metabot has access to"
+  [{:keys [id]} :- [:map [:id pos-int?]]]
+  (api/check-superuser)
+  {:data [{:id "model-123"
+           :model "model"
+           :name "Sample Model"
+           :collection_id "1"
+           :collection_name "Analytics"}
+          {:id "metric-456"
+           :model "metric"
+           :name "Sample Metric"
+           :collection_id "2"
+           :collection_name "Marketing"}]
+   :total 2
+   :limit (request/limit)
+   :offset (request/offset)})
+
+(api.macros/defendpoint :put "/metabots/:id/entities"
+  "Update the entities this metabot has access to"
+  [{:keys [id]} :- [:map [:id pos-int?]]
+   _query-params
+   entities :- [:sequential [:map
+                             [:id ms/NonBlankString]
+                             [:model ms/NonBlankString]]]]
+  (api/check-superuser)
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :delete ["/metabots/:id/entities/:model-type/:model-id" :model-type #"model|metric"]
+  "Remove an entity from this metabot's access list"
+  [{:keys [id model-type model-id]} :- [:map
+                                        [:id pos-int?]
+                                        [:model-type [:enum "model" "metric"]]
+                                        [:model-id pos-int?]]]
+  (api/check-superuser)
+  api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
