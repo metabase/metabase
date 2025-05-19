@@ -36,7 +36,6 @@ export function FormattingWidget() {
   const {
     value: initialValue,
     updateSetting,
-    description,
     isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
@@ -75,11 +74,7 @@ export function FormattingWidget() {
 
   return (
     <Stack data-testid="custom-formatting-setting">
-      <SettingHeader
-        id="custom-formatting"
-        title={t`Localization options`}
-        description={description}
-      />
+      <SettingHeader id="custom-formatting" title={t`Localization options`} />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
