@@ -18,7 +18,7 @@ import type { Settings } from "metabase-types/api";
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
 
-import { jwtRefreshFunction } from "./jwt";
+import { jwtRefreshTokenFn } from "./jwt";
 import { popupRefreshTokenFn } from "./popup";
 
 export const initAuth = createAsyncThunk(
@@ -30,8 +30,11 @@ export const initAuth = createAsyncThunk(
       authConfig.metabaseInstanceUrl?.length > 0;
     const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
-    if (isValidInstanceUrl) {
-      // JWT setup
+    if (isValidApiKeyConfig) {
+      // API key setup
+      api.apiKey = authConfig.apiKey;
+    } else if (isValidInstanceUrl) {
+      // SSO setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
           getOrRefreshSession(authConfig.metabaseInstanceUrl),
@@ -44,10 +47,8 @@ export const initAuth = createAsyncThunk(
       await dispatch(
         getOrRefreshSession(authConfig.metabaseInstanceUrl),
       ).unwrap();
-    } else if (isValidApiKeyConfig) {
-      // API key setup
-      api.apiKey = authConfig.apiKey;
     }
+
     // Fetch user and site settings
     const [user, siteSettings] = await Promise.all([
       dispatch(refreshCurrentUser()),
@@ -102,8 +103,6 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = runRefreshTokenFn;
-
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
     // The following lines are wrapped in a try/catch block that will catch any errors thrown, log them to the console as a big red errors, and re-throw them to make the thunk reject
@@ -157,7 +156,7 @@ const safeStringify = (value: unknown) => {
   }
 };
 
-const runRefreshTokenFn = async (
+const getRefreshToken = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
   customFetchRequestFunction: MetabaseAuthConfig["fetchRequestToken"],
 ) => {
@@ -174,28 +173,7 @@ const runRefreshTokenFn = async (
     return popupRefreshTokenFn(responseUrl);
   }
 
-  // Points to the JWT Auth endpoint on the client server
-  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
-  const clientBackendResponse = await (
-    customFetchRequestFunction ?? jwtRefreshFunction
-  )(responseUrl);
-
-  const jwtTokenResponse = clientBackendResponse.jwt;
-  const mbAuthUrl = new URL(`${url}/auth/sso`);
-  mbAuthUrl.searchParams.set("jwt", jwtTokenResponse);
-  const authSsoReponse = await fetch(mbAuthUrl, getFetchParams(hash));
-
-  if (!authSsoReponse.ok) {
-    throw new Error(
-      `Failed to fetch the session, HTTP status: ${authSsoReponse.status}`,
-    );
-  }
-  const asText = await authSsoReponse.text();
-  try {
-    return JSON.parse(asText);
-  } catch (ex) {
-    return asText;
-  }
+  return jwtRefreshTokenFn(responseUrl, hash, customFetchRequestFunction);
 };
 
 const sessionSchema = Yup.object({

@@ -4,7 +4,8 @@ import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
-import { initAuth } from "embedding-sdk/store/auth/auth";
+import { initAuth } from "embedding-sdk/store/auth";
+import { authTokenStorage } from "embedding-sdk/store/auth/saml-token-storage";
 import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
 import {
   getFetchRefreshTokenFn,
@@ -52,6 +53,9 @@ export const useInitData = ({
       return;
     }
     hasBeenInitialized.current = true;
+
+    // remove any stale tokens that might be there from a previous session=
+    authTokenStorage.remove();
 
     registerVisualizationsOnce();
 

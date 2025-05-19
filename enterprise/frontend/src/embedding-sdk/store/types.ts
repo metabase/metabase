@@ -31,7 +31,7 @@ export type SdkState = {
   usageProblem: null | SdkUsageProblem;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
-  fetchRefreshTokenFn: MetabaseAuthConfig["fetchRequestToken"] | null;
+  fetchRefreshTokenFn: MetabaseAuthConfig["fetchRequestToken"];
 };
 
 export interface SdkStoreState extends State {

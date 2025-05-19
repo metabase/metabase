@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.integrations.jwt-token-utils :as jwt-token-utils]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.embedding.settings :as embed.settings]
@@ -18,18 +19,6 @@
    (java.net URLEncoder)))
 
 (set! *warn-on-reflection* true)
-
-(def tokens (atom #{}))
-
-(defn validate-token [token]
-  (let [result (atom false)]
-    (swap! tokens
-           (fn [s]
-             (if (contains? s token)
-               (do (reset! result true)
-                   (disj s token))
-               s)))
-    @result))
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
@@ -136,7 +125,7 @@
 
 (defn ^:private generate-response-token
   [session jwt-data validation-token]
-  (if (and (validate-token validation-token) (embed.settings/enable-embedding-sdk))
+  (if (and (jwt-token-utils/validate-token validation-token) (embed.settings/enable-embedding-sdk))
 
     (response/response
      {:status :ok
@@ -162,10 +151,9 @@
   (check-jwt-enabled)
   (let [jwt-data (when jwt (session-data jwt request))
         is-sdk? (sso-utils/is-embedding-sdk-header? request)]
-    (println is-sdk? jwt (:headers request) (get (:headers request) "x-metabase-sdk-jwt-hash" nil))
     (cond
-      (and is-sdk? jwt) (generate-response-token (:session jwt-data) (:jwt-data jwt-data) (get (:headers request) "x-metabase-sdk-jwt-hash" nil))
-      is-sdk?           (response/response {:url (sso-settings/jwt-identity-provider-uri) :method "jwt" :hash (let [new-uuid (str (java.util.UUID/randomUUID))] (swap! tokens conj new-uuid) new-uuid)})
+      (and is-sdk? jwt) (generate-response-token (:session jwt-data) (:jwt-data jwt-data) (jwt-token-utils/get-token-from-header))
+      is-sdk?           (response/response {:url (sso-settings/jwt-identity-provider-uri) :method "jwt" :hash (jwt-token-utils/generate-token)})
       jwt               (request/set-session-cookies request
                                                      (response/redirect (:redirect-url jwt-data))
                                                      (:session jwt-data)
