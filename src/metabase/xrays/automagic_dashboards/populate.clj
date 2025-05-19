@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
-   [metabase.models.card :as card]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.filters :as filters]
@@ -139,7 +139,7 @@
                   :collection_id nil
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
-                 card/populate-query-fields)]
+                 queries/populate-card-query-fields)]
     (update dashboard :dashcards conj
             (merge (card-defaults)
                    {:col                    y
@@ -318,7 +318,7 @@
                                                      (fn [dashcard card]
                                                        (m/assoc-some dashcard :card card))
                                                      dashcards
-                                                     (card/with-can-run-adhoc-query cards)))))]
+                                                     (queries/with-can-run-adhoc-query cards)))))]
 
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)

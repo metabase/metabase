@@ -17,7 +17,7 @@
 (deftest cleanup-test
   (testing "file is actually deleted after cleanup"
     (let [storage (temp-storage/to-temp-file! "test-data")
-          file (.file storage)]
+          ^java.io.File file (.file storage)]
       (is (.exists file))
       (temp-storage/cleanup! storage)
       (is (not (.exists file)))

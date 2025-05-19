@@ -2,6 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.cluster-lock :as cluster-lock]
@@ -15,8 +17,11 @@
 
 (def ^:private update-used-card-interval-seconds 20)
 
-(defn- update-used-cards!*
-  [card-id-timestamps]
+(mu/defn- update-used-cards!*
+  [card-id-timestamps :- [:sequential
+                          [:map
+                           [:id ::lib.schema.id/card]
+                           [:timestamp (lib.schema.common/instance-of-class java.time.OffsetDateTime)]]]]
   (let [card-id->timestamp (update-vals (group-by :id card-id-timestamps)
                                         (fn [xs] (apply t/max (map :timestamp xs))))]
     (log/debugf "Update last_used_at of %d cards" (count card-id->timestamp))
@@ -37,7 +42,7 @@
   update-used-cards-queue
   (delay
     (grouper/start!
-     update-used-cards!*
+     #'update-used-cards!*
      :capacity 500
      :interval (* update-used-card-interval-seconds 1000))))
 

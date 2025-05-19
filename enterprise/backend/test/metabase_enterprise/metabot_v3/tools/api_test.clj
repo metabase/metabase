@@ -14,9 +14,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn- ai-session-token
@@ -380,7 +380,7 @@
                                    :type :metric}]
             (mt/with-temp [:model/Card {model-metric-id :id} (assoc model-metric-data :collection_id collection-id)]
               (ensure-field-values! :products)
-              (testing "Calling with Wrong metabot-id"
+              (testing "Calling with wrong metabot-id"
                 (let [conversation-id (str (random-uuid))
                       ai-token (ai-session-token (str metabot-id "-"))]
                   (mt/user-http-request :rasta :post 400 "ee/metabot-tools/answer-sources"
@@ -395,10 +395,10 @@
                                                       :conversation_id conversation-id})
                       expected-fields
                       [{:name "ID", :type "number", :semantic_type "pk"}
-                       {:name "Ean", :type "string", :field_values string-sequence?}
-                       {:name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
-                       {:name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
-                       {:name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+                       {:name "Ean", :type "string"}
+                       {:name "Title", :type "string", :semantic_type "title"}
+                       {:name "Category", :type "string", :semantic_type "category"}
+                       {:name "Vendor", :type "string", :semantic_type "company"}
                        {:name "Price", :type "number"}
                        {:name "Rating", :type "number", :semantic_type "score"}
                        {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]

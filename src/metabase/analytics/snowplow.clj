@@ -92,6 +92,17 @@
                 (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
   :doc false)
 
+(defsetting non-table-chart-generated
+  (deferred-tru "Whether a non-table chart has already been generated. Required for analytics to track instance activation journey.")
+  :visibility :authenticated
+  :default    false
+  :type       :boolean
+  :export?    true
+  :setter     (fn [new-value]
+                ;; Only allow toggling from false -> true one time
+                (when (true? new-value)
+                  (setting/set-value-of-type! :boolean :non-table-chart-generated true))))
+
 (defn- tracker-config
   []
   (TrackerConfiguration. "sp" "metabase"))

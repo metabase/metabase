@@ -6,7 +6,8 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.slack :as slack]
-   [metabase.models.params.shared :as shared.params]
+   [metabase.parameters.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
@@ -149,6 +150,19 @@
    (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (system/site-locale)))
    attachment-text-length-limit))
 
+(defn- include-branding?
+  "Branding in exports is included only for instances that do not have a whitelabel feature flag."
+  []
+  (not (premium-features/enable-whitelabeling?)))
+
+(def metabase-branding-link
+  "Metabase link with UTM params related to the branding exports campaign"
+  "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=slack")
+
+(def metabase-branding-copy
+  "Human visible Markdown content that we use for branding purposes in Slack links"
+  "Made with Metabase :blue_heart:")
+
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
@@ -158,12 +172,18 @@
                                 :text (truncate (:name dashboard) header-text-limit)
                                 :emoji true}}
         link-section    {:type "section"
-                         :fields [{:type "mrkdwn"
-                                   :text (mkdwn-link-text
-                                          (urls/dashboard-url (:id dashboard) parameters)
-                                          (format "*Sent from %s by %s*"
-                                                  (appearance/site-name)
-                                                  creator-name))}]}
+                         :fields (cond-> [{:type "mrkdwn"
+                                           :text (mkdwn-link-text
+                                                  (urls/dashboard-url (:id dashboard) parameters)
+                                                  (format "*Sent from %s by %s*"
+                                                          (appearance/site-name)
+                                                          creator-name))}]
+                                   (include-branding?)
+                                   (conj
+                                    {:type "mrkdwn"
+                                     :text (mkdwn-link-text
+                                            metabase-branding-link
+                                            metabase-branding-copy)}))}
         filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})

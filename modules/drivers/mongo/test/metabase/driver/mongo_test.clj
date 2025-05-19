@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.downloads-exports-test :as downloads-test]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
@@ -540,7 +540,7 @@
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
-    (with-redefs [metadata-queries/nested-field-sample-limit 2]
+    (with-redefs [table-rows-sample/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
           [["bird_species"
@@ -571,7 +571,7 @@
       (let [table (t2/select-one :model/Table :id (mt/id :venues))
             fields (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
-        (with-redefs [metadata-queries/nested-field-sample-limit 5]
+        (with-redefs [table-rows-sample/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
                   ["Golden Road Brewing" 10]
                   ["Lucky Baldwin's Pub" 7]

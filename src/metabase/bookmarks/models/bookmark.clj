@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :as card]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -34,7 +34,7 @@
    [:item_id                          ms/PositiveInt]
    [:name                             ms/NonBlankString]
    [:authority_level {:optional true} [:maybe :string]]
-   [:card_type       {:optional true} [:maybe [:ref ::card/type]]]
+   [:card_type       {:optional true} [:maybe ::queries.schema/card-type]]
    [:description     {:optional true} [:maybe :string]]
    [:display         {:optional true} [:maybe :string]]])
 

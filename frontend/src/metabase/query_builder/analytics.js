@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
 import * as Lib from "metabase-lib";
 
 export const trackNewQuestionSaved = (
@@ -84,5 +84,12 @@ export const trackColumnExtractViaPlusModal = (
     ),
     database_id: Lib.databaseID(query),
     question_id: question?.id() ?? 0,
+  });
+};
+
+export const trackFirstNonTableChartGenerated = (card) => {
+  trackSimpleEvent({
+    event: "chart_generated",
+    event_detail: card.display,
   });
 };
