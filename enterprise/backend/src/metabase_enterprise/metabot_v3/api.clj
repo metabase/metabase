@@ -124,11 +124,11 @@
                      :model_id model_id}))))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :delete ["/metabots/:id/entities/:model-type/:model-id" :model-type #"model|metric"]
+(api.macros/defendpoint :delete ["/metabots/:id/entities/:model-type/:model-id" :model-type #"dataset|metric"]
   "Remove an entity from this metabot's access list"
   [{:keys [id model-type model-id]} :- [:map
                                         [:id pos-int?]
-                                        [:model-type [:enum "model" "metric"]]
+                                        [:model-type [:enum "dataset" "metric"]]
                                         [:model-id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))

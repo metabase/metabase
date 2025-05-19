@@ -149,7 +149,7 @@
                                                 :collection_id collection-id}
                    :model/MetabotEntity _ {:metabot_id metabot-id
                                            :model_id card-id-1
-                                           :model_type "model"}
+                                           :model_type "dataset"}
                    :model/MetabotEntity {entity-id-2 :id} {:metabot_id metabot-id
                                                            :model_id card-id-2
                                                            :model_type "metric"}]
@@ -160,7 +160,7 @@
 
         ;; Delete one entity
         (mt/user-http-request :crowberto :delete 204
-                              (format "ee/metabot-v3/metabots/%d/entities/model/%d"
+                              (format "ee/metabot-v3/metabots/%d/entities/dataset/%d"
                                       metabot-id card-id-1))
 
         ;; Verify only one entity remains and it's the correct one
@@ -185,7 +185,7 @@
       (testing "should return 204 even if entity doesn't exist"
         ;; This tests idempotency - deleting a non-existent entity should still return success
         (mt/user-http-request :crowberto :delete 204
-                              (format "ee/metabot-v3/metabots/%d/entities/model/%d"
+                              (format "ee/metabot-v3/metabots/%d/entities/dataset/%d"
                                       metabot-id 99999))))))
 
 (deftest agent-test
