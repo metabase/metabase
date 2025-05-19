@@ -43,7 +43,8 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
     return (params, ...rest) => {
       const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
         getPivotOptions(question);
-      const newPivotOptions = getUnaggregatedPivotOptions(question);
+      const preaggregatedPivotOptions = getPivotOptions(question);
+      const unaggregatedPivotOptions = getUnaggregatedPivotOptions(question);
       return api(
         {
           ...params,
@@ -51,7 +52,8 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
           pivot_cols,
           show_row_totals,
           show_column_totals,
-          ...newPivotOptions,
+          ...preaggregatedPivotOptions,
+          ...unaggregatedPivotOptions,
         },
         ...rest,
       );
