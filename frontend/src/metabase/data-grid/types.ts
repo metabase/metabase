@@ -266,7 +266,6 @@ export interface DataGridInstance<TData> {
   enableRowVirtualization: boolean;
   enablePagination: boolean;
   theme?: DataGridTheme;
-  measureColumnWidths: () => void;
   getTotalHeight: () => number;
   getVisibleRows: () => MaybeVirtualRow<TData>[];
   onHeaderCellClick?: (

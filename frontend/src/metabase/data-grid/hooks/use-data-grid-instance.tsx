@@ -537,7 +537,6 @@ export const useDataGridInstance = <TData, TValue>({
     measureRoot,
     columnsReordering,
     selection,
-    measureColumnWidths,
     enableRowVirtualization,
     getTotalHeight,
     getVisibleRows,
