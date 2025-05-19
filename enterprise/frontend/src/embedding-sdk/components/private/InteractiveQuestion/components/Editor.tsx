@@ -34,6 +34,7 @@ export type InteractiveQuestionEditorProps = {
  * @param props
  */
 export const Editor = ({
+  onApply,
   hasVisualizeButton = true,
 }: InteractiveQuestionEditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
@@ -74,6 +75,7 @@ export const Editor = ({
             await updateQuestion(nextQuestion, { run: false })
           }
           runQuestionQuery={async () => {
+            onApply?.();
             await queryQuestion();
           }}
           setQueryBuilderMode={() => {}}
