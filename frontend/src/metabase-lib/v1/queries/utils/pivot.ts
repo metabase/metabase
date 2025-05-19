@@ -52,7 +52,7 @@ function getColumnNamePivotOptions(
   query: Lib.Query,
   stageIndex: number,
   setting: ColumnNameSplitSetting,
-): PivotOptions {
+): { pivot_preagg_column_split: PivotOptions } {
   const returnedColumns = Lib.returnedColumns(query, stageIndex);
   const breakoutColumnNames = returnedColumns
     .map((column) => Lib.displayInfo(query, stageIndex, column))
@@ -65,14 +65,19 @@ function getColumnNamePivotOptions(
       .filter((columnIndex) => columnIndex >= 0);
   });
 
-  return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
+  return {
+    pivot_preagg_column_split: {
+      pivot_rows: rows ?? [],
+      pivot_cols: columns ?? [],
+    },
+  };
 }
 
 function getFieldRefPivotOptions(
   query: Lib.Query,
   stageIndex: number,
   setting: FieldRefColumnSplitSetting,
-): PivotOptions {
+): { pivot_preagg_column_split: PivotOptions } {
   const returnedColumns = Lib.returnedColumns(query, stageIndex);
   const breakoutColumns = returnedColumns.filter(
     (column) => Lib.displayInfo(query, stageIndex, column).isBreakout,
@@ -93,7 +98,12 @@ function getFieldRefPivotOptions(
     return breakoutIndexes.filter((breakoutIndex) => breakoutIndex >= 0);
   });
 
-  return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
+  return {
+    pivot_preagg_column_split: {
+      pivot_rows: rows ?? [],
+      pivot_cols: columns ?? [],
+    },
+  };
 }
 
 export function getUnaggregatedPivotOptions(question: Question) {

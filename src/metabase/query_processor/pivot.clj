@@ -706,9 +706,14 @@
         (add-breakouts col-breakouts)
         (add-aggregations aggregations))))
 
-(defn- is-unaggregated-query
-  "Is this query an unaggregated query with no pivot settings set yet? If so, we run it as-is,
-  not as a pivot."
+(defn- is-preaggregated-query?
+  "Is this a preaggregated pivot query, with the pivot breakouts/aggregation defined by the query itself rather than
+  the viz settings?"
+  [query]
+  (:pivot_preagg_column_split query))
+
+(defn- is-unaggregated-query?
+  "Is this query an unaggregated query with no pivot settings set yet? If so, we run it as-is, not as a pivot."
   [query]
   (or (= (:pivot_unagg_column_split query) {:rows [] :columns [] :value []})
       (= (:pivot_unagg_column_split query) [])))
@@ -724,9 +729,25 @@
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.setup/with-qp-setup [query query]
-       (if (is-unaggregated-query query)
+       (cond
+         (is-preaggregated-query? query)
+         (let [rff               (or rff qp.reducible/default-rff)
+               query             (lib/query (qp.store/metadata-provider) query)
+               pivot-opts        (or
+                                  (pivot-options query (get query :viz-settings))
+                                  (pivot-options query (get-in query [:info :visualization-settings]))
+                                  (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+               query             (-> query
+                                     (assoc-in [:middleware :pivot-options] pivot-opts))
+               all-queries       (generate-queries query pivot-opts)
+               column-mapping-fn (make-column-mapping-fn query)]
+           (process-multiple-queries all-queries rff column-mapping-fn))
+
+         (is-unaggregated-query? query)
          (qp/process-query (dissoc query :info)
                            (or rff qp.reducible/default-rff))
+
+         :else
          (let [rff (or rff qp.reducible/default-rff)
                unagg-column-split (:pivot_unagg_column_split query)
                new-pivot-rows     (or (map :name (:rows unagg-column-split))

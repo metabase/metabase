@@ -41,10 +41,14 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotOptions(question);
+      const preaggregatedPivotOptions = getPivotOptions(question);
       const unaggregatedPivotOptions = getUnaggregatedPivotOptions(question);
       return api(
-        { ...params, pivot_rows, pivot_cols, ...unaggregatedPivotOptions },
+        {
+          ...params,
+          ...preaggregatedPivotOptions,
+          ...unaggregatedPivotOptions,
+        },
         ...rest,
       );
     };
