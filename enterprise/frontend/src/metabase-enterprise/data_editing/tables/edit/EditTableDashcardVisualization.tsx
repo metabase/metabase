@@ -201,18 +201,6 @@ export const EditTableDashcardVisualization = ({
         <Group gap="sm" align="center">
           <ActionIcon
             size="md"
-            onClick={() => alert("TODO")}
-            disabled={shouldDisableActions || !selectedRowIndices.length}
-          >
-            <Icon
-              name="pencil"
-              tooltip={
-                selectedRowIndices.length ? t`Edit` : t`Select rows for editing`
-              }
-            />
-          </ActionIcon>
-          <ActionIcon
-            size="md"
             onClick={requestDeleteBulk}
             disabled={shouldDisableActions || !selectedRowIndices.length}
           >
