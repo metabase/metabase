@@ -361,7 +361,6 @@ export class UnconnectedDataSelector extends Component {
   };
 
   async hydrateActiveStep() {
-    const { steps } = this.props;
     if (
       this.isSavedEntitySelected() ||
       this.state.selectedDataBucketId === DATA_BUCKET.MODELS
