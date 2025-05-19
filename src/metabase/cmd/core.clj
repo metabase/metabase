@@ -115,7 +115,7 @@
          (println "\t" opt-line)))))
   ([]
    (println "Valid commands are:")
-   (doseq [[symb varr] (sort (ns-interns *ns*))
+   (doseq [[symb varr] (sort (ns-interns 'metabase.cmd.core))
            :when       (:command (meta varr))]
      (help symb)
      (println))
@@ -300,7 +300,7 @@
     (cond
       (not command)
       [(str "Unrecognized command: '" command-name "'")
-       (str "Valid commands: " (str/join ", " (map key (filter (comp :command meta val) (ns-interns *ns*)))))]
+       (str "Valid commands: " (str/join ", " (map key (filter (comp :command meta val) (ns-interns 'metabase.cmd.core)))))]
 
       err
       [err]
