@@ -35,6 +35,8 @@
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
   [card-id thunk]
   (assert (fn? thunk))
+  (t2/update! (t2/table-name :model/Card) card-id {:last_used_at #t "2025-05-16T12:40:00-07:00"
+                                                   :updated_at   #t "2025-05-16T12:40:00-07:00"})
   (let [original-last-used-at (card-last-used-at card-id)
         original-updated-at   (card-updated-at card-id)]
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
