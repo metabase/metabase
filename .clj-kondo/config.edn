@@ -247,15 +247,7 @@
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
-    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
-    metabase.util.log/tracef                                                     {:namespaces ["metabase.*"]}
-    metabase.util.log/debugf                                                     {:namespaces ["metabase.*"]}
-    metabase.util.log/infof                                                      {:namespaces ["metabase.*"]}
-    metabase.util.log/warnf                                                      {:namespaces ["metabase.*"]}
-    metabase.util.log/errorf                                                     {:namespaces ["metabase.*"]}
-    metabase.util.log/fatalf                                                     {:namespaces ["metabase.*"]}
-    schema.core/both                                                             {:namespaces ["metabase.*"]}
-    schema.core/either                                                           {:namespaces ["metabase.*"]}}}
+    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
   {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
@@ -859,7 +851,7 @@
   source-namespaces
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
-    :metabase/validate-string-or-str-args-to-i18n    {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
