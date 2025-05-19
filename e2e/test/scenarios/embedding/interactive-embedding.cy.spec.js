@@ -909,10 +909,13 @@ describe("scenarios > embedding > full app", () => {
      * This step only shows when there are more than 1 option in the bucket step, the only time this happens
      * is when there are both selectable models and tables for the current user.
      */
-    function goBackToBucketStep() {
+    /** @param {'from-table' | 'from-model'} fromStep */
+    function goBackToBucketStep(fromStep = "from-table") {
       H.popover().within(() => {
         cy.icon("chevronleft").click();
-        cy.icon("chevronleft").click();
+        if (fromStep === "from-table") {
+          cy.icon("chevronleft").click();
+        }
       });
     }
 
@@ -1299,7 +1302,7 @@ describe("scenarios > embedding > full app", () => {
         });
 
         H.getNotebookStep("data").button("Join data").click();
-        goBackToBucketStep();
+        goBackToBucketStep("from-model");
         selectCard({
           cardName: ordersCountModelDetails.name,
           cardType: "model",
@@ -1329,7 +1332,7 @@ describe("scenarios > embedding > full app", () => {
         });
 
         H.getNotebookStep("data").button("Join data").click();
-        goBackToBucketStep();
+        goBackToBucketStep("from-model");
 
         selectTable({
           tableName: "Products",
