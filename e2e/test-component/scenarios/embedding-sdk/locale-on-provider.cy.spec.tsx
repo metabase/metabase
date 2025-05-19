@@ -92,7 +92,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByText("Sumarizar").should("exist");
+      cy.findByText("Resumir").should("exist");
     });
   });
 
