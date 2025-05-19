@@ -38,7 +38,7 @@ function setup({
       }}
       locale={locale}
     >
-      <InteractiveQuestion dashboardId={ORDERS_QUESTION_ID} />,
+      <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
     </MetabaseProvider>,
   );
 
