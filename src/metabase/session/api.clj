@@ -305,7 +305,7 @@
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
 
-(api.macros/defendpoint :post "/password_check"
+(api.macros/defendpoint :post "/password-check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params
    _query-params
