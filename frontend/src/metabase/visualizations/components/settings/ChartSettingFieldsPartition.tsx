@@ -508,30 +508,21 @@ export const ChartSettingFieldsPartition = ({
                           </Draggable>
                         );
                       } else if (partitionType === "metric") {
-                        const col = Lib.aggregationColumn(
+                        const aggDisplay = Lib.displayInfo(
                           query,
                           -1,
                           val as Lib.AggregationClause,
                         );
-                        const colDisplay = Lib.displayInfo(
-                          query,
-                          -1,
-                          col as Lib.ColumnMetadata,
+                        const datasetCol = (aggregatedColumns || columns).find(
+                          (col) => col.name === aggDisplay.name,
                         );
+                        const aggDisplayName = aggDisplay.displayName;
 
-                        const aggName = Lib.displayInfo(
-                          query,
-                          -1,
-                          val as Lib.AggregationClause,
-                        ).displayName;
-                        const datasetCol = columns.find(
-                          (col) => col.name === colDisplay.name,
-                        );
                         if (datasetCol) {
                           return (
                             <Draggable
-                              key={`draggable-${aggName}-${index}`}
-                              draggableId={`draggable-${aggName}`}
+                              key={`draggable-${aggDisplayName}-${index}`}
+                              draggableId={`draggable-${aggDisplayName}`}
                               index={index}
                             >
                               {(provided) => (
@@ -542,13 +533,13 @@ export const ChartSettingFieldsPartition = ({
                                   className={CS.mb1}
                                 >
                                   <Column
-                                    key={`${partitionName}-${aggName}`}
+                                    key={`${partitionName}-${aggDisplayName}`}
                                     column={datasetCol}
                                     onEditFormatting={handleEditFormatting}
                                     onRemove={() =>
                                       onRemoveBreakout(partitionName, index)
                                     }
-                                    title={aggName}
+                                    title={aggDisplayName}
                                   />
                                 </Box>
                               )}
