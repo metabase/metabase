@@ -1,9 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockField } from "metabase-types/api/mocks";
 
 import { PreviewSection } from "./PreviewSection";
 import { type PreviewType, usePreviewType } from "./utils";
+
+const field = createMockField();
 
 function Wrapper({
   onPreviewTypeChange,
@@ -19,6 +22,10 @@ function Wrapper({
 
   return (
     <PreviewSection
+      databaseId={1}
+      tableId={field.table_id}
+      fieldId={16}
+      field={field}
       previewType={previewType}
       onPreviewTypeChange={handlePreviewTypeChange}
     />
