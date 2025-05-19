@@ -3,10 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
-   [metabase.test.http-client :as client]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 

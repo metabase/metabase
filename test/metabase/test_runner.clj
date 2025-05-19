@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
   (:require

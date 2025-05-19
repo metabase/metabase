@@ -10,10 +10,10 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
    [metabase.config.core :as config]
-   [metabase.test.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))

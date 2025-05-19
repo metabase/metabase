@@ -1,4 +1,5 @@
-(ns #_{:clj-kondo/ignore [:metabase/namespace-name]} metabase.logger
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
+(ns metabase.logger
   "Configures the logger system for Metabase. Sets up an in-memory logger in a ring buffer for showing in the UI. Other
   logging options are set in [[metabase.core.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the
   logger that clojure.tools.logging uses."
