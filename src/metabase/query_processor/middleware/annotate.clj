@@ -236,8 +236,6 @@
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
-    ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-    :expression_name expression-name
     :field_ref       (fe-friendly-expression-ref clause)}
    (when temporal-unit
      {:unit temporal-unit})))
