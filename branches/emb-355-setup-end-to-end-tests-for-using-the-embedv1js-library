@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "new-iframe-embedding",
-    "hash": "5af0a1720b361e754dc2aceec2e66ef15740b905"
+    "hash": "524a9ef27a7b4284b0ac7906d06a9ebb98405926"
   },
   "upstream": {
     "branch": "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library"
