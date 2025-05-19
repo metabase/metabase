@@ -1,7 +1,7 @@
 (ns metabase.types.core-test
   (:require
    [clojure.test :refer [deftest is testing are]]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]))
 
 (deftest ^:parallel assignable?-test
