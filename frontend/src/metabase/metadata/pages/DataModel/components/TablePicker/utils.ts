@@ -68,7 +68,7 @@ export function getUrl(value: TreePath) {
 export function useTableLoader(path: TreePath) {
   const [fetchDatabases] = useLazyListDatabasesQuery();
   const [fetchSchemas] = useLazyListDatabaseSchemasQuery();
-  const [fetchTables] = useLazyListDatabaseSchemaTablesQuery();
+  const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
@@ -98,7 +98,7 @@ export function useTableLoader(path: TreePath) {
         res?.data?.map((table) =>
           node<TableNode>({
             type: "table",
-            label: table.name,
+            label: table.display_name,
             value: { databaseId, schemaId, tableId: table.id },
           }),
         ) ?? []
@@ -164,7 +164,7 @@ export function useTableLoader(path: TreePath) {
 
   useDeepCompareEffect(() => {
     load(path);
-  }, [load, path]);
+  }, [load, path, tables.isFetching]);
 
   return { tree };
 }
