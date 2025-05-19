@@ -202,21 +202,24 @@ await build({
     }),
     NodeModulesPolyfillPlugin(),
     svgPlugin({ aliases, getFullPathFromResolvePath }),
-    sideEffectsPlugin({
-      cwd: process.cwd(),
-      sideEffects: [
-        "**/*.css",
-        "./enterprise/frontend/src/metabase-enterprise/**",
-        "./enterprise/frontend/src/embedding-sdk/index.ts",
-        // eslint-disable-next-line no-literal-metabase-strings -- build config
-        "./enterprise/frontend/src/embedding-sdk/components/public/MetabaseProvider.tsx",
-        "./frontend/src/metabase/visualizations/components/LeafletChoropleth.jsx",
-        "./frontend/src/metabase/visualizations/components/LeafletHeatMap.jsx",
-        "./frontend/src/metabase/visualizations/components/LeafletMap.jsx",
-        "./frontend/src/metabase/dashboard/components/grid/GridLayout.tsx",
-        "./e2e/**/**",
-      ],
-    }),
+    !isDevMode
+      ? // This plugin is heavy, so we don't apply it for dev mode
+        sideEffectsPlugin({
+          cwd: process.cwd(),
+          sideEffects: [
+            "**/*.css",
+            "./enterprise/frontend/src/metabase-enterprise/**",
+            "./enterprise/frontend/src/embedding-sdk/index.ts",
+            // eslint-disable-next-line no-literal-metabase-strings -- build config
+            "./enterprise/frontend/src/embedding-sdk/components/public/MetabaseProvider.tsx",
+            "./frontend/src/metabase/visualizations/components/LeafletChoropleth.jsx",
+            "./frontend/src/metabase/visualizations/components/LeafletHeatMap.jsx",
+            "./frontend/src/metabase/visualizations/components/LeafletMap.jsx",
+            "./frontend/src/metabase/dashboard/components/grid/GridLayout.tsx",
+            "./e2e/**/**",
+          ],
+        })
+      : null,
   ],
 });
 
