@@ -5,7 +5,7 @@
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.events.core :as events]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api-test :as public-test]

@@ -5,7 +5,7 @@
    [metabase.auth-provider.core :as auth-provider]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.driver.util :as driver.u]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.http :as u.http]

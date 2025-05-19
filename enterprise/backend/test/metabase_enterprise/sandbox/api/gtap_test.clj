@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.util :as driver.util]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]

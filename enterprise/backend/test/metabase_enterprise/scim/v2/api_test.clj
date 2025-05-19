@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -38,7 +38,7 @@
   `(with-scim-setup-impl! (fn [] ~@body)))
 
 (defn- scim-client
-  "Wrapper for `metabase.http-client/client` which includes the SCIM key in the Authorization header"
+  "Wrapper for [[metabase.test.http-client/client]] which includes the SCIM key in the Authorization header"
   ([method expected-status-code endpoint]
    (scim-client method expected-status-code endpoint {}))
   ([method expected-status-code endpoint body]

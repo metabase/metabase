@@ -8,7 +8,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]

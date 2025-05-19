@@ -61,6 +61,7 @@
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
   :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
+  :metabase/namespace-name                             {:level :warning}
   :metabase/require-shape-checker                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/validate-logging                           {:level :warning}
@@ -398,8 +399,7 @@
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
     metabase.eid-translation.core                                 eid-translation
-    metabase.formatter                                            formatter
-    metabase.http-client                                          client
+    metabase.formatter.core                                       formatter
     metabase.legacy-mbql.normalize                                mbql.normalize
     metabase.legacy-mbql.schema                                   mbql.s
     metabase.legacy-mbql.util                                     mbql.u
@@ -414,14 +414,14 @@
     metabase.notification.test-util                               notification.tu
     metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
-    metabase.public-sharing.core                                  public-sharing
     metabase.premium-features.core                                premium-features
+    metabase.public-sharing.core                                  public-sharing
     metabase.pulse.core                                           pulse
+    metabase.pulse.parameters                                     pulse-params
     metabase.pulse.render                                         render
     metabase.pulse.render.body                                    body
     metabase.pulse.render.style                                   style
     metabase.pulse.test-util                                      pulse.test-util
-    metabase.pulse.parameters                                     pulse-params
     metabase.query-processor-test                                 qp.test
     metabase.query-processor.context                              qp.context
     metabase.query-processor.error-type                           qp.error-type
@@ -451,12 +451,12 @@
     metabase.search.config                                        search.config
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
-    metabase.search.in-place.util                                 search.util
     metabase.search.in-place.scoring                              scoring
+    metabase.search.in-place.util                                 search.util
     metabase.server.core                                          server
     metabase.server.protocols                                     server.protocols
-    metabase.sso.core                                             sso
     metabase.settings.core                                        setting
+    metabase.sso.core                                             sso
     metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
@@ -471,9 +471,10 @@
     metabase.test.data.impl                                       data.impl
     metabase.test.data.users                                      test.users
     metabase.test.domain-entities                                 test.de
+    metabase.test.http-client                                     client
     metabase.test.mock.util                                       mock.util
-    metabase.test.sync                                            test.sync
     metabase.test.redefs                                          test.redefs
+    metabase.test.sync                                            test.sync
     metabase.test.util.js                                         test.js
     metabase.test.util.timezone                                   test.tz
     metabase.timeline.core                                        timeline

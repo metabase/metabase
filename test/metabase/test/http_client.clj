@@ -1,4 +1,4 @@
-(ns metabase.http-client
+(ns metabase.test.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require
    [clj-http.client :as http]

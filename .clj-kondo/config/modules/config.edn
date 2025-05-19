@@ -1637,9 +1637,8 @@
  :linters
  {:metabase/modules
   {:ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "test-setup"                       ; anything that contains `test-setup`
-     "^metabase(?:-enterprise)?\\.test" ; anything starting with `metabase.test` or `metabase-enterprise.test`
-     "^metabase\\.http-client$"}}}}     ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                               ; anything ending in `-test`
+     "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                          ; anything that contains `test.impl`
+     "test-setup"                           ; anything that contains `test-setup`
+     "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

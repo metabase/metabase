@@ -6,7 +6,7 @@
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
    [metabase.session.core :as session]

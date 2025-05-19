@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]

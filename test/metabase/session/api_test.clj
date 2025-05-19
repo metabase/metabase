@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver.h2 :as h2]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]

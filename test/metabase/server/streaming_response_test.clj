@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response :as streaming-response]

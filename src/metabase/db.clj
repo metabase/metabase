@@ -1,4 +1,4 @@
-(ns metabase.db
+(ns #_{:clj-kondo/ignore [:metabase/namespace-name]} metabase.db
   "API namespace for the application database (app-db).
 
   It has a few different functions you might need:

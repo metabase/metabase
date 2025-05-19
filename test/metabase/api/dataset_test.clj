@@ -11,7 +11,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]

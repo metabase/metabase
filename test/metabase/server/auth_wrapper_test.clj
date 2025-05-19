@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.http-client :as client]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]))
 
 (use-fixtures
   :once

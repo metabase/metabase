@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.sync.core :as sync]

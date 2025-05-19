@@ -11,7 +11,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.http-client :as client]
+   [metabase.test.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
