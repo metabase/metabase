@@ -328,7 +328,7 @@ export const UserApi = {
 };
 
 export const UtilApi = {
-  password_check: POST("/api/util/password_check"),
+  password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
   bug_report_details: GET("/api/bug-reporting/details"),
