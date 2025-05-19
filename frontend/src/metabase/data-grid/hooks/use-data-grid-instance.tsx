@@ -38,6 +38,7 @@ import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { isNotNull } from "metabase/lib/types";
 
+import { getTruncatedColumnSizing } from "../utils/column-sizing";
 import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
 
 import { useCellSelection } from "./use-cell-selection";
@@ -295,39 +296,62 @@ export const useDataGridInstance = <TData, TValue>({
     enableRowVirtualization,
   });
 
-  // Create function to measure column widths
   const measureColumnWidths = useMeasureColumnWidths(
     table,
     columnsOptions,
-    truncateLongCellWidth,
     theme,
-    setMeasuredColumnSizingMap,
     measurementRenderWrapper,
   );
 
-  // Measure column widths and optionally expand them to fill grid width when minGridWidth is set
-  const updateMeasuredColumnWidths = useCallback(
+  // Applies measured column widths with optional truncation or expansion
+  const applyMeasuredColumnWidths = useCallback(
     async (
-      preserveColumnSizingMap?: ColumnSizingState,
-      truncatePreserved?: boolean,
+      preserveColumnSizingMap: ColumnSizingState = {},
+      truncatePreserved?: boolean, // whether to truncate the preserved column widths
     ) => {
-      const columnSizingMap = await measureColumnWidths(
-        preserveColumnSizingMap,
-        truncatePreserved,
+      const handleColumnsMeasured = (
+        measuredColumnSizingMap: ColumnSizingState,
+      ) => {
+        // Combine measured and preserved widths, applying truncation as needed
+        const columnSizingMap = truncatePreserved
+          ? getTruncatedColumnSizing(
+              { ...measuredColumnSizingMap, ...preserveColumnSizingMap },
+              truncateLongCellWidth,
+            )
+          : {
+              ...getTruncatedColumnSizing(
+                measuredColumnSizingMap,
+                truncateLongCellWidth,
+              ),
+              ...preserveColumnSizingMap,
+            };
+
+        const newWidths = maybeExpandColumnWidths(
+          columnSizingMap,
+          fixedWidthColumnIds,
+          minGridWidth,
+        );
+
+        setMeasuredColumnSizingMap(measuredColumnSizingMap);
+        setColumnSizingMap(newWidths);
+      };
+
+      measureColumnWidths(
+        handleColumnsMeasured,
+        Object.keys(preserveColumnSizingMap),
       );
-      const newWidths = maybeExpandColumnWidths(
-        columnSizingMap,
-        fixedWidthColumnIds,
-        minGridWidth,
-      );
-      setColumnSizingMap(newWidths);
     },
-    [measureColumnWidths, minGridWidth, fixedWidthColumnIds],
+    [
+      measureColumnWidths,
+      truncateLongCellWidth,
+      fixedWidthColumnIds,
+      minGridWidth,
+    ],
   );
 
   // Initial measurement of column widths
   useLayoutEffect(() => {
-    updateMeasuredColumnWidths(controlledColumnSizingMap, true);
+    applyMeasuredColumnWidths(controlledColumnSizingMap, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -462,11 +486,11 @@ export const useDataGridInstance = <TData, TValue>({
         pagination.pageSize !== previousPagination.pageSize);
 
     if (shouldMeasureColumnsForPage) {
-      updateMeasuredColumnWidths(controlledColumnSizingMap);
+      applyMeasuredColumnWidths(controlledColumnSizingMap);
     }
   }, [
     controlledColumnSizingMap,
-    updateMeasuredColumnWidths,
+    applyMeasuredColumnWidths,
     pagination,
     columnsOptions,
     previousPagination,
@@ -475,7 +499,7 @@ export const useDataGridInstance = <TData, TValue>({
   // Reset column widths if controlled sizing map is removed
   useUpdateEffect(() => {
     if (Object.keys(controlledColumnSizingMap ?? {}).length === 0) {
-      updateMeasuredColumnWidths({}, true);
+      applyMeasuredColumnWidths({}, true);
     } else {
       setColumnSizingMap((prev) => ({ ...prev, ...controlledColumnSizingMap }));
     }
@@ -488,13 +512,13 @@ export const useDataGridInstance = <TData, TValue>({
     });
 
     if (!hasSizingForAllColumns) {
-      updateMeasuredColumnWidths(controlledColumnSizingMap);
+      applyMeasuredColumnWidths(controlledColumnSizingMap);
     }
   }, [
     columnsOptions,
     columnSizingMap,
     controlledColumnSizingMap,
-    updateMeasuredColumnWidths,
+    applyMeasuredColumnWidths,
   ]);
 
   // Ensure grid meets minimum width by expanding columns if needed

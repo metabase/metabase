@@ -1314,7 +1314,7 @@ describe("issue 56771", () => {
     H.joinTable("Products");
     H.visualize();
 
-    cy.wait(300); // wait for the column to be resized
+    cy.wait(100); // wait for the column to be resized
 
     cy.findAllByTestId("header-cell")
       .filter(":contains(Products → Category)")
