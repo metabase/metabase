@@ -64,7 +64,7 @@
         (fn capture-fn [e message & [ctx]]
           (swap! logs conj {:namespace (symbol message-namespace)
                             :level     (int->level message-level-int)
-                            :ctx       ctx
+                            :ctx       (update-keys ctx keyword)
                             :e         e
                             :message   message}))))))
 
