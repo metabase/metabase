@@ -219,6 +219,7 @@ export type GetPublicAction = Pick<
 
 type RowActionFieldSettingsBase = {
   parameterId: ParameterId;
+  visibility?: "read-only" | "hidden";
 };
 
 export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {

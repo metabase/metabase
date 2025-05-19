@@ -1,29 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  ActionSettingsLeft,
-  ActionSettingsRight,
-  ActionSettingsWrapper,
-  ModalActions,
-  ParameterMapperContainer,
-} from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
+import { ActionSettingsWrapper } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
 import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
+import { sortActionParams } from "metabase/actions/utils";
 import EmptyState from "metabase/components/EmptyState";
 import EditableText from "metabase/core/components/EditableText/EditableText";
 import CS from "metabase/css/core/index.css";
+import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Title } from "metabase/ui";
 import type {
   EditableTableRowActionDisplaySettings,
   Field,
-  ParameterId,
-  PartialRowActionFieldSettings,
   RowActionFieldSettings,
   WritebackAction,
 } from "metabase-types/api";
 
-import S from "./ConfigureEditableTableActions.module.css";
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
+import S from "./RowActionSettingsModalContent.module.css";
 import { isValidMapping } from "./utils";
 
 interface Props {
@@ -48,114 +42,140 @@ export function RowActionSettingsModalContent({
   const [selectedAction, setSelectedAction] = useState<WritebackAction | null>(
     editedAction || null,
   );
-
   const isEditMode = !!editedAction;
 
   const [actionName, setActionName] = useState<string | undefined>(
     rowActionSettings?.name || selectedAction?.name,
   );
 
-  const [parameterMappings, setParameterMappings] = useState<
-    PartialRowActionFieldSettings[] | undefined
-  >(rowActionSettings?.parameterMappings);
-
   const hasParameters = !!selectedAction?.parameters?.length;
 
-  const currentMappingsMap = useMemo(
-    () =>
-      Object.fromEntries(
-        parameterMappings?.map((mapping) => [mapping.parameterId, mapping]) ??
-          [],
-      ),
-    [parameterMappings],
-  );
+  const sortedParameters = useMemo(() => {
+    const actionParameters = selectedAction?.parameters ?? [];
 
-  const isFormInvalid =
+    return actionParameters && selectedAction?.visualization_settings?.fields
+      ? actionParameters.toSorted(
+          sortActionParams(selectedAction?.visualization_settings),
+        )
+      : actionParameters || [];
+  }, [selectedAction]);
+
+  const initialValues = useMemo(() => {
+    return {
+      parameters: sortedParameters.map(({ id }) => {
+        if (isEditMode) {
+          const mapping = rowActionSettings?.parameterMappings?.find(
+            ({ parameterId }) => id === parameterId,
+          );
+          if (mapping) {
+            return mapping;
+          }
+        }
+
+        // TODO: use real parameter id, not a field id
+        return {
+          parameterId: id,
+          sourceType: "ask-user",
+        } as RowActionFieldSettings;
+      }),
+    };
+  }, [isEditMode, rowActionSettings?.parameterMappings, sortedParameters]);
+
+  const getIsFormInvalid = (values: { parameters: RowActionFieldSettings[] }) =>
     selectedAction != null &&
-    parameterMappings?.some((mapping) => !isValidMapping(mapping));
+    values.parameters.some((mapping) => !isValidMapping(mapping));
 
   const handlePickAction = (action: WritebackAction) => {
     setSelectedAction(action);
   };
 
-  const handleMappingsChange = (
-    mappingsMap: Record<ParameterId, PartialRowActionFieldSettings>,
-  ) => {
-    setParameterMappings(Object.values(mappingsMap));
-  };
+  const handleSubmit = useCallback(
+    (values: { parameters: RowActionFieldSettings[] }) => {
+      // console.log("handleSubmit", values);
 
-  const handleSubmit = useCallback(() => {
-    if (selectedAction) {
-      onSubmit({
-        action: selectedAction,
-        name: actionName,
-        parameterMappings:
-          (parameterMappings as RowActionFieldSettings[]) || [], // checked via "isFormInvalid"
-      });
-    }
+      if (selectedAction) {
+        onSubmit({
+          action: selectedAction,
+          name: actionName,
+          parameterMappings: values.parameters || [],
+        });
+      }
 
-    onClose();
-  }, [selectedAction, onClose, onSubmit, actionName, parameterMappings]);
+      onClose();
+    },
+    [selectedAction, onClose, onSubmit, actionName],
+  );
 
   return (
     <ActionSettingsWrapper
       style={{
+        height: "78vh",
         minWidth: isEditMode ? "auto" : undefined,
       }}
     >
       {!isEditMode && (
-        <ActionSettingsLeft>
+        <Box className={S.ParametersModalModalLeftSection}>
           <h4 className={CS.pb2}>{t`Action Library`}</h4>
           <ConnectedActionPicker
             currentAction={selectedAction}
             onClick={handlePickAction}
           />
-        </ActionSettingsLeft>
+        </Box>
       )}
-      <ActionSettingsRight style={{ padding: 0 }}>
-        {selectedAction ? (
-          <>
-            <Box pl="lg">
-              <EditableText
-                className={S.EditableTitle}
-                initialValue={actionName || selectedAction.name}
-                placeholder={t`Add title`}
-                data-testid="row-action-name-heading"
-                onChange={setActionName}
-              />
-            </Box>
+      <Box className={S.ParametersModalRightSection}>
+        <FormProvider
+          initialValues={initialValues}
+          onSubmit={handleSubmit}
+          enableReinitialize
+        >
+          {({ values }) => (
+            <Form className={S.ParametersForm}>
+              {selectedAction ? (
+                <>
+                  <Box pl="lg">
+                    <EditableText
+                      className={S.EditableTitle}
+                      initialValue={actionName || selectedAction.name}
+                      placeholder={t`Add title`}
+                      data-testid="row-action-name-heading"
+                      onChange={setActionName}
+                    />
+                  </Box>
 
-            {hasParameters && (
-              <Box p="1rem 2rem 0">
-                <Title
-                  order={4}
-                >{t`Where should the values for this row action come from?`}</Title>
+                  {hasParameters && (
+                    <Box p="1rem 2rem 0">
+                      <Title
+                        order={4}
+                      >{t`Where should the values for this row action come from?`}</Title>
+                    </Box>
+                  )}
+                  <Box className={S.ParametersListContainer}>
+                    <RowActionParameterMappingForm
+                      action={selectedAction}
+                      parameters={sortedParameters}
+                      values={values}
+                      tableColumns={tableColumns}
+                    />
+                  </Box>
+                </>
+              ) : (
+                <Box className={S.ParametersListContainer}>
+                  <EmptyActionState />
+                </Box>
+              )}
+              <Box className={S.ParametersModalFooter}>
+                <Button
+                  variant="filled"
+                  type="submit"
+                  disabled={getIsFormInvalid(values)}
+                >
+                  {t`Done`}
+                </Button>
               </Box>
-            )}
-            <ParameterMapperContainer>
-              <RowActionParameterMappingForm
-                action={selectedAction}
-                currentMappingsMap={currentMappingsMap}
-                tableColumns={tableColumns}
-                onMappingsChange={handleMappingsChange}
-              />
-            </ParameterMapperContainer>
-          </>
-        ) : (
-          <ParameterMapperContainer>
-            <EmptyActionState />
-          </ParameterMapperContainer>
-        )}
-        <ModalActions>
-          <Button
-            variant="filled"
-            onClick={handleSubmit}
-            disabled={isFormInvalid}
-          >
-            {t`Done`}
-          </Button>
-        </ModalActions>
-      </ActionSettingsRight>
+            </Form>
+          )}
+        </FormProvider>
+      </Box>
     </ActionSettingsWrapper>
   );
 }

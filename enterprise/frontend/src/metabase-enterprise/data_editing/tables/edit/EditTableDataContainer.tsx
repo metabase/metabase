@@ -93,7 +93,6 @@ export const EditTableDataContainer = ({
     datasetData,
     onObjectIdChange: handleCurrentObjectIdChange,
   });
-  // console.log({ datasetData });
 
   const stateUpdateStrategy =
     useTableEditingStateApiUpdateStrategy(fakeTableQuery);
