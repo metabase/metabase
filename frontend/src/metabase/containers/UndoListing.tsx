@@ -1,6 +1,7 @@
-import { useLayoutEffect } from "react";
+import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
@@ -29,6 +30,7 @@ import {
 } from "./UndoListing.styled";
 
 const TOAST_TRANSITION_DURATION = 300;
+const MARGIN = 8;
 
 function DefaultMessage({
   undo: { verb = t`modified`, count = 1, subject = t`item` },
@@ -56,10 +58,12 @@ function UndoToast({
   undo,
   onUndo,
   onDismiss,
+  style,
 }: {
   undo: Undo;
   onUndo: () => void;
   onDismiss: () => void;
+  style: CSSProperties;
 }) {
   const dispatch = useDispatch();
 
@@ -85,6 +89,7 @@ function UndoToast({
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      style={style}
     >
       {undo.showProgress && (
         <Progress
@@ -151,11 +156,11 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
-  // Reverse the list so new todos are rendered on top
-  const reversed = Array.from(undos).reverse();
-
   // lastId changes when a new undo is added
   const lastId = undos.at(-1)?._domId;
+
+  const ref = useRef<HTMLUListElement>(null);
+  const [heights, setHeights] = useState<number[]>([]);
 
   useLayoutEffect(() => {
     // When a new undo is added, we move the target to the
@@ -163,15 +168,45 @@ export function UndoListOverlay({
     document.body.appendChild(target);
   }, [lastId]);
 
+  useLayoutEffect(() => {
+    // measure the heights of each toast
+    const els = Array.from(
+      ref.current?.querySelectorAll("[data-testid='toast-undo']") ?? [],
+    );
+    const newHeights = els
+      .map((el) => {
+        if (el.classList.contains(CS.exit)) {
+          // the element is exiting, so don't count it's height
+          return 0;
+        }
+        return el.getBoundingClientRect().height;
+      })
+      .filter((height) => height > 0);
+
+    if (!_.isEqual(heights, newHeights)) {
+      setHeights(newHeights);
+    }
+  }, [undos, heights]);
+
+  function heightAtIndex(index: number) {
+    return heights.reduce((acc, height, idx) => {
+      if (idx < index) {
+        return acc + height + MARGIN;
+      }
+      return acc;
+    }, 0);
+  }
+
   return (
     <Portal target={target}>
       <UndoList
+        ref={ref}
         data-testid="undo-list"
         aria-label="undo-list"
         className={ZIndex.Overlay}
       >
         <TransitionGroup>
-          {reversed.map((undo) => (
+          {undos.map((undo, index) => (
             <CSSTransition
               key={undo._domId}
               timeout={TOAST_TRANSITION_DURATION}
@@ -189,6 +224,7 @@ export function UndoListOverlay({
                 undo={undo}
                 onUndo={() => onUndo(undo)}
                 onDismiss={() => onDismiss(undo)}
+                style={{ bottom: heightAtIndex(index) }}
               />
             </CSSTransition>
           ))}

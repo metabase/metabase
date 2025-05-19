@@ -11,7 +11,11 @@
 .toast {
   transition:
     opacity 300ms ease,
-    transform 300ms ease;
+    transform 300ms ease,
+    bottom 300ms ease;
+  position: absolute;
+  bottom: 0;
+  will-change: bottom;
 }
 
 .progress {
@@ -42,5 +46,5 @@
 
 .exitActive {
   opacity: 0;
-  transform: scale(0.98);
+  transform: translateY(20px) scale(0.9);
 }
