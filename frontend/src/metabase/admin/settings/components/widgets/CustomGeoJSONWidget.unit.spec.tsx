@@ -5,13 +5,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { findRequests } from "__support__/utils";
 import { UndoListing } from "metabase/containers/UndoListing";
 import {
@@ -90,32 +84,38 @@ describe("CustomGeoJSONWIdget", () => {
   it("should remove a saved map", async () => {
     setup({});
 
-    await userEvent.click(screen.getByRole("button", { name: /Add a map/i }));
-    expect(
-      screen.getByRole("button", { name: "Add a map" }),
-    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Remove/i }));
+    const modal = screen.getByRole("dialog");
+    expect(modal).toBeInTheDocument();
+    const confirmButton = within(modal).getByRole("button", { name: "Yes" });
+    await userEvent.click(confirmButton);
+    expect(modal).not.toBeInTheDocument();
+
+    const puts = await findRequests("PUT");
+    const { body } = puts[0];
+    expect(body).toEqual({ value: {} });
   });
 
   it("should save an updated setting", async () => {
     setup({});
 
-    const input = await screen.findByRole("textbox");
-    await userEvent.clear(input);
-    await userEvent.type(input, "responses@metatest.com");
-    await fireEvent.blur(input);
+    const addButton = screen.getByRole("button", { name: "Add a map" });
+    await userEvent.click(addButton);
+    const nameInput = screen.getByPlaceholderText(
+      /e.g. United Kingdom, Brazil, Mars/i,
+    );
+    await userEvent.type(nameInput, "Test Map");
 
-    const inputChanged = await screen.findByRole("textbox");
-    expect(inputChanged).toHaveValue("responses@metatest.com");
+    expect(await screen.findByRole("button", { name: /Load/i })).toBeDisabled();
+    const urlInput = screen.getByPlaceholderText(
+      "Like https://my-mb-server.com/maps/my-map.json",
+    );
+    await userEvent.type(urlInput, "https://test.com/download/GeoJSON.json");
+    expect(await screen.findByRole("button", { name: /Load/i })).toBeEnabled();
 
-    await waitFor(async () => {
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-    });
-
-    const puts = await findRequests("PUT");
-    const { url: putUrl, body: putBody } = puts[0];
-    expect(putUrl).toContain("/api/setting/email-reply-to");
-    expect(putBody).toStrictEqual({ value: ["responses@metatest.com"] });
+    expect(
+      await screen.findByRole("button", { name: /Add map/i }),
+    ).toBeDisabled();
   });
 
   it("should display a notice instead of input set by an environment variable", async () => {

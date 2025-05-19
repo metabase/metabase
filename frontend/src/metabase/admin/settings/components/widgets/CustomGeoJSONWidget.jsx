@@ -394,6 +394,7 @@ const EditMap = ({
               onChange={(e) => onMapChange({ ...map, url: e.target.value })}
             />
             <button
+              disabled={!map.url}
               className={cx(ButtonsS.Button, CS.ml1, {
                 [ButtonsS.ButtonPrimary]: !geoJson,
                 [CS.disabled]: !map.url,
@@ -472,6 +473,9 @@ const EditMap = ({
           onClick={onCancel}
         >{t`Cancel`}</button>
         <button
+          disabled={
+            !map.name || !map.url || !map.region_name || !map.region_key
+          }
           className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1, {
             [CS.disabled]:
               !map.name || !map.url || !map.region_name || !map.region_key,
