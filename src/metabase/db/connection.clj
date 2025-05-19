@@ -114,7 +114,7 @@
   ^javax.sql.DataSource []
   (.data-source *application-db*))
 
-;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.models.database]] instance --
+;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
 ;; something callers of this function really need to be concerned about
 (defn unique-identifier
@@ -132,6 +132,11 @@
   (t2.conn/do-with-connection *application-db* f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
+
+(defn in-transaction?
+  "Whether we are currently in a transaction."
+  []
+  (pos? *transaction-depth*))
 
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []

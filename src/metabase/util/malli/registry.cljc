@@ -1,7 +1,8 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
-   #?@(:clj ([malli.experimental.time :as malli.time]))
+   #?@(:clj ([malli.experimental.time :as malli.time]
+             [net.cgrand.macrovich :as macros]))
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut])
@@ -136,7 +137,10 @@
      ([type docstring schema]
       (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
-         (-with-doc ~schema ~docstring)))))
+         ~(macros/case
+           :clj `(-with-doc ~schema ~docstring)
+           ;; Ignore docstring for CLJS.
+           :cljs schema)))))
 
 (defn- deref-all-preserving-properties
   "Like [[mc/deref-all]] but preserves properties attached to a `:ref` by wrapping the result in `:schema`."

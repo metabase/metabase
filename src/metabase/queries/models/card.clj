@@ -23,7 +23,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
@@ -45,6 +44,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -1369,7 +1369,7 @@
                   :database-id         true
                   :entity-id           true
                   :last-viewed-at      :last_used_at
-                  :native-query        [:case [:= "native" :query_type] :dataset_query]
+                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id

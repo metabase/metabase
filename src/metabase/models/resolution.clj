@@ -33,11 +33,11 @@
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
-    :model/Database                          metabase.models.database
+    :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.models.dimension
-    :model/Field                             metabase.models.field
-    :model/FieldValues                       metabase.models.field-values
+    :model/Field                             metabase.warehouse-schema.models.field
+    :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
@@ -75,13 +75,13 @@
     :model/Segment                           metabase.segments.models.segment
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
-    :model/Table                             metabase.models.table
+    :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
-    :model/User                              metabase.models.user
+    :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
-    :model/UserParameterValue                metabase.models.user-parameter-value
+    :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
