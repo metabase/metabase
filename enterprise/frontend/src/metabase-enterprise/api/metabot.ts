@@ -39,7 +39,10 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       void,
       {
         id: MetabotId;
-        entities: Pick<MetabotEntity, "model" | "id">[];
+        entities: {
+          model_id: MetabotEntity["id"];
+          model_type: MetabotEntity["model"];
+        }[];
       }
     >({
       query: ({ id, entities }) => ({
