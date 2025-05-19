@@ -231,10 +231,6 @@ export const SamlApi = {
   updateSettings: PUT("/api/saml/settings"),
 };
 
-export const GoogleApi = {
-  updateSettings: PUT("/api/google/settings"),
-};
-
 export const MetabaseApi = {
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
