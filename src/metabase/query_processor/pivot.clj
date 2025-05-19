@@ -653,13 +653,14 @@
   (reduce
    (fn [breakouts {:keys [name binning]}]
      (let [col                (find-col-by-name cols name)
+           binning-strategy   (keyword (:strategy binning))
            available-binnings (lib/available-binning-strategies query 0 col)
            available-temporal-buckets (lib/available-temporal-buckets query 0 col)
-           ;; TODO - right now we're just correlating binning options by number of
-           ;; bins. This can be improved.
-           binning-setting   (u/seek (fn [available-binning]
-                                       (= (:numBins binning)
-                                          (-> available-binning :mbql :num-bins)))
+           binning-setting   (u/seek (fn [{:keys [mbql]}]
+                                       (and (= binning-strategy (:strategy mbql))
+                                            (if (= binning-strategy :num-bins)
+                                              (= (:numBins binning) (:num-bins mbql))
+                                              true)))
                                      available-binnings)
            bucketing-setting (u/seek (fn [available-bucket]
                                        (= (keyword binning)
