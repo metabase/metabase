@@ -135,7 +135,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const topHeaderRef = useRef<Collection>(null);
 
     const getColumnTitle = useCallback(
-      function(columnIndex: number) {
+      function (columnIndex: number) {
         const column = data.pivot_cols?.filter(
           (col) => !isPivotGroupColumn(col),
         )[columnIndex];
@@ -178,12 +178,12 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     ]);
 
     const pivoted = useMemo(() => {
-      if (
-        data?.pivot_cols == null ||
-        !data?.pivot_cols.some(isPivotGroupColumn)
-      ) {
-        return null;
-      }
+      //if (
+      //  data?.pivot_cols == null ||
+      //  !data?.pivot_cols.some(isPivotGroupColumn)
+      //) {
+      //  return null;
+      //}
 
       try {
         return multiLevelPivot(data, settings);

@@ -10,18 +10,6 @@
     (clj->js
      (pivot/columns-without-pivot-group cols))))
 
-(defn ^:export split-pivot-data
-  "Pulls apart different aggregations that were packed into one result set returned from the QP.
-  The pivot-grouping column indicates which breakouts were used to compute a given row. We used that column
-  to split apart the data and convert field refs to indices"
-  [data]
-  (let [{:keys [pivot-data primary-rows-key columns]}
-        (pivot/split-pivot-data (js->clj data :keywordize-keys true))]
-    (clj->js
-     {:pivotData pivot-data
-      :primaryRowsKey (str primary-rows-key)
-      :columns columns})))
-
 (defn ^:export process-pivot-table
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
