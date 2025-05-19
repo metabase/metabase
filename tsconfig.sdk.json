@@ -6,6 +6,7 @@
     "tsBuildInfoFile": "./resources/embedding-sdk/.tsbuildinfo",
     "declaration": true,
     "declarationMap": true,
+    "incremental": true,
     "noEmitOnError": false,
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
