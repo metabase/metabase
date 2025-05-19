@@ -254,6 +254,8 @@
                (latest-sync-time table))
             "sync time shouldn't change")))))
 
+(defn- not-category [x] (not= :type/Category (:semantic_type x)))
+
 (deftest classify-numeric-values-test
   (testing "Make sure Integer fields are not classified as Category"
     (let [field (mi/instance :model/Field {:base_type :type/Integer :name "foo_type"})
@@ -271,13 +273,10 @@
         threshold
         (inc threshold))
 
-      (is (not= :type/Category
-                (:semantic_type (classifiers.name/infer-and-assoc-semantic-type-by-name field {})))))))
+      (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
 
 (deftest classify-bool-values-test
   (testing "Make sure Boolean fields are not classified as Category"
     (let [field (mi/instance :model/Field {:base_type :type/Boolean :name "active"})]
-      (is (not= :type/Category
-                (:semantic_type (classifiers.category/infer-is-category field {}))))
-      (is (not= :type/Category
-                (:semantic_type (classifiers.name/infer-and-assoc-semantic-type-by-name field {})))))))
+      (is (not-category (classifiers.category/infer-is-category field {})))
+      (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
