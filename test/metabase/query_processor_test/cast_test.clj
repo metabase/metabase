@@ -785,6 +785,14 @@
             (doseq [[_uncasted-value casted-value] rows]
               (is (string? casted-value)))))))))
 
+;; datetime()
+
+(defn- datetime-type? [col]
+  (some #(types/field-is-type? % col) [:type/DateTime ;; some databases return datetimes for date (e.g., Oracle)
+                                       :type/Text ;; sqlite uses text :(
+                                       :type/* ;; Mongo
+                                       ]))
+
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
@@ -801,6 +809,6 @@
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
-            (is (types/field-is-type? :type/DateTime (last cols)))
+            (is (datetime-type? (last cols)))
             (doseq [[_id casted-value] rows]
               (is (= expected casted-value)))))))))
