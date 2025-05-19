@@ -240,7 +240,7 @@ const TemplateInfoTooltip = ({ context }: TemplateInfoTooltipProps) => {
               textDecoration: "underline",
             }}
           >
-            Handlebars
+            {t`Handlebars`}
           </a>
         )} syntax.`}</Text>
         <Text>{jt`Use ${(<code key="brackets">{"{{ }}"}</code>)} to reference fields, ${(<code key="key">{"@key"}</code>)} and ${(<code key="value">{"@value"}</code>)} when iterating over objects, or ${(<code key="index">{"@index"}</code>)} for arrays.`}</Text>
@@ -255,7 +255,7 @@ const TemplateInfoTooltip = ({ context }: TemplateInfoTooltipProps) => {
               textDecoration: "underline",
             }}
           >
-            this formatting reference
+            {t`this formatting reference`}
           </a>
         )}.`}</Text>
         <Text>{t`Example payload for selected alert:`}</Text>
@@ -694,7 +694,7 @@ export const NotificationChannelsPicker = ({
                       handleTemplateChange("email", "subject", value, true);
                     }}
                     onBlur={(value) => {
-                      handleTemplateChange("email", "subject", value, true);
+                      handleTemplateChange("email", "subject", value);
                     }}
                     onFocus={(initialValue) => {
                       handleTemplateChange(
@@ -792,6 +792,9 @@ export const NotificationChannelsPicker = ({
                   placeholder={t`Your custom Slack template`}
                   templateContext={templateContext["channel/slack"]}
                   defaultValue={getTemplateValue("slack", "body")}
+                  onFocus={(value) => {
+                    handleTemplateChange("slack", "body", value, true);
+                  }}
                   onChange={(value) => {
                     handleTemplateChange("slack", "body", value, true);
                   }}

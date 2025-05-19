@@ -31,28 +31,27 @@ export const fillInCustomTemplate = (subject: string, body: string) => {
         });
         cm.contentDOM.blur();
       }
-    });
 
-  cy.wait(100);
+      cy.wait(200);
 
-  cy.findByTestId("email-template-body")
-    .find(".cm-content")
-    .then(([contentElement]) => {
-      const cm = contentElement.cmView?.view;
-      if (cm) {
-        cm.contentDOM.focus();
-        cm.dispatch({
-          changes: {
-            from: 0,
-            to: cm.state.doc.length,
-            insert: body,
-          },
+      cy.document()
+        .findByTestId("email-template-body")
+        .find(".cm-content")
+        .then(([contentElement]) => {
+          const cm = contentElement.cmView?.view;
+          if (cm) {
+            cm.contentDOM.focus();
+            cm.dispatch({
+              changes: {
+                from: 0,
+                to: cm.state.doc.length,
+                insert: body,
+              },
+            });
+            cm.contentDOM.blur();
+          }
         });
-        cm.contentDOM.blur();
-      }
     });
-
-  cy.wait(100);
 };
 
 /**

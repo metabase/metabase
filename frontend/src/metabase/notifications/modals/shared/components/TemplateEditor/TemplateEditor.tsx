@@ -120,9 +120,10 @@ export const TemplateEditor = ({
       if (update.focusChanged && !update.view.hasFocus && onBlur) {
         const currentValue = update.state.doc.toString();
         onBlur(currentValue);
+        onChangeDebounced.cancel();
       }
     });
-  }, [onBlur]);
+  }, [onBlur, onChangeDebounced]);
 
   const templateAutocompleteExtension = useMemo(() => {
     if (!templateContext) {

@@ -13,7 +13,13 @@ const ADMIN_NAME = `${USERS.admin.first_name} ${USERS.admin.last_name}`;
 
 describe("scenarios > data editing > setting alerts", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/notification").as("getNotification");
     cy.intercept("POST", "/api/notification").as("createNotification");
+    cy.intercept("POST", "/api/ee/data-editing/table/*").as("createRecord");
+    cy.intercept("PUT", "/api/ee/data-editing/table/*").as("updateRecord");
+    cy.intercept("POST", "/api/ee/data-editing/table/**/delete").as(
+      "deleteRecord",
+    );
 
     cy.log("Setting up writable PostgresDB");
     H.restore("postgres-writable");
@@ -31,11 +37,10 @@ describe("scenarios > data editing > setting alerts", () => {
     H.setupSMTP();
 
     H.setTableEditingEnabledForDB(WRITABLE_DB_ID);
-
-    openDatabaseTable();
   });
 
   it("should have icon to set alerts", () => {
+    openDatabaseTable();
     cy.findByTestId("table-notifications-trigger").should("be.visible");
   });
 
@@ -47,23 +52,26 @@ describe("scenarios > data editing > setting alerts", () => {
         setupAlert(tableId, "event/row.created");
         setupAlert(tableId, "event/row.updated");
         setupAlert(tableId, "event/row.deleted");
+      });
 
-        cy.then(() => {
-          cy.findByTestId("table-notifications-trigger").click();
-          cy.findByTestId("alert-list-modal")
-            .should("be.visible")
-            .within(() => {
-              cy.findByText("Notify when new records are created").should(
-                "be.visible",
-              );
-              cy.findByText("Notify when records are updated").should(
-                "be.visible",
-              );
-              cy.findByText("Notify when records are deleted").should(
-                "be.visible",
-              );
-            });
-        });
+      openDatabaseTable();
+
+      cy.then(() => {
+        cy.findByTestId("table-notifications-trigger").click();
+
+        cy.findByTestId("alert-list-modal")
+          .should("be.visible")
+          .within(() => {
+            cy.findByText("Notify when new records are created").should(
+              "be.visible",
+            );
+            cy.findByText("Notify when records are updated").should(
+              "be.visible",
+            );
+            cy.findByText("Notify when records are deleted").should(
+              "be.visible",
+            );
+          });
       });
     });
   });
@@ -71,6 +79,8 @@ describe("scenarios > data editing > setting alerts", () => {
   describe("Trigger an alert for each event type", () => {
     describe("create event", () => {
       it("should create an alert for 'row created' events with default template", () => {
+        openDatabaseTable();
+
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -102,9 +112,8 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.get("input").eq(1).type("black");
 
           cy.findByRole("button", { name: "Create new record" }).click();
+          cy.wait("@createRecord");
         });
-
-        cy.wait(1000);
 
         cy.log("Testing default email template");
 
@@ -117,6 +126,8 @@ describe("scenarios > data editing > setting alerts", () => {
       it("should create an alert for 'row created' events with custom template", () => {
         const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
         const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
+
+        openDatabaseTable();
 
         cy.findByTestId("table-notifications-trigger").click();
 
@@ -149,7 +160,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.findByRole("button", { name: "Create new record" }).click();
         });
 
-        cy.wait(1000);
+        cy.wait("@createRecord");
 
         cy.log("Testing default email template");
 
@@ -162,6 +173,8 @@ describe("scenarios > data editing > setting alerts", () => {
 
     describe("update event", () => {
       it("should trigger an alert for 'row updated' events with default template", () => {
+        openDatabaseTable();
+
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -189,7 +202,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("blue").blur();
         });
 
-        cy.wait(1000);
+        cy.wait("@updateRecord");
 
         cy.log("Testing default email template");
 
@@ -202,6 +215,8 @@ describe("scenarios > data editing > setting alerts", () => {
       it("should trigger an alert for 'row updated' events with custom template", () => {
         const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
         const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
+
+        openDatabaseTable();
 
         cy.findByTestId("table-notifications-trigger").click();
 
@@ -228,7 +243,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("blue").blur();
         });
 
-        cy.wait(1000);
+        cy.wait("@updateRecord");
 
         cy.log("Testing custom email template");
 
@@ -240,6 +255,8 @@ describe("scenarios > data editing > setting alerts", () => {
       });
 
       it("should trigger an alert for 'row updated' events when condition is met", () => {
+        openDatabaseTable();
+
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -277,7 +294,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("{selectall}{backspace}white").blur();
         });
 
-        cy.wait(1000);
+        cy.wait("@updateRecord");
 
         cy.log("Testing custom email template");
 
@@ -288,6 +305,8 @@ describe("scenarios > data editing > setting alerts", () => {
       });
 
       it("should not trigger an alert for 'row updated' events when condition is not met", () => {
+        openDatabaseTable();
+
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -325,7 +344,7 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.focused().type("{selectall}{backspace}black").blur();
         });
 
-        cy.wait(1000);
+        cy.wait("@updateRecord");
 
         // Alert on updated value was not sent, since it didn't meet the condition.
         H.getInbox().then(({ body }: { body: { subject: string }[] }) => {
@@ -337,6 +356,8 @@ describe("scenarios > data editing > setting alerts", () => {
 
     describe("delete event", () => {
       it("should trigger an alert for 'row deleted' events with default template", () => {
+        openDatabaseTable();
+
         cy.findByTestId("table-notifications-trigger").click();
 
         cy.findByTestId("table-notification-create").within(() => {
@@ -366,19 +387,10 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         cy.findByTestId("table-data-view-header").within(() => {
-          // TODO: Uncomment when button is working and delete request & wait
-          // cy.findByText("Delete").click();
-          H.getTableId({
-            name: TABLE_NAME,
-          }).then((tableId) => {
-            cy.request("POST", `/api/ee/data-editing/table/${tableId}/delete`, {
-              rows: [{ id: 1 }],
-              scope: { "table-id": tableId },
-            });
-          });
+          cy.findByText("Delete").click();
+          cy.document().findByText("Delete 1 record").click();
+          cy.wait("@deleteRecord");
         });
-
-        cy.wait(1000);
 
         cy.log("Testing default email template");
 
@@ -391,6 +403,8 @@ describe("scenarios > data editing > setting alerts", () => {
       it("should trigger an alert for 'row deleted' events with custom template", () => {
         const CUSTOM_SUBJECT = "My custom subject for {{table.name}}";
         const CUSTOM_BODY = "{{#each record}} {{@key}}: {{@value}} {{/each}}";
+
+        openDatabaseTable();
 
         cy.findByTestId("table-notifications-trigger").click();
 
@@ -419,19 +433,10 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         cy.findByTestId("table-data-view-header").within(() => {
-          // TODO: Uncomment when button is working and delete request & wait
-          // cy.findByText("Delete").click();
-          H.getTableId({
-            name: TABLE_NAME,
-          }).then((tableId) => {
-            cy.request("POST", `/api/ee/data-editing/table/${tableId}/delete`, {
-              rows: [{ id: 1 }],
-              scope: { "table-id": tableId },
-            });
-          });
+          cy.findByText("Delete").click();
+          cy.document().findByText("Delete 1 record").click();
+          cy.wait("@deleteRecord");
         });
-
-        cy.wait(1000);
 
         cy.log("Testing custom email template");
 
@@ -449,31 +454,34 @@ describe("scenarios > data editing > setting alerts", () => {
         name: TABLE_NAME,
       }).then((tableId) => {
         setupAlert(tableId, "event/row.created");
-        cy.findByTestId("table-notifications-trigger").click();
-        cy.findByTestId("alert-list-modal")
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("Notify when new records are created")
-              .should("be.visible")
-              .click();
-          });
+      });
 
-        cy.findByTestId("table-notification-create").within(() => {
-          cy.findByText("Edit alert").should("be.visible");
+      openDatabaseTable();
 
-          cy.findByTestId("notification-event-select").click();
-          cy.document()
-            .findByRole("option", {
-              name: /when any cell changes it's value/i,
-            })
+      cy.findByTestId("table-notifications-trigger").click();
+      cy.findByTestId("alert-list-modal")
+        .should("be.visible")
+        .within(() => {
+          cy.findByText("Notify when new records are created")
+            .should("be.visible")
             .click();
-
-          cy.findByRole("button", { name: "Save changes" }).click();
         });
 
-        cy.findByTestId("toast-undo").within(() => {
-          cy.findByText("Alert updated.").should("be.visible");
-        });
+      cy.findByTestId("table-notification-create").within(() => {
+        cy.findByText("Edit alert").should("be.visible");
+
+        cy.findByTestId("notification-event-select").click();
+        cy.document()
+          .findByRole("option", {
+            name: /when any cell changes it's value/i,
+          })
+          .click();
+
+        cy.findByRole("button", { name: "Save changes" }).click();
+      });
+
+      cy.findByTestId("toast-undo").within(() => {
+        cy.findByText("Alert updated.").should("be.visible");
       });
     });
   });
@@ -484,29 +492,34 @@ describe("scenarios > data editing > setting alerts", () => {
         name: TABLE_NAME,
       }).then((tableId) => {
         setupAlert(tableId, "event/row.created");
-        cy.findByTestId("table-notifications-trigger").click();
-        cy.findByTestId("alert-list-modal")
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("Notify when new records are created").realHover();
-            cy.root().findByLabelText("Delete this alert").click();
-            cy.document()
-              .findByTestId("delete-confirm")
-              .findByText("Delete it")
-              .click();
-          });
+      });
 
-        cy.findByTestId("toast-undo").within(() => {
-          cy.findByText("The alert was successfully deleted.").should(
-            "be.visible",
-          );
+      openDatabaseTable();
+
+      cy.findByTestId("table-notifications-trigger").click();
+      cy.findByTestId("alert-list-modal")
+        .should("be.visible")
+        .within(() => {
+          cy.findByText("Notify when new records are created").realHover();
+          cy.root().findByLabelText("Delete this alert").click();
+          cy.document()
+            .findByTestId("delete-confirm")
+            .findByText("Delete it")
+            .click();
         });
+
+      cy.findByTestId("toast-undo").within(() => {
+        cy.findByText("The alert was successfully deleted.").should(
+          "be.visible",
+        );
       });
     });
   });
 
   describe("Template preview", () => {
     it("should display default template preview", () => {
+      openDatabaseTable();
+
       cy.findByTestId("table-notifications-trigger").click();
 
       cy.findByTestId("table-notification-create").within(() => {
@@ -533,6 +546,8 @@ describe("scenarios > data editing > setting alerts", () => {
     });
 
     it("should display custom template preview", () => {
+      openDatabaseTable();
+
       cy.findByTestId("table-notifications-trigger").click();
 
       cy.findByTestId("table-notification-create").within(() => {
