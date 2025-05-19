@@ -254,7 +254,7 @@
                (latest-sync-time table))
             "sync time shouldn't change")))))
 
-(deftest classify-numeric-values
+(deftest classify-numeric-values-test
   (testing "Make sure Integer fields are not classified as Category"
     (let [field (mi/instance :model/Field {:base_type :type/Integer})
           fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
@@ -271,7 +271,7 @@
         threshold
         (inc threshold)))))
 
-(deftest classify-bool-values
+(deftest classify-bool-values-test
   (testing "Make sure Boolean fields are not classified as Category"
     (let [field (mi/instance :model/Field {:base_type :type/Boolean})]
       (is (not= :type/Category
