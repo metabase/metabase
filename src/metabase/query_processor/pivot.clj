@@ -654,14 +654,26 @@
    (fn [breakouts {:keys [name binning]}]
      (let [col                (find-col-by-name cols name)
            available-binnings (lib/available-binning-strategies query 0 col)
+           available-temporal-buckets (lib/available-temporal-buckets query 0 col)
            ;; TODO - right now we're just correlating binning options by number of
            ;; bins. This can be improved.
-           binning-option     (u/seek (fn [available-binning]
-                                        (= (:numBins binning)
-                                           (-> available-binning :mbql :num-bins)))
-                                      available-binnings)]
+           binning-setting   (u/seek (fn [available-binning]
+                                       (= (:numBins binning)
+                                          (-> available-binning :mbql :num-bins)))
+                                     available-binnings)
+           bucketing-setting (u/seek (fn [available-bucket]
+                                       (= (keyword binning)
+                                          (keyword (:unit available-bucket))))
+                                     available-temporal-buckets)]
        (conj breakouts
-             (if binning-option (lib/with-binning col binning-option) col))))
+             (cond
+               binning-setting
+               (lib/with-binning col binning-setting)
+
+               bucketing-setting
+               (lib/with-temporal-bucket col bucketing-setting)
+
+               :else col))))
    []
    split-setting))
 
@@ -683,12 +695,12 @@
   "Given an unaggregated query, and the column split from the pivot settings, adds a new stage
   to the query that includes the necessary breakouts & aggregations to generate the pivot."
   [base-query {:keys [rows columns values]}]
-  (let [query (-> (lib/query (qp.store/metadata-provider) base-query)
-                  lib/append-stage)
+  (let [query             (-> (lib/query (qp.store/metadata-provider) base-query)
+                              lib/append-stage)
         breakoutable-cols (lib/breakoutable-columns query)
-        row-breakouts (generate-breakouts query breakoutable-cols rows)
-        col-breakouts (generate-breakouts query breakoutable-cols columns)
-        aggregations  (generate-aggregations query breakoutable-cols values)]
+        row-breakouts     (generate-breakouts query breakoutable-cols rows)
+        col-breakouts     (generate-breakouts query breakoutable-cols columns)
+        aggregations      (generate-aggregations query breakoutable-cols values)]
     (-> query
         (add-breakouts row-breakouts)
         (add-breakouts col-breakouts)
