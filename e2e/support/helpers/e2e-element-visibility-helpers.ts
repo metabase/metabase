@@ -54,3 +54,47 @@ export function isFixedPositionElementVisible(element: HTMLElement): boolean {
 
   return true;
 }
+
+/**
+ * Asserts that an element never exists from when this assertion was called
+ * up until the timeout expires, checked at every polling interval.
+ *
+ * @param selector - selector of the element to check for
+ * @param rejectionMessage - message to reject with if the element exists
+ * @param pollInterval - how often to check for the element
+ * @param timeout - how long to wait for the element to not exist
+ */
+export function assertElementNeverExists({
+  selector,
+  rejectionMessage,
+  pollInterval,
+  timeout,
+}: {
+  selector: string;
+  rejectionMessage: string;
+  pollInterval: number;
+  timeout: number;
+}) {
+  cy.window().then((win) => {
+    return new Cypress.Promise((resolve, reject) => {
+      let foundError = false;
+
+      const checkInterval = setInterval(() => {
+        const errorMessage = win.document.querySelector(selector);
+
+        if (errorMessage) {
+          foundError = true;
+          clearInterval(checkInterval);
+          reject(new Error(rejectionMessage));
+        }
+      }, pollInterval);
+
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!foundError) {
+          resolve();
+        }
+      }, timeout);
+    });
+  });
+}

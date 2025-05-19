@@ -476,17 +476,20 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("should not show 'Question not found' error when rendered in StrictMode", () => {
+  it("should not show any sdk errors a question is rendered in strict mode", () => {
     cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         strictMode: true,
       });
 
       getSdkRoot().within(() => {
-        cy.log("should not show the error message");
-        cy.findByText(
-          `Question ${questionId} not found. Make sure you pass the correct ID.`,
-        ).should("not.exist");
+        H.assertElementNeverExists({
+          selector: "[data-testid='sdk-error-container']",
+          rejectionMessage:
+            "sdk errors should not show up when rendering an interactive question in strict mode",
+          pollInterval: 20,
+          timeout: 500,
+        });
 
         cy.log("should show the question's visualization");
         cy.findByText("Product ID").should("be.visible");
