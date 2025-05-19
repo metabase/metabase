@@ -390,7 +390,7 @@
   },
   "scripts": {
     "build": "yarn build:cljs && yarn build:js",
-    "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn build-release:sdk && yarn build-embedding-sdk-cli && yarn embedding-sdk:tsc && yarn embedding-sdk:fixup-types-imports && yarn embedding-sdk:generate-nextjs-compat",
+    "build-embedding-sdk": "yarn embedding-sdk:clean && yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn build-release:sdk && yarn build-embedding-sdk-cli && yarn embedding-sdk:tsc && yarn embedding-sdk:fixup-types-imports && yarn embedding-sdk:generate-nextjs-compat",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development node tsup.embedding-sdk.config.mjs",
     "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && WEBPACK_BUNDLE=development node tsup.embedding-sdk.config.mjs --watch",
     "build-embedding-sdk-cli": "rspack --config rspack.embedding-sdk-cli.config.js",
