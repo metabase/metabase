@@ -97,9 +97,9 @@
   (into [:enum] (sort column-has-field-values-options)))
 
 (mr/def ::column.remapping.external
-  "External remapping (Dimension) for a column. From the [[metabase.models.dimension]] with `type = external` associated
-  with a `Field` in the application database. See [[metabase.query-processor.middleware.add-dimension-projections]]
-  for what this means."
+  "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
+  external` associated with a `Field` in the application database.
+  See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
    [:lib/type [:= :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
@@ -109,10 +109,10 @@
    ;; from. e.g. if the column in question is `venues.category-id`, then this would be the ID of `categories.name`
    [:field-id ::lib.schema.id/field]])
 
-;;; Internal remapping (FieldValues) for a column. From [[metabase.models.dimension]] with `type = internal` and
-;;; the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application database.
-;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
 (mr/def ::column.remapping.internal
+  "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
+  internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
+  database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
    [:lib/type              [:= :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
