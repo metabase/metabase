@@ -67,9 +67,6 @@
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 
-
-
-
 ;; user events
 
 (mr/def ::user
