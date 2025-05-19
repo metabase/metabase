@@ -9,7 +9,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
-   (metabase.formatter NumericWrapper TextWrapper)))
+   (metabase.formatter.core NumericWrapper TextWrapper)))
 
 (set! *warn-on-reflection* true)
 

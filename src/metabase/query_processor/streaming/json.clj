@@ -12,7 +12,7 @@
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)
-   (metabase.formatter NumericWrapper TextWrapper)))
+   (metabase.formatter.core NumericWrapper TextWrapper)))
 
 (set! *warn-on-reflection* true)
 
