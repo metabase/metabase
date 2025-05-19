@@ -1,4 +1,4 @@
-(ns metabase.models.dimension-test
+(ns metabase.warehouse-schema.models.dimension-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.serialization :as serdes]
@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Dimension hashes are composed of the proper field hash, and the human-readable field hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Database  db     {:name "field-db" :engine :h2}
