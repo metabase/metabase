@@ -7,8 +7,6 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.models.metabot :as metabot]
-   [metabase-enterprise.metabot-v3.models.metabot-entity :as metabot-entity]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.api.common :as api]
@@ -62,9 +60,8 @@
          :conversation_id conversation_id)
     (metabot-v3.context/log :llm.log/be->fe)))
 
-(def ^:private metabots [{:id 1 :name "Internal Metabot"}
-                         {:id 2 :name "Embedding Metabot"}])
-
+;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
+;; lets not
 (api.macros/defendpoint :get "/metabots"
   "List configured metabot instances"
   []
@@ -77,16 +74,27 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Metabot :id id)))
 
+(def ^:private default-entities-page-size 200)
+
 (api.macros/defendpoint :get "/metabots/:id/entities"
   "List the entities this metabot has access to"
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
-  (let [limit (request/limit)
-        offset (request/offset)
-        entities (t2/select :model/MetabotEntity
-                            :metabot_id id
-                            {:limit limit
+  (let [limit (or (request/limit) default-entities-page-size)
+        offset (or (request/offset) 0)
+        entities (t2/select [:model/MetabotEntity
+                             :id
+                             :model_id
+                             :model_type
+                             [:card.name :name]
+                             :created_at
+                             [:collection.id :collection_id]
+                             [:collection.name :collection_name]]
+                            {:join [[:report_card :card] [:= :model_id :card.id]
+                                    [:collection :collection] [:= :card.collection_id :collection.id]]
+                             :where [:= :metabot_id id]
+                             :limit limit
                              :offset offset
                              :order-by [[:name :asc]]})
         total (t2/count :model/MetabotEntity :metabot_id id)]
@@ -100,23 +108,20 @@
   [{:keys [id]} :- [:map [:id pos-int?]]
    _query-params
    entities :- [:sequential [:map
-                             [:id ms/NonBlankString]
-                             [:model ms/NonBlankString]]]]
+                             [:model_id pos-int?]
+                             [:model_type [:enum "dataset" "metric"]]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
-    (doseq [entity entities]
-      (let [model-type (keyword (:model entity))
-            model-id (:id entity)]
-        (when-not (t2/exists? :model/MetabotEntity
-                              :metabot_id id
-                              :model model-type
-                              :model_id model-id)
-          (t2/insert! :model/MetabotEntity
-                      {:metabot_id id
-                       :model model-type
-                       :model_id model-id
-                       :name (str "Entity " model-id)})))))
+    (doseq [{:keys [model_id model_type]} entities]
+      (when-not (t2/exists? :model/MetabotEntity
+                            :metabot_id id
+                            :model_type model_type
+                            :model_id model_id)
+        (t2/insert! :model/MetabotEntity
+                    {:metabot_id id
+                     :model_type model_type
+                     :model_id model_id}))))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete ["/metabots/:id/entities/:model-type/:model-id" :model-type #"model|metric"]
@@ -129,7 +134,7 @@
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/delete! :model/MetabotEntity
               :metabot_id id
-              :model (keyword model-type)
+              :model_type model-type
               :model_id model-id)
   api/generic-204-no-content)
 
