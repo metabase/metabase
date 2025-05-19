@@ -72,20 +72,22 @@ function checkShouldRerunPivotTableQuestion({
   currentQuestion?: Question;
   question: Question;
 }) {
-  const currentSettings = question?.settings();
-
   const displayChange = (!wasPivot && isPivot) || (wasPivot && !isPivot);
   if (displayChange) {
     return true;
   }
 
+  const currentSettings = question?.settings();
+  const prevSettings = currentQuestion?.settings();
+
   const isUnaggregatedData = !hasBreakouts;
 
-  const prevSettings = currentQuestion?.settings();
   if (isUnaggregatedData) {
     const currentPivotSettings = currentSettings[UNAGG_COLUMN_SPLIT_SETTING];
     const prevPivotSettings = prevSettings?.[UNAGG_COLUMN_SPLIT_SETTING];
     const areCurrentSettingsValid =
+      currentPivotSettings &&
+      prevPivotSettings &&
       (currentPivotSettings.rows?.length > 0 ||
         currentPivotSettings.cols?.length > 0) &&
       currentPivotSettings.values?.length > 0;
