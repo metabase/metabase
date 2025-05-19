@@ -28,7 +28,7 @@ export interface Undo {
   count?: number;
   verb?: string;
   subject?: string;
-  ref: Ref<HTMLDivElement>;
+  ref?: Ref<HTMLDivElement>;
 }
 
 export type UndoState = Undo[];
