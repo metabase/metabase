@@ -357,8 +357,8 @@
   [row-item settings]
   (let [condense? (true? (:pivot.condense_duplicate_totals settings true))
         child-count (count (:children row-item))]
-    (or (not condense?)
-        (> child-count 1)
+    (or (> child-count 1)
+        (not condense?)
         (:isCollapsed row-item))))
 
 (declare add-subtotal)
