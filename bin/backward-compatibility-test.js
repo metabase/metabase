@@ -29,7 +29,7 @@ const TESTS_TO_RUN = [
   "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
   "e2e/test/scenarios/question/caching.cy.spec.js",
 ];
-const COMMA_SEPARATED_TESTS_TO_RUN = TEST_TO_RUN.join(",");
+const COMMA_SEPARATED_TESTS_TO_RUN = TESTS_TO_RUN.join(",");
 
 console.log(`Using frontend from ${FE_GIT_REF}`);
 console.log(`Using backend from ${BE_GIT_REF}`);
