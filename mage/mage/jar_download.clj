@@ -118,7 +118,7 @@
                                :latest-version latest-version})))
       (let [port        (+ 3000 (major-version latest-version))
             socket-port (+ 3000 port)
-            db-file     (str "metabase_" version ".db")
+            db-file     (str u/project-root-directory "/metabase_" version ".db")
             extra-env   {"MB_DB_TYPE"          "h2"
                          "MB_DB_FILE"          db-file
                          "MB_JETTY_PORT"       port

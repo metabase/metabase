@@ -75,12 +75,12 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.core :as server]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -405,9 +405,9 @@
 
   You can also run it with `clojure -X`:
 
-    clojure -X:dev dev/find-root-test-failure! \
-     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test \
-     :scope :full-suite \
+    clojure -X:dev dev/find-root-test-failure!
+     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test
+     :scope :full-suite
      :find-tests-options '{:exclude-tags [:mb/driver-tests] :only [\"test\"] :partition/total 2 :partition/index 1}'"
   ([opts]
    (find-root-test-failure! (requiring-resolve (:failing-test-var opts)) opts))
