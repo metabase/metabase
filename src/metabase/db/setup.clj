@@ -8,7 +8,6 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
    [honey.sql :as sql]
-   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
@@ -116,7 +115,6 @@
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
-  (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
          (catch Throwable e

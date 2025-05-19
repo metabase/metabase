@@ -592,7 +592,6 @@
    :uses #{api
            classloader
            db
-           driver
            legacy-mbql
            lib
            settings
