@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-editing-public.api
   (:require
-   [metabase-enterprise.data-editing.core :as data-editing]
+   [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [toucan2.core :as t2]))
@@ -24,8 +24,10 @@
     (api/check-400 (every? seq rows) "Every row should not be empty.")
     (let [user-id  (:creator_id hook)
           scope    {:webhook-id (:id hook)}
-          table-id (:table_id hook)]
-      {:created (count (data-editing/perform-bulk-action! :table.row/create user-id scope table-id rows))})))
+          table-id (:table_id hook)
+          inputs   (for [r rows]
+                     {:table-id table-id, :row r})]
+      {:created (count (actions/perform-action! :table.row/create scope inputs {:user-id user-id}))})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

@@ -13,7 +13,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (defn select-table-pk-fields

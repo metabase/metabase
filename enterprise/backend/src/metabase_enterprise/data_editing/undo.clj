@@ -1,12 +1,10 @@
 (ns metabase-enterprise.data-editing.undo
   (:require
    [clojure.walk :as walk]
-   [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (def ^:private retention-total-batches 100)
@@ -190,7 +188,6 @@
       (case (if undo? (invert category) category)
         :create (try (actions/perform-nested-action! :table.row/create context inputs)
                      (catch Exception e
-                       #p e
                        ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
                        (throw (ex-info "Failed to un-delete row(s)"
                                        {:error     :undo/cannot-undelete
