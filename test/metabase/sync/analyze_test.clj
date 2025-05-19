@@ -256,7 +256,7 @@
 
 (deftest classify-numeric-values-test
   (testing "Make sure Integer fields are not classified as Category"
-    (let [field (mi/instance :model/Field {:base_type :type/Integer})
+    (let [field (mi/instance :model/Field {:base_type :type/Integer :name "foo_type"})
           fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
           threshold classifiers.category/category-cardinality-threshold]
 
@@ -269,10 +269,15 @@
 
         (dec threshold)
         threshold
-        (inc threshold)))))
+        (inc threshold))
+
+      (is (not= :type/Category
+                (:semantic_type (classifiers.name/infer-and-assoc-semantic-type-by-name field {})))))))
 
 (deftest classify-bool-values-test
   (testing "Make sure Boolean fields are not classified as Category"
-    (let [field (mi/instance :model/Field {:base_type :type/Boolean})]
+    (let [field (mi/instance :model/Field {:base_type :type/Boolean :name "active"})]
       (is (not= :type/Category
-                (:semantic_type (classifiers.category/infer-is-category field {})))))))
+                (:semantic_type (classifiers.category/infer-is-category field {}))))
+      (is (not= :type/Category
+                (:semantic_type (classifiers.name/infer-and-assoc-semantic-type-by-name field {})))))))
