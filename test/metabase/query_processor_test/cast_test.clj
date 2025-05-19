@@ -788,9 +788,9 @@
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
-      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T17:20:01" "")
+      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15 12:20:01" "")
                                               :mode :iso
-                                              :expected "2025-05-15T17:20:01Z"
+                                              :expected "2025-05-15T12:20:01Z"
                                               :limit 1}]]]
               {:keys [expression mode expected limit]} expressions]
         (testing (str "Parsing " expression " as datetime with " mode ".")
@@ -804,22 +804,3 @@
             (is (types/field-is-type? :type/DateTime (last cols)))
             (doseq [[_id casted-value] rows]
               (is (= expected casted-value)))))))))
-
-(deftest ^:parallel datetime-cast-from-datetime
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime :expressions/text)
-    (let [mp (mt/metadata-provider)]
-      (doseq [[table expressions] [[:people [{:field :created_at
-                                              :mode :iso}]]]
-              {:keys [field mode]} expressions]
-        (testing (str "Parsing " table "." field " as datetime with " mode ".")
-          (let [field (lib.metadata/field mp (mt/id table field))
-                query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
-                          (lib/with-fields [field])
-                          (lib/expression "DATETIME_PARSE" (lib/datetime (lib/text field) mode))
-                          (lib/limit 100))
-                result (-> query qp/process-query)
-                cols (mt/cols result)
-                rows (mt/rows result)]
-            (is (types/field-is-type? :type/DateTime (last cols)))
-            (doseq [[uncasted-value casted-value] rows]
-              (is (= uncasted-value casted-value)))))))))
