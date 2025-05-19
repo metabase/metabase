@@ -21,7 +21,7 @@ const Card = styled.div<CardProps>`
   border: 1px solid
     ${(props) => (props.dark ? "transparent" : "var(--mb-color-border)")};
   ${(props) => props.dark && `color: white`};
-  border-radius: 8px;
+  border-radius: var(--mantine-radius-md);
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   line-height: 24px;
   ${({ hoverable, theme }) =>
