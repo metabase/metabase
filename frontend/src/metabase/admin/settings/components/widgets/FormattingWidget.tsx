@@ -234,7 +234,7 @@ function FormattingInput({
   };
 
   return (
-    <Stack gap="sm" data-testid={`${id}-formatting-setting`}>
+    <Stack gap="md" data-testid={`${id}-formatting-setting`}>
       <Text htmlFor={id} component="label" fw="bold" display="block">
         {label}
       </Text>
