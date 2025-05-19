@@ -40,6 +40,12 @@ export function EmbeddingDataPicker({
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
   );
+  /**
+   * This is when we change the starting query source, and `card` is already cached.
+   * If we use `card` as is, it will use the cached data from a different query source
+   * which is incorrect.
+   */
+  const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
   const entityTypes = useSelector(
     (state) => getEmbedOptions(state).entity_types,
@@ -96,7 +102,9 @@ export function EmbeddingDataPicker({
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
-      selectedCollectionId={card?.collection_id ?? sourceModelCollectionId}
+      selectedCollectionId={
+        normalizedCard?.collection_id ?? sourceModelCollectionId
+      }
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       triggerElement={
