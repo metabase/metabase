@@ -1,5 +1,8 @@
 import path from "path";
 
+/**
+ * This implementation is very limited and should be used only with `css` and `svg` files.
+ */
 export const getFullPathFromResolvePath = ({
   resolveDir,
   resolvePath,
@@ -10,8 +13,8 @@ export const getFullPathFromResolvePath = ({
   if (resolvePath.startsWith(".")) {
     fullPath = path.resolve(resolveDir, resolvePath);
   } else {
-    const alias = Object.keys(aliases).find((alias) =>
-      resolvePath.startsWith(`${alias}/`),
+    const alias = Object.keys(aliases).find(
+      (alias) => resolvePath === alias || resolvePath.startsWith(`${alias}/`),
     );
 
     if (alias) {
