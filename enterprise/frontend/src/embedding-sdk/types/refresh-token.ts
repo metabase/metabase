@@ -3,6 +3,10 @@ export type MetabaseEmbeddingSessionToken = {
   exp: number;
 };
 
+export type UserBackendResponse = {
+  jwt: string;
+};
+
 export type MetabaseFetchRequestTokenFn = (
   url: string,
-) => Promise<MetabaseEmbeddingSessionToken | null>;
+) => Promise<UserBackendResponse>;

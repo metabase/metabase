@@ -25,11 +25,12 @@ export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
     // Setup JWT or API key
-    const isValidAuthProviderUri =
-      authConfig.authProviderUri && authConfig.authProviderUri?.length > 0;
+    const isValidInstanceUrl =
+      authConfig.metabaseInstanceUrl &&
+      authConfig.metabaseInstanceUrl?.length > 0;
     const isValidApiKeyConfig = authConfig.apiKey && getIsLocalhost();
 
-    if (isValidAuthProviderUri) {
+    if (isValidInstanceUrl) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
@@ -101,7 +102,7 @@ export const refreshTokenAsync = createAsyncThunk(
       getState() as SdkStoreState,
     );
 
-    const getRefreshToken = customGetRefreshToken ?? runRefreshTokenFn;
+    const getRefreshToken = runRefreshTokenFn;
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -109,7 +110,7 @@ export const refreshTokenAsync = createAsyncThunk(
     // In this way we also support standard thrown Errors in the custom fetchRequestToken user provided function
 
     try {
-      const session = await getRefreshToken(url);
+      const session = await getRefreshToken(url, customGetRefreshToken);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
         : "authProviderUri endpoint";
@@ -158,6 +159,7 @@ const safeStringify = (value: unknown) => {
 
 const runRefreshTokenFn = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
+  customFetchRequestFunction: MetabaseAuthConfig["fetchRequestToken"],
 ) => {
   // GET /auth/sso with headers
   const urlResponse = await fetch(`${url}/auth/sso`, getFetchParams());
@@ -165,7 +167,7 @@ const runRefreshTokenFn = async (
 
   // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
   // when the headers are passed
-  const { method, url: responseUrl } = urlResponseJson;
+  const { method, url: responseUrl, hash } = urlResponseJson;
 
   if (method === "saml") {
     // The URL should point to the SAML IDP
@@ -173,7 +175,27 @@ const runRefreshTokenFn = async (
   }
 
   // Points to the JWT Auth endpoint on the client server
-  return jwtRefreshFunction(responseUrl);
+  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
+  const clientBackendResponse = await (
+    customFetchRequestFunction ?? jwtRefreshFunction
+  )(responseUrl);
+
+  const jwtTokenResponse = clientBackendResponse.jwt;
+  const mbAuthUrl = new URL(`${url}/auth/sso`);
+  mbAuthUrl.searchParams.set("jwt", jwtTokenResponse);
+  const authSsoReponse = await fetch(mbAuthUrl, getFetchParams(hash));
+
+  if (!authSsoReponse.ok) {
+    throw new Error(
+      `Failed to fetch the session, HTTP status: ${authSsoReponse.status}`,
+    );
+  }
+  const asText = await authSsoReponse.text();
+  try {
+    return JSON.parse(asText);
+  } catch (ex) {
+    return asText;
+  }
 };
 
 const sessionSchema = Yup.object({
@@ -183,8 +205,19 @@ const sessionSchema = Yup.object({
   // as we don't use them, so we don't throw an error if they are missing
 });
 
-export function getFetchParams() {
+export function getFetchParams(hash: string | undefined = undefined) {
   const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+  const hashHeader:
+    | {
+        // eslint-disable-next-line no-literal-metabase-strings -- header name
+        readonly "X-Metabase-SDK-JWT-Hash": string;
+      }
+    | Record<string, never> = hash
+    ? ({
+        // eslint-disable-next-line no-literal-metabase-strings -- header name
+        "X-Metabase-SDK-JWT-Hash": hash,
+      } as const)
+    : ({} as const);
   const fetchParams: RequestInit = {
     method: "GET",
     headers: {
@@ -192,6 +225,7 @@ export function getFetchParams() {
       "X-Metabase-Client": "embedding-sdk-react",
       // eslint-disable-next-line no-literal-metabase-strings -- header name
       "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
+      ...hashHeader,
     },
   };
   return fetchParams;

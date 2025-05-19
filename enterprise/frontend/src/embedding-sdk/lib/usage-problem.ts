@@ -92,25 +92,6 @@ export function getSdkUsageProblem(
       .with({ hasJwtProviderUriProperty: true }, () =>
         toError("JWT_PROVIDER_URI_DEPRECATED"),
       )
-      .with({ isSSO: false, isApiKey: false }, () =>
-        toError("NO_AUTH_METHOD_PROVIDED"),
-      )
-      .with({ isSSO: true, isApiKey: true }, () =>
-        toError("CONFLICTING_AUTH_METHODS"),
-      )
-      // For SSO, the token features and the toggle must both be enabled.
-      .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
-      // We cannot detect if embedding is disabled on non-localhost environments,
-      // as CORS is disabled on /api/session/properties.
-      .with(
-        {
-          isSSO: true,
-          hasTokenFeature: true,
-          isLocalhost: true,
-          isEnabled: false,
-        },
-        () => toError("EMBEDDING_SDK_NOT_ENABLED"),
-      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )

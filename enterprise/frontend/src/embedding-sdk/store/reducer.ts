@@ -3,12 +3,9 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import type {
   MetabaseAuthConfig,
   MetabaseFetchRequestTokenFn,
-} from "embedding-sdk";
-import type {
   SdkErrorComponent,
-  SdkState,
-  SdkStoreState,
-} from "embedding-sdk/store/types";
+} from "embedding-sdk";
+import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
