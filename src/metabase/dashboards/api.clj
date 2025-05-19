@@ -9,7 +9,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.query-processor.api :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
@@ -31,6 +30,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
