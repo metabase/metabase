@@ -2,6 +2,7 @@
   (:require
    #?(:clj [metabase.config :as config])
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -635,35 +636,39 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
+  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)
+        fk-fields (into [] (filter (every-pred :fk-target-field-id (comp number? :id))) column-metadatas)
+        id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
+                                           query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
+        target-fields (into []
+                            (comp (map (fn [{source-field-id :id
+                                             fk-ident       :ident
+                                             :keys [fk-target-field-id]
+                                             :as   source}]
+                                         (-> (id->target-fields fk-target-field-id)
+                                             (assoc ::source-field-id   source-field-id
+                                                    ::source-join-alias (:metabase.lib.join/join-alias source)
+                                                    ::fk-ident          fk-ident))))
+                                  (remove #(contains? existing-table-ids (:table-id %))))
+                            fk-fields)
+        id->table (m/index-by :id (lib.metadata/bulk-metadata
+                                   query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (comp (filter :fk-target-field-id)
-                (filter :id)
-                (filter (comp number? :id))
-                (map (fn [{source-field-id :id
-                           fk-ident       :ident
-                           :keys [fk-target-field-id]
-                           :as   source}]
-                       (-> (lib.metadata/field query fk-target-field-id)
-                           (assoc ::source-field-id   source-field-id
-                                  ::source-join-alias (:metabase.lib.join/join-alias source)
-                                  ::fk-ident          fk-ident))))
-                (remove #(contains? existing-table-ids (:table-id %)))
-                (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
-                          (let [table-metadata (lib.metadata/table query table-id)
-                                options        {:unique-name-fn               unique-name-fn
-                                                :include-implicitly-joinable? false}]
-                            (for [field (visible-columns-method query stage-number table-metadata options)
-                                  :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
-                                         field (assoc field
-                                                      :ident                    ident
-                                                      :fk-field-id              source-field-id
-                                                      :fk-join-alias            source-join-alias
-                                                      :lib/source               :source/implicitly-joinable
-                                                      :lib/source-column-alias  (:name field))]]
-                              (assoc field :lib/desired-column-alias (unique-name-fn
-                                                                      (lib.join.util/desired-alias query field))))))))
-          column-metadatas)))
+          (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
+                    (let [table-metadata (id->table table-id)
+                          options        {:unique-name-fn               unique-name-fn
+                                          :include-implicitly-joinable? false}]
+                      (for [field (visible-columns-method query stage-number table-metadata options)
+                            :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
+                                   field (assoc field
+                                                :ident                    ident
+                                                :fk-field-id              source-field-id
+                                                :fk-join-alias            source-join-alias
+                                                :lib/source               :source/implicitly-joinable
+                                                :lib/source-column-alias  (:name field))]]
+                        (assoc field :lib/desired-column-alias (unique-name-fn
+                                                                (lib.join.util/desired-alias query field)))))))
+          target-fields)))
 
 (mu/defn default-columns-for-stage :- ColumnsWithUniqueAliases
   "Given a query and stage, returns the columns which would be selected by default.

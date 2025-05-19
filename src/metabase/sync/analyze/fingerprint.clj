@@ -5,12 +5,9 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
-   [metabase.models.table :as table]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -19,11 +16,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [redux.core :as redux]
    [toucan2.core :as t2]))
-
-(comment
-  metadata-queries/keep-me-for-default-table-row-sample)
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet

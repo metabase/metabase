@@ -1287,6 +1287,10 @@
   [driver [_ value]]
   (->date driver (->honeysql driver value)))
 
+(defmethod ->honeysql [:sql :text]
+  [driver [_ value]]
+  (->honeysql driver [::cast-to-text value]))
+
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
@@ -1768,30 +1772,17 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defn- has-to-honeysql-impl-for-legacy-table? [driver]
-  (not (identical? (get-method ->honeysql [driver :model/Table])
-                   (get-method ->honeysql [:sql :model/Table]))))
-
+;;; This was deprecated in 0.48.0 but not removed until 0.55.0; if any drivers were still using it give them a useful
+;;; error. We can probably take this out in 0.56.0
 (defmethod ->honeysql [:sql :model/Table]
-  [driver table]
-  (sql.qp.deprecated/log-deprecation-warning
-   driver
-   "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-   "0.48.0")
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  [driver _table]
+  (throw (ex-info "metabase.driver.sql.query-processor/->honeysql is no longer supported for :model/Table, use :metadata/table instead"
+                  {:driver driver, :type qp.error-type/driver})))
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (if (has-to-honeysql-impl-for-legacy-table? driver)
-    (do
-      (sql.qp.deprecated/log-deprecation-warning
-       driver
-       "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-       "0.48.0")
-      (->honeysql driver #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/->legacy-metadata table)))
-    (let [{table-name :name, schema :schema} table]
-      (->honeysql driver (h2x/identifier :table schema table-name)))))
+  (let [{table-name :name, schema :schema} table]
+    (->honeysql driver (h2x/identifier :table schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]

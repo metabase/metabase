@@ -24,5 +24,5 @@
   "Submit a task to the single thread executor. This will attempt to serialize repeated requests to sync tables. It
   obviously cannot work across multiple instances."
   ^Future [^Callable f]
-  (let [task (bound-fn [] (f))]
+  (let [task (bound-fn* f)]
     (.submit ^ExecutorService @executor ^Callable task)))

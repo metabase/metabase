@@ -1130,7 +1130,7 @@
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
   using the query result processing function `rff`.
-  The default implementation defined in [[metabase.db.metadata-queries]] runs a
+  The default implementation defined in [[[metabase.driver.common.table-rows-sample]] runs a
   row sampling MBQL query using the regular query processor to produce the
   sample rows. This is good enough in most cases so this multimethod should not
   be implemented unless really necessary.

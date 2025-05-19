@@ -2,9 +2,9 @@
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 

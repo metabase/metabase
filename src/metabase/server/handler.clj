@@ -2,6 +2,7 @@
   "Top-level Metabase Ring handler."
   (:require
    [metabase.analytics.core :as analytics]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
@@ -14,8 +15,8 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.ssl :as mw.ssl]
-   [metabase.server.routes :as routes]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.core.protocols :as ring.protocols]
    [ring.middleware.cookies :refer [wrap-cookies]]
    [ring.middleware.gzip :refer [wrap-gzip]]
@@ -46,10 +47,14 @@
 
 (def wrap-reload-dev-mw
   "In dev, reload files on the fly if they've changed. Returns nil in prod."
-  (when-let [wrap-reload (and config/is-dev?
-                              (not *compile-files*)
-                              (try (requiring-resolve 'ring.middleware.reload/wrap-reload)
-                                   (catch Exception _e nil)))]
+  (when-let [wrap-reload (try (and
+                               config/is-dev?
+                               (not *compile-files*)
+                               ;; `*enable-wrap-reload*` is set to true `dev.clj` when the `--hot-reload` flag is passed to the :dev-start alias
+                               (true? @(requiring-resolve 'user/*enable-hot-reload*))
+                               ;; this middleware is only available in dev
+                               (requiring-resolve 'ring.middleware.reload/wrap-reload))
+                              (catch Exception _ nil))]
     wrap-reload))
 
 (def ^:private middleware
@@ -82,22 +87,30 @@
        (remove nil?)))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
-(defn- apply-middleware
-  [handler]
+(mu/defn- apply-middleware :- ::api.macros/handler
+  [handler :- ::api.macros/handler]
   (reduce
    (fn [handler middleware-fn]
      (middleware-fn handler))
    handler
    middleware))
 
-(def ^{:arglists '([request respond raise])} app
-  "The primary entry point to the Ring HTTP server."
-  (apply-middleware #'routes/routes))
+;;; for interactive dev we'll create a handler that rebuilds itself (reapplies the middleware) whenever any of it
+;;; changes.
+(mu/defn- dev-handler :- ::api.macros/handler
+  [server-routes :- ::api.macros/handler]
+  (let [handler (atom (apply-middleware server-routes))]
+    (doseq [varr  middleware
+            :when (instance? clojure.lang.IRef varr)]
+      (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
+                                 (log/infof "%s changed, rebuilding handler" varr)
+                                 (reset! handler (apply-middleware server-routes)))))
+    (fn dev-handler* [request respond raise]
+      (@handler request respond raise))))
 
-;; during interactive dev, recreate `app` whenever a middleware var or `routes/routes` changes.
-(when config/is-dev?
-  (doseq [varr  (cons #'routes/routes middleware)
-          :when (instance? clojure.lang.IRef varr)]
-    (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
-                               (log/infof "%s changed, rebuilding %s" varr #'app)
-                               (alter-var-root #'app (constantly (apply-middleware routes/routes)))))))
+(mu/defn make-handler :- ::api.macros/handler
+  "Create the primary entry point to the Ring HTTP server."
+  [server-routes :- ::api.macros/handler]
+  (if config/is-dev?
+    (dev-handler server-routes)
+    (apply-middleware server-routes)))

@@ -241,6 +241,70 @@ describe("scenarios > setup", () => {
     });
   });
 
+  it("should allow a quick setup for the 'embedding' use case", () => {
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    cy.findByTestId("step-number").should("have.text", "1");
+
+    cy.findByTestId("setup-forms").within(() => {
+      const password = "12341234";
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByLabelText("Create a password").type(password);
+      cy.findByLabelText("Confirm your password").type(password);
+      cy.button("Next").click();
+    });
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByLabelText("Hi, John. Nice to meet you!").should("be.visible");
+      cy.findByText("You're all set up!").should("be.visible");
+      cy.findByText("Take me to Metabase").click();
+    });
+
+    cy.location("pathname").should("eq", "/");
+    H.main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("be.visible");
+  });
+
+  it("should allow localization in the 'embedding' setup flow", () => {
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    cy.log("English is the initial language");
+    cy.get("header")
+      .should("be.visible")
+      .findByLabelText("Select a language")
+      .should("have.value", "English")
+      .click();
+
+    H.popover().findByText("Dutch").should("be.visible").click();
+
+    cy.log("Changing a language should be applied immediately");
+    cy.findByTestId("setup-forms").within(() => {
+      const password = "12341234";
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByLabelText("Maak een wachtwoord").type(password);
+      cy.findByLabelText("Bevestig je wachtwoord").type(password);
+      cy.button("Volgende").click();
+    });
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+        "be.visible",
+      );
+      cy.findByText("Breng me naar Metabase").click();
+    });
+
+    cy.log("Locale is preserved upon succesful setup");
+    cy.location("pathname").should("eq", "/");
+    H.main()
+      .findByText("Aan de slag met het opnemen van Metabase in uw app")
+      .should("be.visible");
+  });
+
   it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";
 
@@ -574,6 +638,7 @@ const skipWelcomePage = () => {
 };
 
 const selectPreferredLanguageAndContinue = () => {
+  cy.findByTestId("step-number").should("have.text", "1");
   cy.findByText("What's your preferred language?");
   cy.findByLabelText("English");
   cy.findByText("Next").click();

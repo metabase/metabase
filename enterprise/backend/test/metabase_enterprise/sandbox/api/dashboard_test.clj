@@ -3,13 +3,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.models.field-values :as field-values]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.parameters.chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (deftest chain-filter-sandboxed-field-values-test

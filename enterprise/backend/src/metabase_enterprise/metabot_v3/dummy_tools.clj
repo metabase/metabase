@@ -9,8 +9,8 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.models.field-values :as field-values]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn get-current-user
@@ -55,30 +55,39 @@
      (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
   ([card metadata-provider]
    (metric-details card metadata-provider nil))
-  ([card metadata-provider {:keys [field-values-fn] :or {field-values-fn add-field-values}}]
+  ([card metadata-provider {:keys [field-values-fn with-queryable-dimensions?]
+                            :or   {field-values-fn            add-field-values
+                                   with-queryable-dimensions? true}}]
    (let [id (:id card)
          metric-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))
          breakouts (lib/breakouts metric-query)
          base-query (lib/remove-all-breakouts metric-query)
          visible-cols (->> (lib/visible-columns base-query)
                            (map #(add-table-reference base-query %)))
-         filterable-cols (->> (lib/filterable-columns base-query)
-                              field-values-fn
-                              (map #(add-table-reference base-query %)))
+         col->index (into {} (map-indexed (fn [i col] [col i])) visible-cols)
+         col-index #(-> % (dissoc :operators :field-values) col->index)
          default-temporal-breakout (->> breakouts
                                         (map #(lib/find-matching-column % visible-cols))
                                         (m/find-first lib.types.isa/temporal?))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
-     {:id id
-      :type :metric
-      :name (:name card)
-      :description (:description card)
-      :default-time-dimension-field-id (when default-temporal-breakout
-                                         (-> (metabot-v3.tools.u/->result-column
-                                              metric-query default-temporal-breakout visible-cols field-id-prefix)
-                                             :field-id))
-      :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column metric-query % visible-cols field-id-prefix)
-                                  filterable-cols)})))
+     (cond-> {:id id
+              :type :metric
+              :name (:name card)
+              :description (:description card)
+              :default-time-dimension-field-id (when default-temporal-breakout
+                                                 (-> (metabot-v3.tools.u/->result-column
+                                                      metric-query
+                                                      default-temporal-breakout
+                                                      (col-index default-temporal-breakout)
+                                                      field-id-prefix)
+                                                     :field-id))}
+       with-queryable-dimensions?
+       (assoc :queryable-dimensions (into []
+                                          (comp (map #(add-table-reference base-query %))
+                                                (map #(metabot-v3.tools.u/->result-column
+                                                       metric-query % (col-index %) field-id-prefix)))
+                                          (->> (lib/filterable-columns base-query)
+                                               field-values-fn)))))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -86,9 +95,12 @@
   -)
 
 (defn- convert-metric
-  [db-metric metadata-provider]
-  (-> db-metric (metric-details metadata-provider)
-      (select-keys  [:id :type :name :description :default-time-dimension-field-id])))
+  ([db-metric metadata-provider]
+   (convert-metric db-metric metadata-provider nil))
+  ([db-metric metadata-provider options]
+   (-> db-metric
+       (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
+       (select-keys  [:id :type :name :description :default-time-dimension-field-id]))))
 
 (defn- table-details
   ([id] (table-details id nil))
@@ -117,7 +129,7 @@
      (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
   ([base metadata-provider]
    (card-details base metadata-provider nil))
-  ([base metadata-provider {:keys [field-values-fn] :or {field-values-fn add-field-values}}]
+  ([base metadata-provider {:keys [field-values-fn] :or {field-values-fn add-field-values} :as options}]
    (let [id (:id base)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
@@ -138,7 +150,8 @@
           :name (lib/display-name card-query)
           :queryable-foreign-key-tables []}
          (m/assoc-some :description (:description base)
-                       :metrics (not-empty (mapv #(convert-metric % metadata-provider) (lib/available-metrics card-query))))))))
+                       :metrics (not-empty (mapv #(convert-metric % metadata-provider options)
+                                                 (lib/available-metrics card-query))))))))
 
 (defn- cards-details
   [card-type database-id cards]
@@ -152,14 +165,15 @@
 (defn answer-sources
   "Get the details metrics and models from the collection with name `collection-name`."
   [metabot-collection]
-  (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-collection)
-        {metrics :metric, models :model}
-        (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
-                   detail (cards-details card-type database-id cards)]
-               detail)
-             (group-by :type))]
-    {:structured-output {:metrics (vec metrics)
-                         :models  (vec models)}}))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-collection)
+          {metrics :metric, models :model}
+          (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
+                     detail (cards-details card-type database-id cards)]
+                 detail)
+               (group-by :type))]
+      {:structured-output {:metrics (vec metrics)
+                           :models  (vec models)}})))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -179,18 +193,19 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id]}]
-  (let [details (cond
-                  (int? model-id) (card-details model-id)
-                  (int? table-id) (table-details table-id)
-                  (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                                       (card-details (parse-long card-id))
-                                       (if (re-matches #"\d+" table-id)
-                                         (table-details (parse-long table-id))
-                                         "invalid table_id"))
-                  :else "invalid arguments")]
-    (if (map? details)
-      {:structured-output details}
-      {:output (or details "table not found")})))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [details (cond
+                    (int? model-id) (card-details model-id)
+                    (int? table-id) (table-details table-id)
+                    (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
+                                         (card-details (parse-long card-id))
+                                         (if (re-matches #"\d+" table-id)
+                                           (table-details (parse-long table-id))
+                                           "invalid table_id"))
+                    :else "invalid arguments")]
+      (if (map? details)
+        {:structured-output details}
+        {:output (or details "table not found")}))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -203,25 +218,27 @@
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id]}]
-  (let [details (if (int? metric-id)
-                  (metric-details metric-id)
-                  "invalid metric_id")]
-    (if (map? details)
-      {:structured-output details}
-      {:output (or details "metric not found")})))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [details (if (int? metric-id)
+                    (metric-details metric-id)
+                    "invalid metric_id")]
+      (if (map? details)
+        {:structured-output details}
+        {:output (or details "metric not found")}))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id]}]
-  (let [details (if (int? report-id)
-                  (let [details (card-details report-id)]
-                    (some-> details
-                            (select-keys [:id :type :description :name])
-                            (assoc :result-columns (:fields details))))
-                  "invalid report_id")]
-    (if (map? details)
-      {:structured-output details}
-      {:output (or details "report not found")})))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [details (if (int? report-id)
+                    (let [details (card-details report-id)]
+                      (some-> details
+                              (select-keys [:id :type :description :name])
+                              (assoc :result-columns (:fields details))))
+                    "invalid report_id")]
+      (if (map? details)
+        {:structured-output details}
+        {:output (or details "report not found")}))))
 
 (defn- execute-query
   [query-id legacy-query]
@@ -242,4 +259,5 @@
 (defn get-query-details
   "Get the details of a (legacy) query."
   [{:keys [query]}]
-  {:structured-output (execute-query (u/generate-nano-id) query)})
+  (lib.metadata.jvm/with-metadata-provider-cache
+    {:structured-output (execute-query (u/generate-nano-id) query)}))
