@@ -357,7 +357,7 @@
    column-mapping-fn                                :- ::column-mapping-fn]
   (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries column-mapping-fn)
         first-query                  (cond-> first-query
-                                       (seq info) qp/userland-query-with-default-constraints)]
+                                       (seq info) qp/userland-query)]
     (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
               qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
       (qp/process-query first-query rff))))

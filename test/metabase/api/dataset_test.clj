@@ -773,6 +773,22 @@
                        {:query q, :format_rows apply-formatting?})
                       ((get output-helper export-format))))))))))
 
+(deftest pivot-exports-ignore-query-constraints
+  (testing "POST /api/dataset/:format with pivot-results=true"
+    (testing "Downloading pivot CSV/JSON/XLSX results shouldn't be subject to the default query constraints"
+      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+        (let [query {:database   (mt/id)
+                     :type       :query
+                     :query      {:source-table (mt/id :venues)
+                                  :breakout     [[:field (mt/id :venues :name) nil]
+                                                 [:field (mt/id :venues :category_id) nil]]
+                                  :aggregation  [[:count]]}
+                     :middleware {:pivot? true}}
+              result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                           {:query query})]
+          ;; The venues table has 100+ rows, so we should get more than default constraints (10)
+          (is (> (count (csv/read-csv result)) 10)))))))
+
 (deftest ^:parallel query-metadata-test
   (testing "MBQL query"
     (is (=? {:databases [{:id (mt/id)}]
