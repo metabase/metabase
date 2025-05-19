@@ -475,4 +475,23 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     });
   });
+
+  it("should not show 'Question not found' error when rendered in StrictMode", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        strictMode: true,
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("should not show the error message");
+        cy.findByText(
+          `Question ${questionId} not found. Make sure you pass the correct ID.`,
+        ).should("not.exist");
+
+        cy.log("should show the question's visualization");
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
+      });
+    });
+  });
 });
