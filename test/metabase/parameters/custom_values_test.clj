@@ -158,12 +158,15 @@
                     (t2/select-one :model/Card :id card-id)
                     [:field "NAME" {:base-type :type/Text}]))))
           (testing "doing case in-sensitve search on breakout columns"
-            (is (= {:has_more_values false
-                    :values          [["Red Medicine"]]}
-                   (custom-values/values-from-card
-                    (t2/select-one :model/Card :id card-id)
-                    [:field "NAME" {:base-type :type/Text}]
-                    {:query-string "medicine"})))))))))
+            (let [card (t2/select-one :model/Card :id card-id)]
+              ;; Sanity check
+              (assert card "What happened to our Card??!")
+              (is (= {:has_more_values false
+                      :values          [["Red Medicine"]]}
+                     (custom-values/values-from-card
+                      card
+                      [:field "NAME" {:base-type :type/Text}]
+                      {:query-string "medicine"}))))))))))
 
 (deftest ^:parallel deduplicate-and-remove-non-empty-values-empty
   (mt/dataset test-data

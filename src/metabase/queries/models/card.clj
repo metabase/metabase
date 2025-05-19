@@ -894,12 +894,13 @@
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
   [{:keys [id] :as _card}]
+  {:pre [(pos-int? id)]}
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
-  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! :model/Revision :model "Card", :model_id id))
 
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
