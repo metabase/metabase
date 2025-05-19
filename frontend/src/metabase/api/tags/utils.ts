@@ -23,10 +23,12 @@ import type {
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  LoggerPreset,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  ParameterId,
   PopularItem,
   RecentItem,
   Revision,
@@ -221,6 +223,21 @@ export function provideCollectionTags(
   return [idTag("collection", collection.id)];
 }
 
+export function provideLoggerPresetListTags(
+  presets: LoggerPreset[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("logger-preset"),
+    ...presets.flatMap(provideLoggerPresetTags),
+  ];
+}
+
+export function provideLoggerPresetTags(
+  preset: LoggerPreset,
+): TagDescription<TagType>[] {
+  return [idTag("logger-preset", preset.id)];
+}
+
 export function provideModelIndexTags(
   modelIndex: ModelIndex,
 ): TagDescription<TagType>[] {
@@ -298,6 +315,12 @@ export function provideDashboardListTags(
     listTag("dashboard"),
     ...dashboards.map((dashboard) => idTag("dashboard", dashboard.id)),
   ];
+}
+
+export function provideParameterValuesTags(
+  parameterId: ParameterId,
+): TagDescription<TagType>[] {
+  return [idTag("parameter-values", parameterId)];
 }
 
 export function provideDashboardTags(

@@ -2,12 +2,12 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
+   [metabase.appearance.core :as appearance]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
@@ -64,18 +64,18 @@
     (mdb/setup-db! :create-sample-content? true)
     (testing "The example-dashboard-id setting should be set if the example content is loaded"
       (is (= 1
-             (public-settings/example-dashboard-id)))))
+             (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (is (nil? (public-settings/example-dashboard-id)))))
+      (is (nil? (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
       (is (= 1
-             (public-settings/example-dashboard-id)))
+             (appearance/example-dashboard-id)))
       (t2/update! :model/Dashboard 1 {:archived true})
-      (is (nil? (public-settings/example-dashboard-id))))))
+      (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test
   (mt/with-temp-empty-app-db [_conn :h2]

@@ -20,9 +20,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -131,6 +131,10 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_utf8 expr]))
 
+(defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
@@ -142,10 +146,6 @@
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_ [_ t]]
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
-
-(defmethod sql.qp/->float :presto-jdbc
-  [_ value]
-  (h2x/cast :double value))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :regex-match-first]
   [driver [_ arg pattern]]

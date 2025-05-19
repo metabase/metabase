@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
    [metabase.request.cookies :as request.cookies]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -232,11 +232,11 @@
         session-key   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
                       :cookies {}}]
-    (testing "If [[public-settings/session-cookies]] is false and the `:remember` flag is set, then the session cookie
-              should have a max age attribute."
+    (testing (str "If [[metabase.session.settings/session-cookies]] is false and the `:remember` flag is set, then the"
+                  " session cookie should have a max age attribute.")
       (mt/with-temp-env-var-value! [:max-session-age "1"]
         (mt/with-temporary-setting-values [session-timeout nil
-                                           public-settings/session-cookies false]
+                                           session-cookies false]
           (let [request {:body                  {:remember true}
                          :metabase-session-key   session-key
                          :metabase-session-type :normal
@@ -261,11 +261,11 @@
         session-key   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
                       :cookies {}}]
-    (testing "If [[public-settings/session-cookies]] is true and the `:remember` flag is set, then the session cookie
-              shouldn't have a max age attribute."
+    (testing (str "If [[metabase.session.settings/session-cookies]] is true and the `:remember` flag is set, then the"
+                  " session cookie shouldn't have a max age attribute.")
       (mt/with-temp-env-var-value! [:max-session-age "1"]
         (mt/with-temporary-setting-values [session-timeout nil
-                                           public-settings/session-cookies true]
+                                           session-cookies true]
           (let [request {:metabase-session-key  session-key
                          :metabase-session-type :normal
                          :remember              "true"

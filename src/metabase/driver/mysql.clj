@@ -30,7 +30,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
+   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -64,7 +64,8 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
@@ -72,6 +73,9 @@
                               :uploads                                true
                               :identifiers-with-spaces                true
                               :expressions/integer                    true
+                              :expressions/float                      true
+                              :expressions/date                       true
+                              :expressions/text                       true
                               :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
@@ -308,14 +312,9 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
-
-(defmethod sql.qp/->integer :mysql
-  [_ value]
-  (h2x/maybe-cast :signed value))
+(defmethod sql.qp/integer-dbtype :mysql
+  [_]
+  :signed)
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
   [driver [_ text divider position]]
@@ -348,10 +347,6 @@
 (defmethod sql.qp/->honeysql [:mysql :text]
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:mysql :date]
-  [driver [_ value]]
-  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -415,10 +410,6 @@
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
-
-(defmethod sql.qp/->honeysql [:mysql :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -742,21 +733,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload/float                    [:double]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:datetime]
-    ::upload/offset-datetime          [:timestamp]))
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:datetime]
+    :metabase.upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/allowed-promotions :mysql
   [_driver]
-  {::upload/int     #{::upload/float}
-   ::upload/boolean #{::upload/int
-                      ::upload/float}})
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 

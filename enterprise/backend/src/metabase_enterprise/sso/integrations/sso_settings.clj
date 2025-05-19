@@ -3,10 +3,9 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
-   [metabase-enterprise.scim.api :as scim]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
-   [metabase.public-settings :as public-settings]
+   [metabase-enterprise.scim.core :as scim]
+   [metabase.appearance.core :as appearance]
+   [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -109,7 +108,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting saml-keystore-alias
   (deferred-tru "Alias for the key that {0} should use for signing SAML requests"
-                (public-settings/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
   :default    "metabase"
   :feature    :sso-saml
@@ -153,7 +152,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting saml-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing SAML to {0} group mappings."
-                (public-settings/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
@@ -257,7 +256,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 (defsetting jwt-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing JWT to {0} group mappings."
-                (public-settings/application-name-for-setting-descriptions))
+                (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
   :type       :json
   :cache?     false

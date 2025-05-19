@@ -3,11 +3,12 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.driver :as driver]
    [metabase.logger :as logger]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -15,12 +16,6 @@
    (java.util.concurrent.atomic AtomicInteger)))
 
 (set! *warn-on-reflection* true)
-
-(defn- loaded-drivers
-  "Returns the names of all loaded drivers"
-  []
-  (into [] (comp (filter simple-keyword?) (map name))
-        (sort (descendants driver/hierarchy ::driver/driver))))
 
 (defn- all-namespace-names
   []
@@ -47,15 +42,32 @@
 
 (defn- presets
   []
-  (let [namespace-names (all-namespace-names)]
-    [{:id :sync
-      :display_name (tru "Sync issue")
-      :loggers (->> (-> [(logger "metabase.driver")]
-                        (into (loggers-under "metabase.sync" namespace-names))
-                        (into (comp (map #(str "metabase.driver." %))
-                                    (mapcat #(loggers-under % namespace-names)))
-                              (sort (loaded-drivers))))
-                    (sort-by :name))}]))
+  [{:id :sync
+    :display_name (tru "Sync issue troubleshooting")
+    :loggers (doto (->> (concat (loggers-under "metabase.sync")
+                                (loggers-under "metabase.driver.sql-jdbc.sync"))
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Sync preset is empty"))))}
+   {:id :linkedfilters
+    :display_name (tru "Linked filters troubleshooting")
+    :loggers (doto (->> (loggers-under "metabase.parameters.chain-filter")
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Linked filters preset is empty"))))}
+   {:id :serialization
+    :display_name (tru "Serialization troubleshooting")
+    :loggers (doto (->> (cons (logger "metabase.models.serialization")
+                              (loggers-under "metabase-enterprise.serialization"))
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}])
 
 (api.macros/defendpoint :get "/presets" :- [:sequential
                                             [:map
@@ -152,6 +164,20 @@
 (mr/def ::time-unit
   (into [:enum {:decode/json keyword}] (keys keyword->TimeUnit)))
 
+(mr/def ::log-levels
+  [:map-of :string (into [:enum] (map name) (reverse logger/levels))])
+
+(defn- ->seconds-str
+  [unit value]
+  (str (case unit
+         :days         (* 86400 value)
+         :hours        (* 3600 value)
+         :minutes      (* 60 value)
+         :seconds      value
+         :milliseconds (quot value (long 1e3))
+         :microseconds (quot value (long 1e6))
+         :nanoeconds   (quot value (long 1e9)))))
+
 (api.macros/defendpoint :post "/adjustment"
   "Temporarily adjust the log levels."
   [_route-params
@@ -159,12 +185,36 @@
    {:keys [duration duration_unit log_levels]} :- [:map
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
-                                                   [:log_levels [:map-of :string ::log-level]]]]
+                                                   [:log_levels :any]]]
   (api/check-superuser)
-  (when-let [task @log-adjustment]
-    (cancel-undo-task! task))
-  (let [plan (set-log-levels! log_levels)]
-    (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)}))
+  (when-not (map? log_levels)
+    (let [json-type (condp #(%1 %2) log_levels
+                      nil?        "null"
+                      boolean?    "boolean"
+                      number?     "number"
+                      string?     "string"
+                      sequential? "array"
+                      "something strange")]
+      (api/check-400 false {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
+                            :errors {:_error (tru "Log levels should be an object, {0} received" json-type)}})))
+  (let [log-levels (update-keys log_levels #(cond-> % (instance? clojure.lang.Named %) name))]
+    (when-let [error (mu/explain ::log-levels log-levels)]
+      (api/check-400 false {:specific-errors {:log_levels error}
+                            :errors {:_error (tru (str "The format of the provided logging configuration is incorrect."
+                                                       " Please follow the following JSON structure:\n{0}")
+                                                  (str "{\n  \"namespace\": "
+                                                       (str/join " | " (map (fn [l] (str \" (name l) \"))
+                                                                            (reverse logger/levels)))
+                                                       "\n}"))}}))
+    (when-let [task @log-adjustment]
+      (cancel-undo-task! task))
+    (let [plan (do (if (empty? log-levels)
+                     (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})
+                     (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_set"
+                                                                    :event_detail (->seconds-str duration_unit
+                                                                                                 duration)}))
+                   (set-log-levels! (update-vals log-levels keyword)))]
+      (reset! log-adjustment {:plan plan, :undo-task (undo-task plan duration duration_unit)})))
   nil)
 
 (api.macros/defendpoint :delete "/adjustment"
@@ -172,6 +222,7 @@
   []
   (api/check-superuser)
   (when-let [task @log-adjustment]
+    (snowplow/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})
     (cancel-undo-task! task)
     (reset! log-adjustment nil))
   nil)

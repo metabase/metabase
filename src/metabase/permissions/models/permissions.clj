@@ -37,10 +37,11 @@
 
   * _data permissions_ -- permissions to view, update, or run ad-hoc or SQL queries against a Database or Table.
 
-  * _Collection permissions_ -- permissions to view/curate/etc. an individual [[metabase.models.collection]] and the
-    items inside it. Collection permissions apply to individual Collections and to any non-Collection items inside that
-    Collection. Child Collections get their own permissions. Many objects such as Cards (a.k.a. *Saved Questions*) and
-    Dashboards get their permissions from the Collection in which they live.
+  * _Collection permissions_ -- permissions to view/curate/etc. an
+  individual [[metabase.collections.models.collection]] and the items inside it. Collection permissions apply to
+  individual Collections and to any non-Collection items inside that Collection. Child Collections get their own
+  permissions. Many objects such as Cards (a.k.a. *Saved Questions*) and Dashboards get their permissions from the
+  Collection in which they live.
 
   ### Enterprise-only permissions and \"anti-permissions\"
 
@@ -169,12 +170,11 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -238,7 +238,7 @@
 (mu/defn collection-readwrite-path :- perms.u/PathSchema
   "Return the permissions path for *readwrite* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
-  (if-not (get collection-or-id :metabase.models.collection.root/is-root?)
+  (if-not (get collection-or-id :metabase.collections.models.collection.root/is-root?)
     (format "/collection/%d/" (u/the-id collection-or-id))
     (if-let [collection-namespace (:namespace collection-or-id)]
       (format "/collection/namespace/%s/root/" (perms.u/escape-path-component (u/qualified-name collection-namespace)))
@@ -324,7 +324,7 @@
      ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
      ;; Collection
      #{(path-fn (or collection-id
-                    {:metabase.models.collection.root/is-root? true
+                    {:metabase.collections.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
 (doto :perms/use-parent-collection-perms
@@ -468,15 +468,15 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
+  (when (perms-group/is-tenant-group? group-or-id)
+    (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
-  (classloader/require 'metabase.models.collection)
-  ((resolve 'metabase.models.collection/is-personal-collection-or-descendant-of-one?) collection))
+  ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
 
 (defn- is-trash-or-descendant? [collection]
-  (classloader/require 'metabase.models.collection)
-  ((resolve 'metabase.models.collection/is-trash-or-descendant?) collection))
+  ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
@@ -490,7 +490,7 @@
   [collection-or-id :- MapOrID]
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
-  (when-not (:metabase.models.collection.root/is-root? collection-or-id)
+  (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
     (let [collection (collection-or-id->collection collection-or-id)]
       ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
       ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
@@ -513,12 +513,17 @@
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-is-modifiable-collection collection-or-id)
+  (when (perms-group/is-tenant-group? group-or-id)
+    (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
   (grant-permissions! (u/the-id group-or-id) (collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-is-modifiable-collection collection-or-id)
+  (when (and (perms-group/is-tenant-group? group-or-id)
+             (audit/is-collection-id-audit? (u/the-id collection-or-id)))
+    (throw (ex-info (tru "Tenant Groups cannot receive any access to the audit collection.") {})))
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?

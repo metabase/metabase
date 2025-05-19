@@ -7,8 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.database :as api.database]
-   [metabase.api.table :as api.table]
-   [metabase.api.test-util :as api.test-util]
+   [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -16,20 +15,19 @@
    [metabase.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.audit-log :as audit-log]
-   [metabase.models.secret :as secret]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
+   [metabase.secrets.core :as secret]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -40,6 +38,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.table :as schema.table]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -466,7 +465,7 @@
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-            (is (= (audit-log/model-details db :model/Database)
+            (is (= (audit/model-details db :model/Database)
                    (->> (mt/latest-audit-log-entry "database-delete")
                         :details
                         normalize)))))))))
@@ -636,7 +635,7 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :id :created_at :updated_at :entity_id] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -655,7 +654,8 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
-                                                             :database_indexed  true
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
@@ -670,7 +670,8 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
-                                                             :database_indexed  false
+                                                             ;; Index sync is turned off across the application as it is not used ATM.
+                                                             #_#_:database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
@@ -678,14 +679,6 @@
                                      :db_id        (mt/id)})]})
            (let [resp (mt/derecordize (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id))))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
-
-(deftest ^:parallel database-metadata-has-entity-ids-test
-  (testing "GET /api/database/:id/metadata"
-    (is (=? {:entity_id some?
-             :tables (partial every? (fn [{:keys [entity_id fields]}]
-                                       (and entity_id
-                                            (api.test-util/all-have-entity-ids? fields))))}
-            (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" (mt/id)))))))
 
 (deftest ^:parallel fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
@@ -1165,6 +1158,14 @@
                 :tables             []}
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
+
+(deftest db-metadata-tables-have-non-nil-schemas
+  (mt/test-drivers (mt/normal-drivers)
+    (is (every? some?
+                (->> (mt/user-http-request :crowberto :get 200
+                                           (format "database/%d/metadata" (mt/id)))
+                     :tables
+                     (map :schema))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
@@ -1755,14 +1756,14 @@
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id
-                                                       (api.table/root-collection-schema-name)))]
+                                                       (schema.table/root-collection-schema-name)))]
             (is (malli= [:sequential
                          [:map
                           [:id               #"^card__\d+$"]
                           [:db_id            ::lib.schema.id/database]
                           [:display_name     :string]
                           [:moderated_status [:maybe [:= "verified"]]]
-                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:schema           [:= (schema.table/root-collection-schema-name)]]
                           [:description      [:maybe :string]]]]
                         response))
             (is (not (contains? (set (map :display_name response)) "Card 3")))
@@ -1773,7 +1774,7 @@
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
-                            :schema           (api.table/root-collection-schema-name)
+                            :schema           (schema.table/root-collection-schema-name)
                             :description      nil
                             :type             "question"}))))
 
@@ -1826,14 +1827,14 @@
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id
-                                                       (api.table/root-collection-schema-name)))]
+                                                       (schema.table/root-collection-schema-name)))]
             (is (malli= [:sequential
                          [:map
                           [:id               [:re #"^card__\d+$"]]
                           [:db_id            ::lib.schema.id/database]
                           [:display_name     :string]
                           [:moderated_status [:maybe [:= :verified]]]
-                          [:schema           [:= (api.table/root-collection-schema-name)]]
+                          [:schema           [:= (schema.table/root-collection-schema-name)]]
                           [:description      [:maybe :string]]]]
                         response))
             (is (contains? (set response)
@@ -1843,7 +1844,7 @@
                             :display_name     "Card 2"
                             :metrics          nil
                             :moderated_status nil
-                            :schema           (api.table/root-collection-schema-name)
+                            :schema           (schema.table/root-collection-schema-name)
                             :description      nil
                             :type             "model"}))))
 

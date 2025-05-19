@@ -19,7 +19,7 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.boolean-is-comparison :as sql.qp.boolean-is-comparison]
+   [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
@@ -42,15 +42,15 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc
-                                        ::sql.qp.boolean-is-comparison/boolean-is-comparison})
+(driver/register! :sqlserver, :parent #{:sql-jdbc})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :expression-literals                    true
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]
@@ -319,6 +319,10 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defmethod sql.qp/float-dbtype :sqlserver
+  [_]
+  :float)
+
 (defn- sanitize-contents
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
@@ -501,6 +505,18 @@
       ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
       (update new-hsql :group-by distinct))))
 
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :fields]
+  [driver _ honeysql-form query]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :fields])
+        ;; Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
+        ;; preserved in results metadata, so downstream questions and query stages can use the column in contexts
+        ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
+        maybe-add-cast #(cond-> %
+                          (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
+                          (mbql.u/assoc-field-options ::sql.qp/add-cast :bit))]
+    (->> (update query :fields #(mapv maybe-add-cast %))
+         (parent-method driver :fields honeysql-form))))
+
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
   [subclauses]
@@ -523,10 +539,36 @@
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
 
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
+  [driver _ honeysql-form query]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
+    (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
+         (parent-method driver :filter honeysql-form))))
+
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
   [_ bool]
-  (if bool 1 0))
+  [:inline (if bool 1 0)])
+
+(defmethod sql.qp/->honeysql [:sqlserver :and]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :or]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :not]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :case]
+  [driver clause]
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
   [_ time-value]
@@ -860,6 +902,14 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
   [_driver this]
   {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql.qp/->integer :sqlserver
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver)
+                  [:round (sql.qp/->float driver value) 0]))
 
 (defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
   (= (sql-jdbc/get-sql-state e) "HY008"))

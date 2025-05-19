@@ -5,21 +5,20 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
-   [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
+   [metabase.secrets.core :as secret]
+   [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -89,15 +88,15 @@
 (defmethod mi/can-read? :model/Database
   ([instance]
    (mi/can-read? :model/Database (u/the-id instance)))
-  ([_model pk]
+  ([_model database-id]
    (cond
-     (should-read-audit-db? pk) false
-     (db-id->router-db-id pk) (mi/can-read? :model/Database (db-id->router-db-id pk))
+     (should-read-audit-db? database-id) false
+     (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
      :else (contains? #{:query-builder :query-builder-and-native}
                       (perms/most-permissive-database-permission-for-user
                        api/*current-user-id*
                        :perms/create-queries
-                       pk)))))
+                       database-id)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -283,9 +282,7 @@
       (and (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
-      normalize-details
-
-      true serdes/add-entity-id)))
+      normalize-details)))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -374,11 +371,6 @@
 (defmethod serdes/hash-fields :model/Database
   [_database]
   [:name :engine])
-
-(defmethod serdes/hash-required-fields :model/Database
-  [_database]
-  {:model :model/Database
-   :required-fields [:name :engine]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
@@ -475,13 +467,12 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+               :description :engine :entity_id :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
                :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)
-               :entity_id           (serdes/backfill-entity-id-transformer)
                ;; details should be imported if available regardless of options
                :details             {:export-with-context
                                      (fn [current _ details]
@@ -516,10 +507,6 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
-
-(defmethod audit-log/model-details :model/Database
-  [database _event-type]
-  (select-keys database [:id :name :engine]))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."

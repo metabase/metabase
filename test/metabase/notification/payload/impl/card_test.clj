@@ -210,7 +210,7 @@
           (testing "sanity check that the file exists in the first place"
             (is (notification.payload/is-cleanable? @f)))
           (testing "the files are cleaned up"
-            (is (not (.exists (.file @f))))))))))
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
@@ -572,12 +572,15 @@
      (mt/with-premium-features #{:audit-app}
        (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
                                                                           :recipients [{:type :notification-recipient/user
-                                                                                        :user_id (mt/user->id :rasta)}]}]}]
+                                                                                        :user_id (mt/user->id :rasta)}
+                                                                                       {:type :notification-recipient/raw-value
+                                                                                        :details {:value "ngoc@metabase.com"}}]}]}]
          (notification/send-notification! notification :notification/sync? true)
          (is (=? {:topic    :alert-send
                   :user_id  (mt/user->id :crowberto)
                   :model    "Pulse"
                   :model_id (:id notification)
-                  :details  {:recipients [{:id (mt/user->id :rasta)}]
+                  :details  {:recipients [{:id (mt/user->id :rasta)}
+                                          "ngoc@metabase.com"]
                              :filters    nil}}
                  (mt/latest-audit-log-entry :alert-send (:id notification)))))))))

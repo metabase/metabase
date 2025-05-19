@@ -13,17 +13,18 @@ import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { getMetadataRoutes } from "metabase/admin/datamodel/metadata/routes";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
-import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
-import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
+import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
+import { GroupsListingApp } from "metabase/admin/people/containers/GroupsListingApp";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
-import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
-import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
-import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
+import { PeopleListingApp } from "metabase/admin/people/containers/PeopleListingApp";
+import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
+import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
+import { LogLevelsModal } from "metabase/admin/tasks/components/LogLevelsModal";
 import { Logs } from "metabase/admin/tasks/components/Logs";
 import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tasks/containers/JobTriggersModal";
@@ -97,16 +98,16 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
 
           <Route path="" component={PeopleListingApp}>
-            <ModalRoute path="new" modal={NewUserModal} />
+            <ModalRoute path="new" modal={NewUserModal} noWrap />
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
             <IndexRedirect to="/admin/people" />
-            <ModalRoute path="edit" modal={EditUserModal} />
-            <ModalRoute path="success" modal={UserSuccessModal} />
-            <ModalRoute path="reset" modal={UserPasswordResetModal} />
-            <ModalRoute path="deactivate" modal={UserActivationModal} />
-            <ModalRoute path="reactivate" modal={UserActivationModal} />
+            <ModalRoute path="edit" modal={EditUserModal} noWrap />
+            <ModalRoute path="success" modal={UserSuccessModal} noWrap />
+            <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
+            <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
+            <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes(store)}</Fragment>
             ))}
@@ -138,7 +139,16 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               modalProps={{ wide: true }}
             />
           </Route>
-          <Route path="logs" component={Logs} />
+          <Route path="logs" component={Logs}>
+            <ModalRoute
+              path="levels"
+              modal={LogLevelsModal}
+              modalProps={{
+                // EventSandbox interferes with mouse text selection in CodeMirror editor
+                disableEventSandbox: true,
+              }}
+            />
+          </Route>
           {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
         </Route>
       </Route>

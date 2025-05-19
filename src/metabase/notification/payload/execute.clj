@@ -3,16 +3,16 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
-   [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
-   [metabase.public-settings :as public-settings]
+   [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -132,7 +132,7 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (system/site-locale) (escape-markdown-chars? dashcard))))
 
 (def ^{:private true
        :doc     "If a query has more than the number of rows specified here, we store the data to disk instead of in memory."}

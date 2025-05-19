@@ -24,17 +24,19 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
+   [metabase.db.custom-migrations.util :as custom-migrations.util]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.settings.models.setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
+   [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1532,13 +1534,13 @@
 (defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
-  (binding [setting/*allow-retired-setting-names* true]
+  (binding [metabase.settings.models.setting/*allow-retired-setting-names* true]
     `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
 ;; even though it might make changes to some enterprise-only settings.
 ;; In order to write tests that runs in both OSS and EE, we can't use
-;; [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
+;; [[metabase.settings.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
 ;; because they require all settings are defined.
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest ^:mb/old-migrations-test migrate-remove-admin-from-group-mapping-if-needed-test
@@ -1823,7 +1825,7 @@
       ;; the `pulse-channell-test/with-send-pulse-setup!` macro dynamically binds an in-memory scheduler to `task/*quartz-scheduler*`
       ;; but we need to re-bind that to global here because the InitSendPulseTriggers job will need access to the scheduler,
       ;; and since quartz job is running in a different thread other than this test's thread, we need to bind it globally
-      (with-redefs [task/*quartz-scheduler* task/*quartz-scheduler*]
+      (with-redefs [task.impl/*quartz-scheduler* task.impl/*quartz-scheduler*]
         (let [user-id  (:id (new-instance-with-default :core_user))
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
@@ -2553,8 +2555,8 @@
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
 (deftest migrate-alert-to-notification-test
   (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
-    (mt/with-temp-scheduler!
-      (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
+    (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
+      (binding [custom-migrations.util/*allow-temp-scheduling* true]
         (let [user-id     (:id (new-instance-with-default :core_user))
               database-id (:id (new-instance-with-default :metabase_database))
               card-id     (:id (new-instance-with-default :report_card
@@ -2584,11 +2586,11 @@
           (testing "after migration"
             (migrate!)
             (testing "pulse is migrated to notification"
-              (let [notification (t2/select-one :notification)
+              (let [notification      (t2/select-one :notification)
                     notification-card (t2/select-one :notification_card :id (:payload_id notification))
-                    subscription (t2/select-one :notification_subscription :notification_id (:id notification))
-                    handler      (t2/select-one :notification_handler :notification_id (:id notification))
-                    recipient    (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
+                    subscription      (t2/select-one :notification_subscription :notification_id (:id notification))
+                    handler           (t2/select-one :notification_handler :notification_id (:id notification))
+                    recipient         (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
                 (is (= {:payload_type "notification/card"
                         :active       true
                         :creator_id   user-id}

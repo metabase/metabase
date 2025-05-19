@@ -16,6 +16,7 @@ export interface LegacyStaticChartProps {
   type: LegacyStaticChartType;
   options: any;
   colors?: ColorPalette;
+  hasDevWatermark?: boolean;
 }
 
 /**
@@ -26,7 +27,8 @@ export const LegacyStaticChart = ({
   options,
 }: LegacyStaticChartProps) => {
   const getColor = createColorGetter(options.colors);
-  const chartProps = { ...options, getColor };
+  const hasDevWatermark = Boolean(options.tokenFeatures?.["development-mode"]);
+  const chartProps = { ...options, getColor, hasDevWatermark };
 
   switch (type) {
     case "gauge":

@@ -19,10 +19,10 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -91,7 +91,7 @@
                               :pivot_results (boolean pivot)})
        (process-results export-format)))
 
-(defn public-question-download
+(defn- public-question-download
   [card {:keys [export-format format-rows pivot]
          :or   {format-rows false
                 pivot       false}}]
@@ -228,7 +228,7 @@
                                                      :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse)))))
 
-(defn all-downloads
+(defn- all-downloads
   [card-or-dashcard opts]
   (merge
    (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
@@ -238,7 +238,7 @@
    {:dashcard-download (card-download card-or-dashcard opts)
     :public-dashcard-download (public-dashcard-download card-or-dashcard opts)}))
 
-(defn all-outputs!
+(defn- all-outputs!
   [card-or-dashcard opts]
   (cond-> (merge
            (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
@@ -283,7 +283,8 @@
                                                 :values  ["sum"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                      :currency_in_header false}}}
+                                                                      :currency_in_header false}}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]]
                                                  :breakout    [$category
@@ -321,7 +322,7 @@
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))
-        (testing "only when `public-settings/enable-pivoted-exports` is true (true by default)."
+        (testing "only when `qp.settings/enable-pivoted-exports` is true (true by default)."
           (is (= [[["Category" "Created At: Year" "Sum of Price"]
                    ["Doohickey" "2016" "$632.14"]
                    ["Doohickey" "2017" "$854.19"]
@@ -342,7 +343,7 @@
                   #{:unsaved-card-download :card-download :dashcard-download
                     :subscription-attachment
                     :public-question-download :public-dashcard-download}]
-                 (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+                 (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
@@ -359,7 +360,8 @@
                                                 :values  ["sum" "avg"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                      :currency_in_header false}}}
+                                                                      :currency_in_header false}}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]
                                                                [:avg $price]]
@@ -505,7 +507,8 @@
                                                     :values  ["sum"]}
                                                    :column_settings
                                                    {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                          :currency_in_header false}}}
+                                                                          :currency_in_header false}}
+                                                   :pivot.condense_duplicate_totals true}
                           :dataset_query          (mt/mbql-query products
                                                     {:aggregation [[:sum $price]]
                                                      :breakout    [$category
@@ -538,7 +541,8 @@
                     :visualization_settings {:pivot_table.column_split
                                              {:rows    ["C" "D"]
                                               :columns ["A" "B"]
-                                              :values  ["sum"]}}
+                                              :values  ["sum"]}
+                                             :pivot.condense_duplicate_totals true}
                     :dataset_query          (mt/mbql-query nil
                                               {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                :breakout
@@ -785,9 +789,10 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    ["CREATED_AT"],
-                                                :columns ["CATEGORY"],
-                                                :values  ["sum"]}}
+                                               {:rows    ["CREATED_AT"]
+                                                :columns ["CATEGORY"]
+                                                :values  ["sum"]}
+                                               :pivot.condense_duplicate_totals true}
                       :dataset_query          (mt/mbql-query products
                                                 {:aggregation [[:sum $price]
                                                                [:avg $rating]]
@@ -803,8 +808,8 @@
                   ["June, 2016" "82.92" "75.53" "83.26" "" "241.71"]]
                  (take 3 pivot))))
 
-        (testing "but only when `public-settings/enable-pivoted-exports` is true"
-          (mt/with-temporary-setting-values [public-settings/enable-pivoted-exports false]
+        (testing "but only when `qp.settings/enable-pivoted-exports` is true"
+          (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
             (let [result      (mt/user-http-request :crowberto :post 200
                                                     (format "card/%d/query/xlsx" pivot-card-id)
                                                     :format_rows   true
@@ -1170,13 +1175,15 @@
 
 (deftest format-rows-value-affects-xlsx-exports
   (testing "Format-rows true/false is respected for xlsx exports."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [enable-pivoted-exports true
+                                       custom-formatting      {}]
       (mt/with-temp [:model/Card card
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
                                                {:rows    ["CATEGORY"]
                                                 :columns ["CREATED_AT"]
                                                 :values  ["sum"]}
+                                               :pivot.condense_duplicate_totals true
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -1273,7 +1280,7 @@
 
 (deftest pivot-rows-order-test
   (testing "A pivot download will use the user-configured rows order."
-    (mt/dataset test-data
+    (mt/with-temporary-setting-values [enable-pivoted-exports true]
       (mt/with-temp [:model/Card card {:display                :pivot
                                        :dataset_query          (mt/mbql-query products
                                                                  {:aggregation  [[:count]]
@@ -1343,6 +1350,7 @@
                             {:rows    ["CATEGORY"]
                              :columns ["CREATED_AT"]
                              :values  ["sum"]}
+                            :pivot.condense_duplicate_totals true
                             :column_settings
                             {"[\"name\",\"sum\"]" (merge {:number_style       "currency"
                                                           :currency_in_header false}
@@ -1404,7 +1412,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["MEASURE"]
                                                   :columns []
-                                                  :values  ["count" "sum"]}}
+                                                  :values  ["count" "sum"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1447,7 +1456,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["MEASURE"]
                                                   :columns []
-                                                  :values  ["count" "sum" "sum_2"]}}
+                                                  :values  ["count" "sum" "sum_2"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1460,7 +1470,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["MEASURE"]
                                                   :columns []
-                                                  :values  ["sum_2" "count" "sum"]}}
+                                                  :values  ["sum_2" "count" "sum"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1537,7 +1548,8 @@
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    ["A"]
                                                   :columns []
-                                                  :values  ["count" "sum" "avg" "min" "max"]}}
+                                                  :values  ["count" "sum" "avg" "min" "max"]}
+                                                 :pivot.condense_duplicate_totals true}
                         :dataset_query          (mt/mbql-query nil
                                                   {:breakout     [[:field "A" {:base-type :type/Integer}]],
                                                    :aggregation
@@ -1634,3 +1646,27 @@
         (let [res (card-download card {:export-format :xlsx :format-rows true :pivot true})]
           (is (= "Custom Title"
                  (second (first res)))))))))
+
+(deftest pivot-subtotal-formatting-in-xlsx-test
+  (testing "Pivot table subtotals in XLSX exports use formatted values as strings rather than XLSX formatting codes (#57442)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CREATED_AT", "CATEGORY"]
+                                                :columns []
+                                                :values  ["sum"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style "currency"
+                                                                      :currency_in_header false}}
+                                               :pivot.show_row_totals true}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category !year.created_at]})}]
+        (let [result       (mt/user-http-request :crowberto :post 200
+                                                 (format "card/%d/query/xlsx" pivot-card-id)
+                                                 {:format_rows   true
+                                                  :pivot_results true})
+              pivot        (read-xlsx result)
+              subtotal-row (first (filter #(str/starts-with? (first %) "Totals for") pivot))]
+          (is (= "Totals for 2016" (first subtotal-row))))))))

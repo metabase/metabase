@@ -1,9 +1,10 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -118,7 +119,7 @@ export const downloadQueryResults = createAsyncThunk(
     });
 
     if (opts.type === Urls.exportFormatPng) {
-      const isWhitelabeled = getTokenFeature(getState() as State, "whitelabel");
+      const isWhitelabeled = getTokenFeature(getState(), "whitelabel");
       const includeBranding = !isWhitelabeled;
       downloadChart({ opts, includeBranding });
     } else {
@@ -201,11 +202,18 @@ const getDatasetParams = ({
       };
     }
     if (resource === "question" && uuid) {
+      const parameters = (result?.json_query?.parameters ?? []).map(
+        (param) => ({
+          id: param.id,
+          value: param.value,
+        }),
+      );
+
       return {
         method: "GET",
         url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
         params: new URLSearchParams({
-          parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+          parameters: JSON.stringify(parameters),
         }),
       };
     }
@@ -336,7 +344,7 @@ const getDatasetFileName = (headers: Headers, type: string) => {
   );
 };
 
-const getChartFileName = (question: Question, branded: boolean) => {
+export const getChartFileName = (question: Question, branded: boolean) => {
   const name = question.displayName() ?? t`New question`;
   const date = new Date().toLocaleString();
   const fileName = `${name}-${date}.png`;

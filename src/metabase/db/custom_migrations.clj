@@ -879,8 +879,8 @@
 
 (defn- raw-setting
   "Get raw setting directly from DB.
-  For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
-  [[metabase.models.setting/defsetting]] instead of value from Setting table."
+  For some reasons during data-migration [[metabase.settings.models.setting/get]] return the default value defined in
+  [[metabase.settings.models.setting/defsetting]] instead of value from Setting table."
   [k]
   (t2/select-one-fn :value :setting :key (name k)))
 
@@ -1285,10 +1285,10 @@
                                (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
                                (remove (fn [x] (and (= table-name :collection)
                                                     (= (:type x)
-                                                       ;; avoid requiring `metabase.models.collection` in this
-                                                       ;; namespace to deter others using it in migrations
+                                                       ;; avoid requiring [[metabase.collections.models.collection]] in
+                                                       ;; this namespace to deter others using it in migrations
                                                        #_{:clj-kondo/ignore [:unresolved-namespace]}
-                                                       metabase.models.collection/trash-collection-type))))
+                                                       metabase.collections.models.collection/trash-collection-type))))
                                (sort-by :id))]))))
 
   (pretty-spit (gather-sample-coll-edn-data)

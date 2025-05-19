@@ -4,6 +4,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { isNotNull } from "metabase/lib/types";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
@@ -43,7 +44,8 @@ export function BreakoutColumnList({
     () =>
       breakouts
         .slice(0, pinnedItemCount)
-        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout)),
+        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
+        .filter(isNotNull),
     [query, stageIndex, breakouts, pinnedItemCount],
   );
 

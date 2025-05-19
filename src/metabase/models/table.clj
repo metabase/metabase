@@ -1,17 +1,17 @@
 (ns metabase.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -53,10 +53,6 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
   :model/Table)
-
-(t2/define-after-select :model/Table
-  [table]
-  (serdes/add-entity-id table))
 
 (t2/define-before-insert :model/Table
   [table]
@@ -127,14 +123,21 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
+;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
+
+(mu/defmethod mi/visible-filter-clause :model/Table
+  [_                  :- :keyword
+   column-or-exp      :- :any
+   user-info          :- perms/UserInfo
+   permission-mapping :- perms/PermissionMapping]
+  [:in column-or-exp
+   (perms/visible-table-filter-select :id user-info permission-mapping)])
+
+;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
-
-(defmethod serdes/hash-required-fields :model/Table
-  [_table]
-  {:model :model/Table
-   :required-fields [:schema :name :db_id]})
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -291,25 +294,18 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter]
+               :database_require_filter :entity_id]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
-               :entity_id  (serdes/backfill-entity-id-transformer)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))
 
-;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
-
-(defmethod audit-log/model-details :model/Table
-  [table _event-type]
-  (select-keys table [:id :name :db_id]))
-
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(search/define-spec "table"
+(search.spec/define-spec "table"
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause

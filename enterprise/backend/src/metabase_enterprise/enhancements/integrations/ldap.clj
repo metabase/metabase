@@ -2,9 +2,9 @@
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
   (:require
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]

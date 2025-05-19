@@ -1,6 +1,6 @@
 (ns metabase.task.bootstrap
   (:require
-   [metabase.plugins.classloader :as classloader]))
+   [metabase.classloader.core :as classloader]))
 
 (set! *warn-on-reflection* true)
 

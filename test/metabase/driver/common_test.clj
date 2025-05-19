@@ -5,8 +5,8 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]))
 
 (deftest ^:parallel base-type-inference-test

@@ -2,7 +2,7 @@
   "Namespace with helpers for quick tasks. Intended for quick, one-off tasks like re-syncing a table,
   fingerprinting a field, etc."
   (:require
-   [metabase.plugins.classloader :as classloader])
+   [metabase.classloader.core :as classloader])
   (:import
    (java.util.concurrent Callable Executors ExecutorService Future ThreadFactory)))
 

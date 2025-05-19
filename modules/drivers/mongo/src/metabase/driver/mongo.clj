@@ -415,7 +415,11 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
-                              :index-info                      true}]
+                              :saved-question-sandboxing       false
+                              :expressions/date                true
+                              :expressions/text                true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                      false}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)

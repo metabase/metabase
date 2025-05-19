@@ -48,13 +48,12 @@ const pieRowsReadDeps = [
 ];
 
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
-  get uiName() {
-    return t`Pie`;
-  },
+  getUiName: () => t`Pie`,
   identifier: "pie",
   iconName: "pie",
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
+  supportsVisualizer: true,
   isSensible: ({ cols, rows }) => {
     const numDimensions = cols.filter(isDimension).length;
     const numMetrics = cols.filter(isMetric).length;

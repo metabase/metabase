@@ -4,6 +4,10 @@ import fetchMock from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
+  setupLastDownloadFormatEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
@@ -27,6 +31,10 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
     setupJestCanvasMock();
@@ -87,6 +95,11 @@ describe("QueryBuilder", () => {
         createMockCard({ ...TEST_CARD_VISUALIZATION, display: "table" }),
         createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
       ];
+
+      beforeEach(() => {
+        fetchMock.put("path:/api/setting/non-table-chart-generated", 200);
+        setupSettingsEndpoints([]);
+      });
 
       it.each(cards)(
         `renders the row count in "$display" visualization`,

@@ -65,7 +65,8 @@
   '#{require
      clojure.core/require
      classloader/require
-     metabase.plugins.classloader/require
+     metabase.classloader.core/require
+     metabase.classloader.impl/require
      requiring-resolve
      clojure.core/requiring-resolve})
 
@@ -203,7 +204,7 @@
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
   don't include them in our deps tree."
-  '{metabase.config #{metabase-enterprise.core metabase.test.core}})
+  '{metabase.config #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
 (mu/defn- file-dependencies :- [:map
                                 [:namespace simple-symbol?]
@@ -220,15 +221,19 @@
           static-deps  (ns.parse/deps-from-ns-decl decl)
           dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
                          (vary-meta symb assoc ::dynamic :require-and-friends))
-          defenterprise-deps (for [symb (find-defenterprises file)]
-                               (vary-meta symb assoc ::dynamic :defenterprise))
-          defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-                                      (vary-meta symb assoc ::dynamic :defenterprise-schema))
+          ;;
+          ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+          ;; rationale.
+          ;;
+          ;; defenterprise-deps (for [symb (find-defenterprises file)]
+          ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+          ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+          ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
           deps         (into (sorted-set) cat
                              [static-deps
                               dynamic-deps
-                              defenterprise-deps
-                              defenterprise-schema-deps])]
+                              #_defenterprise-deps
+                              #_defenterprise-schema-deps])]
       {:namespace ns-symb
        :module    (module ns-symb)
        :deps      (sort-by pr-str
@@ -371,9 +376,17 @@
         (full-dependencies)))
 
 (defn module-dependencies-mermaid []
+  (println "flowchart TD")
   (doseq [[module deps] (module-dependencies)
           dep deps]
     (printf "%s-->%s\n" module dep)))
+
+(defn module-dependencies-graphviz []
+  (println "digraph {")
+  (doseq [[module deps] (module-dependencies)
+          dep deps]
+    (printf "  \"%s\" -> \"%s\"\n" module dep))
+  (println "}"))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."

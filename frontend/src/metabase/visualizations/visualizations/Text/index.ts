@@ -8,15 +8,13 @@ import {
 import { Text } from "./Text";
 
 const TextWrapper = Object.assign(Text, {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  uiName: t`Text`,
+  getUiName: () => t`Text`,
   identifier: "text",
   iconName: "text",
   canSavePng: false,
 
   disableSettingsConfig: false,
   noHeader: true,
-  supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
 

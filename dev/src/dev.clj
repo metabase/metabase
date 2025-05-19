@@ -21,7 +21,7 @@
 ;; - [Drivers](#metabase.driver)
 ;; - [Permissions](#metabase.models.permissions)
 ;; - [The Query Processor](#metabase.query-processor)
-;; - [Application Settings](#metabase.models.setting)
+;; - [Application Settings](#metabase.settings.models.setting)
 ;;
 ;; ## Important Libraries
 ;;
@@ -72,15 +72,15 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server.handler :as handler]
-   [metabase.server.instance :as server]
+   [metabase.server.core :as server]
+   [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -170,7 +170,7 @@
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! #'handler/app)
+  (server/start-web-server! (server.test-handler/test-handler))
   (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)

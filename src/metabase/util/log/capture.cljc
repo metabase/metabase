@@ -21,8 +21,9 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str])
-  (:import
-   (org.apache.logging.log4j ThreadContext)))
+  #?(:clj
+     (:import
+      (org.apache.logging.log4j ThreadContext))))
 
 (def ^:dynamic ^{:arglists '([namespace-str level-int])} *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
@@ -191,7 +192,9 @@
         msgs              (if has-inline-ctx? (butlast args) args)
         inline-ctx        (when has-inline-ctx?
                             (update-keys (last args) #(str (symbol %))))
-        ctx-map           (ThreadContext/getImmutableContext)
+        ctx-map           #?(:clj (ThreadContext/getImmutableContext)
+                             ;; not implemented in cljs
+                             :cljs {})
         has-with-context? (not-empty ctx-map)]
     (f e (str/join \space (map print-str msgs))
        (when (or has-inline-ctx? has-with-context?)

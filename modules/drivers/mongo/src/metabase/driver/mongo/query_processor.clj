@@ -19,11 +19,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -189,6 +189,8 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
+(declare with-rvalue-temporal-bucketing)
+
 (defn- scope-with-join-field
   "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
   [field-name join-field source-alias]
@@ -244,8 +246,17 @@
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
+      (isa? coercion :Coercion/DateTime->Date)
+      (with-rvalue-temporal-bucketing field-name :day)
+
       (isa? coercion :Coercion/String->Float)
       {"$toDouble" field-name}
+
+      (isa? coercion :Coercion/String->Integer)
+      {"$toLong" field-name}
+
+      (isa? coercion :Coercion/Float->Integer)
+      {"$toLong" {"$round" {"$toDouble" field-name}}}
 
       :else field-name)))
 
@@ -297,8 +308,6 @@
                                               [resolution])]
                              [part (str (name parts) \. (name part))]))}))
 
-(declare with-rvalue-temporal-bucketing)
-
 (defn- days-till-start-of-first-full-week
   [column]
   (let [start-of-year                (with-rvalue-temporal-bucketing column :year)
@@ -332,7 +341,7 @@
                   {:$dateTrunc {:date column
                                 :unit (name unit)
                                 :timezone (qp.timezone/results-timezone-id)
-                                :startOfWeek (name (public-settings/start-of-week))}}
+                                :startOfWeek (name (lib-be/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column
@@ -657,6 +666,18 @@
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
+
+(defmethod ->rvalue :text [[_ expr]]
+  {"$toString" (->rvalue expr)})
+
+(defmethod ->rvalue :date [[_ expr]]
+  (let [rvalue (->rvalue expr)]
+    (with-rvalue-temporal-bucketing
+      {"$cond" [{"$eq" [{"$type" rvalue} "string"]}
+                {"$toDate" rvalue}
+
+                rvalue]}
+      :day)))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
