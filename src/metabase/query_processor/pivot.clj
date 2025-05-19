@@ -731,7 +731,11 @@
   "Is this a preaggregated pivot query, with the pivot breakouts/aggregation defined by the query itself rather than
   the viz settings?"
   [query]
-  (:pivot_preagg_column_split query))
+  (boolean
+   (let [col-split (:pivot_preagg_column_split query)]
+     (and
+      (not-empty (:pivot_cols col-split))
+      (not-empty (:pivot_rows col-split))))))
 
 (defn- is-unaggregated-query?
   "Is this query an unaggregated query with no pivot settings set yet? If so, we run it as-is, not as a pivot."
