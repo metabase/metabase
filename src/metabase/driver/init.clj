@@ -8,4 +8,7 @@
    ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
    [metabase.driver.h2]
    [metabase.driver.mysql]
-   [metabase.driver.postgres]))
+   [metabase.driver.postgres]
+   [metabase.driver.settings]
+   ;; for the `:sql-jdbc` implementation of [[metabase.driver/incorporate-ssh-tunnel-details]]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel]))

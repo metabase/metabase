@@ -50,6 +50,8 @@ title: Driver interface changelog
 - `metabase.db.metadata-queries` has been removed; the parts meant for usage by drivers have been moved to
   `metabase.driver.common.table-rows-sample`.
 
+- `metabase.util.ssh` has been moved to `metabase.driver.sql-jdbc.connection.ssh-tunnel`.
+
 ## Metabase 0.54.0
 
 - Added the multi-method `allowed-promotions` that allows driver control over which column type promotions are supported for uploads.
