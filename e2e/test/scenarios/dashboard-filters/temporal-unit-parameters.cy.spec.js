@@ -1071,13 +1071,78 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(), "Unit");
 
-      H.dashboardParameterSidebar()
-        .get("[aria-labelledby='default-value-label'")
-        .click();
+      H.dashboardParameterSidebar().findByLabelText("Default value").click();
 
       H.popover().findByText("Year").click();
       H.saveDashboard();
       H.getDashboardCard().should("contain", "January 1, 2022, 12:00 AM");
+    });
+
+    it("should not be able to use temporal unit parameter with a filter of a different type", () => {
+      const questionWithoutDefaultValue = {
+        name: "Saved question with time grouping",
+        native: {
+          query: `
+        SELECT
+          count(*),
+          {{mb.time_grouping("unit", "created_at")}} as unit
+        FROM
+          ORDERS
+        GROUP BY
+          unit
+        `,
+          "template-tags": {
+            unit: {
+              type: "temporal-unit",
+              name: "unit",
+              id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+              "display-name": "Unit",
+              required: true,
+            },
+          },
+        },
+      };
+
+      H.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [questionWithoutDefaultValue],
+      }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
+
+      H.getDashboardCard().should(
+        "contain",
+        "There was a problem displaying this chart.",
+      );
+
+      H.editDashboard();
+
+      H.setFilter("Text or Category", "Is");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "A text variable in this card can only be connected to a text filter with Is operator.",
+        )
+        .should("not.contain", "Select…");
+      H.setFilter("Number", "Equal to");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "A number variable in this card can only be connected to a number filter with Equal to operator.",
+        )
+        .should("not.contain", "Select…");
+      H.setFilter("Date picker", "Relative Date");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "A date variable in this card can only be connected to a time type with the single date option.",
+        )
+        .should("not.contain", "Select…");
+      H.setFilter("Location", "Is");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "Add a variable to this question to connect it to a dashboard filter.",
+        )
+        .should("not.contain", "Select…");
     });
   });
 });
