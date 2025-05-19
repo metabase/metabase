@@ -652,3 +652,21 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+(deftest ^:parallel password-check-test
+  (testing "POST /api/session/password-check"
+    (testing "Test for required params"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {}))))))
+
+(deftest ^:parallel password-check-test-2
+  (testing "POST /api/session/password-check"
+    (testing "Test complexity check"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {:password "blah"}))))))
+
+(deftest ^:parallel password-check-test-3
+  (testing "POST /api/session/password-check"
+    (testing "Should be a valid password"
+      (is (= {:valid true}
+             (mt/client :post 200 "session/password-check" {:password "something123"}))))))

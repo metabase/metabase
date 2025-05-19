@@ -65,6 +65,8 @@
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
      metabase.indexed-entities.models.model-index/add-values!
+     metabase.driver.sql-jdbc.connection.ssh-tunnel-test/start-mock-servers!
+     metabase.driver.sql-jdbc.connection.ssh-tunnel-test/stop-mock-servers!
      metabase.indexed-entities.task.index-values/job-init!
      metabase.model-persistence.models.persisted-info/ready-database!
      metabase.model-persistence.task.persist-refresh/job-init!
@@ -101,7 +103,6 @@
      metabase.sync.core/sync-database!
      metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
      metabase.sync.sync-metadata/sync-db-metadata!
-     metabase.warehouse-schema.models.field-values/create-or-update-full-field-values!
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
      metabase.task.core/delete-task!
@@ -129,5 +130,4 @@
      metabase.test/with-temp-env-var-value!
      metabase.upload.impl-test/set-local-infile!
      metabase.util.files/create-dir-if-not-exists!
-     metabase.util.ssh-test/start-mock-servers!
-     metabase.util.ssh-test/stop-mock-servers!}}}}
+     metabase.warehouse-schema.models.field-values/create-or-update-full-field-values!}}}}

@@ -1,10 +1,10 @@
-(ns metabase.util.ssh-test
+(ns metabase.driver.sql-jdbc.connection.ssh-tunnel-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.log :as log])
   (:import
    (java.io BufferedReader InputStreamReader PrintWriter)
    (java.net InetSocketAddress ServerSocket Socket)

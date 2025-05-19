@@ -305,6 +305,15 @@
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
 
+(api.macros/defendpoint :post "/password-check"
+  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+  {:valid true})
+
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
