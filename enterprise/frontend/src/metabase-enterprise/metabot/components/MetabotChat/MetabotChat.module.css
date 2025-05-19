@@ -10,7 +10,7 @@
 }
 
 .header {
-  padding: 2rem var(--paddxing-x) 1rem;
+  padding: 1.5rem var(--paddxing-x) 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -53,7 +53,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 1rem;
+  border-radius: 0.5rem;
   box-shadow: 0 3px 6px 0 #0000000d;
   min-height: 3rem;
   border: 1px solid var(--mb-color-border);
@@ -98,10 +98,10 @@
 }
 
 .messagesContainer {
-  padding: 1rem var(--paddxing-x) 0.5rem;
+  padding: 1rem var(--paddxing-x) 1.5rem;
   height: 100%;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   overflow: auto;
 }
 
@@ -126,7 +126,7 @@
 
 .message {
   font-size: 0.875rem;
-  line-height: 1.4;
+  line-height: 1.4 !important;
 }
 
 .messageUser {
@@ -145,14 +145,8 @@
   opacity: 1;
 }
 
-.loadingContainer {
-  /* negative margin accounts for odd spacing due to hidden copy button
-   * for the message the user just sent */
-  margin: -2rem var(--paddxing-x) 0;
-}
-
 .textInputContainer {
-  padding: 1rem;
+  padding: 0 1rem 1rem;
 }
 
 .markdown {

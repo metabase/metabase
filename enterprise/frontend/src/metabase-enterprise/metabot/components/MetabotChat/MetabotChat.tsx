@@ -1,10 +1,9 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import Markdown from "metabase/core/components/Markdown";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
@@ -22,32 +21,36 @@ import {
 } from "metabase/ui";
 
 import { useMetabotAgent } from "../../hooks";
-import { MetabotIcon } from "../MetabotIcon";
+import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import Styles from "./MetabotChat.module.css";
+import { useAutoscrollMessages } from "./hooks";
 
 export const MetabotChat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const [input, setMessage] = useState("");
 
   const metabot = useMetabotAgent();
 
+  useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
+
   const hasMessages = metabot.messages.length > 0;
   const suggestedPrompts = metabot.suggestedPrompts.data?.prompts ?? [];
   const hasSuggestions = suggestedPrompts.length > 0;
 
-  const resetInput = useCallback(() => {
-    setMessage("");
-  }, []);
-
   const handleSubmitInput = (input: string) => {
+    if (metabot.isDoingScience) {
+      return;
+    }
+
     const trimmedInput = input.trim();
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
-    resetInput();
+    setMessage("");
     metabot
       .submitInput(trimmedInput)
       .catch((err) => console.error(err))
@@ -56,19 +59,9 @@ export const MetabotChat = () => {
 
   const { setVisible } = metabot;
   const handleClose = useCallback(() => {
-    resetInput();
+    setMessage("");
     setVisible(false);
-  }, [resetInput, setVisible]);
-
-  useEffect(
-    function handleAutoscroll() {
-      const el = messagesRef.current;
-      if (el) {
-        el.scrollTop = el.scrollHeight;
-      }
-    },
-    [metabot.messages],
-  );
+  }, [setVisible]);
 
   const handleInputChange = (value: string) => {
     setMessage(value);
@@ -83,15 +76,15 @@ export const MetabotChat = () => {
     >
       <Box className={Styles.container} data-testid="metabot-chat">
         {/* header */}
-        <Box data-testid="metabot-chat-header" className={Styles.header}>
-          <Flex gap="md" align-items="center">
-            <MetabotIcon width="43px" height="32px" />
-            <Stack gap="xs">
-              <Text lh={1} fz="lg" fw="bold">{t`Ask Metabot`}</Text>
-              <Text lh={1} fz="sm" c="text-secondary">
-                {t`Metabot isn't perfect. Double-check results.`}
-              </Text>
-            </Stack>
+        <Box
+          data-testid="metabot-chat-header"
+          className={Styles.header}
+          ref={headerRef}
+        >
+          <Flex align-items="center">
+            <Text lh={1} fz="sm" c="text-secondary">
+              {t`Metabot isn't perfect. Double-check results.`}
+            </Text>
           </Flex>
 
           <Flex gap="sm">
@@ -108,6 +101,7 @@ export const MetabotChat = () => {
         <Box
           className={Styles.messagesContainer}
           data-testid="metabot-chat-messages"
+          ref={messagesRef}
         >
           {/* empty state with no sugggested prompts */}
           {!hasMessages && !hasSuggestions && (
@@ -153,7 +147,7 @@ export const MetabotChat = () => {
             </Stack>
           )}
 
-          {hasMessages && (
+          {(hasMessages || metabot.isDoingScience) && (
             <Box className={Styles.messages}>
               {/* conversation messages */}
               {metabot.messages.map(({ actor, message }, index) => (
@@ -162,32 +156,30 @@ export const MetabotChat = () => {
                   data-testid="metabot-chat-message"
                   actor={actor}
                   message={message}
-                  isLastMessage={index === metabot.messages.length - 1}
                 />
               ))}
+
+              {/* loading */}
+              {metabot.isDoingScience && (
+                <Loader color="brand" type="dots" size="lg" />
+              )}
+
+              {/* long convo warning */}
+              {metabot.isLongConversation && (
+                <Text lh={1} c="text-light" m={0} ta="center">
+                  {jt`This chat is getting long. You can ${(
+                    <UnstyledButton
+                      display="inline"
+                      c="brand"
+                      td="underline"
+                      onClick={() => metabot.resetConversation()}
+                    >{t`clear it`}</UnstyledButton>
+                  )}.`}
+                </Text>
+              )}
             </Box>
           )}
         </Box>
-
-        {metabot.isDoingScience && (
-          <Box className={Styles.loadingContainer}>
-            <Loader color="brand" type="dots" size="lg" />
-          </Box>
-        )}
-
-        {/* long convo warning */}
-        {metabot.isLongConversation && (
-          <Text lh={1} c="text-light" m={0} ta="center">
-            {jt`This chat is getting long. You can ${(
-              <UnstyledButton
-                display="inline"
-                c="brand"
-                td="underline"
-                onClick={() => metabot.resetConversation()}
-              >{t`clear it`}</UnstyledButton>
-            )}.`}
-          </Text>
-        )}
 
         <Box className={Styles.textInputContainer}>
           <Paper
@@ -199,13 +191,17 @@ export const MetabotChat = () => {
             <Textarea
               data-testid="metabot-chat-input"
               w="100%"
+              leftSection={
+                <Box h="100%" pt="11px">
+                  <Icon name="metabot" c="brand" />
+                </Box>
+              }
               autosize
               minRows={1}
               maxRows={10}
               ref={textareaRef}
               autoFocus
               value={input}
-              disabled={metabot.isDoingScience}
               className={cx(
                 Styles.textarea,
                 metabot.isDoingScience && Styles.textareaLoading,
@@ -232,12 +228,10 @@ const Message = ({
   actor,
   message,
   className,
-  isLastMessage,
   ...props
 }: BoxProps & {
   actor: "agent" | "user";
   message: string;
-  isLastMessage: boolean;
 }) => {
   const clipboard = useClipboard();
 
@@ -250,18 +244,19 @@ const Message = ({
           : Styles.messageContainerAgent,
         className,
       )}
+      data-message-actor={actor}
       direction="column"
       {...props}
     >
-      <Markdown
-        className={cx(
-          Styles.message,
-          actor === "user" && Styles.messageUser,
-          Styles.markdown,
-        )}
-      >
-        {message}
-      </Markdown>
+      {actor === "user" ? (
+        <Text
+          className={cx(Styles.message, actor === "user" && Styles.messageUser)}
+        >
+          {message}
+        </Text>
+      ) : (
+        <AIMarkdown className={Styles.message}>{message}</AIMarkdown>
+      )}
       <Flex className={Styles.messageActions}>
         <ActionIcon onClick={() => clipboard.copy(message)} h="sm">
           <Icon name="copy" size="1rem" />
