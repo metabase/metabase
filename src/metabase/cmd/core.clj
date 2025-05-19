@@ -39,7 +39,7 @@
 (defn- cmd->var
   "Looks up a command var by name"
   [command-name]
-  (ns-resolve 'metabase.cmd (symbol command-name)))
+  (ns-resolve 'metabase.cmd.core (symbol command-name)))
 
 (defn- call-enterprise
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"

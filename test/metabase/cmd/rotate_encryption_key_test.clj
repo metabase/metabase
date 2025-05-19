@@ -2,8 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.cmd :as cmd]
    [metabase.cmd.copy :as copy]
+   [metabase.cmd.core :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
