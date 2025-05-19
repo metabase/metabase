@@ -11,8 +11,7 @@
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
-   (java.nio.charset StandardCharsets)
-   (metabase.formatter.core NumericWrapper TextWrapper)))
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,8 +72,8 @@
                      ;; inference to know if we should or should not parse a string (or not stringify an object).
                      (let [res (formatter (streaming.common/format-value r))]
                        (cond
-                         (instance? NumericWrapper res) (:num-str res)
-                         (instance? TextWrapper res)    (:text-str res)
+                         (formatter/NumericWrapper? res) (:num-str res)
+                         (formatter/TextWrapper? res)    (:text-str res)
                          :else                          res)))
                    @ordered-formatters cleaned-row))
              writer {})

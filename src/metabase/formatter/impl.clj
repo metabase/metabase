@@ -321,3 +321,13 @@
        (fn [value]
          (->TextWrapper (str value) value))
        identity))))
+
+(defn NumericWrapper?
+  "Is `x` an instance of `NumericWrapper`?"
+  [x]
+  (instance? NumericWrapper x))
+
+(defn TextWrapper?
+  "Is `x` an instance of `TextWrapper`?"
+  [x]
+  (instance? TextWrapper x))

@@ -9,6 +9,8 @@
  [metabase.formatter.impl
   ->NumericWrapper
   ->TextWrapper
+  NumericWrapper?
+  TextWrapper?
   coerce-bignum-to-int
   create-formatter
   format-geographic-coordinates
