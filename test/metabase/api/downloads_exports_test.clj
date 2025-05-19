@@ -1663,3 +1663,71 @@
         (let [res (card-download card {:export-format :xlsx :format-rows true :pivot true})]
           (is (= "Custom Title"
                  (second (first res)))))))))
+
+(deftest pivot-subtotal-formatting-in-xlsx-test
+  (testing "Pivot table subtotals in XLSX exports use formatted values as strings rather than XLSX formatting codes (#57442)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CREATED_AT", "CATEGORY"]
+                                                :columns []
+                                                :values  ["sum"]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style "currency"
+                                                                      :currency_in_header false}}
+                                               :pivot.show_row_totals true}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category !year.created_at]})}]
+        (let [result       (mt/user-http-request :crowberto :post 200
+                                                 (format "card/%d/query/xlsx" pivot-card-id)
+                                                 {:format_rows   true
+                                                  :pivot_results true})
+              pivot        (read-xlsx result)
+              subtotal-row (first (filter #(str/starts-with? (first %) "Totals for") pivot))]
+          (is (= "Totals for 2016" (first subtotal-row))))))))
+
+(deftest ^:parallel pivot-condense-duplicate-totals-csv-test
+  (testing "`pivot.condense_duplicate_totals` affects CSV output as expected"
+    (let [viz-settings (fn [condense?]
+                         {:pivot_table.column_split {:rows ["CATEGORY"]
+                                                     :columns ["CREATED_AT"]
+                                                     :values ["count"]}
+                          :column_settings
+                          {"[\"name\",\"sum\"]" {:number_style "currency"}
+                           "[\"name\",\"avg\"]" {:number_style "decimal"}}
+                          ;; Optionally include the condense setting
+                          :pivot.condense_duplicate_totals condense?})
+          expected-condensed
+          [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+           ["Doohickey" "13" "17" "8" "4" "42"]
+           ["Gadget"    "13" "19" "14" "7" "53"]
+           ["Gizmo"     "9"  "21" ""  ""  "51"]
+           ["Grand totals" "54" "75" "53" "18" "200"]]
+
+          expected-uncondensed
+          [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+           ["Doohickey" "13" "17" "8" "4" "42"]
+           ["Totals for Doohickey" "13" "17" "8" "4" "42"]
+           ["Gadget" "13" "19" "14" "7" "53"]
+           ["Totals for Gadget" "13" "19" "14" "7" "53"]
+           ["Gizmo" "9" "21" "" "" "51"]
+           ["Totals for Gizmo" "9" "21" "" "" "51"]
+           ["Grand totals" "54" "75" "53" "18" "200"]]]
+      (mt/dataset test-data
+        (doseq [[condense? expected]
+                [[true expected-condensed]
+                 [false expected-uncondensed]
+                 [nil expected-condensed]]]
+          (mt/with-temp [:model/Card card
+                         {:display :pivot
+                          :visualization_settings (cond-> (viz-settings condense?)
+                                                    (nil? condense?) (dissoc :pivot.condense_duplicate_totals))
+                          :dataset_query (mt/mbql-query products
+                                           {:aggregation [[:count]]
+                                            :breakout [$category !year.created_at]
+                                            :limit 10})}]
+            (let [result (card-download card {:export-format :csv :format-rows true :pivot true})]
+              (is (= expected (take (count expected) result))
+                  (str "Failed for condense_duplicate_totals=" condense?)))))))))
