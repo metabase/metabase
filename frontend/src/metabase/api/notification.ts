@@ -151,6 +151,9 @@ export const notificationApi = Api.injectEndpoints({
         url: "/api/notification/preview_template",
         body,
       }),
+      transformErrorResponse: (response: { data: string }) => {
+        return response.data;
+      },
     }),
   }),
 });
