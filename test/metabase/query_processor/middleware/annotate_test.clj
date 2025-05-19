@@ -350,7 +350,6 @@
       (is (= {:base_type       :type/Float
               :name            "double-price"
               :display_name    "double-price"
-              :expression_name "double-price"
               :ident           "eG2KisFcSyHRqACHSmmbN"
               :field_ref       [:expression "double-price"]}
              (lib.tu.macros/$ids venues
@@ -393,7 +392,6 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
               :ident              "aP4kbV3PYLhLoK3o3F5xx"
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
@@ -405,7 +403,6 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
               :ident              "aP4kbV3PYLhLoK3o3F5xx"
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
@@ -624,7 +621,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :expression_name "expr",
                   :ident "LbroONhJ5OWyvFCQB4zp3"
                   :source :fields,
                   :field_ref [:expression "expr"],
@@ -639,7 +635,6 @@
           (is (= {:base_type :type/Text,
                   :name "expr",
                   :display_name "expr",
-                  :expression_name "expr",
                   :ident "LbroONhJ5OWyvFCQB4zp3"
                   :field_ref [:expression "expr"],
                   :source :fields}
@@ -650,7 +645,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :expression_name "expr",
                   :ident "LbroONhJ5OWyvFCQB4zp3"
                   :source :fields,
                   :field_ref [:expression "expr"],
@@ -764,11 +758,10 @@
                        {:name "count_2", :display_name "count_2", :base_type :type/Number}]}))))))
 
 (deftest ^:parallel expressions-keys-test
-  (testing "make sure expressions come back with the right set of keys, including `:expression_name` (#8854)"
+  (testing "make sure expressions come back with the right set of keys (#8854)"
     (is (= {:name            "discount_price"
             :display_name    "discount_price"
             :base_type       :type/Float
-            :expression_name "discount_price"
             :ident           "bdW6mQ49dxdMbC1CheUpt"
             :source          :fields
             :field_ref       [:expression "discount_price"]}
@@ -808,7 +801,6 @@
         (is (=? [{:name            "prev_month"
                   :display_name    "prev_month"
                   :base_type       :type/DateTime
-                  :expression_name "prev_month"
                   :ident           (get-in query [:query :expression-idents "prev_month"])
                   :source          :fields
                   :field_ref       [:expression "prev_month"]}]
