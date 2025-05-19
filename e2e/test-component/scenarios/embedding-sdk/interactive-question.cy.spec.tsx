@@ -476,7 +476,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it("should not show any sdk errors a question is rendered in strict mode", () => {
+  it("should not show any sdk error when showing a question in strict mode", () => {
     cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         strictMode: true,
