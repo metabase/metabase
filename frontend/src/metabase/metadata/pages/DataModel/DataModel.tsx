@@ -9,7 +9,12 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Box, Flex, Stack, Title } from "metabase/ui";
 
 import S from "./DataModel.module.css";
-import { FieldSection, PreviewSection, TableSection } from "./components";
+import {
+  FieldSection,
+  PreviewSection,
+  TableSection,
+  usePreviewType,
+} from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
@@ -18,10 +23,6 @@ interface Props {
 }
 
 const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
-
-// TODO: remove this in Milestone 2
-// https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40
-const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
   const { databaseId, tableId, fieldId } = parseRouteParams(params);
@@ -41,10 +42,21 @@ export const DataModel = ({ params }: Props) => {
         },
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const [previewType, setPreviewType] = usePreviewType();
 
   return (
-    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
+    <Flex
+      h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}
+      w="100%"
+      bg="accent-gray-light"
+    >
+      <Stack
+        className={S.sidebar}
+        flex="0 0 320px"
+        gap={0}
+        h="100%"
+        bg="bg-white"
+      >
         <Title order={2} px="xl" py="lg" pb="md">
           {t`Data model`}
         </Title>
@@ -87,7 +99,7 @@ export const DataModel = ({ params }: Props) => {
       )}
 
       {!isEmptyStateShown && (
-        <Flex bg="accent-gray-light" flex="1">
+        <>
           <Box flex="0 0 400px" h="100%">
             <LoadingAndErrorWrapper
               className={S.contentLoadingAndErrorWrapper}
@@ -108,12 +120,14 @@ export const DataModel = ({ params }: Props) => {
             </LoadingAndErrorWrapper>
           </Box>
 
-          {!PREVIEW_NOT_IMPLEMENTED_YET && (
-            <Box flex="1" p="xl" pl={0}>
-              <PreviewSection fieldId={fieldId} />
-            </Box>
-          )}
-        </Flex>
+          <Box flex="1 1 200px" p="xl" pl={0} miw={0}>
+            <PreviewSection
+              fieldId={fieldId}
+              previewType={previewType}
+              onPreviewTypeChange={setPreviewType}
+            />
+          </Box>
+        </>
       )}
     </Flex>
   );
