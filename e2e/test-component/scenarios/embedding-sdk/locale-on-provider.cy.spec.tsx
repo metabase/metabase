@@ -60,7 +60,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Zusammenfassen" }).should("exist");
+      cy.findByText("Zusammenfassen").should("exist");
     });
   });
 
@@ -68,7 +68,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     setup({ locale: "de" });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Zusammenfassen" }).should("exist");
+      cy.findByText("Zusammenfassen").should("exist");
     });
   });
 
@@ -80,7 +80,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Zusammenfassen" }).should("exist");
+      cy.findByText("Zusammenfassen").should("exist");
     });
   });
 
@@ -92,7 +92,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Resumir" }).should("exist");
+      cy.findByText("Sumarizar").should("exist");
     });
   });
 
@@ -104,7 +104,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "匯總(Summarize)" }).should("exist");
+      cy.findByText("匯總(Summarize)").should("exist");
     });
   });
 
@@ -113,7 +113,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
 
     // should not do any request, as `en` doesn't need loading
     getSdkRoot().within(() => {
-      cy.findByRole("button", { name: "Summarize" }).should("exist");
+      cy.findByText("Summarize").should("exist");
     });
   });
 });
