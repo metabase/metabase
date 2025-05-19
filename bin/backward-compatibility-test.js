@@ -67,10 +67,8 @@ function executeCommand(command, cwd, envOverrides = {}) {
 
 function build() {
   printStep("Cleaning up tmp folder...");
-  if (fs.existsSync(TMP_FOLDER)) {
-    fs.rmSync(TMP_FOLDER, { recursive: true, force: true });
-  }
-  fs.mkdirSync(TMP_FOLDER);
+  fs.rmSync(TMP_FOLDER, { recursive: true, force: true });
+  fs.mkdirSync(TMP_FOLDER, { recursive: true });
   fs.writeFileSync(path.join(TMP_FOLDER, ".gitignore"), "*");
 
   printStep("Cloning frontend...");
@@ -100,7 +98,6 @@ function build() {
   );
 
   const beResourcesPath = path.join(BE_FOLDER, "resources");
-  fs.mkdirSync(beResourcesPath, { recursive: true });
 
   const beTargetClientPath = path.join(beResourcesPath, "frontend_client");
   const beTargetSharedPath = path.join(beResourcesPath, "frontend_shared");
@@ -174,12 +171,10 @@ async function waitForBackend() {
 }
 
 async function test() {
-  const CWD_FE = FE_FOLDER;
-
   await waitForBackend();
 
   printStep("Creating snapshot...");
-  executeCommand("node e2e/runner/run_cypress_ci.js snapshot", CWD_FE);
+  executeCommand("node e2e/runner/run_cypress_ci.js snapshot", FE_FOLDER);
 
   printStep("Running tests...");
   const testEnv = {
@@ -187,7 +182,7 @@ async function test() {
     TEST_SUITE: "e2e",
   };
   const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "${COMMA_SEPARATED_TESTS_TO_RUN}"`;
-  executeCommand(cypressCommand, CWD_FE, testEnv);
+  executeCommand(cypressCommand, FE_FOLDER, testEnv);
 }
 
 // main logic
