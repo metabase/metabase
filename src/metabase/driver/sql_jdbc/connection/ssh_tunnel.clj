@@ -1,12 +1,9 @@
-(ns metabase.util.ssh
-  "SSH tunnel support for JDBC-based DWs. TODO -- it seems like this code is JDBC-specific, or at least big parts of
-  this all. We should consider moving some or all of this code to a new namespace like
-  `metabase.driver.sql-jdbc.connection.ssh-tunnel` or something like that."
+(ns metabase.driver.sql-jdbc.connection.ssh-tunnel
+  "SSH tunnel support for JDBC-based DWs."
   (:require
    [metabase.driver :as driver]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.driver.settings :as driver.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io ByteArrayInputStream)
@@ -15,9 +12,7 @@
    (org.apache.sshd.client.future ConnectFuture)
    (org.apache.sshd.client.session ClientSession)
    (org.apache.sshd.client.session.forward PortForwardingTracker)
-   (org.apache.sshd.common.config.keys FilePasswordProvider
-                                       FilePasswordProvider$Decoder
-                                       FilePasswordProvider$ResourceDecodeResult)
+   (org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$Decoder FilePasswordProvider$ResourceDecodeResult)
    (org.apache.sshd.common.future CancelOption)
    (org.apache.sshd.common.session SessionHeartbeatController$HeartbeatType SessionHolder)
    (org.apache.sshd.common.util GenericUtils)
@@ -25,13 +20,6 @@
    (org.apache.sshd.common.util.net SshdSocketAddress)
    (org.apache.sshd.common.util.security SecurityUtils)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
-
-(defsetting ssh-heartbeat-interval-sec
-  (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
-  :visibility :public
-  :type       :integer
-  :default    180
-  :audit      :getter)
 
 (set! *warn-on-reflection* true)
 
@@ -79,7 +67,7 @@
   (let [^Integer tunnel-port       (or tunnel-port default-ssh-tunnel-port)
         ^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout no-cancel-options)
-        hb-sec                     (ssh-heartbeat-interval-sec)
+        hb-sec                     (driver.settings/ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
                                      (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)
@@ -128,7 +116,6 @@
       details-with-tunnel)
     details))
 
-;; TODO Seems like this definitely belongs in [[metabase.driver.sql-jdbc.connection]] or something like that.
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
   [_driver db-details]
   (cond
