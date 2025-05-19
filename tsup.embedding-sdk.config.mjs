@@ -74,28 +74,6 @@ const GIT_BRANCH = execSync("git rev-parse --abbrev-ref HEAD")
   .trim();
 const GIT_COMMIT = execSync("git rev-parse HEAD").toString().trim();
 
-const aliases = {
-  assets: ASSETS_PATH,
-  "~assets": ASSETS_PATH,
-  fonts: FONTS_PATH,
-  metabase: SRC_PATH,
-  "metabase-lib": LIB_SRC_PATH,
-  "metabase-enterprise": ENTERPRISE_SRC_PATH,
-  "metabase-types": TYPES_SRC_PATH,
-  "metabase-dev": path.join(SRC_PATH, `dev${isDevMode ? "" : "-noop"}.js`),
-  cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-  __support__: TEST_SUPPORT_PATH,
-  e2e: E2E_PATH,
-  style: ROOT_CSS_FILE_PATH,
-  icepick: path.resolve(
-    import.meta.dirname,
-    "node_modules/icepick/icepick.min",
-  ),
-  "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
-  "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
-  "embedding-sdk": SDK_SRC_PATH,
-};
-
 await build({
   entry: [path.join(SDK_SRC_PATH, "index.ts")],
   outDir: BUILD_PATH,
@@ -148,7 +126,27 @@ await build({
   esbuildOptions: (options) => {
     options.outbase = SDK_SRC_PATH;
 
-    options.alias = aliases;
+    options.alias = {
+      assets: ASSETS_PATH,
+      "~assets": ASSETS_PATH,
+      fonts: FONTS_PATH,
+      metabase: SRC_PATH,
+      "metabase-lib": LIB_SRC_PATH,
+      "metabase-enterprise": ENTERPRISE_SRC_PATH,
+      "metabase-types": TYPES_SRC_PATH,
+      "metabase-dev": path.join(SRC_PATH, `dev${isDevMode ? "" : "-noop"}.js`),
+      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+      __support__: TEST_SUPPORT_PATH,
+      e2e: E2E_PATH,
+      style: ROOT_CSS_FILE_PATH,
+      icepick: path.resolve(
+        import.meta.dirname,
+        "node_modules/icepick/icepick.min",
+      ),
+      "ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
+      "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
+      "embedding-sdk": SDK_SRC_PATH,
+    };
 
     options.resolveExtensions = [
       ".tsx",
@@ -167,7 +165,6 @@ await build({
   },
   esbuildPlugins: [
     cssModulesPlugin({
-      aliases,
       additionalCssModuleRegexp: /css\/core\/index\.css/,
       resolve: (filePath) => {
         if (filePath === "style") {
@@ -201,7 +198,7 @@ await build({
       ignore: (path) => !(path === "react" || path === "react-dom"),
     }),
     NodeModulesPolyfillPlugin(),
-    svgPlugin({ aliases, getFullPathFromResolvePath }),
+    svgPlugin({ getFullPathFromResolvePath }),
     !isDevMode
       ? // This plugin is heavy, so we don't apply it for dev mode
         sideEffectsPlugin({

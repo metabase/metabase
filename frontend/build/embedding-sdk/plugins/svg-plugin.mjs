@@ -7,9 +7,11 @@ import path from "path";
  * We have to use a custom plugin, because `esbuild-plugin-svgr` as a side-effect disables svg processing in `css` files
  * Also we anyway have to handle both `?component` and `?source` resource queries
  */
-export const svgPlugin = ({ aliases, getFullPathFromResolvePath }) => ({
+export const svgPlugin = ({ getFullPathFromResolvePath }) => ({
   name: "svg-plugin",
   setup(build) {
+    const { alias } = build.initialOptions;
+
     build.onResolve({ filter: /\.svg\?component$/ }, (args) => ({
       path: args.path,
       namespace: "svg-component",
@@ -31,7 +33,7 @@ export const svgPlugin = ({ aliases, getFullPathFromResolvePath }) => ({
         const fullPath = getFullPathFromResolvePath({
           resolveDir,
           resolvePath: normalizedResolvePath,
-          aliases,
+          aliases: alias,
         });
 
         const source = await fs.promises.readFile(fullPath, "utf8");

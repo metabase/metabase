@@ -9,7 +9,6 @@ import postcssConfig from "../../../../postcss.config.js";
 import { CSS_MODULE_INJECT_FUNCTION_NAME } from "../constants/css-module-inject-function-name.mjs";
 
 export const cssModulesPlugin = ({
-  aliases = {},
   additionalCssModuleRegexp,
   resolve,
   getFullPathFromResolvePath,
@@ -22,13 +21,15 @@ export const cssModulesPlugin = ({
   return {
     name: "css-modules",
     setup(build) {
+      const { alias } = build.initialOptions;
+
       build.onResolve(
         { filter, namespace: "file" },
         ({ resolveDir, path: resolvePath }) => {
           const fullPath = getFullPathFromResolvePath({
             resolveDir,
             resolvePath,
-            aliases,
+            aliases: alias,
           });
 
           return {
