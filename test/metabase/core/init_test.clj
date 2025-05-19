@@ -19,7 +19,7 @@
         (ns.find/find-namespaces (classpath/system-classpath))))
 
 (mu/defn- ns->file :- [:maybe (ms/InstanceOfClass java.net.URL)]
- ^java.net.URL [ns-symb :- simple-symbol?]
+  ^java.net.URL [ns-symb :- simple-symbol?]
   (let [filename (-> ns-symb
                      (str/replace #"\." "/")
                      (str/replace #"-" "_"))]
