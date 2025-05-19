@@ -11,6 +11,7 @@
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -21,8 +22,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
