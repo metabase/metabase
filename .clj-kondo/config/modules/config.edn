@@ -256,8 +256,8 @@
            util}}
 
   cmd
-  {:api  #{metabase.cmd
-           metabase.cmd.copy
+  {:api  #{metabase.cmd.copy
+           metabase.cmd.core
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
@@ -298,7 +298,7 @@
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
-  {:api  #{metabase.config}
+  {:api  #{metabase.config.core}
    :uses #{}}
 
   ;; this is not actually a real module, but comes from one of our libraries.
@@ -445,7 +445,7 @@
            view-log}}
 
   formatter
-  {:api  #{metabase.formatter}
+  {:api  #{metabase.formatter.core}
    :uses #{appearance
            models
            system

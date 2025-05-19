@@ -5,15 +5,15 @@
    [medley.core :as m]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
-   [metabase.formatter]
+   [metabase.formatter.core]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u])
   (:import
-   (metabase.formatter NumericWrapper)))
+   (metabase.formatter.core NumericWrapper)))
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.formatter/keep-me)
+(comment metabase.formatter.core/keep-me)
 
 (defn- bar-th-style []
   (merge

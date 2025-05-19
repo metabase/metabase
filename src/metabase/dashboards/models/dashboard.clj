@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.db.query :as mdb.query]

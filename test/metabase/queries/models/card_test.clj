@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

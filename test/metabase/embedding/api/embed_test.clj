@@ -10,7 +10,7 @@
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.http-client :as client]

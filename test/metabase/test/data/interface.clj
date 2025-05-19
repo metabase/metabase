@@ -14,7 +14,7 @@
    [mb.hawk.init]
    [medley.core :as m]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]

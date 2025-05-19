@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]

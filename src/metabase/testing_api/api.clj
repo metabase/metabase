@@ -8,7 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]

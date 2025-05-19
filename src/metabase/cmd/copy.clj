@@ -7,7 +7,7 @@
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.db.setup :as mdb.setup]
    [metabase.models.init]

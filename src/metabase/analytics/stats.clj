@@ -13,7 +13,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.appearance.core :as appearance]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]

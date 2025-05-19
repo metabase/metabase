@@ -23,7 +23,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.util :as u]
    [metabase.util.log :as log]

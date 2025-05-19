@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.appearance.core :as appearance]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
    [metabase.events.core :as events]
    [metabase.http-client :as client]

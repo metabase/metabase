@@ -3,7 +3,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features]

@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.auth-provider.core :as auth-provider]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]

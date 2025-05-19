@@ -12,7 +12,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]

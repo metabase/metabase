@@ -1,7 +1,7 @@
 (ns metabase.http-client-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.http-client :as client]))
 
 (deftest build-url-test

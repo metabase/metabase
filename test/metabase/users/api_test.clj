@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.http-client :as client]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]

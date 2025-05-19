@@ -18,7 +18,7 @@
    [java-time.api :as t]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]

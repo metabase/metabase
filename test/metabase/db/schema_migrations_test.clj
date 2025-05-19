@@ -25,7 +25,7 @@
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.load-from-h2-test :as load-from-h2-test]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations-test :as custom-migrations-test]

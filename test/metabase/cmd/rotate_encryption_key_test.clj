@@ -8,7 +8,7 @@
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
    [metabase.cmd.test-util :as cmd.test-util]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]

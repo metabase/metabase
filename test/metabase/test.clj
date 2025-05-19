@@ -9,7 +9,7 @@
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.channel.email-test]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.init]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.db.test-util :as mdb.test-util]

@@ -10,7 +10,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.dashboards.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]

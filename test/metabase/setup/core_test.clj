@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase.appearance.core :as appearance]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]

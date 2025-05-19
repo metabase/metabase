@@ -10,7 +10,7 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]

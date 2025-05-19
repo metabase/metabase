@@ -8,7 +8,7 @@
 
   Namespaces outside of src/metabase/db/ should not use any metabase.db.* namespace but use this api namespace."
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.db.data-source :as mdb.data-source]

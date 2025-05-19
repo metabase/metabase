@@ -8,7 +8,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.http-client :as client]
    [metabase.parameters.chain-filter-test :as chain-filter-test]

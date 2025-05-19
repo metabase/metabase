@@ -9,7 +9,7 @@
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]

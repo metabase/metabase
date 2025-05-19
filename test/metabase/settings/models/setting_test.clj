@@ -5,7 +5,7 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]

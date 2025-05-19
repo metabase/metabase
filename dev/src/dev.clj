@@ -65,7 +65,7 @@
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.channel.email :as email]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]

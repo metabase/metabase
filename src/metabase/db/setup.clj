@@ -9,7 +9,7 @@
   (:require
    [honey.sql :as sql]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.encryption :as mdb.encryption]

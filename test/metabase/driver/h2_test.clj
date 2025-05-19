@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.actions.error :as actions.error]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.driver :as driver]

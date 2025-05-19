@@ -4,7 +4,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.js.engine :as js.engine]
-   [metabase.formatter]
+   [metabase.formatter.core]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu])

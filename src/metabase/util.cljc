@@ -5,7 +5,7 @@
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
-             [metabase.config :as config]
+             [metabase.config.core :as config]
              [clojure.pprint :as pprint]
              #_{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]

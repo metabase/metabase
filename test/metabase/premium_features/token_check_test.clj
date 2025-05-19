@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
    [mb.hawk.parallel]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.settings :as premium-features.settings]

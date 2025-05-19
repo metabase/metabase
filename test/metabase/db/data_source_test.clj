@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.test :as mt]))

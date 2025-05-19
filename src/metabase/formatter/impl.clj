@@ -1,4 +1,4 @@
-(ns metabase.formatter
+(ns metabase.formatter.impl
   "Provides functions that support formatting results data. In particular, customizing formatting for when timezone,
    column metadata, and visualization-settings are known. These functions can be used for uniform rendering of all
    artifacts such as generated CSV or image files that need consistent formatting across the board."

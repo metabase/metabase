@@ -8,7 +8,7 @@
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.channel.email :as email]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.premium-features.settings :as premium-features.settings]

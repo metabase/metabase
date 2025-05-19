@@ -1,7 +1,7 @@
 (ns metabase.db.spec-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.spec :as mdb.spec]))
 
 (defn- default-pg-spec [db]

@@ -11,7 +11,7 @@
    [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]

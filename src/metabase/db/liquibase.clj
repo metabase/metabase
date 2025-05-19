@@ -6,7 +6,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations]
    [metabase.db.liquibase.h2 :as liquibase.h2]
