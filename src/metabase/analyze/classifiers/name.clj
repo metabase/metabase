@@ -12,7 +12,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
-(def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
 (def ^:private int-type         #{:type/Integer})
 (def ^:private int-or-text-type #{:type/Integer :type/Text})
