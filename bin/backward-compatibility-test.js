@@ -25,7 +25,7 @@ const FE_FOLDER = path.join(TMP_FOLDER, "metabase-fe");
 const BE_FOLDER = path.join(TMP_FOLDER, "metabase-be");
 const JAR_PATH = path.join(BE_FOLDER, "target/uberjar/metabase.jar");
 
-const TEST_TO_RUN = [
+const TESTS_TO_RUN = [
   "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
   "e2e/test/scenarios/question/caching.cy.spec.js",
 ];
