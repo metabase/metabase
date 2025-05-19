@@ -10,9 +10,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.params.chain-filter :as chain-filter]
-   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.field :as parameters.field]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
@@ -78,10 +78,13 @@
       (binding [qp.perms/*card-id* source-card-id]
         (qp.streaming/streaming-response [rff export-format]
           (if was-pivot
-            (qp.pivot/run-pivot-query (-> query
-                                          (assoc :constraints (qp.constraints/default-query-constraints))
-                                          (update :info merge info))
-                                      rff)
+            (let [constraints (if (= export-format :api)
+                                (qp.constraints/default-query-constraints)
+                                (:constraints query))]
+              (qp.pivot/run-pivot-query (-> query
+                                            (assoc :constraints constraints)
+                                            (update :info merge info))
+                                        rff))
             (qp/process-query (update query :info merge info) rff)))))))
 
 (api.macros/defendpoint :post "/"
@@ -145,9 +148,9 @@
                                           (dissoc :constraints)
                                           (update :middleware #(-> %
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                                   (assoc :format-rows?          (or format-rows false)
-                                                                          :pivot?                (or pivot-results false)
-                                                                          :process-viz-settings? true
+                                                                   (assoc :format-rows?           (or format-rows false)
+                                                                          :pivot?                 (or pivot-results false)
+                                                                          :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query
      (qp/userland-query query)

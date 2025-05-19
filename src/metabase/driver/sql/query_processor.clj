@@ -1287,6 +1287,10 @@
   [driver [_ value]]
   (->date driver (->honeysql driver value)))
 
+(defmethod ->honeysql [:sql :text]
+  [driver [_ value]]
+  (->honeysql driver [::cast-to-text value]))
+
 (mu/defmethod ->honeysql [:sql :relative-datetime] :- some?
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
@@ -1385,9 +1389,19 @@
     ;; Honey SQL 2
     (as [:field \"x\" {:base-type :type/Text, :temporal-unit :month}])
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
-    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\""
+    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
+
+  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
+    ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
+    ;; -> SELECT CAST(1 AS bit) AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [honeysql-form (->honeysql driver clause)
+  (let [cast-type     (-> clause mbql.u/field-options ::add-cast)
+        wrap-cast     #(vector ::cast % cast-type)
+        maybe-cast    #(cond-> % cast-type wrap-cast)
+        honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
       [honeysql-form [field-alias]]
@@ -1758,30 +1772,17 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defn- has-to-honeysql-impl-for-legacy-table? [driver]
-  (not (identical? (get-method ->honeysql [driver :model/Table])
-                   (get-method ->honeysql [:sql :model/Table]))))
-
+;;; This was deprecated in 0.48.0 but not removed until 0.55.0; if any drivers were still using it give them a useful
+;;; error. We can probably take this out in 0.56.0
 (defmethod ->honeysql [:sql :model/Table]
-  [driver table]
-  (sql.qp.deprecated/log-deprecation-warning
-   driver
-   "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-   "0.48.0")
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  [driver _table]
+  (throw (ex-info "metabase.driver.sql.query-processor/->honeysql is no longer supported for :model/Table, use :metadata/table instead"
+                  {:driver driver, :type qp.error-type/driver})))
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (if (has-to-honeysql-impl-for-legacy-table? driver)
-    (do
-      (sql.qp.deprecated/log-deprecation-warning
-       driver
-       "metabase.driver.sql.query-processor/->honeysql for metabase.models.table/Table or :model/Table"
-       "0.48.0")
-      (->honeysql driver #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/->legacy-metadata table)))
-    (let [{table-name :name, schema :schema} table]
-      (->honeysql driver (h2x/identifier :table schema table-name)))))
+  (let [{table-name :name, schema :schema} table]
+    (->honeysql driver (h2x/identifier :table schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
@@ -1815,19 +1816,12 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
-    (if (map? honeysql-form)
-      (sql/format honeysql-form {:dialect      dialect
-                                 :quoted       true
-                                 :quoted-snake false
-                                 :inline       driver/*compile-with-inline-parameters*})
-      ;; for weird cases when we want to compile just one particular snippet. Why are we doing this? Who knows. This seems
-      ;; to not really be supported by Honey SQL 2, so hack around it for now. See upstream issue
-      ;; https://github.com/seancorfield/honeysql/issues/456
-      (binding [sql/*dialect*      (sql/get-dialect dialect)
-                sql/*quoted*       true
-                sql/*quoted-snake* false
-                sql/*inline*       driver/*compile-with-inline-parameters*]
-        (sql/format-expr honeysql-form {:nested true})))))
+    (sql/format honeysql-form {:dialect      dialect
+                               :quoted       true
+                               :quoted-snake false
+                               :inline       driver/*compile-with-inline-parameters*
+                               ;; Enable :nested when we want to compile just one particular snippet.
+                               :nested (not (map? honeysql-form))})))
 
 (defmulti format-honeysql
   "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a

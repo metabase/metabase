@@ -9,7 +9,7 @@
    [toucan2.connection :as t2.connection]
    [toucan2.tools.with-temp]))
 
-(def ^:dynamic ^:private *in-tx*
+(def ^:dynamic ^:private *in-with-temp*
   "Used to detect whether we're in a nested [[with-temp]]. Default is false."
   false)
 
@@ -23,8 +23,8 @@
   ;; so with-temp-defaults are loaded
   (classloader/require 'metabase.test.util)
   ;; run `f` in a transaction if it's the top-level with-temp
-  (if (and tu.thread-local/*thread-local* (not *in-tx*))
-    (binding [*in-tx* true]
+  (if (and tu.thread-local/*thread-local* (not *in-with-temp*))
+    (binding [*in-with-temp* true]
       (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
         (next-method model attributes f)))
     (next-method model attributes f)))

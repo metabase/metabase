@@ -530,7 +530,6 @@
                          :effective_type  "type/Integer"
                          :name            "pivot-grouping"
                          :display_name    "pivot-grouping"
-                         :expression_name "pivot-grouping"
                          :field_ref       ["expression" "pivot-grouping"]
                          :source          "breakout"}
                         (nth cols 3))))
@@ -773,6 +772,22 @@
                        {:query q, :format_rows apply-formatting?})
                       ((get output-helper export-format))))))))))
 
+(deftest pivot-exports-ignore-query-constraints
+  (testing "POST /api/dataset/:format with pivot-results=true"
+    (testing "Downloading pivot CSV/JSON/XLSX results shouldn't be subject to the default query constraints"
+      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+        (let [query {:database   (mt/id)
+                     :type       :query
+                     :query      {:source-table (mt/id :venues)
+                                  :breakout     [[:field (mt/id :venues :name) nil]
+                                                 [:field (mt/id :venues :category_id) nil]]
+                                  :aggregation  [[:count]]}
+                     :middleware {:pivot? true}}
+              result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                           {:query query})]
+          ;; The venues table has 100+ rows, so we should get more than default constraints (10)
+          (is (> (count (csv/read-csv result)) 10)))))))
+
 (deftest ^:parallel query-metadata-test
   (testing "MBQL query"
     (is (=? {:databases [{:id (mt/id)}]
@@ -784,29 +799,6 @@
     (is (=? {:databases [{:id (mt/id)}]
              :tables    empty?
              :fields    [{:id (mt/id :people :id)}]}
-            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                  {:database (mt/id)
-                                   :type     :native
-                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
-                                              :template-tags
-                                              {"id" {:name         "id"
-                                                     :display-name "Id"
-                                                     :type         :dimension
-                                                     :dimension    [:field (mt/id :people :id) nil]
-                                                     :widget-type  :id
-                                                     :default      nil}}}})))))
-
-(deftest ^:parallel dataset-metadata-has-entity-ids-test
-  (testing "MBQL query"
-    (is (=? {:databases api.test-util/all-have-entity-ids?
-             :tables    api.test-util/all-have-entity-ids?
-             :fields    api.test-util/all-have-entity-ids?}
-            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                  (mt/mbql-query products)))))
-  (testing "Parameterized native query"
-    (is (=? {:databases api.test-util/all-have-entity-ids?
-             :tables    api.test-util/all-have-entity-ids?
-             :fields    api.test-util/all-have-entity-ids?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                   {:database (mt/id)
                                    :type     :native

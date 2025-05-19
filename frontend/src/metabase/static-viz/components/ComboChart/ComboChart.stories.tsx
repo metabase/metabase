@@ -1064,3 +1064,11 @@ export const Watermark = {
     hasDevWatermark: true,
   },
 };
+
+export const VisualizerTimeseriesDifferentUnits = {
+  render: Template,
+  args: {
+    rawSeries: data.visualizerTimeseriesDifferentUnits as any,
+    renderingContext,
+  },
+};

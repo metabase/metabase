@@ -32,27 +32,25 @@
   [clause-name & arg-names-and-schemas]
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
-                                  [clause-name (or (:clause-name (meta clause-name)) clause-name)])
+                                  [clause-name clause-name])
+        clause-name-kw          (keyword clause-name)
         clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name symb-name))]
     `(do
        (mr/register! ~clause-registry-name
-                     (metabase.legacy-mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))
-       (def ~(vary-meta symb-name assoc
-                        :clause-name (keyword clause-name)
-                        :clause-form (into [(keyword clause-name)]
-                                           (mapcat (fn [[arg schema]]
-                                                     [(keyword arg) `'~schema])
-                                                   (partition 2 arg-names-and-schemas)))
-                        :doc         (format "Schema for a valid %s clause." clause-name))
-         [:ref ~clause-registry-name]))))
+                     (metabase.legacy-mbql.schema.helpers/clause ~clause-name-kw ~@(stringify-names arg-names-and-schemas)))
+       (def ~(vary-meta symb-name assoc :doc (format "Schema for a valid %s clause." clause-name))
+         (with-meta [:ref ~clause-registry-name] {:clause-name ~clause-name-kw})))))
 
 (defmacro one-of
   "Define a schema that accepts one of several different MBQL clauses.
 
     (one-of field-id field-literal)"
   [& clauses]
+  (run! #(assert (symbol? %)) clauses)
   `(metabase.legacy-mbql.schema.helpers/one-of*
-    ~@(for [clause clauses]
-        [`(or (:clause-name (meta (resolve '~clause)))
-              '~clause)
+    ~@(for [clause clauses
+            ;; Ensure that the symbol we inline into the code has no metadata to reduce CLJS bundle size.
+            :let [sym (with-meta clause {})]]
+        [`(or (:clause-name (meta ~clause))
+              '~sym)
          clause])))
