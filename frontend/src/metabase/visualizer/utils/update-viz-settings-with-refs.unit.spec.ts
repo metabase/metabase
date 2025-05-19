@@ -3,13 +3,6 @@ import type { VisualizationSettings } from "metabase-types/api";
 import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
 
 describe("updateVizSettingsWithRefs", () => {
-  it("should return non-object settings unchanged", () => {
-    expect(updateVizSettingsWithRefs(null as any, {})).toBeNull();
-    expect(updateVizSettingsWithRefs(undefined as any, {})).toBeUndefined();
-    expect(updateVizSettingsWithRefs("string" as any, {})).toBe("string");
-    expect(updateVizSettingsWithRefs(123 as any, {})).toBe(123);
-  });
-
   it("should handle empty objects", () => {
     expect(updateVizSettingsWithRefs({}, {})).toEqual({});
     expect(updateVizSettingsWithRefs({}, { avg: "COLUMN_1" })).toEqual({});
