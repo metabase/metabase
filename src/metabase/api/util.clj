@@ -9,19 +9,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.logger :as logger]
-   [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
-
-(api.macros/defendpoint :post "/password_check"
-  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
-  [_route-params
-   _query-params
-   _body :- [:map
-             [:password ms/ValidPassword]]]
-  ;; if we pass the su/ValidPassword test we're g2g
-  {:valid true})
 
 (api.macros/defendpoint :get "/logs"
   "Logs."

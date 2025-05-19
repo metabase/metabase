@@ -3,6 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { GoogleAuthForm } from "metabase/admin/settings/auth/components/GoogleAuthForm";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import MetabaseSettings from "metabase/lib/settings";
 import {
@@ -160,6 +161,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: () => <AuthenticationSettingsPage tab="api-keys" />,
     settings: [],
     adminOnly: true,
+  },
+  "authentication/google": {
+    component: GoogleAuthForm,
+    order: 63,
+    settings: [],
   },
   maps: {
     name: t`Maps`,
