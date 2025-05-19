@@ -110,18 +110,11 @@
            api-routes
            classloader
            config
-           driver
            embedding
            events
-           legacy-mbql
-           lib
            logger
-           model-persistence
            models
-           parameters
            premium-features
-           queries
-           query-processor
            server
            settings
            util
@@ -814,6 +807,7 @@
 
   query-processor
   {:api #{metabase.query-processor
+          metabase.query-processor.api
           metabase.query-processor.card
           metabase.query-processor.compile
           metabase.query-processor.dashboard
@@ -862,6 +856,7 @@
            lib-be
            model-persistence
            models
+           parameters
            permissions
            pivot
            premium-features
