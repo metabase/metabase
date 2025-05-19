@@ -11323,6 +11323,156 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  - changeSet:
+      id: v55.2025-05-19T16:46:48
+      author: edpaget
+      comment: Add metabot table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot
+      changes:
+        - createTable:
+            tableName: metabot
+            remarks: Metabot configuration
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of the metabot
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Description of the metabot
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the metabot was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the metabot was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-05-19T16:47:48
+      author: edpaget
+      comment: Add metabot entity table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_entity
+      changes:
+        - createTable:
+            tableName: metabot_entity
+            remarks: Entities associated with a metabot
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabot
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_entity_metabot_id
+                    deleteCascade: true
+              - column:
+                  name: model_type
+                  type: varchar(32)
+                  remarks: The type of model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the entity was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-05-19T16:48:48
+      author: edpaget
+      comment: Add index on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_entity
+                indexName: idx_metabot_entity_metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+
+  - changeSet:
+      id: v55.2025-05-19T16:49:48
+      author: edpaget
+      comment: Add index on metabot_entity.model_id and model_type
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_entity
+                indexName: idx_metabot_entity_model_id_model_type
+      changes:
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_model_id_model_type
+            columns:
+              - column:
+                  name: model_id
+              - column:
+                  name: model_type
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

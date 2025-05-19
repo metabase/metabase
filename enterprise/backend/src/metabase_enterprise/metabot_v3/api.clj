@@ -7,6 +7,8 @@
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
+   [metabase-enterprise.metabot-v3.models.metabot :as metabot]
+   [metabase-enterprise.metabot-v3.models.metabot-entity :as metabot-entity]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.api.common :as api]
@@ -15,7 +17,8 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (mu/defn ^:private encode-reactions [reactions :- [:sequential ::metabot-v3.reactions/reaction]]
   (mc/encode [:sequential ::metabot-v3.reactions/reaction]
@@ -66,32 +69,31 @@
   "List configured metabot instances"
   []
   (api/check-superuser)
-  [{:id 1 :name "Internal Metabot"}
-   {:id 2 :name "Embedding Metabot"}])
+  (t2/select :model/Metabot {:order-by [[:name :asc]]}))
 
 (api.macros/defendpoint :get "/metabots/:id"
   "Retrieve one metabot instance"
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  (get metabots (dec id)))
+  (api/check-404 (t2/select-one :model/Metabot :id id)))
 
 (api.macros/defendpoint :get "/metabots/:id/entities"
   "List the entities this metabot has access to"
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
-  {:data [{:id "model-123"
-           :model "model"
-           :name "Sample Model"
-           :collection_id "1"
-           :collection_name "Analytics"}
-          {:id "metric-456"
-           :model "metric"
-           :name "Sample Metric"
-           :collection_id "2"
-           :collection_name "Marketing"}]
-   :total 2
-   :limit (request/limit)
-   :offset (request/offset)})
+  (api/check-404 (t2/exists? :model/Metabot :id id))
+  (let [limit (request/limit)
+        offset (request/offset)
+        entities (t2/select :model/MetabotEntity
+                            :metabot_id id
+                            {:limit limit
+                             :offset offset
+                             :order-by [[:name :asc]]})
+        total (t2/count :model/MetabotEntity :metabot_id id)]
+    {:data entities
+     :total total
+     :limit limit
+     :offset offset}))
 
 (api.macros/defendpoint :put "/metabots/:id/entities"
   "Update the entities this metabot has access to"
@@ -101,6 +103,20 @@
                              [:id ms/NonBlankString]
                              [:model ms/NonBlankString]]]]
   (api/check-superuser)
+  (api/check-404 (t2/exists? :model/Metabot :id id))
+  (t2/with-transaction [_conn]
+    (doseq [entity entities]
+      (let [model-type (keyword (:model entity))
+            model-id (:id entity)]
+        (when-not (t2/exists? :model/MetabotEntity
+                              :metabot_id id
+                              :model model-type
+                              :model_id model-id)
+          (t2/insert! :model/MetabotEntity
+                      {:metabot_id id
+                       :model model-type
+                       :model_id model-id
+                       :name (str "Entity " model-id)})))))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete ["/metabots/:id/entities/:model-type/:model-id" :model-type #"model|metric"]
@@ -110,6 +126,11 @@
                                         [:model-type [:enum "model" "metric"]]
                                         [:model-id pos-int?]]]
   (api/check-superuser)
+  (api/check-404 (t2/exists? :model/Metabot :id id))
+  (t2/delete! :model/MetabotEntity
+              :metabot_id id
+              :model (keyword model-type)
+              :model_id model-id)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
