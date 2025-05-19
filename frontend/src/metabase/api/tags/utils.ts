@@ -16,6 +16,7 @@ import type {
   DashboardSubscription,
   Database,
   DatabaseXray,
+  Dataset,
   Field,
   FieldDimension,
   FieldId,
@@ -113,10 +114,10 @@ export function provideAdhocQueryTags(
     idTag("database", dataset.database_id),
     listTag("field"),
     ...(dataset.data?.results_metadata?.columns
-      .map((column) =>
+      ?.map((column) =>
         column.id !== undefined ? idTag("field", column.id) : null,
       )
-      .filter(isNotNull) ?? []),
+      .filter((tag): tag is TagType => tag !== null) ?? []),
   ];
 }
 
