@@ -1,4 +1,10 @@
-import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Transition,
   TransitionGroup,
@@ -152,6 +158,10 @@ export function UndoListing() {
 
 const target = document.createElement("div");
 
+// The react transition group state transitions are flaky in cypress
+// so disable them for altogether.
+const Group = "Cypress" in window ? Fragment : TransitionGroup;
+
 export function UndoListOverlay({
   undos,
   onUndo,
@@ -206,7 +216,7 @@ export function UndoListOverlay({
         aria-label="undo-list"
         className={ZIndex.Overlay}
       >
-        <TransitionGroup appear enter exit>
+        <Group appear enter exit component={null}>
           {undos.map((undo, index) => (
             <Transition
               key={undo._domId}
@@ -229,7 +239,7 @@ export function UndoListOverlay({
               )}
             </Transition>
           ))}
-        </TransitionGroup>
+        </Group>
       </UndoList>
     </Portal>
   );
