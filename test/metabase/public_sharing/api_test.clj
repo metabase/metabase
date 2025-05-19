@@ -140,7 +140,12 @@
         (testing "Check that we cannot fetch a public Card that has been archived"
           (mt/with-temp-vals-in-db :model/Card card-id {:archived true}
             (is (= "Not found."
-                   (client/client :get 404 (str "public/card/" uuid))))))))))
+                   (client/client :get 404 (str "public/card/" uuid))))))
+
+        (testing "Check that a public Card has the average query duration (metabase#57869)"
+          (let [card-response (client/client :get 200 (str "public/card/" uuid))]
+            (is (contains? card-response :query_average_duration)
+                "Card should include :query_average_duration")))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"
