@@ -358,6 +358,7 @@
                        [:map {:closed true}
                         [:values {:optional true} [:* :any]]]]]]]))
 
+;;; TODO -- move to the `parameters` module (?)
 (def Parameter
   "Schema for a valid Parameter.
   We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter is meant to be used for

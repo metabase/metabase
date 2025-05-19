@@ -152,7 +152,7 @@
   ;; uses classloader/require
   (find-dynamically-loaded-namespaces "src/metabase/db/setup.clj")
   ;; uses requiring-resolve, has more than one.
-  (find-dynamically-loaded-namespaces "src/metabase/api/user.clj")
+  (find-dynamically-loaded-namespaces "src/metabase/users/api.clj")
   ;; has require inside of a `comment` form, should ignore it.
   (find-dynamically-loaded-namespaces "src/metabase/xrays/automagic_dashboards/schema.clj")
   (find-dynamically-loaded-namespaces "src/metabase/api/open_api.clj"))
@@ -376,9 +376,17 @@
         (full-dependencies)))
 
 (defn module-dependencies-mermaid []
+  (println "flowchart TD")
   (doseq [[module deps] (module-dependencies)
           dep deps]
     (printf "%s-->%s\n" module dep)))
+
+(defn module-dependencies-graphviz []
+  (println "digraph {")
+  (doseq [[module deps] (module-dependencies)
+          dep deps]
+    (printf "  \"%s\" -> \"%s\"\n" module dep))
+  (println "}"))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."

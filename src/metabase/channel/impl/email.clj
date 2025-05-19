@@ -13,8 +13,8 @@
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
-   [metabase.models.params.shared :as shared.params]
    [metabase.notification.models :as models.notification]
+   [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -305,7 +305,7 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters           (when parameters
+                                                    :filters           (when (seq parameters)
                                                                          (render-filters parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))

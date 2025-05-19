@@ -10,6 +10,14 @@ import {
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
+export function ensureChartIsActive() {
+  cy.findByTestId("debounced-frame-root").should(
+    "not.have.css",
+    "pointer-events",
+    "none",
+  );
+}
+
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }

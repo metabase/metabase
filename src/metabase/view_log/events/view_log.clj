@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.cluster-lock :as cluster-lock]
@@ -55,7 +55,7 @@
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
-          increment-view-counts!*
+          #'increment-view-counts!*
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
@@ -117,7 +117,7 @@
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
-          update-dashboard-last-viewed-at!*
+          #'update-dashboard-last-viewed-at!*
           :capacity 500
           :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
 
