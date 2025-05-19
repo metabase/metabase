@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { PropsWithChildren, ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
@@ -6,6 +7,12 @@ import { UndoListing } from "metabase/containers/UndoListing";
 import { useToast } from "./use-toast";
 
 const TEST_TOAST_ID = 8675309;
+
+jest.mock("react-transition-group", () => ({
+  TransitionGroup: (props: PropsWithChildren) => <div>{props.children}</div>,
+  Transition: (props: { children: (state: string) => ReactNode }) =>
+    props.children("entered"),
+}));
 
 const TestComponent = () => {
   const [sendToast, removeToast] = useToast();
