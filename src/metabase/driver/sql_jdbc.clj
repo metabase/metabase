@@ -271,7 +271,7 @@
         (recur cause)))))
 
 (defmulti impl-query-canceled?
-  "Implmenting multimethod for is query canceled. Notes when a query is canceled due to user action,
+  "Implementing multimethod for is query canceled. Notes when a query is canceled due to user action,
   which can include using the `.setQueryTimeout` on a `PreparedStatement.` Use this instead of implementing
   driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
   based drivers."
