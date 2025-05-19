@@ -36,9 +36,9 @@ export function TablePreview(props: TablePreviewProps) {
 
   return (
     <Visualization
-      // To hide the details column
+      // Setting queryBuilderMode to dataset will hide the object detail
+      // expaner column, which we don't want in this case
       queryBuilderMode="dataset"
-      // To hide the column headers
       rawSeries={rawSeries}
     />
   );
