@@ -91,11 +91,6 @@ export const EditTableDataHeader = ({
             disabled={shouldDisableActions}
           >{t`New record`}</Button>
           <Button
-            leftSection={<Icon name="pencil" />}
-            onClick={() => alert("TODO")}
-            disabled={shouldDisableActions || !selectedRowIndices.length}
-          >{t`Edit`}</Button>
-          <Button
             leftSection={<Icon name="trash" />}
             variant="filled"
             color="error"
