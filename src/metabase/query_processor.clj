@@ -1,4 +1,4 @@
-(ns metabase.query-processor
+(ns #_{:clj-kondo/ignore [:metabase/namespace-name]} metabase.query-processor
   "Primary entrypoints to running Metabase (MBQL) queries.
 
     (metabase.query-processor/process-query {:type :query, :database 1, :query {:source-table 2}})

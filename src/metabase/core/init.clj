@@ -49,6 +49,7 @@
    [metabase.task-history.init]
    [metabase.testing-api.init]
    [metabase.tiles.init]
+   [metabase.types.init]
    [metabase.upload.init]
    [metabase.user-key-value.init]
    [metabase.users.init]

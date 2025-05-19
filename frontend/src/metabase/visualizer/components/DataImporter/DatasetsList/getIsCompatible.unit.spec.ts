@@ -3,7 +3,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { TYPE } from "cljs/metabase.types";
+import { TYPE } from "cljs/metabase.types.core";
 import type { Field } from "metabase-types/api";
 import { createMockColumn, createMockField } from "metabase-types/api/mocks";
 

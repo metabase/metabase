@@ -55,7 +55,7 @@
 
 (defn isa
   "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
-   Intended for use with the type hierarchy in `metabase.types`.
+   Intended for use with the type hierarchy in [[metabase.types.core]].
 
      (t2/select Field :semantic_type (mdb/isa :type/URL))
       ->

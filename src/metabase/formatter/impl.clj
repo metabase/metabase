@@ -10,7 +10,7 @@
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]

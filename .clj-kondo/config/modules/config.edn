@@ -1122,7 +1122,8 @@
            util}}
 
   types
-  {:api  #{metabase.types}
+  {:api  #{metabase.types.core
+           metabase.types.init}
    :uses #{util}}
 
   upload

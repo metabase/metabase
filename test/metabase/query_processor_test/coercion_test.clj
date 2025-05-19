@@ -8,7 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.types :as types]))
+   [metabase.types.core :as types]))
 
 (set! *warn-on-reflection* true)
 

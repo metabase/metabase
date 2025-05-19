@@ -1,4 +1,4 @@
-(ns metabase.util
+(ns #_{:clj-kondo/ignore [:metabase/namespace-name]} metabase.util
   "Common utility functions useful throughout the codebase."
   (:refer-clojure :exclude [group-by])
   (:require
