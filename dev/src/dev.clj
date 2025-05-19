@@ -405,9 +405,9 @@
 
   You can also run it with `clojure -X`:
 
-    clojure -X:dev dev/find-root-test-failure! \\
-     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test \\
-     :scope :full-suite \\
+    clojure -X:dev dev/find-root-test-failure!
+     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test
+     :scope :full-suite
      :find-tests-options '{:exclude-tags [:mb/driver-tests] :only [\"test\"] :partition/total 2 :partition/index 1}'"
   ([opts]
    (find-root-test-failure! (requiring-resolve (:failing-test-var opts)) opts))
