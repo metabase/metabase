@@ -2,8 +2,8 @@
   (:require
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.schema.window :as lib.schema.window]
-   [metabase.lib.options :as lib.options]))
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.window :as lib.schema.window]))
 
 ;; TMP: window/mix and window/max for now
 (defmethod lib.metadata.calculation/type-of-method ::lib.schema.window/window-clause-tag
@@ -28,7 +28,7 @@
   "window_max")
 
 ;; TODO:
-(def propagated-keys [:binning-ref-paths :binning-breakout-indices :binning-window-type])
+(def propagated-keys [:binning-ref-paths :binning-breakout-indices :binning-window-type :binned-breakout-refs])
 
 ;; maybe on this "metadata" level lib/source, names should not be present (but higher)
 (defmethod lib.metadata.calculation/metadata-method ::lib.schema.window/window-clause-tag

@@ -428,7 +428,13 @@
          true (update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
                       (remove (fn [[k _v]]
-                                (#{:effective-type :ident} k)))))
+                                (#{:effective-type :ident
+                                   :binned-breakout-refs} k)))
+                      (map (fn [[k v]]
+                             ;; TODO: probably should not be exposed here
+                             (if (#{:binning-min-wref :binning-max-wref :max-wref :min-wref} k)
+                               [k (->legacy-MBQL v)]
+                               [k v])))))
        not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
@@ -665,6 +671,7 @@
                (seq inner-query) (assoc query-type inner-query)
                (seq parameters)  (assoc :parameters parameters))))
     (catch #?(:clj Throwable :cljs :default) e
+      #?(:clj (def eee e))
       (throw (ex-info (lib.util/format "Error converting MLv2 query to legacy query: %s" (ex-message e))
                       {:query query}
                       e)))))
