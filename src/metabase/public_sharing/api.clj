@@ -68,7 +68,7 @@
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id :query_average_duration
                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
