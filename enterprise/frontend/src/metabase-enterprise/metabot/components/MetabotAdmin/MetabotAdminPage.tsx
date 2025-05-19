@@ -101,8 +101,8 @@ function MetabotConfigurationPane({
       id: metabotId,
       entities: [
         {
-          model: entity.model,
-          id: entity.id,
+          model_id: entity.id,
+          model_type: entity.model,
         },
       ],
     });
@@ -157,6 +157,10 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
       });
     }
   };
+
+  if (!entities.length) {
+    return null;
+  }
 
   return (
     <Table
