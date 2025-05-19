@@ -247,6 +247,12 @@
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
+    metabase.util.log/tracef                                                     {:namespaces ["metabase.*"]}
+    metabase.util.log/debugf                                                     {:namespaces ["metabase.*"]}
+    metabase.util.log/infof                                                      {:namespaces ["metabase.*"]}
+    metabase.util.log/warnf                                                      {:namespaces ["metabase.*"]}
+    metabase.util.log/errorf                                                     {:namespaces ["metabase.*"]}
+    metabase.util.log/fatalf                                                     {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
