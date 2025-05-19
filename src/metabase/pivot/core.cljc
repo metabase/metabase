@@ -345,10 +345,19 @@
    :isSubtotal true
    :children []})
 
-(defn- should-create-subtotal?
-  "Determines if a subtotal should be created based on settings and row structure."
-  [is-subtotal-enabled should-show-subtotal]
-  (and is-subtotal-enabled should-show-subtotal))
+(defn- subtotal-permitted?
+  "Returns true if subtotals are enabled for this column and visible for this row."
+  [subtotal-enabled-for-col? visible?]
+  (and subtotal-enabled-for-col? visible?))
+
+(defn- subtotal-visible?
+  "Determines whether a subtotal should be shown for a given row."
+  [row-item settings]
+  (let [condense? (true? (:pivot.condense_duplicate_totals settings true))
+        child-count (count (:children row-item))]
+    (or (> child-count 1)
+        (not condense?)
+        (:isCollapsed row-item))))
 
 (declare add-subtotal)
 
@@ -363,7 +372,8 @@
                              (should-show-fn child)
                              acc)
                (conj! acc child)))
-           (transient []) children)))
+           (transient [])
+           children)))
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
@@ -372,7 +382,7 @@
   [row-item subtotal-settings-by-col should-show-subtotal transient-row]
   (let [current-col-setting    (first subtotal-settings-by-col)
         remaining-col-settings (rest subtotal-settings-by-col)
-        subtotal-enabled?      (should-create-subtotal? current-col-setting should-show-subtotal)
+        subtotal-enabled?      (subtotal-permitted? current-col-setting should-show-subtotal)
         subtotal-node          (when subtotal-enabled?
                                  (create-subtotal-node row-item))]
     (if (:isCollapsed row-item)
@@ -400,18 +410,15 @@
     (let [subtotal-settings-by-col (map (fn [idx]
                                           (not= ((nth col-settings idx) :pivot_table.column_show_totals)
                                                 false))
-                                        row-indexes)
-          has-multiple-children    (some #(> (count (:children %)) 1) row-tree)
-          should-show-root-total   (fn [row-item]
-                                     (or has-multiple-children
-                                         (> (count (:children row-item)) 1)))]
+                                        row-indexes)]
       (persistent!
        (reduce (fn [acc row-item]
                  (add-subtotal row-item
                                subtotal-settings-by-col
-                               (should-show-root-total row-item)
+                               (subtotal-visible? row-item settings)
                                acc))
-               (transient []) row-tree)))))
+               (transient [])
+               row-tree)))))
 
 (defn display-name-for-col
   "Translated from frontend/src/metabase/lib/formatting/column.ts"
