@@ -658,9 +658,8 @@
            available-temporal-buckets (lib/available-temporal-buckets query 0 col)
            binning-setting   (u/seek (fn [{:keys [mbql]}]
                                        (and (= binning-strategy (:strategy mbql))
-                                            (if (= binning-strategy :num-bins)
-                                              (= (:numBins binning) (:num-bins mbql))
-                                              true)))
+                                            (or (not= binning-strategy :num-bins)
+                                                (= (:numBins binning) (:num-bins mbql)))))
                                      available-binnings)
            bucketing-setting (u/seek (fn [available-bucket]
                                        (= (keyword binning)
