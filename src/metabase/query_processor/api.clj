@@ -1,4 +1,4 @@
-(ns metabase.api.dataset
+(ns metabase.query-processor.api
   "/api/dataset endpoints."
   (:require
    [metabase.api.common :as api]

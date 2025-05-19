@@ -5,7 +5,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dataset :as api.dataset]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]

@@ -99,7 +99,6 @@
   {:api #{metabase.api.auth
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.dataset
           metabase.api.docs
           metabase.api.logger
           metabase.api.macros

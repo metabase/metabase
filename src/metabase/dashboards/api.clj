@@ -9,7 +9,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dataset :as api.dataset]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]

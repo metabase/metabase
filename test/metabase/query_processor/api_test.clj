@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.dataset-test
+(ns ^:mb/driver-tests metabase.query-processor.api-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.dataset :as api.dataset]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
