@@ -486,6 +486,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Doohickey", value: "177" },
         { name: "Widget", value: "210" },
       ],
+      blurAfter: true,
     });
 
     hideSeries(3); // Widget
@@ -529,12 +530,14 @@ describe("scenarios > visualizations > legend", () => {
     showSeries(3);
 
     H.openVizSettingsSidebar();
+    H.ensureChartIsActive();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack - 100%").click();
     });
-    cy.wait(500);
+
+    cy.wait(1000);
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
@@ -546,6 +549,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Widget", value: "210", secondaryValue: "28.23 %" },
       ],
       footer: { name: "Total", value: "744", secondaryValue: "100 %" },
+      blurAfter: true,
     });
 
     hideSeries(2); // Gizmo
@@ -559,6 +563,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Gadget", value: "199", secondaryValue: "52.93 %" },
       ],
       footer: { name: "Total", value: "376", secondaryValue: "100 %" },
+      blurAfter: true,
     });
   });
 });
