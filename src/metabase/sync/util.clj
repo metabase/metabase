@@ -617,8 +617,8 @@
                    ~@more-for-bindings]
                (do ~@body))))
 
-(defn can-be-category-or-list?
-  "Can this type be a category or list?"
+(defn can-be-list?
+  "Can this type be a list?"
   [base-type semantic-type]
   (not
    (or (isa? base-type :type/Temporal)
@@ -628,3 +628,10 @@
         ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
        (isa? semantic-type :type/PK)
        (isa? semantic-type :type/FK))))
+
+(defn can-be-category?
+  "Can this type be a category?"
+  [base-type semantic-type]
+  (and (or (isa? base-type :type/Text)
+           (isa? base-type :type/TextLike))
+       (can-be-list? base-type semantic-type)))
