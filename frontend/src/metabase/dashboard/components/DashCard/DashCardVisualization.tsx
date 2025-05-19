@@ -15,6 +15,7 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -97,7 +98,7 @@ interface DashCardVisualizationProps {
   onChangeLocation: (location: LocationDescriptor) => void;
   onTogglePreviewing: () => void;
 
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 
   onEditVisualization?: () => void;
 }
