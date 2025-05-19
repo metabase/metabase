@@ -1816,19 +1816,12 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
-    (if (map? honeysql-form)
-      (sql/format honeysql-form {:dialect      dialect
-                                 :quoted       true
-                                 :quoted-snake false
-                                 :inline       driver/*compile-with-inline-parameters*})
-      ;; for weird cases when we want to compile just one particular snippet. Why are we doing this? Who knows. This seems
-      ;; to not really be supported by Honey SQL 2, so hack around it for now. See upstream issue
-      ;; https://github.com/seancorfield/honeysql/issues/456
-      (binding [sql/*dialect*      (sql/get-dialect dialect)
-                sql/*quoted*       true
-                sql/*quoted-snake* false
-                sql/*inline*       driver/*compile-with-inline-parameters*]
-        (sql/format-expr honeysql-form {:nested true})))))
+    (sql/format honeysql-form {:dialect      dialect
+                               :quoted       true
+                               :quoted-snake false
+                               :inline       driver/*compile-with-inline-parameters*
+                               ;; Enable :nested when we want to compile just one particular snippet.
+                               :nested (not (map? honeysql-form))})))
 
 (defmulti format-honeysql
   "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a
