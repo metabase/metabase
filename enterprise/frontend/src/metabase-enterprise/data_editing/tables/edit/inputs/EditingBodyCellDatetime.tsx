@@ -1,3 +1,4 @@
+import { DatesProvider, useDatesContext } from "@mantine/dates";
 import dayjs from "dayjs";
 import { type KeyboardEvent, useCallback, useMemo, useState } from "react";
 
@@ -5,6 +6,8 @@ import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { DateInput } from "metabase/ui";
 
 import type { EditingBodyPrimitiveProps } from "./types";
@@ -25,49 +28,30 @@ export const EditingBodyCellDatetime = ({
     datasetColumn.effective_type === "type/DateTime" ||
     datasetColumn.effective_type === "type/DateTimeWithLocalTZ";
 
-  const { restoreTimezone, initialDateWithOffset } = useMemo(() => {
-    // Used for rendering the date input with the correct offset
-    // For new rows, the date offset is 0
-    let dateOffset = 0;
-    let dateUtcOffset = 0;
-    let initialDateWithOffset = null;
+  const { locale, firstDayOfWeek, consistentWeeks } = useDatesContext();
+  const reportTimezone = useSelector((state) =>
+    getSetting(state, "report-timezone-long"),
+  );
 
-    if (initialValue) {
-      const browserUtcOffset = dayjs(initialValue.toString()).utcOffset();
-      dateUtcOffset = dayjs.parseZone(initialValue.toString()).utcOffset();
-      dateOffset = dateUtcOffset - browserUtcOffset;
-
-      const initialDate = new Date(initialValue.toString());
-      initialDateWithOffset = new Date(
-        initialDate.getTime() + dateOffset * 60 * 1000,
-      );
-    }
-
-    return {
-      dateOffset,
-      initialDateWithOffset,
+  const { restoreTimezone, initialDate } = useMemo(
+    () => ({
+      initialDate: initialValue ? new Date(initialValue.toString()) : null,
       restoreTimezone: (date: Date | null) => {
         if (!date) {
           return null;
         }
 
-        // Keep browser timezone for new rows
-        if (!initialValue) {
-          return date.toISOString();
-        }
-
-        // Restore the date to the original timezone
-        const restoredDate = new Date(date.getTime() - dateOffset * 60 * 1000);
-        return dayjs(restoredDate)
-          .utcOffset(dateUtcOffset)
+        return dayjs(date)
+          .tz(reportTimezone)
           .format("YYYY-MM-DDTHH:mm:ss.SSSZ");
       },
-    };
-  }, [initialValue]);
+    }),
+    [initialValue, reportTimezone],
+  );
 
   const valueFormat = isDateTime ? DEFAULT_DATETIME_STYLE : DEFAULT_DATE_STYLE;
 
-  const [value, setValue] = useState<Date | null>(initialDateWithOffset);
+  const [value, setValue] = useState<Date | null>(initialDate);
   const [isFocused, setFocused] = useState(false);
 
   const handleChange = useCallback(
@@ -99,21 +83,30 @@ export const EditingBodyCellDatetime = ({
   );
 
   return (
-    <DateInput
-      autoFocus={autoFocus}
-      value={value}
-      valueFormat={valueFormat}
-      classNames={{
-        wrapper: classNames?.wrapper,
-        input: classNames?.dateTextInputElement,
+    <DatesProvider
+      settings={{
+        timezone: reportTimezone,
+        locale,
+        firstDayOfWeek,
+        consistentWeeks,
       }}
-      // Keeps popover mounted when focused to improve time editing UX
-      popoverProps={{ opened: isFocused }}
-      onChange={handleChange}
-      onBlur={handleBlur}
-      onFocus={handleFocus}
-      onKeyUp={handleKeyUp}
-      {...inputProps}
-    />
+    >
+      <DateInput
+        autoFocus={autoFocus}
+        value={value}
+        valueFormat={valueFormat}
+        classNames={{
+          wrapper: classNames?.wrapper,
+          input: classNames?.dateTextInputElement,
+        }}
+        // Keeps popover mounted when focused to improve time editing UX
+        popoverProps={{ opened: isFocused }}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
+        onKeyUp={handleKeyUp}
+        {...inputProps}
+      />
+    </DatesProvider>
   );
 };
