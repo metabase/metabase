@@ -166,17 +166,14 @@
                                                       :table_id             (mt/id :checkins)
                                                       :card_id              card-id
                                                       :attribute_remappings {}}]
-        (perms.test-util/with-restored-data-perms!
-          (data-perms.graph/update-data-perms-graph! {:revision (data-perms.graph/api-graph)
-                                                      :groups   {(u/the-id (perms/all-users-group))
-                                                                 {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :users)      :full
-                                                                                                          (mt/id :categories) :none
-                                                                                                          (mt/id :venues)     :limited
-                                                                                                          (mt/id :checkins)   :full
-                                                                                                          (mt/id :products)   :limited
-                                                                                                          (mt/id :people)     :limited
-                                                                                                          (mt/id :reviews)    :limited
-                                                                                                          (mt/id :orders)     :limited}}}}}}})
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
+                                                           (mt/id :categories) :none
+                                                           (mt/id :venues)     :limited
+                                                           (mt/id :checkins)   :full
+                                                           (mt/id :products)   :limited
+                                                           (mt/id :people)     :limited
+                                                           (mt/id :reviews)    :limited
+                                                           (mt/id :orders)     :limited}}}
           (mt/with-metadata-provider (mt/id)
             (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
               (is (= with-sandbox
@@ -190,23 +187,20 @@
                                                       :table_id             (mt/id :checkins)
                                                       :card_id              card-id
                                                       :attribute_remappings {}}]
-        (perms.test-util/with-restored-data-perms!
-          (data-perms.graph/update-data-perms-graph! {:revision (data-perms.graph/api-graph)
-                                                      :groups   {(u/the-id (perms/all-users-group))
-                                                                 {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :users)      :full
-                                                                                                          (mt/id :categories) :none
-                                                                                                          (mt/id :venues)     :limited
-                                                                                                          (mt/id :checkins)   :full
-                                                                                                          (mt/id :products)   :limited
-                                                                                                          (mt/id :people)     :limited
-                                                                                                          (mt/id :reviews)    :limited
-                                                                                                          (mt/id :orders)     :limited}}}}}}})
-          (mt/with-metadata-provider (mt/id)
-            (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
-              (is (= with-sandbox
-                     (check-download-permisions with-sandbox))))))))))
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
+                                                           (mt/id :categories) :none
+                                                           (mt/id :venues)     :limited
+                                                           (mt/id :checkins)   :full
+                                                           (mt/id :products)   :limited
+                                                           (mt/id :people)     :limited
+                                                           (mt/id :reviews)    :limited
+                                                           (mt/id :orders)     :limited}}})
+        (mt/with-metadata-provider (mt/id)
+          (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
+            (is (= with-sandbox
+                   (check-download-permisions with-sandbox)))))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------- -----------------------------------------+
 ;;; |                                                E2E tests                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -447,11 +441,8 @@
                                                         :table_id             (mt/id :checkins)
                                                         :card_id              card-id
                                                         :attribute_remappings {}}]
-          (perms.test-util/with-restored-data-perms!
-            (data-perms.graph/update-data-perms-graph! {:revision (data-perms.graph/api-graph)
-                                                        :groups   {(u/the-id (perms/all-users-group))
-                                                                   {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :categories) :none
-                                                                                                            (mt/id :checkins)   :full}}}}}}})
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
+                                                             (mt/id :checkins)   :full}}}
             (streaming-test/do-test!
              "A table with sandbox and full download perms"
              {:query {:database (mt/id)
@@ -459,34 +450,29 @@
                       :query    {:source-table (mt/id :checkins)
                                  :limit        10}}
               :endpoints  [:card :dataset]
-              :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})))
+              :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
 
-        (perms.test-util/with-restored-data-perms!
-          (data-perms.graph/update-data-perms-graph! {:revision (data-perms.graph/api-graph)
-                                                      :groups   {(u/the-id (perms/all-users-group))
-                                                                 {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :categories) :none
-                                                                                                          (mt/id :checkins)   :limited}}}}}}})
-          (streaming-test/do-test!
-           "A table with sandbox and limited download perms"
-           {:query      {:database (mt/id)
-                         :type     :query
-                         :query    {:source-table (mt/id :checkins)
-                                    :limit        10}}
-            :endpoints  [:card :dataset]
-            :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
-        (perms.test-util/with-restored-data-perms!
-          (data-perms.graph/update-data-perms-graph! {:revision (data-perms.graph/api-graph)
-                                                      :groups   {(u/the-id (perms/all-users-group))
-                                                                 {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :categories) :none
-                                                                                                          (mt/id :checkins)   :none}}}}}}})
-          (streaming-test/do-test!
-           "A table with sandbox and not download perms"
-           {:query      {:database (mt/id)
-                         :type     :query
-                         :query    {:source-table (mt/id :checkins)
-                                    :limit        10}}
-            :endpoints  [:card :dataset]
-            :assertions {:csv (fn [results]
-                                (is (partial=
-                                     {:error "You do not have permissions to download the results of this query."}
-                                     results)))}}))))))
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
+                                                             (mt/id :checkins)   :limited}}}
+            (streaming-test/do-test!
+             "A table with sandbox and limited download perms"
+             {:query      {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :checkins)
+                                      :limit        10}}
+              :endpoints  [:card :dataset]
+              :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
+
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
+                                                             (mt/id :checkins)   :none}}}
+            (streaming-test/do-test!
+             "A table with sandbox and not download perms"
+             {:query      {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :checkins)
+                                      :limit        10}}
+              :endpoints  [:card :dataset]
+              :assertions {:csv (fn [results]
+                                  (is (partial=
+                                       {:error "You do not have permissions to download the results of this query."}
+                                       results)))}})))))))

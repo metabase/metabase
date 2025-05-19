@@ -33,9 +33,6 @@
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
   (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
-        _ (prn table-ids)
-        _ (prn card-ids)
-        _ (prn native?)
         table-perms (if native?
                       ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                       ;; download perms
@@ -50,7 +47,6 @@
                               (current-user-download-perms-level query)))
                           card-ids))
         perms       (set/union table-perms card-perms)]
-    (prn perms)
      ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
     (or (perms :no)
         (perms :ten-thousand-rows)
