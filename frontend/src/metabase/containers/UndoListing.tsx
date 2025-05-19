@@ -216,6 +216,7 @@ export function UndoListOverlay({
                 exit: TOAST_TRANSITION_DURATION,
               }}
               nodeRef={undo.ref}
+              unmountOnExit
             >
               {(state) => (
                 <UndoToast
