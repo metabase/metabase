@@ -116,7 +116,6 @@ function _BaseBucketPickerPopover({
       opened={isOpened}
       position="right"
       onClose={handlePopoverClose}
-      withinPortal={false}
       onChange={(v) => !v && handlePopoverClose()}
       floatingStrategy="fixed"
     >
