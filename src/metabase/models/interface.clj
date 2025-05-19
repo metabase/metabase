@@ -493,7 +493,7 @@
   max (nanosecond) resolution)."
   []
   (classloader/require 'metabase.driver.sql.query-processor)
-  (let [db-type ((requiring-resolve 'metabase.db/db-type))]
+  (let [db-type ((requiring-resolve 'metabase.app-db.core/db-type))]
     ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
 
 (defn- add-created-at-timestamp [obj & _]

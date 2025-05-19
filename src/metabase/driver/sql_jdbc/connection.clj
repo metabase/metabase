@@ -3,10 +3,10 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [metabase.app-db.core :as mdb]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]

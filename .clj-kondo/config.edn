@@ -281,7 +281,7 @@
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   next.jdbc/active-tx?                               {:message "Use metabase.db/in-transaction? to see if we are in a transaction"}}
+   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -398,15 +398,15 @@
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
+  metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
+  metabase.app-db.custom-migrations/define-migration                                    clj-kondo.lint-as/def-catch-all
+  metabase.app-db.custom-migrations/define-reversible-migration                         clj-kondo.lint-as/def-catch-all
+  metabase.app-db.liquibase/with-liquibase                                              clojure.core/let
+  metabase.app-db.schema-migrations-test.impl/with-temp-empty-app-db                    clojure.core/let
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.collections.models.collection-test/with-collection-in-location               clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
-  metabase.db.custom-migrations.util/with-temp-scheduler!                               clojure.core/fn
-  metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
-  metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
-  metabase.db.liquibase/with-liquibase                                                  clojure.core/let
-  metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                        clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let
@@ -495,6 +495,7 @@
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
+   metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
    metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
@@ -504,11 +505,10 @@
    metabase.collections.models.collection-test/with-collection-hierarchy!                                                    hooks.common/let-one-with-optional-value
    metabase.collections.models.collection-test/with-personal-and-impersonal-collections                                      hooks.common/with-two-bindings
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
-   metabase.dashboards.api-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
-   metabase.dashboards.api-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
+   metabase.dashboards.api-test/with-chain-filter-fixtures                                                                   hooks.common/let-one-with-optional-value
+   metabase.dashboards.api-test/with-simple-dashboard-with-tabs                                                              hooks.common/with-one-binding
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
-   metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
@@ -774,10 +774,10 @@
      toucan2.core               {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
 
     :discouraged-var
-    {medley.core/map-keys              {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals              {:message "Use clojure.core/update-vals"}
-     metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+    {medley.core/map-keys                  {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals                  {:message "Use clojure.core/update-vals"}
+     metabase.app-db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     metabase.app-db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
 
   general-qp-and-driver-test-namespaces
   {:linters

@@ -147,9 +147,9 @@
               [mage.be-dev :refer [nrepl-eval]]]
    :examples [["./bin/mage -repl '(+ 1 1)'"
                "Eval a form in the backend dev server in the user namespace"]
-              ["./bin/mage -repl --namespace metabase.db.connection @application-db-counter"
-               "Eval a form in the backend dev server in the 'metabase.db.connection' namespace"]
-              ["mage -repl --port 59498 --namespace metabase.db.connection '(read-string \"::hello\")'"
+              ["./bin/mage -repl --namespace metabase.app-db.connection @application-db-counter"
+               "Eval a form in the backend dev server in the 'metabase.app-db.connection' namespace"]
+              ["mage -repl --port 59498 --namespace metabase.app-db.connection '(read-string \"::hello\")'"
                "Evaluate a keyword inside a namespace"]]
    :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]

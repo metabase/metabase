@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.humanization :as humanization]
