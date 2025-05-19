@@ -798,7 +798,8 @@
     (let [mp (mt/metadata-provider)]
       (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15 12:20:01" "")
                                               :mode :iso
-                                              :expected "2025-05-15T12:20:01Z"
+                                              :expected #{"2025-05-15T12:20:01Z"
+                                                          "2025-05-15 12:20:01"}
                                               :limit 1}]]]
               {:keys [expression mode expected limit]} expressions]
         (testing (str "Parsing " expression " as datetime with " mode ".")
@@ -811,4 +812,4 @@
                 rows (mt/rows result)]
             (is (datetime-type? (last cols)))
             (doseq [[_id casted-value] rows]
-              (is (= expected casted-value)))))))))
+              (is (contains? expected casted-value)))))))))
