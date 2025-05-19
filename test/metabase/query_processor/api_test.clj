@@ -442,6 +442,8 @@
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-test-6
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
@@ -461,6 +463,8 @@
                               {:default "b"}]}}))
                      :query json/decode first (get-in ["$project" "E"])))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
   (mt/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
@@ -473,6 +477,8 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
@@ -500,6 +506,8 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel pivot-dataset-with-added-expression-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
