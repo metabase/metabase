@@ -358,6 +358,7 @@ const visualizerSlice = createSlice({
         addColumnToCartesianChart(
           state,
           state.datasets as Record<string, Dataset>,
+          dataset.data.cols,
           column,
           columnRef,
           dataSource,
@@ -382,6 +383,7 @@ const visualizerSlice = createSlice({
         addColumnToPieChart(
           state,
           state.datasets as Record<string, Dataset>,
+          dataset.data.cols,
           column,
           columnRef,
         );

@@ -131,16 +131,15 @@ export function findColumnSlotForFunnel(
     "display" | "columns" | "settings"
   >,
   datasets: Record<VisualizerDataSourceId, Dataset>,
+  dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
-  dataSource: VisualizerDataSource,
 ) {
   const isEmpty = columns.length === 0;
-  const dataset = datasets[dataSource.id];
 
   if (
     (isEmpty || isScalarFunnel({ display, settings })) &&
-    dataset &&
-    canCombineDatasetWithScalarFunnel(dataset)
+    dataSourceColumns.length === 1 &&
+    isNumeric(dataSourceColumns[0])
   ) {
     return SCALAR_FUNNEL_SLOT;
   } else {
@@ -154,11 +153,6 @@ export function findColumnSlotForFunnel(
       return "funnel.dimension";
     }
   }
-}
-
-function canCombineDatasetWithScalarFunnel(dataset: Dataset) {
-  const { cols = [], rows = [] } = dataset.data ?? {};
-  return cols.length === 1 && isNumeric(cols[0]) && rows.length === 1;
 }
 
 export function addScalarToFunnel(
@@ -206,7 +200,12 @@ export function addColumnToFunnel(
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForFunnel(state, datasets, column, dataSource);
+  const slot = findColumnSlotForFunnel(
+    state,
+    datasets,
+    dataset.data.cols,
+    column,
+  );
 
   if (!slot) {
     return;

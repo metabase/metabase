@@ -62,6 +62,7 @@ describe("pie", () => {
       addColumnToPieChart(
         state,
         {},
+        [metricColumn],
         { ...metricColumn, name: "COLUMN_1" },
         metricColumnRef,
       );
@@ -95,6 +96,7 @@ describe("pie", () => {
       addColumnToPieChart(
         state,
         {},
+        [metricColumn2],
         { ...metricColumn2, name: "COLUMN_2" },
         metricColumn2Ref,
       );
@@ -115,6 +117,7 @@ describe("pie", () => {
       addColumnToPieChart(
         state,
         {},
+        [dimensionColumn],
         { ...dimensionColumn, name: "COLUMN_1" },
         dimensionColumnRef,
       );
@@ -148,6 +151,7 @@ describe("pie", () => {
       addColumnToPieChart(
         state,
         {},
+        [dimensionColumn2],
         { ...dimensionColumn2, name: "COLUMN_2" },
         dimensionColumn2Ref,
       );

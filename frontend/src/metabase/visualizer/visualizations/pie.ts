@@ -90,6 +90,7 @@ export const pieDropHandler = (
 export function findColumnSlotForPieChart(
   { settings }: Pick<VisualizerVizDefinition, "settings">,
   datasets: Record<string, Dataset>,
+  dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
 ) {
   const ownMetric = settings["pie.metric"];
@@ -104,10 +105,16 @@ export function findColumnSlotForPieChart(
 export function addColumnToPieChart(
   state: VisualizerVizDefinitionWithColumns,
   datasets: Record<string, Dataset>,
+  dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
 ) {
-  const slot = findColumnSlotForPieChart(state, datasets, column);
+  const slot = findColumnSlotForPieChart(
+    state,
+    datasets,
+    dataSourceColumns,
+    column,
+  );
   if (slot) {
     state.columns.push(column);
     state.columnValuesMapping[column.name] = [columnRef];
@@ -168,7 +175,7 @@ export function combineWithPieChart(
       dataSource.name,
       state.columns,
     );
-    addColumnToPieChart(state, datasets, column, columnRef);
+    addColumnToPieChart(state, datasets, data.cols, column, columnRef);
   }
 
   if (_.isEmpty(state.settings["pie.dimension"]) && dimensions.length === 1) {
@@ -184,6 +191,6 @@ export function combineWithPieChart(
       dataSource.name,
       state.columns,
     );
-    addColumnToPieChart(state, datasets, column, columnRef);
+    addColumnToPieChart(state, datasets, data.cols, column, columnRef);
   }
 }

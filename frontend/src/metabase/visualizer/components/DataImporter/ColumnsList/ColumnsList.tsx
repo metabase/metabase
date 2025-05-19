@@ -118,8 +118,8 @@ export const ColumnsList = (props: ColumnListProps) => {
                   const isUsable = !!findSlotForColumn(
                     { display, columns, settings },
                     datasets,
+                    dataset.data.cols,
                     column,
-                    source,
                   );
 
                   return (

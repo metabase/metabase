@@ -195,6 +195,7 @@ export function findColumnSlotForCartesianChart(
     "display" | "columns" | "settings"
   >,
   datasets: Record<VisualizerDataSourceId, Dataset>,
+  dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
 ) {
   if (display === "scatter") {
@@ -263,11 +264,17 @@ export function addColumnToCartesianChart(
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
   datasets: Record<string, Dataset>,
+  dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForCartesianChart(state, datasets, column);
+  const slot = findColumnSlotForCartesianChart(
+    state,
+    datasets,
+    dataSourceColumns,
+    column,
+  );
   if (slot === "graph.dimensions") {
     addDimensionColumnToCartesianChart(state, column, columnRef, dataSource);
   } else if (slot === "graph.metrics") {
@@ -440,6 +447,7 @@ export function combineWithCartesianChart(
     const isCompatible = !!findColumnSlotForCartesianChart(
       state,
       datasets,
+      dataset.data.cols,
       column,
     );
     if (isCompatible) {
@@ -456,6 +464,7 @@ export function combineWithCartesianChart(
     const isCompatible = !!findColumnSlotForCartesianChart(
       state,
       datasets,
+      dataset.data.cols,
       column,
     );
     if (isCompatible) {

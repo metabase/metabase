@@ -61,6 +61,7 @@ describe("cartesian", () => {
         findColumnSlotForCartesianChart(
           state,
           { "card:1": defaultDataset },
+          defaultDataset.data.cols,
           metricColumn,
         ),
       ).toEqual("graph.metrics");
@@ -78,6 +79,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset },
+            defaultDataset.data.cols,
             timeDimensionColumn,
           ),
         ).toEqual("graph.dimensions");
@@ -85,6 +87,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset },
+            defaultDataset.data.cols,
             categoryDimensionColumn,
           ),
         ).toEqual("graph.dimensions");
@@ -107,6 +110,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             dateColumn,
           ),
         ).toBe("graph.dimensions");
@@ -132,6 +136,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
             categoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -160,6 +165,7 @@ describe("cartesian", () => {
               "card:1": defaultDataset,
               "card:2": newDataset,
             },
+            newDataset.data.cols,
             dateColumn,
           ),
         ).toBe("graph.dimensions");
@@ -182,6 +188,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             sameCategoryDimensionColumn,
           ),
         ).toBe("graph.dimensions");
@@ -204,6 +211,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             otherCategoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -229,6 +237,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             sameCategoryDimensionColumn,
           ),
         ).toBe("graph.dimensions");
@@ -254,6 +263,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             otherCategoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -276,6 +286,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             dateColumn,
           ),
         ).toBe("graph.dimensions");
@@ -301,6 +312,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
             dateColumn,
           ),
         ).toBeUndefined();
@@ -323,6 +335,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
             sameCategoryDimensionColumn,
           ),
         ).toBe("graph.dimensions");
@@ -348,6 +361,7 @@ describe("cartesian", () => {
           findColumnSlotForCartesianChart(
             state,
             { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
             sameCategoryDimensionColumn,
           ),
         ).toBeUndefined();
@@ -392,7 +406,14 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(state, {}, column2, column2Ref, dataSource);
+      addColumnToCartesianChart(
+        state,
+        {},
+        [column2],
+        column2,
+        column2Ref,
+        dataSource,
+      );
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
@@ -415,7 +436,14 @@ describe("cartesian", () => {
         columnValuesMapping: {},
       };
 
-      addColumnToCartesianChart(state, {}, column1, column1Ref, dataSource);
+      addColumnToCartesianChart(
+        state,
+        {},
+        [column1],
+        column1,
+        column1Ref,
+        dataSource,
+      );
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -448,7 +476,14 @@ describe("cartesian", () => {
         },
       };
 
-      addColumnToCartesianChart(state, {}, column1, column1Ref, dataSource);
+      addColumnToCartesianChart(
+        state,
+        {},
+        [column1],
+        column1,
+        column1Ref,
+        dataSource,
+      );
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -473,7 +508,14 @@ describe("cartesian", () => {
         display: "bar",
       };
 
-      addColumnToCartesianChart(state, {}, column4, column4Ref, dataSource);
+      addColumnToCartesianChart(
+        state,
+        {},
+        [column4],
+        column4,
+        column4Ref,
+        dataSource,
+      );
 
       expect(state.columns.map((c) => c.name)).toEqual([]);
       expect(state.columnValuesMapping).toEqual({});
@@ -493,6 +535,7 @@ describe("cartesian", () => {
         addColumnToCartesianChart(
           state,
           {},
+          [column1],
           copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
           dataSource,
@@ -505,6 +548,7 @@ describe("cartesian", () => {
         addColumnToCartesianChart(
           state,
           {},
+          [column2],
           copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
           dataSource,
@@ -526,6 +570,7 @@ describe("cartesian", () => {
         addColumnToCartesianChart(
           state,
           {},
+          [column3],
           copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
           dataSource,

@@ -1,5 +1,4 @@
 import registerVisualizations from "metabase/visualizations/register";
-import { createDataSource } from "metabase/visualizer/utils";
 import type { Field } from "metabase-types/api";
 import {
   createMockCategoryColumn,
@@ -14,8 +13,6 @@ import { getIsCompatible } from "./getIsCompatible";
 registerVisualizations();
 
 describe("getIsCompatible", () => {
-  const dataSource = createDataSource("card", `entity_1`, "Card 1");
-
   it("should return false if a target data source doesn't have columns", () => {
     const result = getIsCompatible({
       currentDataset: {
@@ -23,7 +20,7 @@ describe("getIsCompatible", () => {
         columns: [createMockNumericColumn(), createMockCategoryColumn()],
         settings: {},
       },
-      targetDataset: { fields: [], dataSource },
+      targetDataset: { fields: [] },
       datasets: {},
     });
     expect(result).toBe(false);
@@ -44,7 +41,6 @@ describe("getIsCompatible", () => {
             settings: {},
           },
           targetDataset: {
-            dataSource,
             fields: [
               createMockNumericField({ id: 1 }),
               createMockCategoryField({ id: 2 }),
@@ -59,17 +55,63 @@ describe("getIsCompatible", () => {
   });
 
   describe("funnel", () => {
-    it("should return true if a data source has one numeric column", () => {
+    it("should return true if a data source has one column", () => {
+      const currentDataset = {
+        display: "funnel" as const,
+        columns: [],
+        settings: {},
+      };
+      const dataset = createMockDataset({ data: { cols: [] } });
+
+      // Can be used as a metric
       expect(
         getIsCompatible({
-          currentDataset: {
-            display: "funnel",
-            columns: [],
-            settings: {},
-          },
-          targetDataset: { dataSource, fields: [createMockNumericField()] },
+          currentDataset,
+          targetDataset: { fields: [createMockNumericField()] },
           datasets: {
-            "1": createMockDataset({ data: { cols: [] } }),
+            "1": dataset,
+            "2": createMockDataset({
+              data: { cols: [createMockNumericColumn()] },
+            }),
+          },
+        }),
+      ).toBe(true);
+
+      // Can be used as a dimension
+      expect(
+        getIsCompatible({
+          currentDataset,
+          targetDataset: { fields: [createMockCategoryField()] },
+          datasets: {
+            "1": dataset,
+            "2": createMockDataset({
+              data: { cols: [createMockCategoryColumn()] },
+            }),
+          },
+        }),
+      ).toBe(true);
+    });
+
+    it("should return true if a data source has one metric column and funnel has only a dimension", () => {
+      const currentDataset = {
+        display: "funnel" as const,
+        columns: [createMockCategoryColumn({ id: 10, name: "COLUMN_1" })],
+        settings: {
+          "funnel.dimension": "COLUMN_1",
+        },
+      };
+      const dataset = createMockDataset({
+        data: {
+          cols: [createMockCategoryColumn({ id: 10, name: "COLUMN_1" })],
+        },
+      });
+
+      expect(
+        getIsCompatible({
+          currentDataset,
+          targetDataset: { fields: [createMockNumericField()] },
+          datasets: {
+            "1": dataset,
             "2": createMockDataset({
               data: { cols: [createMockNumericColumn()] },
             }),
@@ -78,7 +120,33 @@ describe("getIsCompatible", () => {
       ).toBe(true);
     });
 
-    it("should return false if a data source has more than one numeric columns", () => {
+    it("should return true if a data source has one dimension column and funnel has only a metric", () => {
+      const currentDataset = {
+        display: "funnel" as const,
+        columns: [createMockNumericColumn({ id: 10, name: "COLUMN_1" })],
+        settings: {
+          "funnel.metric": "COLUMN_1",
+        },
+      };
+      const dataset = createMockDataset({
+        data: { cols: [createMockNumericColumn({ id: 10, name: "COLUMN_1" })] },
+      });
+
+      expect(
+        getIsCompatible({
+          currentDataset,
+          targetDataset: { fields: [createMockCategoryField()] },
+          datasets: {
+            "1": dataset,
+            "2": createMockDataset({
+              data: { cols: [createMockCategoryColumn()] },
+            }),
+          },
+        }),
+      ).toBe(true);
+    });
+
+    it("should return true if a data source has a metric and dimension for an empty funnel", () => {
       expect(
         getIsCompatible({
           currentDataset: {
@@ -87,10 +155,9 @@ describe("getIsCompatible", () => {
             settings: {},
           },
           targetDataset: {
-            dataSource,
             fields: [
               createMockNumericField({ id: 1 }),
-              createMockNumericField({ id: 2 }),
+              createMockCategoryField({ id: 2 }),
             ],
           },
           datasets: {
@@ -99,32 +166,13 @@ describe("getIsCompatible", () => {
               data: {
                 cols: [
                   createMockNumericColumn({ id: 1 }),
-                  createMockNumericColumn({ id: 2 }),
+                  createMockCategoryColumn({ id: 2 }),
                 ],
               },
             }),
           },
         }),
-      ).toBe(false);
-    });
-
-    it("should return false if a data source has one non-numeric column", () => {
-      expect(
-        getIsCompatible({
-          currentDataset: {
-            display: "funnel",
-            columns: [],
-            settings: {},
-          },
-          targetDataset: { dataSource, fields: [createMockCategoryField()] },
-          datasets: {
-            "1": createMockDataset({ data: { cols: [] } }),
-            "2": createMockDataset({
-              data: { cols: [createMockCategoryColumn()] },
-            }),
-          },
-        }),
-      ).toBe(false);
+      ).toBe(true);
     });
   });
 
@@ -165,7 +213,6 @@ describe("getIsCompatible", () => {
             settings: { "graph.metrics": [metricColumn.name] },
           },
           targetDataset: {
-            dataSource,
             fields: [dateField, sameCategoryDimensionField],
           },
           datasets: {
@@ -186,7 +233,7 @@ describe("getIsCompatible", () => {
               "graph.dimensions": [timeDimensionColumn.name],
             },
           },
-          targetDataset: { dataSource, fields: [dateField] },
+          targetDataset: { fields: [dateField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
@@ -219,7 +266,7 @@ describe("getIsCompatible", () => {
               "graph.dimensions": [temporalDimensionColumn.name],
             },
           },
-          targetDataset: { dataSource, fields: [dateField] },
+          targetDataset: { fields: [dateField] },
           datasets: {
             "1": dataset,
             "2": createMockDataset({
@@ -245,7 +292,7 @@ describe("getIsCompatible", () => {
               "graph.dimensions": [timeDimensionColumn.name],
             },
           },
-          targetDataset: { dataSource, fields: [sameCategoryDimensionField] },
+          targetDataset: { fields: [sameCategoryDimensionField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
@@ -273,7 +320,7 @@ describe("getIsCompatible", () => {
               "graph.dimensions": [categoryDimensionColumn.name],
             },
           },
-          targetDataset: { dataSource, fields: [sameCategoryDimensionField] },
+          targetDataset: { fields: [sameCategoryDimensionField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
@@ -301,7 +348,7 @@ describe("getIsCompatible", () => {
               "graph.dimensions": [categoryDimensionColumn.name],
             },
           },
-          targetDataset: { dataSource, fields: [otherCategoryDimensionField] },
+          targetDataset: { fields: [otherCategoryDimensionField] },
           datasets: {
             "1": defaultDataset,
             "2": createMockDataset({
