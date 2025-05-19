@@ -5,24 +5,6 @@
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
-(deftest ^:parallel password-check-test
-  (testing "POST /api/util/password_check"
-    (testing "Test for required params"
-      (is (=? {:errors {:password "password is too common."}}
-              (mt/client :post 400 "util/password_check" {}))))))
-
-(deftest ^:parallel password-check-test-2
-  (testing "POST /api/util/password_check"
-    (testing "Test complexity check"
-      (is (=? {:errors {:password "password is too common."}}
-              (mt/client :post 400 "util/password_check" {:password "blah"}))))))
-
-(deftest ^:parallel password-check-test-3
-  (testing "POST /api/util/password_check"
-    (testing "Should be a valid password"
-      (is (= {:valid true}
-             (mt/client :post 200 "util/password_check" {:password "something123"}))))))
-
 (deftest logs-test
   (testing "Call includes recent logs (#24616)"
     (mt/with-log-level :warn
