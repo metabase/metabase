@@ -216,6 +216,7 @@ export function UndoListOverlay({
                 exit: TOAST_TRANSITION_DURATION,
               }}
               nodeRef={undo.ref}
+              mountOnEnter
               unmountOnExit
             >
               {(state) => (
@@ -241,25 +242,40 @@ function transition(state: TransitionStatus, bottom: number) {
     bottom ${TOAST_TRANSITION_DURATION}ms ease
   `;
 
-  if (state === "exited") {
+  if (state === "entering") {
     return {
       opacity: 0,
-      transform: `translate(-20px, ${-bottom}px) scale(1)`,
-      transition,
+      transform: `translate(-20px, ${-bottom}px)`,
+      zIndex: 1,
     };
   }
 
   if (state === "entered") {
     return {
       opacity: 1,
-      transform: `translate(0, ${-bottom}px) scale(1)`,
+      transform: `translate(0, ${-bottom}px)`,
       transition,
+      zIndex: 1,
     };
   }
 
-  return {
-    opacity: 0,
-    transform: `translate(0, ${-bottom}px)`,
-    transition,
-  };
+  if (state === "exiting") {
+    return {
+      opacity: 0,
+      transform: `translate(0, ${-bottom + 25}px) scale(0.9)`,
+      transition,
+      zIndex: 0,
+    };
+  }
+
+  if (state === "exited") {
+    return {
+      opacity: 0,
+      transform: `translate(0, ${-bottom}px)`,
+      transition,
+      zIndex: 1,
+    };
+  }
+
+  throw new Error(`Unexpected state: ${state}`);
 }
