@@ -467,7 +467,7 @@
                                                                  {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                                                                           (mt/id :checkins)   :limited}}}}}}})
           (streaming-test/do-test!
-           "A table joined to a card, with limited download perms for the card, results in a limited download"
+           "A table with sandbox and limited download perms"
            {:query      {:database (mt/id)
                          :type     :query
                          :query    {:source-table (mt/id :checkins)
@@ -480,7 +480,7 @@
                                                                  {(mt/id) {:download {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                                                                           (mt/id :checkins)   :none}}}}}}})
           (streaming-test/do-test!
-           "A table joined to a card, with no download perms for the card, results in blocked download"
+           "A table with sandbox and not download perms"
            {:query      {:database (mt/id)
                          :type     :query
                          :query    {:source-table (mt/id :checkins)
