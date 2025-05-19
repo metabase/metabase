@@ -8,6 +8,12 @@
   }
 }
 
+.toast {
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+
 .progress {
   animation: animated-progress linear;
   transform-origin: left;
@@ -15,4 +21,26 @@
 
 .toast:hover .progress {
   animation-play-state: paused;
+}
+
+.enter,
+.appear {
+  opacity: 0;
+  transform: translateX(-50px);
+}
+
+.enterActive,
+.appearActive {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.exitActive {
+  opacity: 0;
+  transform: scale(0.98);
 }
