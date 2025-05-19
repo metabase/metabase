@@ -1,5 +1,9 @@
 import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
-import { CSSTransition, TransitionGroup } from "react-transition-group";
+import {
+  Transition,
+  TransitionGroup,
+  type TransitionStatus,
+} from "react-transition-group";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -81,6 +85,7 @@ function UndoToast({
 
   return (
     <ToastCard
+      ref={undo.ref}
       dark
       data-testid="toast-undo"
       color={undo.toastColor}
@@ -175,10 +180,6 @@ export function UndoListOverlay({
     );
     const newHeights = els
       .map((el) => {
-        if (el.classList.contains(CS.exit)) {
-          // the element is exiting, so don't count it's height
-          return 0;
-        }
         return el.getBoundingClientRect().height;
       })
       .filter((height) => height > 0);
@@ -205,31 +206,59 @@ export function UndoListOverlay({
         aria-label="undo-list"
         className={ZIndex.Overlay}
       >
-        <TransitionGroup>
+        <TransitionGroup appear enter exit>
           {undos.map((undo, index) => (
-            <CSSTransition
+            <Transition
               key={undo._domId}
-              timeout={TOAST_TRANSITION_DURATION}
-              classNames={{
-                enter: CS.enter,
-                enterActive: CS.enterActive,
-                appear: CS.appear,
-                appearActive: CS.appearActive,
-                exit: CS.exit,
-                exitActive: CS.exitActive,
+              in
+              timeout={{
+                enter: 0,
+                exit: TOAST_TRANSITION_DURATION,
               }}
+              nodeRef={undo.ref}
             >
-              <UndoToast
-                key={undo._domId}
-                undo={undo}
-                onUndo={() => onUndo(undo)}
-                onDismiss={() => onDismiss(undo)}
-                style={{ bottom: heightAtIndex(index) }}
-              />
-            </CSSTransition>
+              {(state) => (
+                <UndoToast
+                  undo={undo}
+                  onUndo={() => onUndo(undo)}
+                  onDismiss={() => onDismiss(undo)}
+                  style={transition(state, heightAtIndex(index))}
+                />
+              )}
+            </Transition>
           ))}
         </TransitionGroup>
       </UndoList>
     </Portal>
   );
+}
+
+function transition(state: TransitionStatus, bottom: number) {
+  const transition = `
+    opacity ${TOAST_TRANSITION_DURATION}ms ease,
+    transform ${TOAST_TRANSITION_DURATION}ms ease,
+    bottom ${TOAST_TRANSITION_DURATION}ms ease
+  `;
+
+  if (state === "exited") {
+    return {
+      opacity: 0,
+      transform: `translate(-20px, ${-bottom}px) scale(1)`,
+      transition,
+    };
+  }
+
+  if (state === "entered") {
+    return {
+      opacity: 1,
+      transform: `translate(0, ${-bottom}px) scale(1)`,
+      transition,
+    };
+  }
+
+  return {
+    opacity: 0,
+    transform: `translate(0, ${-bottom}px)`,
+    transition,
+  };
 }

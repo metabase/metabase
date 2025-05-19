@@ -9,13 +9,8 @@
 }
 
 .toast {
-  transition:
-    opacity 300ms ease,
-    transform 300ms ease,
-    bottom 300ms ease;
   position: absolute;
   bottom: 0;
-  will-change: bottom;
 }
 
 .progress {
@@ -25,26 +20,4 @@
 
 .toast:hover .progress {
   animation-play-state: paused;
-}
-
-.enter,
-.appear {
-  opacity: 0;
-  transform: translateX(-50px);
-}
-
-.enterActive,
-.appearActive {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.exit {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.exitActive {
-  opacity: 0;
-  transform: translateY(20px) scale(0.9);
 }

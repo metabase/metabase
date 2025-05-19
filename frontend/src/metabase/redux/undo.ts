@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { createRef } from "react";
 import type { Action } from "redux-actions";
 import _ from "underscore";
 
@@ -35,6 +36,7 @@ export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
       ...undo,
       id,
       _domId: id,
+      ref: createRef(),
       icon,
       canDismiss,
       timeoutId,
