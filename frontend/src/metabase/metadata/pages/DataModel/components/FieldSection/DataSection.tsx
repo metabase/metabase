@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { CoercionStrategyPicker } from "metabase/metadata/components";
 import {
   canCoerceFieldType,
@@ -25,6 +26,10 @@ export const DataSection = ({ field }: Props) => {
     field ? field.coercion_strategy != null : false,
   );
   const id = getRawTableFieldId(field);
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message, icon: "check" });
+  }
 
   useEffect(() => {
     setIsCasting(field.coercion_strategy != null);
@@ -68,11 +73,12 @@ export const DataSection = ({ field }: Props) => {
                 label={t`Cast to a specific data type`}
                 mt="md"
                 size="xs"
-                onChange={(event) => {
+                onChange={async (event) => {
                   setIsCasting(event.target.checked);
 
                   if (!event.target.checked) {
-                    updateField({ id, coercion_strategy: null });
+                    await updateField({ id, coercion_strategy: null });
+                    confirm(t`Casting disabled for ${field.display_name}`);
                   }
                 }}
               />
@@ -82,8 +88,12 @@ export const DataSection = ({ field }: Props) => {
               <CoercionStrategyPicker
                 baseType={field.base_type}
                 value={field.coercion_strategy ?? undefined}
-                onChange={(coercionStrategy) => {
-                  updateField({ id, coercion_strategy: coercionStrategy });
+                onChange={async (coercionStrategy) => {
+                  await updateField({
+                    id,
+                    coercion_strategy: coercionStrategy,
+                  });
+                  confirm(t`Casting enabled for ${field.display_name}`);
                 }}
               />
             )}

@@ -51,6 +51,7 @@ const FieldFormattingSettings = ({
         inheritedSettings={inheritedSettings}
         onChange={handleChangeSettings}
         extraData={{ forAdminSettings: true }}
+        style={{}}
       />
     </MetadataSection>
   );
