@@ -447,10 +447,10 @@
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
     (with-jwt-default-setup!
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
-        (let [result (client/client-real-response 
-                       :get 200 "/auth/sso"
-                       {:headers {"x-metabase-client" "embedding-sdk-react"}})]
-          (is (= {:url (sso-settings/jwt-identity-provider-uri) 
+        (let [result (client/client-real-response
+                      :get 200 "/auth/sso"
+                      {:headers {"x-metabase-client" "embedding-sdk-react"}})]
+          (is (= {:url (sso-settings/jwt-identity-provider-uri)
                   :method "jwt"}
                  (:body result)))))))
 
@@ -468,9 +468,9 @@
                              :iat        jwt-iat-time
                              :exp        jwt-exp-time}
                             default-jwt-secret)
-result (client/client-real-response :get 200 "/auth/sso"
-                                   {:headers {"x-metabase-client" "embedding-sdk-react"}}
-                                   :jwt jwt-payload)]
+              result (client/client-real-response :get 200 "/auth/sso"
+                                                  {:headers {"x-metabase-client" "embedding-sdk-react"}}
+                                                  :jwt jwt-payload)]
           (is
            (=?
             {:id  (mt/malli=? ms/UUIDString)
@@ -492,8 +492,8 @@ result (client/client-real-response :get 200 "/auth/sso"
                              :iat        jwt-iat-time
                              :exp        jwt-exp-time}
                             default-jwt-secret)
-             result       (client/client-real-response :get 402 "/auth/sso"
-                                   {:headers {"x-metabase-client" "embedding-sdk-react"}}
+              result       (client/client-real-response :get 402 "/auth/sso"
+                                                        {:headers {"x-metabase-client" "embedding-sdk-react"}}
                                                         :jwt   jwt-payload)]
           (is result nil)))))
 

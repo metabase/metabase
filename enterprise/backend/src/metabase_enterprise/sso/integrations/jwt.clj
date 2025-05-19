@@ -21,7 +21,6 @@
 
 (def tokens (atom #{}))
 
-
 (defn validate-token [token]
   (let [result (atom false)]
     (swap! tokens
@@ -137,19 +136,17 @@
 
 (defn ^:private generate-response-token
   [session jwt-data validation-token]
-  (if ( and (validate-token validation-token) (embed.settings/enable-embedding-sdk) )
-    
+  (if (and (validate-token validation-token) (embed.settings/enable-embedding-sdk))
+
     (response/response
      {:status :ok
       :id     (:key session)
       :exp    (:exp jwt-data)
       :iat    (:iat jwt-data)})
-      (throw
+    (throw
      (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
               {:status      "error-embedding-sdk-disabled"
-               :status-code 402}))
-      
-      ))
+               :status-code 402}))))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
@@ -159,22 +156,20 @@
           (when redirect
             (str return-to-param redirect))))))
 
-
-
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (let [jwt-data (when jwt (session-data jwt request))
         is-sdk? (sso-utils/is-embedding-sdk-header? request)]
-        (println is-sdk? jwt (:headers request) (get (:headers request) "x-metabase-sdk-jwt-hash" nil))
+    (println is-sdk? jwt (:headers request) (get (:headers request) "x-metabase-sdk-jwt-hash" nil))
     (cond
       (and is-sdk? jwt) (generate-response-token (:session jwt-data) (:jwt-data jwt-data) (get (:headers request) "x-metabase-sdk-jwt-hash" nil))
       is-sdk?           (response/response {:url (sso-settings/jwt-identity-provider-uri) :method "jwt" :hash (let [new-uuid (str (java.util.UUID/randomUUID))] (swap! tokens conj new-uuid) new-uuid)})
       jwt               (request/set-session-cookies request
-                                                    (response/redirect (:redirect-url jwt-data))
-                                                    (:session jwt-data)
-                                                    (t/zoned-date-time (t/zone-id "GMT")))
+                                                     (response/redirect (:redirect-url jwt-data))
+                                                     (:session jwt-data)
+                                                     (t/zoned-date-time (t/zone-id "GMT")))
       :else             (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect))))
 
 (defmethod sso.i/sso-post :jwt

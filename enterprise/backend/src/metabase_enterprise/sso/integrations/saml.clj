@@ -285,6 +285,7 @@
   <button onclick=\"window.close()\">Close Window</button>
 </body>
 </html>")}))
+
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
