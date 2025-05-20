@@ -2,8 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
-   [metabase.db :as mdb]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]

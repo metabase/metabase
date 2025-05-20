@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor.store :as qp.store]

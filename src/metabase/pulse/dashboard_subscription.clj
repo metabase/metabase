@@ -1,7 +1,7 @@
 (ns metabase.pulse.dashboard-subscription
   (:require
    [clojure.set :as set]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.query :as mdb.query]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.util :as u]

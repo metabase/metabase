@@ -12,7 +12,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]

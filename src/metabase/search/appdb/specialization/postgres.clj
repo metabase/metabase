@@ -1,7 +1,7 @@
 (ns metabase.search.appdb.specialization.postgres
   (:require
    [clojure.string :as str]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
