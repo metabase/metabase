@@ -7,11 +7,11 @@
     "url": "git+https://github.com/metabase/metabase.git"
   },
   "license": "SEE LICENSE IN LICENSE.txt",
-  "main": "./dist/main.bundle.js",
+  "main": "./dist/index.mjs",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/main.bundle.js"
+      "default": "./dist/index.mjs"
     },
     "./nextjs": {
       "types": "./dist/nextjs.d.ts",

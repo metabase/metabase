@@ -5,6 +5,7 @@ import { combineReducers } from "@reduxjs/toolkit";
 import { Api } from "metabase/api";
 import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import * as parameters from "metabase/parameters/reducers";
+import * as qb from "metabase/query_builder/reducers";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import { reducer as downloads } from "metabase/redux/downloads";
@@ -16,6 +17,7 @@ import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
+import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 export const commonReducers = {
   // global reducers
@@ -32,6 +34,8 @@ export const commonReducers = {
   [Api.reducerPath]: Api.reducer,
   modal,
   dashboard,
+  visualizer,
+  qb: combineReducers(qb),
   parameters: combineReducers(parameters),
   downloads,
 };
