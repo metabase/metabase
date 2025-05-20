@@ -10,7 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.dashboards.api :as api.dashboard]
    [metabase.events.core :as events]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
