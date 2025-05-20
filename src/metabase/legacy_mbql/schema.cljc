@@ -724,8 +724,8 @@
    :unixnanoseconds])
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  :any ;; normally a string, number, or bytes
-  mode   LiteralDatetimeModeString)
+  value  StringExpressionArg ;; normally a string, number, or bytes
+  mode   (optional LiteralDatetimeModeString))
 
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date datetime))

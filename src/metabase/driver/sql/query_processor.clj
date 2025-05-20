@@ -776,9 +776,8 @@
 (defmethod ->honeysql [:sql :datetime]
   [driver [_ value mode]]
   (let [honeysql-form (->honeysql driver value)
-        coercion-strategy (case mode
-                            ;; String/Bytes
-                            ;; We use the String coercion keywords, but we convert the bytes
+        coercion-strategy (case (or mode :iso)
+                            ;; String
                             :iso              :Coercion/ISO8601->DateTime
                             :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
                             ;; Number

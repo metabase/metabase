@@ -60,16 +60,17 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
-(mbql-clause/define-tuple-mbql-clause :datetime :- :type/DateTime
-  #_:value [:schema [:ref ::expression/string]] ;; need to support bytes type
-  #_:modestring [:enum {:error/message "datetime mode string"
-                        :decode/normalize common/normalize-keyword-lower}
-                 :iso
-                 :simple
-                 :unixMilliseconds
-                 :unixSeconds
-                 :unixMicroseconds
-                 :unixNanoseconds])
+(mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
+  [:value [:schema [:ref ::expression/string]]] ;; need to support bytes type
+  [:modes [:?
+           [:enum {:error/message "datetime mode string"
+                   :decode/normalize common/normalize-keyword-lower}
+            :iso
+            :simple
+            :unixMilliseconds
+            :unixSeconds
+            :unixMicroseconds
+            :unixNanoseconds]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

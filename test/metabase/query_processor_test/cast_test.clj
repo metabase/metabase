@@ -796,16 +796,16 @@
 (deftest ^:parallel datetime-cast
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
-      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T17:20:01" "")
+      (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15 12:20:01" "")
                                               :mode :iso
-                                              :expected #{"2025-05-15T17:20:01Z"
-                                                          "2025-05-15 17:20:01"}
+                                              :expected #{"2025-05-15T12:20:01Z"
+                                                          "2025-05-15 12:20:01"}
                                               :limit 1}]]]
               {:keys [expression mode expected limit]} expressions]
         (testing (str "Parsing " expression " as datetime with " mode ".")
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
-                          (lib/expression "DATETIME_PARSE" (lib/datetime expression mode))
+                          (lib/expression "DATETIME_PARSE" (lib/datetime expression))
                           (lib/limit limit))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
