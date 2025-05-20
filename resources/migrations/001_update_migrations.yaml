@@ -11877,7 +11877,6 @@ databaseChangeLog:
             onDelete: CASCADE
 
 
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
