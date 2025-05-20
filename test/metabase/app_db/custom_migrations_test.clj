@@ -26,7 +26,6 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
