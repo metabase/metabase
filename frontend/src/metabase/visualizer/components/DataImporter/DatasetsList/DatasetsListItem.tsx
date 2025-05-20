@@ -5,8 +5,10 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {
+  getDatasets,
   getVisualizationType,
-  getVisualizerPrimaryColumn,
+  getVisualizerComputedSettings,
+  getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import type {
   Field,
@@ -36,7 +38,9 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { setSwapAffordanceVisible } = useVisualizerUi();
 
   const currentDisplay = useSelector(getVisualizationType);
-  const primaryColumn = useSelector(getVisualizerPrimaryColumn);
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+  const datasets = useSelector(getDatasets);
 
   const isCompatible = useMemo(() => {
     if (!item.display || !item.result_metadata) {
@@ -45,15 +49,16 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
 
     return getIsCompatible({
       currentDataset: {
-        display: currentDisplay,
-        primaryColumn,
+        display: currentDisplay ?? null,
+        columns,
+        settings,
       },
       targetDataset: {
-        display: item.display,
         fields: item.result_metadata,
       },
+      datasets,
     });
-  }, [item, primaryColumn, currentDisplay]);
+  }, [item, currentDisplay, columns, settings, datasets]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

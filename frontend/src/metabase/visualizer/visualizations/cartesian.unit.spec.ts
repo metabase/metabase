@@ -20,12 +20,355 @@ import {
   addDimensionColumnToCartesianChart,
   addMetricColumnToCartesianChart,
   combineWithCartesianChart,
+  findColumnSlotForCartesianChart,
   removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
   replaceMetricColumnAsScatterBubbleSize,
 } from "./cartesian";
 
 describe("cartesian", () => {
+  describe("findColumnSlotForCartesianChart", () => {
+    const metricColumn = createMockNumericColumn({
+      id: 1,
+      name: "COLUMN_1",
+      display_name: "Count",
+    });
+    const timeDimensionColumn = createMockDatetimeColumn({
+      id: 2,
+      name: "COLUMN_2",
+      display_name: "Created At",
+    });
+    const categoryDimensionColumn = createMockCategoryColumn({
+      id: 3,
+      name: "COLUMN_3",
+      display_name: "Category",
+    });
+    const defaultDataset = createMockDataset({
+      data: {
+        cols: [metricColumn, timeDimensionColumn, categoryDimensionColumn],
+      },
+    });
+
+    const dateColumn = createMockDatetimeColumn({ id: 4 });
+    const sameCategoryDimensionColumn = createMockCategoryColumn({
+      id: categoryDimensionColumn.id,
+    });
+    const otherCategoryDimensionColumn = createMockCategoryColumn({ id: 5 });
+
+    it("should return 'graph.metrics' for a metric column", () => {
+      const state = { display: "bar" as const, columns: [], settings: {} };
+      expect(
+        findColumnSlotForCartesianChart(
+          state,
+          { "card:1": defaultDataset },
+          defaultDataset.data.cols,
+          metricColumn,
+        ),
+      ).toEqual("graph.metrics");
+    });
+
+    describe("dimensions", () => {
+      it("should return 'graph.dimensions' for any dimension column when chart has no dimensions", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: { "graph.metrics": [metricColumn.name] },
+        };
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset },
+            defaultDataset.data.cols,
+            timeDimensionColumn,
+          ),
+        ).toEqual("graph.dimensions");
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset },
+            defaultDataset.data.cols,
+            categoryDimensionColumn,
+          ),
+        ).toEqual("graph.dimensions");
+      });
+
+      it("should return 'graph.dimensions' for a date column when chart has a time dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [timeDimensionColumn.name],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [dateColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            dateColumn,
+          ),
+        ).toBe("graph.dimensions");
+      });
+
+      it("should return undefined for a non-date column when chart only has a time dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [timeDimensionColumn.name],
+          },
+        };
+        const baseDataset = createMockDataset({
+          data: { cols: [metricColumn, timeDimensionColumn] },
+        });
+        const newDataset = createMockDataset({
+          data: { cols: [categoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            categoryDimensionColumn,
+          ),
+        ).toBeUndefined();
+      });
+
+      it("should return 'graph.dimensions' for a date column when chart has a time dimension and a category dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [
+              timeDimensionColumn.name,
+              categoryDimensionColumn.name,
+            ],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [dateColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            {
+              "card:1": defaultDataset,
+              "card:2": newDataset,
+            },
+            newDataset.data.cols,
+            dateColumn,
+          ),
+        ).toBe("graph.dimensions");
+      });
+
+      it("should return 'graph.dimensions' for a category dimension when chart has the same dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [categoryDimensionColumn.name],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [sameCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            sameCategoryDimensionColumn,
+          ),
+        ).toBe("graph.dimensions");
+      });
+
+      it("should return undefined for a category dimension when chart doesn't have the same dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [categoryDimensionColumn.name],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [otherCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            otherCategoryDimensionColumn,
+          ),
+        ).toBeUndefined();
+      });
+
+      it("should return 'graph.dimensions' for a category dimension when chart has a time dimension and the same category dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [
+              timeDimensionColumn.name,
+              categoryDimensionColumn.name,
+            ],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [sameCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            sameCategoryDimensionColumn,
+          ),
+        ).toBe("graph.dimensions");
+      });
+
+      it("should return 'graph.dimensions' for a category dimension when chart has a time dimension, but not the same category dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [
+              timeDimensionColumn.name,
+              categoryDimensionColumn.name,
+            ],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [otherCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            otherCategoryDimensionColumn,
+          ),
+        ).toBeUndefined();
+      });
+
+      it("should return 'graph.dimensions' for a new time dimension when every data source has a time dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [categoryDimensionColumn.name],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [dateColumn, sameCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            dateColumn,
+          ),
+        ).toBe("graph.dimensions");
+      });
+
+      it("should return undefined for a new time dimension when not every data source has a time dimension", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [categoryDimensionColumn.name],
+          },
+        };
+        const baseDataset = createMockDataset({
+          data: { cols: [metricColumn, categoryDimensionColumn] },
+        });
+        const newDataset = createMockDataset({
+          data: { cols: [dateColumn, sameCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            dateColumn,
+          ),
+        ).toBeUndefined();
+      });
+
+      it("should return 'graph.dimensions' for a new category dimension when it's present in every data source", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [timeDimensionColumn.name],
+          },
+        };
+        const newDataset = createMockDataset({
+          data: { cols: [dateColumn, sameCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": defaultDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            sameCategoryDimensionColumn,
+          ),
+        ).toBe("graph.dimensions");
+      });
+
+      it("should return undefined for a new category dimension when it's not present in every data source", () => {
+        const state = {
+          display: "bar" as const,
+          columns: [metricColumn],
+          settings: {
+            "graph.metrics": [metricColumn.name],
+            "graph.dimensions": [timeDimensionColumn.name],
+          },
+        };
+        const baseDataset = createMockDataset({
+          data: { cols: [metricColumn, timeDimensionColumn] },
+        });
+        const newDataset = createMockDataset({
+          data: { cols: [dateColumn, sameCategoryDimensionColumn] },
+        });
+
+        expect(
+          findColumnSlotForCartesianChart(
+            state,
+            { "card:1": baseDataset, "card:2": newDataset },
+            newDataset.data.cols,
+            sameCategoryDimensionColumn,
+          ),
+        ).toBeUndefined();
+      });
+    });
+  });
+
   describe("addColumnToCartesianChart", () => {
     const dataSource = createDataSource("card", `entity_1`, "Card 1");
 
@@ -55,12 +398,6 @@ describe("cartesian", () => {
       column2Ref,
     ]);
 
-    const dataset = createMockDataset({
-      data: {
-        cols: [column1, column2, column3],
-      },
-    });
-
     it("should add a metric column", () => {
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
@@ -71,9 +408,10 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
+        [column2],
         column2,
         column2Ref,
-        dataset,
         dataSource,
       );
 
@@ -100,9 +438,10 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
+        [column1],
         column1,
         column1Ref,
-        dataset,
         dataSource,
       );
 
@@ -139,9 +478,10 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
+        [column1],
         column1,
         column1Ref,
-        dataset,
         dataSource,
       );
 
@@ -170,9 +510,10 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
+        [column4],
         column4,
         column4Ref,
-        dataset,
         dataSource,
       );
 
@@ -193,9 +534,10 @@ describe("cartesian", () => {
         // First column is automatically added as a dimension
         addColumnToCartesianChart(
           state,
+          {},
+          [column1],
           copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
-          dataset,
           dataSource,
         );
         expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -205,9 +547,10 @@ describe("cartesian", () => {
         // Second column is automatically added as a metric
         addColumnToCartesianChart(
           state,
+          {},
+          [column2],
           copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
-          dataset,
           dataSource,
         );
         expect(state.columns.map((c) => c.name)).toEqual([
@@ -226,9 +569,10 @@ describe("cartesian", () => {
         // Third column is automatically added as a the bubble size
         addColumnToCartesianChart(
           state,
+          {},
+          [column3],
           copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
-          dataset,
           dataSource,
         );
         expect(state.columns.map((c) => c.name)).toEqual([
@@ -553,6 +897,7 @@ describe("cartesian", () => {
       const nextState = _.clone(state);
       combineWithCartesianChart(
         nextState,
+        {},
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
@@ -644,6 +989,7 @@ describe("cartesian", () => {
       const nextState = _.clone(state);
       combineWithCartesianChart(
         nextState,
+        {},
         createMockDataset({
           data: {
             cols: [

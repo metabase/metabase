@@ -243,6 +243,24 @@ export const PRODUCTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
   },
 };
 
+export const PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY: StructuredQuestionDetailsWithName =
+  {
+    display: "bar",
+    name: "Products by Created At (Month) and Category",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+        ["field", PRODUCTS.CATEGORY, null],
+      ],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      "graph.metrics": ["count"],
+    },
+  };
+
 export const PRODUCTS_AVERAGE_BY_CREATED_AT: StructuredQuestionDetailsWithName =
   {
     display: "bar",
