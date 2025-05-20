@@ -257,8 +257,7 @@
               (for [field (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
                 (-> field
                     (dissoc :id :fk_target_field_id)
-                    (assoc :table_id new-table-id
-                           :entity_id (u/generate-nano-id)))))
+                    (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
