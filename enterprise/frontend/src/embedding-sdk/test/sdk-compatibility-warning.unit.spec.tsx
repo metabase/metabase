@@ -28,8 +28,7 @@ const defaultAuthConfig = defineMetabaseAuthConfig({
   authProviderUri: AUTH_PROVIDER_URL,
   fetchRequestToken: () =>
     Promise.resolve({
-      id: "123",
-      exp: Number.MAX_SAFE_INTEGER,
+      jwt: "TEST_JWT_TOKEN",
     }),
 });
 

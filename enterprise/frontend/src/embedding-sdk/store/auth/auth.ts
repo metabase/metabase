@@ -99,9 +99,8 @@ export const refreshTokenAsync = createAsyncThunk(
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     // The SDK user can provide a custom function to refresh the token.
-    const customGetRefreshToken = getFetchRefreshTokenFn(
-      getState() as SdkStoreState,
-    );
+    const customGetRefreshToken =
+      getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
 
     // # How does the error handling work?
     // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
@@ -158,7 +157,9 @@ const safeStringify = (value: unknown) => {
 
 const getRefreshToken = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
-  customFetchRequestFunction: MetabaseAuthConfig["fetchRequestToken"],
+  customFetchRequestFunction:
+    | MetabaseAuthConfig["fetchRequestToken"]
+    | null = null,
 ) => {
   // GET /auth/sso with headers
   const urlResponse = await fetch(`${url}/auth/sso`, getFetchParams());

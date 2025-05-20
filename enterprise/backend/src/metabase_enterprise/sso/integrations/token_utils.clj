@@ -10,6 +10,7 @@
 (defn generate-token
   "Generate a cryptographically secure token with built-in expiration."
   []
+  (println (sdk-encryption-validation-key))
   (let [timestamp (current-timestamp)
         expiration (str (+ (Long/parseLong timestamp) 300))
         nonce (str (java.util.UUID/randomUUID))

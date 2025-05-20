@@ -9,4 +9,4 @@ export type UserBackendResponse = {
 
 export type MetabaseFetchRequestTokenFn = (
   url: string,
-) => Promise<UserBackendResponse>;
+) => Promise<UserBackendResponse | Error>;

@@ -6,7 +6,9 @@ export async function jwtRefreshTokenFn(
   responseUrl: string,
   instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"],
   hash: string,
-  customFetchRequestFunction: MetabaseAuthConfig["fetchRequestToken"],
+  customFetchRequestFunction:
+    | MetabaseAuthConfig["fetchRequestToken"]
+    | null = null,
 ) {
   // Points to the JWT Auth endpoint on the client server
   // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend

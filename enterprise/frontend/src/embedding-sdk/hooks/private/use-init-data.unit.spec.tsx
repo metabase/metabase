@@ -211,8 +211,7 @@ describe("useInitData hook", () => {
 
     it("should use a custom fetchRefreshToken function when specified", async () => {
       let fetchRequestToken = jest.fn(async () => ({
-        id: "foo",
-        exp: Number.MAX_SAFE_INTEGER,
+        jwt: "TEST_JWT_TOKEN",
       }));
 
       const { rerender } = setup({ isValidConfig: true, fetchRequestToken });
@@ -223,8 +222,7 @@ describe("useInitData hook", () => {
       // Pass in a new fetchRequestToken function
       // We expect the new function to be called when the "Refresh Token" button is clicked
       fetchRequestToken = jest.fn(async () => ({
-        id: "bar",
-        exp: Number.MAX_SAFE_INTEGER,
+        jwt: "TEST_JWT_TOKEN_2",
       }));
 
       const authConfig = createMockAuthProviderUriConfig({
