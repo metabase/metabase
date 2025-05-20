@@ -59,7 +59,7 @@
                               ["-M:kondo:kondo/all"])
                             (list* "-M:kondo" "--lint" args))
         _ (u/debug "command: " command)]
-    (println "Running Kondo on:" args)
+    (println "Running Kondo on:" (if (empty? args) "everything." args))
     (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" command)]
       (System/exit exit))))
 
