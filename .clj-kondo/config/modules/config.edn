@@ -266,8 +266,8 @@
            util}}
 
   cmd
-  {:api  #{metabase.cmd
-           metabase.cmd.copy
+  {:api  #{metabase.cmd.copy
+           metabase.cmd.core
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
@@ -308,7 +308,7 @@
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
-  {:api  #{metabase.config}
+  {:api  #{metabase.config.core}
    :uses #{}}
 
   ;; this is not actually a real module, but comes from one of our libraries.
@@ -443,7 +443,7 @@
            util}}
 
   formatter
-  {:api  #{metabase.formatter}
+  {:api  #{metabase.formatter.core}
    :uses #{appearance
            models
            system
@@ -1128,7 +1128,8 @@
            util}}
 
   types
-  {:api  #{metabase.types}
+  {:api  #{metabase.types.core
+           metabase.types.init}
    :uses #{util}}
 
   upload
@@ -1647,9 +1648,8 @@
  :linters
  {:metabase/modules
   {:ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "test-setup"                       ; anything that contains `test-setup`
-     "^metabase(?:-enterprise)?\\.test" ; anything starting with `metabase.test` or `metabase-enterprise.test`
-     "^metabase\\.http-client$"}}}}     ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                               ; anything ending in `-test`
+     "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                          ; anything that contains `test.impl`
+     "test-setup"                           ; anything that contains `test-setup`
+     "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

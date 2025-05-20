@@ -9,7 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]

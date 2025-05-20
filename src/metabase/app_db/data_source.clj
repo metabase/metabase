@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.app-db.update-h2 :as update-h2]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.log :as log]
    [potemkin :as p]

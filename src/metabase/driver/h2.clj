@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]

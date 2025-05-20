@@ -6,7 +6,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.table :as table]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
