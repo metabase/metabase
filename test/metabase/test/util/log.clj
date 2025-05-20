@@ -1,5 +1,7 @@
 (ns metabase.test.util.log
-  "Utils for controlling the logging that goes on when running tests."
+  "Utils for controlling the logging that goes on when running tests.
+
+  TODO -- move this to something like `metabase.logger.test-util`"
   (:require
    [clojure.test :refer :all]
    [mb.hawk.parallel]

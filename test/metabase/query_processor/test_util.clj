@@ -270,13 +270,12 @@
 
   Can be used with [[format-rows-by]] to normalize DB-specific bools in results."
   [x]
-  ;; The compiler warns about performance here since (= (hash 0) (hash 0M)), so the `case` will fallback to linear
-  ;; probing for those values. It shouldn't matter for this function, but if it becomes an issue or we want to silence
-  ;; the warning, it could be rewritten to avoid the `case`.
-  (case x
-    (0 0M false) false
-    (1 1M true)  true
-    (throw (ex-info "value is not boolish" {:value x}))))
+  (if (instance? java.math.BigDecimal x)
+    (recur (long x))
+    (case x
+      (0 false) false
+      (1 true)  true
+      (throw (ex-info "value is not boolish" {:value x})))))
 
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a

@@ -83,7 +83,7 @@
 
 ;;; Custom loggers
 
-(defn logger-name
+(defn- logger-name
   "Get string name from symbol or ns"
   ^String [a-namespace]
   (if (instance? clojure.lang.Namespace a-namespace)
@@ -111,8 +111,8 @@
     (or (first (keep #(.getLayout ^AbstractAppender (val %)) (.getAppenders logger)))
         (recur (.getParent logger)))))
 
-(defprotocol MakeAppender
-  (make-appender ^AbstractAppender [out layout]))
+(defprotocol ^:private MakeAppender
+  (^:private make-appender ^AbstractAppender [out layout]))
 
 (extend-protocol MakeAppender
   java.io.File
@@ -131,7 +131,7 @@
        (.setLayout layout)
        (.setTarget out)))))
 
-(defn add-ns-logger
+(defn- add-ns-logger!
   "Add a logger for a given namespace to the configuration."
   [ns appender level additive]
   (let [logger-name (str ns)
@@ -140,7 +140,7 @@
     (.addLogger (configuration) logger-name ns-logger)
     ns-logger))
 
-(defn for-ns
+(defn ^:deprecated for-ns
   "Create separate logger for a given namespace(s) to fork out some logs."
   ^AutoCloseable [out nses & [{:keys [additive level]
                                :or   {additive true
@@ -149,13 +149,12 @@
         config   (configuration)
         parents  (mapv effective-ns-logger nses)
         appender (make-appender out (find-logger-layout (first parents)))
-        loggers  (vec (for [ns nses]
-                        (add-ns-logger ns appender level additive)))]
+        loggers  (mapv (fn [ns]
+                         (add-ns-logger! ns appender level additive))
+                       nses)]
     (.start appender)
     (.addAppender config appender)
-
     (.updateLoggers (context))
-
     (reify AutoCloseable
       (close [_]
         (let [^AbstractConfiguration config (configuration)]
@@ -231,7 +230,7 @@
                          (into-array org.apache.logging.log4j.core.config.Property (.getPropertyList parent-logger))
                          (configuration)
                          (.getFilter parent-logger))]
-      ;; copy the appenders from the parent logger, e.g. the [[metabase.logger/metabase-appender]]
+      ;; copy the appenders from the parent logger, e.g. the [[metabase.logger.core/metabase-appender]]
       (doseq [[_name ^Appender appender] (.getAppenders parent-logger)]
         (.addAppender new-logger appender (.getLevel new-logger) (.getFilter new-logger)))
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
@@ -255,8 +254,9 @@
          new-level (->Level new-level)]
      (.setLevel logger new-level)
      ;; it seems like changing the level doesn't update the level for the appenders
-     ;; e.g. [[metabase.logger/metabase-appender]], so if we want the new level to be reflected there the only way I can
-     ;; figure out to make it work is to remove the appender and then add it back with the updated level. See JavaDoc
+     ;; e.g. [[metabase.logger.core/metabase-appender]], so if we want the new level to be reflected there the only way
+     ;; I can figure out to make it work is to remove the appender and then add it back with the updated level. See
+     ;; JavaDoc
      ;; https://logging.apache.org/log4j/2.x/log4j-core/apidocs/org/apache/logging/log4j/core/config/LoggerConfig.html
      ;; for more info. There's probably a better way to do this, but I don't know what it is. -- Cam
      (doseq [[^String appender-name ^Appender appender] (.getAppenders logger)]

@@ -33,7 +33,8 @@
 ;;; quick, and definitely quicker than `(<= (level->int :trace) (level->int :debug))`. So we do the conversions at
 ;;; macroexpansion time
 
-(def ^:private level->int
+(def level->int
+  "Log level keyword => integer."
   {:explode 0
    :fatal   1
    :error   2
@@ -177,16 +178,29 @@
     {:e x, :args more}
     {:args (cons x more)}))
 
+;;; `logp` and friends print everything as with `print-str` e.g. {:path "str"} => {:path str} but `logf` and friends
+;;; print them as with `pr-str` e.g. {:path "str"} => {:path "str"}
+;;;
+;;; we will fake this by calling `pr-str` on collections and what not
+
 (defn capture-logp!
   "Impl for log message capturing for [[metabase.util.log/logp]]."
   [f & args]
   (let [{:keys [e args]} (parse-args args)]
-    (f e (str/join \space (map print-str args)))))
+    (f e (str/join \space (map print-str #_(fn [arg]
+                                             (if (coll? arg)
+                                               (pr-str arg)
+                                               (print-str arg)))
+                               args)))))
 
 (defn capture-logf!
   "Impl for log message capturing for [[metabase.util.log/logf]]."
   [f & args]
-  (let [{e :e, [format-string & args] :args} (parse-args args)]
+  (let [{e :e, [format-string & args] :args} (parse-args args)
+        args (map (fn [arg]
+                    (cond-> arg
+                      (coll? arg) pr-str))
+                  args)]
     #_{:clj-kondo/ignore [:unresolved-namespace]}
     (f e (apply #?(:clj format
                    :cljs gstring/format)

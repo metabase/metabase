@@ -20,6 +20,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- open-tar ^TarArchiveInputStream [f]
+  {:pre [(some? f)]}
   (-> (io/input-stream f)
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
@@ -71,10 +72,16 @@
       m)))
 
 (defn extract-and-sanitize-exception-map [log]
-  (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
-       second
-       read-string
-       (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
+  (try
+    (some->> log
+             (re-find #".* (\{.*\})(\n|$)")
+             second
+             read-string
+             (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id))))
+    (catch Throwable e
+      (throw (ex-info (format "Error sanitizing exception map: %s" (ex-message e))
+                      {:log log}
+                      e)))))
 
 (deftest export-test
   (testing "Serialization API export"
@@ -325,8 +332,9 @@
                                                       :collection (:id coll) :data_model false :settings false
                                                       :full_stacktrace true)
                             log (slurp (io/input-stream res))]
-                        (is (< 200
-                               (count (str/split-lines log))))
+                        (testing (str "\newline" (pr-str (str/split-lines log)))
+                          (is (< 200
+                                 (count (str/split-lines log)))))
                         ;; pop out the error
                         (snowplow-test/pop-event-data-and-user-id!)))))
 

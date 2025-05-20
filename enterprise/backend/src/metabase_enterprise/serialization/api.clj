@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.api
   (:require
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -12,22 +13,23 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
-   [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
+   [metabase.logger.core :as logger]
    [ring.core.protocols :as ring.protocols])
   (:import
    (java.io ByteArrayOutputStream File)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *additive-logging*
+(def ^:dynamic ^:deprecated *additive-logging*
   "If custom loggers should pass logs to parent loggers (to system Metabase logs), used to clean up test output."
   true)
 
@@ -41,7 +43,8 @@
 
 ;;; Request callbacks
 
-(defn- ba-copy [f]
+(defn- ba-copy ^bytes [f]
+  {:pre [(some? f)]}
   (with-open [baos (ByteArrayOutputStream.)]
     (io/copy f baos)
     (.toByteArray baos)))
@@ -65,7 +68,37 @@
 
 ;;; Logic
 
-(defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
+(defn- do-with-logs [log-file thunk]
+  (let [old-capture-fn     log.capture/*capture-logs-fn*
+        captured-level-int (log.capture/level->int :info)
+        file               (io/file log-file)]
+    (doto file
+      (.. getParentFile mkdirs)
+      .createNewFile)
+    (with-open [w (io/writer file)]
+      (binding [log.capture/*capture-logs-fn* (fn [namespace-str level-int]
+                                                (if (and (<= level-int captured-level-int)
+                                                         (or (str/starts-with? namespace-str "metabase-enterprise.serialization")
+                                                             (= namespace-str "metabase.models.serialization")))
+                                                  (fn [e message]
+                                                    (.write w (str message))
+                                                    (.write w "\n")
+                                                    (when e
+                                                      #_{:clj-kondo/ignore [:discouraged-var]}
+                                                      (pprint/pprint (Throwable->map e) w)
+                                                      (.write w "\n"))
+                                                    (old-capture-fn e message))
+                                                  ;; otherwise do not capture and just return `old-capture-fn`
+                                                  old-capture-fn))]
+        (thunk)))))
+
+#_(defn- do-with-logs [log-file thunk]
+  (with-open [_ (logger/for-ns log-file ['metabase-enterprise.serialization
+                                         'metabase.models.serialization]
+                               {:additive *additive-logging*})]
+    (thunk)))
+
+(defn- serialize&pack [{:keys [dirname full-stacktrace] :as opts}]
   (let [dirname  (or dirname
                      (format "%s-%s"
                              (u/slugify (appearance/site-name))
@@ -74,21 +107,21 @@
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
-                                                    {:additive *additive-logging*})]
+        report   (do-with-logs
+                  log-file
+                  (^:once fn* []
                    (try                 ; try/catch inside logging to log errors
                      (let [report (serdes/with-cache
                                     (-> (extract/extract opts)
                                         (storage/store! path)))]
-                       ;; not removing dumped yamls immediately to save some time before response
-                       (u.compress/tgz path dst)
                        report)
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
                          (log/error e "Error during serialization")
-                         (log/error (u/strip-error e "Error during serialization"))))))]
+                         (log/error (u/strip-error e "Error during serialization")))))))]
+    ;; not removing dumped yamls immediately to save some time before response
+    (u.compress/tgz path dst)
     {:archive       (when (.exists dst)
                       dst)
      :log-file      (when (.exists log-file)
@@ -120,9 +153,9 @@
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
-                                                    {:additive *additive-logging*})]
+        report   (do-with-logs
+                  log-file
+                  (^:once fn* []
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
                      (let [cnt  (try (u.compress/untgz file dst)
@@ -143,7 +176,7 @@
                        (reset! err e)
                        (if full-stacktrace
                          (log/error e "Error during serialization")
-                         (log/error (u/strip-error e "Error during serialization"))))))]
+                         (log/error (u/strip-error e "Error during serialization")))))))]
     {:log-file      log-file
      :status        (:status (ex-data @err))
      :error-message (when @err
