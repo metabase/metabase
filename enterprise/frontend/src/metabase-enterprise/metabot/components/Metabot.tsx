@@ -9,7 +9,7 @@ import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
 
-interface MetabotProps {
+export interface MetabotProps {
   hide?: boolean;
 }
 

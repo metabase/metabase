@@ -1,7 +1,8 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { jt, t } from "ttag";
+import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -38,7 +39,10 @@ export const MetabotChat = () => {
   useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
 
   const hasMessages = metabot.messages.length > 0;
-  const suggestedPrompts = metabot.suggestedPrompts.data?.prompts ?? [];
+  const suggestedPrompts = useMemo(() => {
+    const prompts = metabot.suggestedPrompts.data?.prompts ?? [];
+    return _.shuffle(prompts).slice(0, 3);
+  }, [metabot.suggestedPrompts]);
   const hasSuggestions = suggestedPrompts.length > 0;
 
   const handleSubmitInput = (input: string) => {
@@ -88,10 +92,13 @@ export const MetabotChat = () => {
           </Flex>
 
           <Flex gap="sm">
-            <ActionIcon onClick={() => metabot.resetConversation()}>
+            <ActionIcon
+              onClick={() => metabot.resetConversation()}
+              data-testid="metabot-reset-chat"
+            >
               <Icon c="text-primary" name="revert" />
             </ActionIcon>
-            <ActionIcon onClick={handleClose}>
+            <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
               <Icon c="text-primary" name="close" />
             </ActionIcon>
           </Flex>
@@ -111,6 +118,7 @@ export const MetabotChat = () => {
               direction="column"
               align="center"
               justify="center"
+              data-testid="metabot-empty-chat-info"
             >
               <Box
                 component="img"
@@ -128,7 +136,7 @@ export const MetabotChat = () => {
 
           {/* empty state with sugggested prompts */}
           {!hasMessages && hasSuggestions && (
-            <Stack gap="sm">
+            <Stack gap="sm" data-testid="metabot-prompt-suggestions">
               <>
                 <Text c="text-light">{t`Try asking a question about a model or a metric, like these.`}</Text>
                 {metabot.suggestedPrompts.isLoading && <Loader />}
@@ -161,7 +169,12 @@ export const MetabotChat = () => {
 
               {/* loading */}
               {metabot.isDoingScience && (
-                <Loader color="brand" type="dots" size="lg" />
+                <Loader
+                  color="brand"
+                  type="dots"
+                  size="lg"
+                  data-testid="metabot-response-loader"
+                />
               )}
 
               {/* long convo warning */}

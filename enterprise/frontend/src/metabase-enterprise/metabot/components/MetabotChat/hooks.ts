@@ -4,6 +4,8 @@ import _ from "underscore";
 
 import type { getMessages } from "metabase-enterprise/metabot/state";
 
+import { scrollTo } from "./utils";
+
 const USER_MSG_SELECTOR = '[data-message-actor="user"]';
 const DEFAULT_HEADER_HEIGHT = 81;
 
@@ -48,7 +50,7 @@ export function useAutoscrollMessages(
         const headerHeight =
           headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
 
-        scrollContainerEl.scrollTo({
+        scrollTo(scrollContainerEl, {
           top: distanceFromTop - headerHeight,
           behavior: "smooth",
         });

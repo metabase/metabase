@@ -8,7 +8,7 @@ import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { isUuid, uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import type { User } from "metabase-types/api";
 import {
@@ -23,15 +23,20 @@ import {
   type MetabotState,
   metabotInitialState,
   metabotReducer,
-  setIsProcessing,
   setVisible,
 } from "./state";
+
+jest.mock(
+  "metabase-enterprise/metabot/components/MetabotChat/utils.ts",
+  () => ({ scrollTo: jest.fn() }),
+);
 
 function setup(
   options: {
     ui?: React.ReactElement;
     metabotPluginInitialState?: MetabotState;
     currentUser?: User | null | undefined;
+    promptSuggestions: { prompt: string }[];
   } | void,
 ) {
   const settings = mockSettings({
@@ -50,7 +55,12 @@ function setup(
       conversationId: uuid(),
       visible: true,
     },
+    promptSuggestions = [],
   } = options || {};
+
+  fetchMock.get("path:/api/ee/metabot-v3/v2/prompt-suggestions", {
+    prompts: promptSuggestions,
+  });
 
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
     storeInitialState: createMockState({
@@ -73,6 +83,8 @@ const input = () => screen.findByTestId("metabot-chat-input");
 const enterChatMessage = async (message: string, send = true) =>
   userEvent.type(await input(), `${message}${send ? "{Enter}" : ""}`);
 const closeChatButton = () => screen.findByTestId("metabot-close-chat");
+const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
+const responseLoader = () => screen.findByTestId("metabot-response-loader");
 
 const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
@@ -85,6 +97,8 @@ const assertNotVisible = async () =>
 const hideMetabot = (dispatch: any) => act(() => dispatch(setVisible(false)));
 const showMetabot = (dispatch: any) => act(() => dispatch(setVisible(true)));
 
+const getMetabotState = (store: any) => store.getState().plugins.metabotPlugin;
+
 const lastReqBody = async () => {
   const lastCall = fetchMock.lastCall();
   const bodyStr = String(await lastCall?.[1]?.body) || "";
@@ -96,6 +110,34 @@ describe("metabot", () => {
     it("should be able to render metabot", async () => {
       setup();
       await assertVisible();
+    });
+
+    it("should warn that metabot can be inaccurate", async () => {
+      setup();
+      expect(
+        await screen.findByText("Metabot isn't perfect. Double-check results."),
+      ).toBeInTheDocument();
+    });
+
+    it("should show empty state ui if conversation is empty", async () => {
+      setup();
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/v2/agent`,
+        whoIsYourFavoriteResponse,
+      );
+
+      expect(
+        await screen.findByTestId("metabot-empty-chat-info"),
+      ).toBeInTheDocument();
+
+      await enterChatMessage("Who is your favorite?");
+      expect(
+        await screen.findByText("Who is your favorite?"),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByTestId("metabot-empty-chat-info"),
+      ).not.toBeInTheDocument();
     });
 
     it("should be able to toggle visibility", async () => {
@@ -113,69 +155,12 @@ describe("metabot", () => {
       await assertNotVisible();
     });
 
-    it("should start a new conversation each time metabot is opened", async () => {
-      const { store } = setup({
-        metabotPluginInitialState: metabotInitialState,
-      });
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-      );
-
-      showMetabot(store.dispatch);
-      await enterChatMessage("Who is your favorite?");
-      const firstConversationId = (await lastReqBody())?.conversation_id;
-      expect(isUuid(firstConversationId)).toBeTruthy();
-      hideMetabot(store.dispatch);
-
-      showMetabot(store.dispatch);
-      await enterChatMessage("Who is your favorite?");
-      const secondConversationId = (await lastReqBody())?.conversation_id;
-      expect(isUuid(secondConversationId)).toBeTruthy();
-
-      expect(secondConversationId).not.toBe(firstConversationId);
-    });
-
-    it("should properly auto-close metabot if route changes", async () => {
-      setup();
-
+    it("should be able to hide metabot via a prop", async () => {
+      const { rerender } = setup();
       await assertVisible();
-      act(() => window.history?.pushState(null, "", "/some-route"));
+
+      rerender(<Metabot hide={true} />);
       await assertNotVisible();
-    });
-
-    it("should not close on route change if metabot is processing", async () => {
-      const { store } = setup();
-
-      showMetabot(store.dispatch);
-      act(() => store.dispatch(setIsProcessing(true)));
-      act(() => window.history?.pushState(null, "", "/some-route"));
-      await assertVisible();
-      act(() => store.dispatch(setIsProcessing(false)));
-      hideMetabot(store.dispatch);
-      await assertNotVisible();
-    });
-
-    it("should not close on route change if there is user input", async () => {
-      const { store } = setup();
-
-      // should not close if user has value in the input
-      showMetabot(store.dispatch);
-      await userEvent.type(await input(), "Some incomplete user prompt");
-      act(() => window.history?.pushState(null, "", "/some-route"));
-      await assertVisible();
-    });
-
-    it("should not close on route change if new location shares base bath segement", async () => {
-      const { store } = setup();
-
-      act(() => window.history?.pushState(null, "", "/base-path"));
-      showMetabot(store.dispatch);
-      await assertVisible();
-      act(() => window.history?.pushState(null, "", "/base-path/sub-path"));
-      await assertVisible();
-      act(() => window.history?.pushState(null, "", "/base-path"));
-      await assertVisible();
     });
 
     it("should hide metabot when the user logs out", async () => {
@@ -195,7 +180,7 @@ describe("metabot", () => {
       }
     });
 
-    it("should not show metabot if the is not signed in user", async () => {
+    it("should not show metabot if the user is not signed in", async () => {
       // suppress expected console error
       const consoleErrorSpy = jest
         .spyOn(console, "error")
@@ -221,6 +206,74 @@ describe("metabot", () => {
         consoleErrorSpy.mockRestore();
       }
     });
+
+    it("should render markdown for metabot's replies", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent`, {
+        ...whoIsYourFavoriteResponse,
+        reactions: [
+          {
+            type: "metabot.reaction/message",
+            message: "# You are... but don't tell anyone!",
+          },
+        ],
+      });
+      await enterChatMessage("Who is your favorite?");
+
+      const heading = await screen.findByRole("heading", { level: 1 });
+      expect(heading).toBeInTheDocument();
+      expect(heading).toHaveTextContent(`You are... but don't tell anyone!`);
+    });
+
+    it("should not render markdown for user messages", async () => {
+      setup();
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/v2/agent`,
+        whoIsYourFavoriteResponse,
+      );
+
+      const msg = "# Who is your favorite?";
+      await enterChatMessage(msg);
+      expect(await screen.findByText(msg)).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { level: 1 }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should provide prompt suggestions if avaiable", async () => {
+      const prompts = [
+        { prompt: "Sales totals by week" },
+        { prompt: "Who is your favorite?" },
+      ];
+      setup({ promptSuggestions: prompts });
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/v2/agent`,
+        whoIsYourFavoriteResponse,
+      );
+
+      // should render prompts
+      expect(
+        await screen.findByTestId("metabot-prompt-suggestions"),
+      ).toBeInTheDocument();
+      expect(await screen.findByText(prompts[0].prompt)).toBeInTheDocument();
+      const prompt1 = await screen.findByText(prompts[1].prompt);
+      expect(prompt1).toBeInTheDocument();
+
+      // user should be able to click prompts to start a new convo
+      await userEvent.click(prompt1);
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+        ).toHaveLength(1);
+      });
+
+      // unclicked prompts should be gone, but clicked prompt should be in convo
+      expect(await screen.findByText(prompts[1].prompt)).toBeInTheDocument();
+      expect(screen.queryByText(prompts[0].prompt)).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-prompt-suggestions"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("message", () => {
@@ -236,9 +289,7 @@ describe("metabot", () => {
       expect(await input()).toHaveValue("Who is your favorite?");
 
       await enterChatMessage("Who is your favorite?");
-      expect(
-        await screen.findByPlaceholderText("Doing science..."),
-      ).toBeInTheDocument();
+      expect(await responseLoader()).toBeInTheDocument();
       expect(
         await screen.findByText("You are... but don't tell anyone!"),
       ).toBeInTheDocument();
@@ -314,7 +365,11 @@ describe("metabot", () => {
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
-      await waitFor(() => expect(fetchMock.calls()).toHaveLength(1));
+      await waitFor(() =>
+        expect(
+          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+        ).toHaveLength(1),
+      );
 
       // send another message and check that there is proper history
       await enterChatMessage("Hi!");
@@ -324,7 +379,7 @@ describe("metabot", () => {
       expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
     });
 
-    it("should clear history if metabot is closed", async () => {
+    it("should not clear history when metabot is hidden or opened", async () => {
       const { store } = setup();
       fetchMock.post(
         `path:/api/ee/metabot-v3/v2/agent`,
@@ -333,7 +388,11 @@ describe("metabot", () => {
 
       // send a message to get some history back
       await enterChatMessage("Who is your favorite?");
-      await waitFor(() => expect(fetchMock.calls()).toHaveLength(1));
+      await waitFor(() =>
+        expect(
+          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+        ).toHaveLength(1),
+      );
 
       // close, open, and then send another message and check that there is no history
       hideMetabot(store.dispatch);
@@ -342,8 +401,47 @@ describe("metabot", () => {
       const lastCall = fetchMock.lastCall();
       const bodyStr = String(await lastCall?.[1]?.body) || "";
       const sentHistory = JSON.parse(bodyStr)?.history;
-      expect(sentHistory).toEqual([]);
+      expect(sentHistory).toEqual(whoIsYourFavoriteResponse.history);
     });
+
+    it("should clear history when the user hits the reset button", async () => {
+      const { store } = setup();
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/v2/agent`,
+        whoIsYourFavoriteResponse,
+      );
+
+      // send a message to get some history back
+      await enterChatMessage("Who is your favorite?");
+      await waitFor(() =>
+        expect(
+          fetchMock.calls(`path:/api/ee/metabot-v3/v2/agent`),
+        ).toHaveLength(1),
+      );
+
+      const beforeResetState = getMetabotState(store);
+      expect(beforeResetState.conversationId).not.toBe(null);
+      expect(beforeResetState.messages).toStrictEqual([
+        { actor: "user", message: "Who is your favorite?" },
+        {
+          actor: "agent",
+          message: "You are... but don't tell anyone!",
+          type: "reply",
+        },
+      ]);
+
+      await userEvent.click(await resetChatButton());
+
+      const afterResetState = getMetabotState(store);
+      expect(afterResetState.conversationId).not.toBe(
+        beforeResetState.conversationId,
+      );
+      expect(afterResetState.messages).toStrictEqual([]);
+    });
+
+    it.todo("should warn the chat is getting long if the conversation is long");
+
+    it.todo("should be able to reset history through the long convo warning");
   });
 });
 
