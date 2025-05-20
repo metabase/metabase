@@ -3,7 +3,7 @@
   (:require
    [clojure.test :as t]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.http-client :as client]
    [metabase.request.core :as request]
    [metabase.session.core :as session]

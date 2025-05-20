@@ -2,7 +2,7 @@
   "Misc Ring middleware."
   (:require
    [clojure.string :as str]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
    [metabase.system.core :as system]

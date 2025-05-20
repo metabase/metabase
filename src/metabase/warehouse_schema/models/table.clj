@@ -1,8 +1,8 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]

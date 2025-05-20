@@ -1,8 +1,8 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]

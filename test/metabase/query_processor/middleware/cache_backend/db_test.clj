@@ -4,7 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.test :as mt]
    [metabase.util.encryption-test :as encryption-test])

@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]

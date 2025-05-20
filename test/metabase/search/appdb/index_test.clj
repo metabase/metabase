@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
