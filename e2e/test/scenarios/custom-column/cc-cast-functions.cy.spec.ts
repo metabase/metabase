@@ -152,9 +152,9 @@ const DATETIME_TEST_CASES: CastTestCase[] = [
   {
     name: "StringExpression",
     expression:
-      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 20:03"))',
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 12:03"))',
     filterOperator: "Before",
-    filterValue: "March 20, 2025|12:03",
+    filterValue: "March 11, 2025|12:03",
     expectedRowCount: 1,
   },
 ];
