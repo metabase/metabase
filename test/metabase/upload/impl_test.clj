@@ -1331,7 +1331,10 @@
       (testing "Driver error"
         (let [metrics (atom {})]
           (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
-                        analytics/inc! #(swap! metrics update % (fnil inc 0))]
+                        analytics/inc! (fn
+                                         ([k] (swap! metrics update k (fnil inc 0)))
+                                         ([k v] (swap! metrics update k (fnil #(+ % v) 0)))
+                                         ([k v _opts] (swap! metrics update k (fnil #(+ % v) 0))))]
             (is (thrown-with-msg?
                  Exception
                  #"Boom"
