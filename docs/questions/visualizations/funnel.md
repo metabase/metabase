@@ -67,7 +67,7 @@ Funnel charts show the value of the metric for each step, and how the metric com
 
 ![Funnel chart with a tooltip](../images/read-a-funnel.png)
 
-So for example,"76.19\%, 2,972" under a step means that the value of the metric at this step is 2,972, which is 76.19\% of the value of the _first_ step (equal to 3,901).
+So for example,"76.19%, 2,972" under a step means that the value of the metric at this step is 2,972, which is 76.19% of the value of the _first_ step (equal to 3,901).
 
 To see percentage comparison with the _previous_ step (instead of the first), hover over the step and read the tooltip.
 
