@@ -37,15 +37,14 @@
 
 (defmethod serdes/dependencies "Metabot"
   [{:keys [entities]}]
-  (into #{}
-        (map #(assoc {:model "Card"} :id (:metabot_model_entity_id %)))
-        entities))
+  (set (map #(vector (assoc {:model "Card"} :id (:metabot_model_entity_id %)))
+            entities)))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])
 
 (defmethod serdes/make-spec "Metabot" [_model-name opts]
-  {:copy      [:name :description :entity-id]
+  {:copy      [:name :description :entity_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :entities   (serdes/nested :model/MetabotEntity :metabot_id opts)}})

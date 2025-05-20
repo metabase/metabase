@@ -1696,3 +1696,37 @@
                   :tabs [{:name "Tab 1"}
                          {:name "Tab 2"}]}]
                 (by-model "Dashboard" extraction)))))))
+
+(deftest metabot-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Card {model-id :id
+                    model-eid :entity_id} {:name "AI Model"
+                                           :type :model}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :dataset
+                                                             :metabot_model_entity_id model-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model :dataset
+                               :metabot_model_entity_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid} {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities"
+            (is (= #{[{:model "Card" :id model-eid}]}
+                   (set (serdes/dependencies ser))))))))))
