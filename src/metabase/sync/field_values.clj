@@ -2,7 +2,7 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]

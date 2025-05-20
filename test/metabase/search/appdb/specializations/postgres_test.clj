@@ -1,7 +1,7 @@
 (ns metabase.search.appdb.specializations.postgres-test
   (:require
    [clojure.test :refer :all]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.search.appdb.specialization.postgres :as search.postgres]
    [metabase.test.util :as tu]
    [metabase.util.i18n :as i18n]))
