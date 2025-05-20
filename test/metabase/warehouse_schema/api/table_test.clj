@@ -160,7 +160,7 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/hydrate (t2/select-one [:model/Table :id :entity_id :created_at :updated_at :initial_sync_status
+            (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
                         :pk_field)
@@ -181,7 +181,7 @@
                                                         :schema       nil}]
         (is (= (merge
                 (dissoc (table-defaults) :segments :field_values :metrics :db)
-                (t2/hydrate (t2/select-one [:model/Table :id :entity_id :created_at :updated_at :initial_sync_status
+                (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
                             :pk_field)
@@ -258,7 +258,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -343,7 +343,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -436,7 +436,7 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
-              (t2/hydrate (t2/select-one [:model/Table :id :entity_id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
+              (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
                :schema          ""
@@ -566,7 +566,7 @@
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
                                                             (t2/select-one [:model/Table
-                                                                            :id :entity_id :created_at :updated_at
+                                                                            :id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
                                                                            :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
@@ -587,7 +587,7 @@
                                             :table            (merge
                                                                (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                                (t2/select-one [:model/Table
-                                                                               :id :entity_id :created_at :updated_at
+                                                                               :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
                                                                               :id (mt/id :users))
                                                                {:schema       "PUBLIC"
