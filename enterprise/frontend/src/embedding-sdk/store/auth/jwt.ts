@@ -3,7 +3,8 @@ import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import { getFetchParams } from "./auth";
 
 export async function jwtRefreshTokenFn(
-  url: MetabaseAuthConfig["metabaseInstanceUrl"],
+  responseUrl: string,
+  instanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"],
   hash: string,
   customFetchRequestFunction: MetabaseAuthConfig["fetchRequestToken"],
 ) {
@@ -11,10 +12,10 @@ export async function jwtRefreshTokenFn(
   // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
   const clientBackendResponse = await (
     customFetchRequestFunction ?? jwtRefreshFunction
-  )(url);
+  )(responseUrl);
 
   const jwtTokenResponse = clientBackendResponse.jwt;
-  const mbAuthUrl = new URL(`${url}/auth/sso`);
+  const mbAuthUrl = new URL(`${instanceUrl}/auth/sso`);
   mbAuthUrl.searchParams.set("jwt", jwtTokenResponse);
   const authSsoReponse = await fetch(mbAuthUrl, getFetchParams(hash));
 

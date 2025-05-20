@@ -1,28 +1,50 @@
-
 (ns metabase-enterprise.sso.integrations.token-utils
-  "Functions for handling validation tokens when working with SDK calls")
+  "Functions for handling validation tokens when working with SDK calls"
+  (:require [metabase-enterprise.sso.integrations.sso-settings :refer [sdk-encryption-validation-key]]
+            [metabase.util.encryption :as encryption]))
 
-(def tokens (atom #{}))
+(defn- current-timestamp []
+  "Get the current Unix timestamp in seconds"
+  (str (quot (System/currentTimeMillis) 1000)))
 
-(defn validate-token [token]
-  (let [result (atom false)]
-    (swap! tokens
-           (fn [s]
-             (if (contains? s token)
-               (do (reset! result true)
-                   (disj s token))
-               s)))
-    @result))
+(defn generate-token
+  "Generate a cryptographically secure token with built-in expiration."
+  []
+  (let [timestamp (current-timestamp)
+        expiration (str (+ (Long/parseLong timestamp) 300))
+        nonce (str (java.util.UUID/randomUUID))
+        payload (str timestamp "." expiration "." nonce)
+        hashed-key (encryption/secret-key->hash (sdk-encryption-validation-key))
+        encrypted-payload (encryption/encrypt hashed-key payload)]
+    encrypted-payload))
 
-(defn generate-token [] (let [new-uuid (str (java.util.UUID/randomUUID))] (swap! tokens conj new-uuid) new-uuid))
+(defn validate-token
+  "Validate that a token is authentic and not expired."
+  [token]
+  (when token
+    (try
+      (let [hashed-key (encryption/secret-key->hash (sdk-encryption-validation-key))
+            decrypted-payload (encryption/decrypt hashed-key token)
+            [timestamp expiration nonce] (clojure.string/split decrypted-payload #"\." 3)
+            current-time (Long/parseLong (current-timestamp))]
+        (< current-time (Long/parseLong expiration)))
+      (catch Exception _
+        false))))
 
 (defn- get-token-from-header
+  "Extract the token from the request headers"
   [request]
-  (get (:headers request) "x-metabase-sdk-jwt-hash" nil))
+  (get-in request [:headers "x-metabase-sdk-jwt-hash"] nil))
 
-(defn with-token [response]
+(defn with-token
+  "Add a newly generated token to a response"
+  [response]
   (assoc response :hash (generate-token)))
 
-(defn has-token [request]
+(defn has-token
+  "Check if a request has a valid token"
+  [request]
   (let [token (get-token-from-header request)]
-    (if token (validate-token token) token)))
+    (if token
+      (validate-token token)
+      false)))

@@ -3,6 +3,7 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase-enterprise.scim.core :as scim]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
@@ -287,6 +288,17 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                false))
   :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
+
+(defsetting sdk-encryption-validation-key
+  (deferred-tru "Used for encrypting and checking whether SDK requests are signed")
+  :type       :string
+  :init       (fn []
+                (let [ba (byte-array 32)
+                      _  (.nextBytes (java.security.SecureRandom.) ba)]
+                  (codecs/bytes->b64-str ba)))
+  :sensitive? true
+  :visibility :internal
+  :audit      :no-value)
 
 (define-multi-setting-impl send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))

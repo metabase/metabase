@@ -173,7 +173,7 @@ const getRefreshToken = async (
     return popupRefreshTokenFn(responseUrl);
   }
 
-  return jwtRefreshTokenFn(responseUrl, hash, customFetchRequestFunction);
+  return jwtRefreshTokenFn(responseUrl, url, hash, customFetchRequestFunction);
 };
 
 const sessionSchema = Yup.object({
