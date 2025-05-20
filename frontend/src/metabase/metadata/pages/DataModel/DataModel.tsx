@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -46,10 +47,11 @@ export const DataModel = ({ params }: Props) => {
   const [previewType, setPreviewType] = usePreviewType();
 
   return (
-    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
+    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`} bg="bg-light">
       <Stack
         className={S.sidebar}
-        flex="0 0 320px"
+        flex="0 0 25%"
+        miw="320px"
         gap={0}
         h="100%"
         bg="bg-white"
@@ -61,33 +63,9 @@ export const DataModel = ({ params }: Props) => {
         />
       </Stack>
 
-      <Stack
-        className={S.sidebar}
-        flex="0 0 320px"
-        gap={0}
-        h="100%"
-        bg="bg-white"
-      >
-        <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
-          <LoadingAndErrorWrapper error={error} loading={isLoading}>
-            {table && (
-              <TableSection
-                /**
-                 * Make sure internal component state is reset when changing tables.
-                 * This is to avoid state mix-up with optimistic updates.
-                 */
-                key={table.id}
-                params={params}
-                table={table}
-              />
-            )}
-          </LoadingAndErrorWrapper>
-        </Box>
-      </Stack>
-
       {tableId && (
-        <Stack className={S.sidebar} flex="0 0 400px" gap={0} h="100%">
-          <Box className={S.tableSectionContainer} h="100%" p="xl" pb="lg">
+        <Box className={S.sidebar} flex="0 0 25%" h="100%" miw="400px">
+          <Box p="xl" pb="lg">
             <LoadingAndErrorWrapper error={error} loading={isLoading}>
               {table && (
                 <TableSection
@@ -102,7 +80,7 @@ export const DataModel = ({ params }: Props) => {
               )}
             </LoadingAndErrorWrapper>
           </Box>
-        </Stack>
+        </Box>
       )}
 
       {isEmptyStateShown && (
@@ -127,24 +105,31 @@ export const DataModel = ({ params }: Props) => {
 
       {!isEmptyStateShown && (
         <>
-          <Box flex="0 0 400px" h="100%">
-            <LoadingAndErrorWrapper
-              className={S.contentLoadingAndErrorWrapper}
-              error={error}
-              loading={isLoading}
-            >
-              {field && (
-                <FieldSection
-                  databaseId={databaseId}
-                  field={field}
-                  /**
-                   * Make sure internal component state is reset when changing fields.
-                   * This is to avoid state mix-up with optimistic updates.
-                   */
-                  key={getRawTableFieldId(field)}
-                />
-              )}
-            </LoadingAndErrorWrapper>
+          <Box
+            flex="0 0 25%"
+            h="100%"
+            miw="400px"
+            className={cx(S.sidebar, S.noBorder)}
+          >
+            <Box p="xl" pb="lg">
+              <LoadingAndErrorWrapper
+                className={S.contentLoadingAndErrorWrapper}
+                error={error}
+                loading={isLoading}
+              >
+                {field && (
+                  <FieldSection
+                    databaseId={databaseId}
+                    field={field}
+                    /**
+                     * Make sure internal component state is reset when changing fields.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={getRawTableFieldId(field)}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </Box>
           </Box>
 
           {field && (
