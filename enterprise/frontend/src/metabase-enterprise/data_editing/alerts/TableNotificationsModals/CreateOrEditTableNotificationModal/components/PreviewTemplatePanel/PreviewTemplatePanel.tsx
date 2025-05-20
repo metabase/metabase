@@ -65,12 +65,7 @@ export const PreviewTemplatePanel = ({
           </Flex>
         )}
         {error && (
-          <Text c="error">
-            {t`Error during generation of template preview. Check your template.
-            We will provide better error messages soon 🙏.`}
-            {/* TODO: Un-comment this line when BE return human-readable error without stack trace */}
-            {/* {JSON.stringify(error)} */}
-          </Text>
+          <code style={{ color: "var(--mb-color-error)" }}>{error}</code>
         )}
         {previewContent && !error ? (
           <Stack className={S.previewStack}>

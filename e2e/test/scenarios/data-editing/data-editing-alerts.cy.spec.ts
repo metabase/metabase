@@ -2,7 +2,8 @@ import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 import {
   createNotificationWithCustomTemplate,
-  verifyNotificationTemplate,
+  fillInCustomTemplate,
+  verifyNotificationTemplateResponse,
 } from "./e2e-helpers/notification-helpers";
 import { setupAlert } from "./e2e-helpers/setup";
 
@@ -136,7 +137,11 @@ describe("scenarios > data editing > setting alerts", () => {
           CUSTOM_SUBJECT,
           CUSTOM_BODY,
         ).then((interception) => {
-          verifyNotificationTemplate(interception, CUSTOM_SUBJECT, CUSTOM_BODY);
+          verifyNotificationTemplateResponse(
+            interception,
+            CUSTOM_SUBJECT,
+            CUSTOM_BODY,
+          );
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
@@ -225,7 +230,11 @@ describe("scenarios > data editing > setting alerts", () => {
           CUSTOM_SUBJECT,
           CUSTOM_BODY,
         ).then((interception) => {
-          verifyNotificationTemplate(interception, CUSTOM_SUBJECT, CUSTOM_BODY);
+          verifyNotificationTemplateResponse(
+            interception,
+            CUSTOM_SUBJECT,
+            CUSTOM_BODY,
+          );
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
@@ -413,7 +422,11 @@ describe("scenarios > data editing > setting alerts", () => {
           CUSTOM_SUBJECT,
           CUSTOM_BODY,
         ).then((interception) => {
-          verifyNotificationTemplate(interception, CUSTOM_SUBJECT, CUSTOM_BODY);
+          verifyNotificationTemplateResponse(
+            interception,
+            CUSTOM_SUBJECT,
+            CUSTOM_BODY,
+          );
         });
 
         cy.findByTestId("table-notification-create").should("not.exist");
@@ -558,17 +571,10 @@ describe("scenarios > data editing > setting alerts", () => {
           })
           .click();
 
-        cy.findByTestId("email-template-subject")
-          .findByRole("textbox")
-          .click({ force: true })
-          .invoke("text", "My custom subject for {{table.name}}")
-          .blur();
-
-        cy.findByTestId("email-template-body")
-          .findByRole("textbox")
-          .click({ force: true })
-          .invoke("text", "{{#each record}} {{@key}}: {{@value}} {{/each}}")
-          .blur();
+        fillInCustomTemplate(
+          "My custom subject for {{table.name}}",
+          "{{#each record}} {{@key}}: {{@value}} {{/each}}",
+        );
 
         cy.intercept("POST", "/api/notification/preview_template").as(
           "previewTemplate",
@@ -582,6 +588,40 @@ describe("scenarios > data editing > setting alerts", () => {
           cy.root().contains(`My custom subject for ${TABLE_NAME}`);
           cy.root().should("not.contain", "a new record was created");
           cy.root().contains(/id.*name/);
+        });
+      });
+    });
+
+    it("should display error message if template is incorrect", () => {
+      openDatabaseTable();
+
+      cy.findByTestId("table-notifications-trigger").click();
+
+      cy.findByTestId("table-notification-create").within(() => {
+        cy.findByTestId("notification-event-select").click();
+        cy.document()
+          .findByRole("option", {
+            name: /when new records are created/i,
+          })
+          .click();
+
+        fillInCustomTemplate(
+          "My custom subject for {{table.name}}",
+          "{{/each}}",
+        );
+
+        cy.intercept("POST", "/api/notification/preview_template").as(
+          "previewTemplate",
+        );
+
+        cy.findByLabelText("Show preview").click();
+
+        cy.wait("@previewTemplate");
+        cy.findByTestId("preview-template-panel").should("be.visible");
+        cy.findByTestId("preview-template-panel").within(() => {
+          cy.root().should("not.contain", "My custom subject for");
+          cy.root().should("contain", "Failed to render template");
+          cy.root().contains(/found:.*expected:/);
         });
       });
     });
