@@ -35,7 +35,7 @@
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
-    :model/Dimension                         metabase.models.dimension
+    :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
