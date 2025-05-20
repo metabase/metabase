@@ -51,6 +51,7 @@ export function EmbeddingDataPicker({
     (state) => getEmbedOptions(state).entity_types,
   );
 
+  // a table or a virtual table (card)
   const sourceTable = useSourceTable(query);
   const isSourceModel = sourceTable?.type === "model";
   const {
