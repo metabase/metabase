@@ -71,6 +71,7 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
         column2,
         column2Ref,
         dataset,
@@ -100,6 +101,7 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
         column1,
         column1Ref,
         dataset,
@@ -120,12 +122,11 @@ describe("cartesian", () => {
     });
 
     it("should do nothing if the column is already in the state", () => {
+      const settings = { "graph.dimensions": ["COLUMN_1"] };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [{ ...column1, name: "COLUMN_1" }],
-        settings: {
-          "graph.dimensions": ["COLUMN_1"],
-        },
+        settings,
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -139,6 +140,7 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        settings,
         column1,
         column1Ref,
         dataset,
@@ -170,6 +172,7 @@ describe("cartesian", () => {
 
       addColumnToCartesianChart(
         state,
+        {},
         column4,
         column4Ref,
         dataset,
@@ -193,6 +196,7 @@ describe("cartesian", () => {
         // First column is automatically added as a dimension
         addColumnToCartesianChart(
           state,
+          {},
           copyColumn(column1Ref.name, column1, dataSource.name, []),
           column1Ref,
           dataset,
@@ -205,6 +209,7 @@ describe("cartesian", () => {
         // Second column is automatically added as a metric
         addColumnToCartesianChart(
           state,
+          { "graph.dimensions": ["COLUMN_1"] },
           copyColumn(column2Ref.name, column2, dataSource.name, []),
           column2Ref,
           dataset,
@@ -226,6 +231,10 @@ describe("cartesian", () => {
         // Third column is automatically added as a the bubble size
         addColumnToCartesianChart(
           state,
+          {
+            "graph.dimensions": ["COLUMN_1"],
+            "graph.metrics": ["COLUMN_2"],
+          },
           copyColumn(column3Ref.name, column3, dataSource.name, []),
           column3Ref,
           dataset,
@@ -260,6 +269,10 @@ describe("cartesian", () => {
     const dimension2 = createMockDatetimeColumn({ id: 4, name: "date" });
 
     it("should remove a metric from a single series chart", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_1"],
+        "graph.dimensions": ["COLUMN_2"],
+      };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [
@@ -282,13 +295,10 @@ describe("cartesian", () => {
             },
           ],
         },
-        settings: {
-          "graph.metrics": ["COLUMN_1"],
-          "graph.dimensions": ["COLUMN_2"],
-        },
+        settings,
       };
 
-      removeColumnFromCartesianChart(state, "COLUMN_1");
+      removeColumnFromCartesianChart(state, settings, "COLUMN_1");
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
@@ -307,6 +317,10 @@ describe("cartesian", () => {
     });
 
     it("should remove a metric from a multi series chart", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_1", "COLUMN_3"],
+        "graph.dimensions": ["COLUMN_2", "COLUMN_4"],
+      };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [
@@ -345,13 +359,10 @@ describe("cartesian", () => {
             },
           ],
         },
-        settings: {
-          "graph.metrics": ["COLUMN_1", "COLUMN_3"],
-          "graph.dimensions": ["COLUMN_2", "COLUMN_4"],
-        },
+        settings,
       };
 
-      removeColumnFromCartesianChart(state, "COLUMN_1");
+      removeColumnFromCartesianChart(state, settings, "COLUMN_1");
 
       expect(state.columns.map((c) => c.name)).toEqual([
         "COLUMN_2",
@@ -384,6 +395,10 @@ describe("cartesian", () => {
     });
 
     it("should remove a dimension from a single series chart", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_1"],
+        "graph.dimensions": ["COLUMN_2"],
+      };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [
@@ -406,13 +421,10 @@ describe("cartesian", () => {
             },
           ],
         },
-        settings: {
-          "graph.metrics": ["COLUMN_1"],
-          "graph.dimensions": ["COLUMN_2"],
-        },
+        settings,
       };
 
-      removeColumnFromCartesianChart(state, "COLUMN_2");
+      removeColumnFromCartesianChart(state, settings, "COLUMN_2");
 
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
@@ -431,6 +443,10 @@ describe("cartesian", () => {
     });
 
     it("should remove a dimension from a multi series chart", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_1", "COLUMN_3"],
+        "graph.dimensions": ["COLUMN_2", "COLUMN_4"],
+      };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [
@@ -469,13 +485,10 @@ describe("cartesian", () => {
             },
           ],
         },
-        settings: {
-          "graph.metrics": ["COLUMN_1", "COLUMN_3"],
-          "graph.dimensions": ["COLUMN_2", "COLUMN_4"],
-        },
+        settings,
       };
 
-      removeColumnFromCartesianChart(state, "COLUMN_2");
+      removeColumnFromCartesianChart(state, settings, "COLUMN_2");
 
       expect(state.columns.map((c) => c.name)).toEqual([
         "COLUMN_1",
@@ -510,6 +523,10 @@ describe("cartesian", () => {
 
   describe("combineWithCartesianChart", () => {
     it("should add metric and dimension columns", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_1"],
+        "graph.dimensions": ["COLUMN_2"],
+      };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [
@@ -535,10 +552,7 @@ describe("cartesian", () => {
             },
           ],
         },
-        settings: {
-          "graph.metrics": ["COLUMN_1"],
-          "graph.dimensions": ["COLUMN_2"],
-        },
+        settings,
       };
 
       const newMetricColumn = createMockNumericColumn({
@@ -553,6 +567,7 @@ describe("cartesian", () => {
       const nextState = _.clone(state);
       combineWithCartesianChart(
         nextState,
+        settings,
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
@@ -582,6 +597,10 @@ describe("cartesian", () => {
     });
 
     it("should add multiple metrics and dimensions", () => {
+      const settings = {
+        "graph.metrics": ["COLUMN_1"],
+        "graph.dimensions": ["COLUMN_2", "COLUMN_3"],
+      };
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [
@@ -618,10 +637,7 @@ describe("cartesian", () => {
             },
           ],
         },
-        settings: {
-          "graph.metrics": ["COLUMN_1"],
-          "graph.dimensions": ["COLUMN_2", "COLUMN_3"],
-        },
+        settings,
       };
 
       const newMetric1Column = createMockNumericColumn({
@@ -644,6 +660,7 @@ describe("cartesian", () => {
       const nextState = _.clone(state);
       combineWithCartesianChart(
         nextState,
+        settings,
         createMockDataset({
           data: {
             cols: [
@@ -714,6 +731,7 @@ describe("cartesian", () => {
 
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        {},
         column1,
         column1Ref,
         dataSource,
@@ -743,6 +761,7 @@ describe("cartesian", () => {
       // Add the first column
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        {},
         column1,
         column1Ref,
         dataSource,
@@ -751,6 +770,7 @@ describe("cartesian", () => {
       // Replace the first column with the second column
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        { "scatter.bubble": "COLUMN_1" },
         column2,
         column2Ref,
         dataSource,
@@ -781,6 +801,7 @@ describe("cartesian", () => {
       // Add the first column as the Y axis
       addMetricColumnToCartesianChart(
         state,
+        {},
         copyColumn(column1Ref.name, column1, dataSource.name, []),
         column1Ref,
         dataSource,
@@ -789,6 +810,7 @@ describe("cartesian", () => {
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        { "graph.metrics": ["COLUMN_1"] },
         column1,
         column1Ref,
         dataSource,
@@ -797,6 +819,10 @@ describe("cartesian", () => {
       // Add the second column
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        {
+          "graph.metrics": ["COLUMN_1"],
+          "scatter.bubble": "COLUMN_1",
+        },
         column2,
         column2Ref,
         dataSource,
@@ -840,6 +866,7 @@ describe("cartesian", () => {
       // Add the first column as the Y axis
       addMetricColumnToCartesianChart(
         state,
+        {},
         copyColumn(column1Ref.name, column1, dataSource.name, []),
         column1Ref,
         dataSource,
@@ -848,6 +875,7 @@ describe("cartesian", () => {
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        { "graph.metrics": ["COLUMN_1"] },
         column1,
         column1Ref,
         dataSource,
@@ -890,6 +918,7 @@ describe("cartesian", () => {
       // Add the first column as the Y axis
       addMetricColumnToCartesianChart(
         state,
+        {},
         copiedColumn1,
         column1Ref,
         dataSource,
@@ -898,13 +927,18 @@ describe("cartesian", () => {
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        { "graph.metrics": ["COLUMN_1"] },
         copiedColumn1,
         column1Ref,
         dataSource,
       );
 
       // Remove the first column as a metric
-      removeColumnFromCartesianChart(state, "COLUMN_1");
+      removeColumnFromCartesianChart(
+        state,
+        { "graph.metrics": ["COLUMN_1"], "scatter.bubble": "COLUMN_1" },
+        "COLUMN_1",
+      );
 
       // Check that we have both columns where they should be
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
@@ -934,6 +968,7 @@ describe("cartesian", () => {
       // Add the first column as the X axis
       addDimensionColumnToCartesianChart(
         state,
+        {},
         copyColumn(column1Ref.name, column1, dataSource.name, []),
         column1Ref,
         dataSource,
@@ -942,6 +977,7 @@ describe("cartesian", () => {
       // Add it as the bubble size too
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        { "graph.metrics": ["COLUMN_1"] },
         column1,
         column1Ref,
         dataSource,
@@ -950,6 +986,7 @@ describe("cartesian", () => {
       // Add the second column
       replaceMetricColumnAsScatterBubbleSize(
         state,
+        { "graph.metrics": ["COLUMN_1"], "scatter.bubble": "COLUMN_1" },
         column2,
         column2Ref,
         dataSource,
