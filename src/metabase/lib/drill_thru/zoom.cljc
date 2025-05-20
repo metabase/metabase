@@ -7,7 +7,7 @@
 
   Requirements:
 
-  - There is only on PK column available in returned columns
+  - There is only one PK column available in returned columns
 
   - Selected column is not a FK
 
@@ -36,6 +36,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -49,6 +50,15 @@
    :object-id value
    :many-pks? false})
 
+(defn- primary-key? [query stage-number column]
+  "Is `column` a primary key of `query`?
+
+  This should return `false` for primary keys from joined tables."
+  (boolean (and (lib.types.isa/primary-key? column)
+                (->> query
+                     lib.metadata.calculation/primary-keys
+                     (lib.equality/find-matching-column query stage-number column)))))
+
 (mu/defn zoom-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom]
   "Return a `:zoom` drill when clicking on the value of a PK column in a Table that has only one PK column."
   [query                                   :- ::lib.schema/query
@@ -60,7 +70,7 @@
          (lib.drill-thru.common/mbql-stage? query stage-number)
          ;; if this table has more than one PK we should be returning a [[metabase.lib.drill-thru.pk]] instead.
          (not (lib.drill-thru.common/many-pks? query)))
-    (if (lib.types.isa/primary-key? column)
+    (if (primary-key? query stage-number column)
       ;; PK column was clicked. Ignore NULL values.
       (when-not (= value :null)
         (zoom-drill* column value))
