@@ -28,3 +28,16 @@
       (is (= "This tenant name or slug is already taken."
              (mt/user-http-request :crowberto :post 400 "ee/tenants/"
                                    {:name "Foo" :slug "my-tenant"}))))))
+
+(deftest can-list-tenants
+  (testing "I can list tenants"
+    (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "Slug 1"}
+                   :model/User {} {:tenant_id id1}
+                   :model/Tenant {id2 :id} {:name "Name 2" :slug "Slug 2"}]
+      (is (=? [{:id id1 :member_count 1}
+               {:id id2 :member_count 0}]
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/")))
+      (is (=? [{:id id1 :name "Name 1" :slug "Slug 1"}]
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/?limit=1")))
+      (is (=? [{:id id2}]
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/?offset=1"))))))
