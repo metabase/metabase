@@ -327,3 +327,7 @@
         (let [t (u.date/parse s timezone)]
           (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
           t)))))
+
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

@@ -63,7 +63,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :entity_id :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -89,7 +89,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :entity_id]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -143,7 +143,6 @@
                 :field/fk_target_field_id
                 :field/id
                 :field/name
-                :field/entity_id
                 :field/nfc_path
                 :field/parent_id
                 :field/position

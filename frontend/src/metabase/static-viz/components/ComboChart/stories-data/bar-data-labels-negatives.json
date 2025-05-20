@@ -318,7 +318,6 @@
           "base_type": "type/BigInteger",
           "name": "Count Inverted",
           "display_name": "Count Inverted",
-          "expression_name": "Count Inverted",
           "field_ref": ["expression", "Count Inverted"],
           "source": "fields",
           "effective_type": "type/BigInteger"

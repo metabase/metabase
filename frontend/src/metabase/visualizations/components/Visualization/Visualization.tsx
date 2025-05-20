@@ -658,6 +658,8 @@ class Visualization extends PureComponent<
             e instanceof ChartSettingsError &&
             visualization?.hasEmptyState &&
             !isDashboard &&
+            // For the SDK the EmptyVizState component in some cases (a small container) looks really weird,
+            // so at least temporarily we don't display it when rendered in the SDK.
             !isEmbeddingSdk
           ) {
             // hide the error and display the empty state instead

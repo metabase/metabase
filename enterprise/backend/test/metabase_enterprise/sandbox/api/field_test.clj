@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
-   [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (deftest fetch-field-test

@@ -133,7 +133,7 @@
 (defn- format-identifier [_tag [_identifier-type components :as _args]]
   ;; don't error if the identifier has something 'suspicious' like a semicolon in it -- it's ok because we're quoting
   ;; everything
-  (binding [sql/*allow-suspicious-entities* true]
+  (binding [sql/*options* (assoc @#'sql/*options* :allow-suspicious-entities true)]
     [(str/join \. (map (fn [component]
                          ;; `:aliased` `true` => don't split dots in the middle of components
                          (sql/format-entity component {:aliased true}))

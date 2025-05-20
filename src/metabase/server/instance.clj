@@ -3,18 +3,20 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.statistics-handler :as statistics-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.adapter.jetty :as ring-jetty]
    [ring.util.jakarta.servlet :as servlet])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
    (org.eclipse.jetty.ee9.nested Request)
-   (org.eclipse.jetty.ee9.servlet ServletHandler ServletContextHandler)
+   (org.eclipse.jetty.ee9.servlet ServletContextHandler ServletHandler)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -32,7 +34,8 @@
     :sni-host-check? (when (config/config-bool :mb-jetty-skip-sni)
                        false)}))
 
-(defn- jetty-config []
+(mu/defn- jetty-config :- :map
+  []
   (cond-> (m/filter-vals
            some?
            {:port          (config/config-int :mb-jetty-port)
@@ -90,10 +93,11 @@
           (finally
             (.setHandled base-request true)))))))
 
-(defn create-server
+(mu/defn create-server
   "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
   creating one-off web servers for tests and REPL usage."
-  ^Server [handler options]
+  ^Server [handler :- ::api.macros/handler
+           options :- [:maybe :map]]
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
@@ -106,12 +110,14 @@
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
       (.setHandler servlet-handler))))
 
-(defn start-web-server!
+(mu/defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
   running server.
 
-    (start-web-server! #'metabase.server.handler/app)"
-  [handler]
+    (let [server-routes (metabase.server.core/make-routes #'metabase.api-routes.core/routes)
+          handler       (metabase.server.core/make-handler server-routes)]
+        (metabase.server.core/start-web-server! handler))"
+  [handler :- ::api.macros/handler]
   (when-not (instance)
     ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
     (let [config     (jetty-config)

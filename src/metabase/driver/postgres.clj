@@ -11,7 +11,7 @@
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]

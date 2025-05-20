@@ -12,7 +12,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -225,9 +225,9 @@
 
 (def ^:dynamic *field-id-context*
   "Conext for effective computation of field ids for parameters. Bound in
-  the [[metabase.api.dashboard/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
-  re-use values of previous `filterable-columns` computations (during the reduction itself and hydration
-  of `:param_fields` and `:param_values` at the time of writing)."
+  the [[metabase.dashboards.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
+  re-use values of previous `filterable-columns` computations (during the reduction itself and hydration of
+  `:param_fields` and `:param_values` at the time of writing)."
   nil)
 
 (def empty-field-id-context

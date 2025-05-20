@@ -7,8 +7,8 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dashboard :as api.dashboard]
    [metabase.api.macros :as api.macros]
+   [metabase.dashboards.api :as api.dashboard]
    [metabase.events.core :as events]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -68,7 +68,7 @@
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
