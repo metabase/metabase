@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -39,11 +38,6 @@ export type LoadSdkQuestionParams = {
    * @internal
    */
   questionId?: SdkQuestionId | null;
-
-  /**
-   * @internal
-   */
-  onRun?: (question: MetabaseQuestion | undefined) => void;
 };
 
 export interface NavigateToNewCardParams {

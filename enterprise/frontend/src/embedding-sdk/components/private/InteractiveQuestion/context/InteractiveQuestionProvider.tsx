@@ -114,7 +114,6 @@ export const InteractiveQuestionProvider = ({
     options,
     deserializedCard,
     initialSqlParameters,
-    onRun,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -158,6 +157,7 @@ export const InteractiveQuestionProvider = ({
     targetCollection,
     withDownloads,
     variant,
+    onRun,
   };
 
   useEffect(() => {
