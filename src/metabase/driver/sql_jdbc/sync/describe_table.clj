@@ -87,9 +87,9 @@
 (defn- fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
-  [driver ^Connection conn db-name-or-nil schema table]
+  [driver ^Connection conn db-name-or-nil schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (try
@@ -106,9 +106,11 @@
                init
                (range 1 (inc (.getColumnCount metadata))))))
           (catch Exception e
-            ;; if the table does not exist, we do nothing rather than failing with an exception
             (if (driver/table-known-to-not-exist? driver e)
-              init
+              ;; if the table does not exist, we just warn and ignore it, rather than failing with an exception
+              (do
+                (log/warnf e "Cannot sync Table %s: does not exist" table-name)
+                init)
               (throw e))))))))
 
 (defn- jdbc-fields-metadata
