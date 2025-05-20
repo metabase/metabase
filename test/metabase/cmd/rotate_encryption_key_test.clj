@@ -2,6 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
    [metabase.cmd :as cmd]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -9,8 +11,6 @@
    [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]

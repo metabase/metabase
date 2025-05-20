@@ -3,7 +3,7 @@
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
-   [metabase.db]
+   [metabase.app-db.core]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.util :as u]
@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.db/keep-me)
+(comment metabase.app-db.core/keep-me)
 
 (defn- jdbc-spec [db-file]
   {:classname         "org.h2.Driver"

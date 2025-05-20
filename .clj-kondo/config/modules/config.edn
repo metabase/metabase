@@ -52,7 +52,13 @@
 
   activity-feed
   {:api  #{metabase.activity-feed.api metabase.activity-feed.init}
-   :uses #{api collections config db events models util}}
+   :uses #{api
+           app-db
+           collections
+           config
+           events
+           models
+           util}}
 
   appearance
   {:api  #{metabase.appearance.core
@@ -67,9 +73,9 @@
            metabase.analytics.snowplow}
    :uses #{appearance
            api
+           app-db
            channel
            config
-           db
            driver
            eid-translation
            internal-stats
@@ -132,7 +138,7 @@
   {:api  #{metabase.api-keys.api
            metabase.api-keys.core}
    :uses #{api
-           db
+           app-db
            events
            models
            permissions
@@ -143,11 +149,23 @@
   {:api  #{metabase.api-routes.core}
    :uses :any}
 
+  app-db
+  {:api  #{metabase.app-db.core
+           metabase.app-db.query
+           metabase.app-db.setup}
+   :uses #{auth-provider
+           classloader
+           config
+           connection-pool
+           driver
+           task
+           util}}
+
   audit-app
   {:api  #{metabase.audit-app.core
            metabase.audit-app.init}
    :uses #{api
-           db
+           app-db
            events
            models
            premium-features
@@ -163,7 +181,7 @@
   bookmarks
   {:api  #{metabase.bookmarks.api}
    :uses #{api
-           db
+           app-db
            queries
            util}}
 
@@ -172,8 +190,8 @@
            metabase.bug-reporting.init}
    :uses #{analytics
            api
+           app-db
            config
-           db
            driver
            premium-features
            settings
@@ -184,8 +202,8 @@
            metabase.cache.core
            metabase.cache.init}
    :uses #{api
+           app-db
            config
-           db
            events
            models
            premium-features
@@ -206,11 +224,11 @@
            metabase.channel.template.core}
    :uses #{analytics
            api
+           app-db
            appearance
            collections
            config
            dashboards
-           db
            driver
            events
            formatter
@@ -221,9 +239,9 @@
            parameters
            permissions
            premium-features
-           system
-           settings
            query-processor
+           settings
+           system
            task
            timeline
            types
@@ -239,9 +257,9 @@
            metabase.cloud-migration.core
            metabase.cloud-migration.init}
    :uses #{api
+           app-db
            cmd
            config
-           db
            models
            premium-features
            settings
@@ -251,7 +269,7 @@
   content-verification
   {:api  #{metabase.content-verification.core
            metabase.content-verification.init}
-   :uses #{db
+   :uses #{app-db
            models
            util}}
 
@@ -261,9 +279,9 @@
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
+           app-db
            classloader
            config
-           db
            legacy-mbql
            models
            query-processor
@@ -278,9 +296,9 @@
            metabase.collections.models.collection.root}
    :uses #{api
            api-keys
+           app-db
            audit-app
            config
-           db
            driver
            events
            legacy-mbql
@@ -319,11 +337,11 @@
    :uses #{actions
            analytics
            api
+           app-db
            audit-app
            channel
            collections
            config
-           db
            events
            lib
            models
@@ -343,18 +361,6 @@
   database-routing
   {:api  #{metabase.database-routing.core}
    :uses #{premium-features}}
-
-  db
-  {:api  #{metabase.db
-           metabase.db.query
-           metabase.db.setup}
-   :uses #{auth-provider
-           classloader
-           config
-           connection-pool
-           driver
-           task
-           util}}
 
   driver
   {:api #{metabase.driver
@@ -382,13 +388,13 @@
           metabase.driver.util}
    :uses #{actions
            api
+           app-db
            appearance
            auth-provider
            classloader
            config
            connection-pool
            database-routing
-           db
            events
            legacy-mbql
            lib
@@ -476,7 +482,7 @@
 
   internal-stats
   {:api #{metabase.internal-stats.core}
-   :uses #{db
+   :uses #{app-db
            models}}
 
   legacy-mbql
@@ -564,7 +570,7 @@
           metabase.model-persistence.core
           metabase.model-persistence.init}
    :uses #{api
-           db
+           app-db
            driver
            events
            lib
@@ -589,8 +595,8 @@
           metabase.models.util.spec-update
           metabase.models.visualization-settings}
    :uses #{api
+           app-db
            classloader
-           db
            driver
            legacy-mbql
            lib
@@ -646,8 +652,8 @@
            metabase.parameters.params
            metabase.parameters.shared}
    :uses #{api
+           app-db
            classloader
-           db
            driver
            legacy-mbql
            lib
@@ -671,10 +677,10 @@
            metabase.permissions.models.query.permissions
            metabase.permissions.util}
    :uses #{api
+           app-db
            audit-app
            collections
            config
-           db
            legacy-mbql
            lib
            models
@@ -702,9 +708,9 @@
            metabase.premium-features.core
            metabase.premium-features.init}
    :uses #{api
+           app-db
            classloader
            config
-           db
            internal-stats
            settings
            util}}
@@ -714,9 +720,9 @@
            metabase.product-feedback.init}
    :uses #{analytics
            api
+           app-db
            channel
            config
-           db
            driver
            premium-features
            settings
@@ -748,11 +754,11 @@
            metabase.pulse.init
            metabase.pulse.task.send-pulses}
    :uses #{api
+           app-db
            channel
            classloader
            collections
            config
-           db
            driver
            events
            models
@@ -776,13 +782,13 @@
    :uses #{analytics
            analyze
            api
+           app-db
            audit-app
            cache
            channel
            collections
            config
            content-verification
-           db
            events
            legacy-mbql
            lib
@@ -917,19 +923,19 @@
           metabase.search.spec}
    :uses #{analytics
            api
+           app-db
            appearance
            audit-app
            collections
            config
-           db
            driver
            events
            models
            permissions
            premium-features
-           settings
            queries
            request
+           settings
            startup
            task
            util
@@ -959,10 +965,10 @@
    :uses #{analytics
            api
            api-keys
+           app-db
            appearance
            config
            core
-           db
            driver
            embedding
            premium-features
@@ -982,14 +988,14 @@
            metabase.session.models.session ; TODO -- shouldn't be exposed as an API namespace
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
+           app-db
            channel
            config
-           db
            driver
            events
            login-history
-           settings
            request
+           settings
            sso
            system
            task
@@ -1001,8 +1007,8 @@
            metabase.settings.core
            metabase.settings.init}
    :uses #{api
+           app-db
            config
-           db
            events
            models
            premium-features
@@ -1014,10 +1020,10 @@
            metabase.setup.core}
    :uses #{analytics
            api
+           app-db
            appearance
            channel
            config
-           db
            events
            permissions
            request
@@ -1052,9 +1058,9 @@
           metabase.sync.util}
    :uses #{analyze
            api
+           app-db
            audit-app
            config
-           db
            driver
            events
            lib
@@ -1075,8 +1081,8 @@
   task
   {:api #{metabase.task.bootstrap
           metabase.task.core}
-   :uses #{classloader
-           db
+   :uses #{app-db
+           classloader
            util}}
 
   task-history
@@ -1097,8 +1103,8 @@
            metabase.testing-api.init}
    :uses #{analytics
            api
+           app-db
            config
-           db
            premium-features
            search
            util}}
@@ -1161,11 +1167,11 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
+           app-db
            appearance
            channel
            collections
            config
-           db
            events
            models
            permissions
@@ -1182,10 +1188,10 @@
   util
   {:api :any
    :uses #{classloader
+           app-db
            channel
            config
            dashboards
-           db
            driver
            legacy-mbql
            lib
@@ -1225,8 +1231,8 @@
            metabase.warehouse-schema.table}
    :uses #{analyze
            api
+           app-db
            audit-app
-           db
            driver
            events
            lib
@@ -1251,12 +1257,12 @@
            metabase.warehouses.models.database}
    :uses #{analytics
            api
+           app-db
            audit-app
            classloader
            collections
            config
            database-routing
-           db
            driver
            events
            lib
@@ -1303,7 +1309,7 @@
            metabase-enterprise.advanced-config.file}
    :uses #{api
            api-keys
-           db
+           app-db
            driver
            permissions
            premium-features
@@ -1365,9 +1371,9 @@
   enterprise/audit-app
   {:api  #{metabase-enterprise.audit-app.api.routes}
    :uses #{api
+           app-db
            audit-app
            classloader
-           db
            driver
            lib
            models
@@ -1492,16 +1498,16 @@
   {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
+           app-db
            config
-           db
            legacy-mbql
            lib
            models
            premium-features
-           settings
            pulse
            query-processor
            request
+           settings
            system
            users
            util
@@ -1524,9 +1530,9 @@
   {:api #{metabase-enterprise.sandbox.api.routes
           metabase-enterprise.sandbox.api.util}
    :uses #{api
+           app-db
            audit-app
            classloader
-           db
            driver
            legacy-mbql
            lib
@@ -1568,10 +1574,10 @@
           metabase-enterprise.serialization.v2.backfill-ids}
    :uses #{analytics
            api
+           app-db
            appearance
            collections
            config
-           db
            legacy-mbql
            lib
            logger

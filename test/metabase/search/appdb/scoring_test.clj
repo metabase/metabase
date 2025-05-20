@@ -3,7 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
    [metabase.search.appdb.specialization.api :as specialization]

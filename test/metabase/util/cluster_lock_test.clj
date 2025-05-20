@@ -2,7 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.cluster-lock :as sut]))
 
