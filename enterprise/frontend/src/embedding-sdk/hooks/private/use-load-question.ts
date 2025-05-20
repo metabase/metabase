@@ -228,4 +228,4 @@ export const getParameterDependencyKey = (
     .join(":");
 
 const isCancelledRequestError = (error: unknown) =>
-  isObject(error) && "isCancelled" in error;
+  isObject(error) && "isCancelled" in error && error.isCancelled === true;
