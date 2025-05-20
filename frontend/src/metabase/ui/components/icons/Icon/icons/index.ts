@@ -321,6 +321,8 @@ import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
 import sankey_component from "./sankey.svg?component";
 import sankey_source from "./sankey.svg?source";
+import schema_component from "./schema.svg?component";
+import schema_source from "./schema.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
@@ -1024,6 +1026,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: revert_component,
       source: revert_source,
     },
+    schema: {
+      component: schema_component,
+      source: schema_source,
+    },
     sankey: {
       component: sankey_component,
       source: sankey_source,
@@ -1457,6 +1463,7 @@ export type IconName =
   | "refresh_downstream"
   | "rocket"
   | "ruler"
+  | "schema"
   | "search"
   | "section"
   | "segment"
