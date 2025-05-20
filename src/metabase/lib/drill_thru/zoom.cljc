@@ -50,15 +50,6 @@
    :object-id value
    :many-pks? false})
 
-(defn- primary-key? [query stage-number column]
-  "Is `column` a primary key of `query`?
-
-  This should return `false` for primary keys from joined tables."
-  (boolean (and (lib.types.isa/primary-key? column)
-                (->> query
-                     lib.metadata.calculation/primary-keys
-                     (lib.equality/find-matching-column query stage-number column)))))
-
 (mu/defn zoom-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom]
   "Return a `:zoom` drill when clicking on the value of a PK column in a Table that has only one PK column."
   [query                                   :- ::lib.schema/query
@@ -70,7 +61,7 @@
          (lib.drill-thru.common/mbql-stage? query stage-number)
          ;; if this table has more than one PK we should be returning a [[metabase.lib.drill-thru.pk]] instead.
          (not (lib.drill-thru.common/many-pks? query)))
-    (if (primary-key? query stage-number column)
+    (if (lib.drill-thru.common/primary-key? query stage-number column)
       ;; PK column was clicked. Ignore NULL values.
       (when-not (= value :null)
         (zoom-drill* column value))

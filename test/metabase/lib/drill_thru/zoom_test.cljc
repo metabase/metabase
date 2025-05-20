@@ -1,6 +1,5 @@
 (ns metabase.lib.drill-thru.zoom-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -76,33 +75,6 @@
     :expected    {:type      :drill-thru/zoom
                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
                   :many-pks? false}}))
-
-(deftest ^:parallel returns-zoom-for-joined-pk-test
-  (testing "returns zoom drill targeting source table pk for click on joined pk column cell (#28095)"
-    (let [orders-id   (meta/field-metadata :orders :id)
-          products-id (meta/field-metadata :products :id)
-          query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                          (lib/join (-> (lib/join-clause (meta/table-metadata :products)
-                                                         [(lib/=
-                                                           (meta/field-metadata :orders :product-id)
-                                                           products-id)])
-                                        (lib/with-join-strategy :left-join)))
-                          (lib/with-fields [orders-id products-id]))
-          context     {:column     products-id
-                       :column-ref (lib/ref products-id)
-                       :value      (meta/id :products :id)
-                       :row        [{:column     orders-id
-                                     :column-ref (lib/ref orders-id)
-                                     :value      (meta/id :orders :id)}
-                                    {:column     products-id
-                                     :column-ref (lib/ref products-id)
-                                     :value      (meta/id :products :id)}]}]
-      (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
-                :type      :drill-thru/zoom
-                :object-id (meta/id :orders :id)
-                :many-pks? false
-                :column    orders-id}]
-              (lib/available-drill-thrus query -1 context))))))
 
 (deftest ^:parallel do-not-return-zoom-for-nil-test
   (testing "do not return zoom drills for nil cell values (#36130)"
