@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.dummy-tools :as dummy-tools]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [toucan2.core :as t2]))
 

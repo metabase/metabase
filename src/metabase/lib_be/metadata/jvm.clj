@@ -1,4 +1,4 @@
-(ns metabase.lib.metadata.jvm
+(ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [clojure.core.cache :as cache]
@@ -18,7 +18,6 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]

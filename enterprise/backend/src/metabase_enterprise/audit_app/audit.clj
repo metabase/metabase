@@ -65,12 +65,6 @@
                       out (io/output-stream (str out-file))]
             (io/copy in out)))))))
 
-(def ^:private audit-db-entity-id
-  "Hard-coded `:entity_id` for the audit DB. Used to compute any missing `:entity_id`s for existing audit DBs."
-  ;; NOTE: This was previously "audit__rP75CiURKZ-0pq" instead. It was changed to signal whether an existing audit DB
-  ;; has the old, incorrect hard-coded IDs or the new ones.
-  "audit__yAxFew6vgTlc6n")
-
 (def default-question-overview-entity-id
   "Default Question Overview (this is a dashboard) entity id."
   "jm7KgY6IuS6pQjkBZ7WUI")
@@ -87,7 +81,6 @@
   [engine id]
   (t2/insert! :model/Database {:is_audit         true
                                :id               id
-                               :entity_id        audit-db-entity-id
                                :name             "Internal Metabase Database"
                                :description      "Internal Audit DB used to power metabase analytics."
                                :engine           engine
