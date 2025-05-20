@@ -38,15 +38,20 @@
   "Perform an action directly, skipping permissions checks etc, and generate outputs based on the table modifications."
   [action-kw context inputs xform-outputs]
   (update (actions/perform-nested-action! action-kw context inputs)
-          :outputs xform-outputs))
+          :outputs
+          xform-outputs))
+
+(defn- post-process [outputs]
+  (for [[table-id diffs] (u/group-by :table-id identity outputs)
+        :let [pretty-rows (data-editing/invalidate-and-present! table-id (map :row diffs))]
+        [op pretty-row] (map vector (map :op diffs) pretty-rows)]
+    {:table-id table-id, :op op, :row pretty-row}))
 
 (defn- perform! [action-kw context inputs]
   ;; We could enhance this in future to work more richly with multi-table editable models.
   (let [table-id     (scope->table-id context)
-        next-inputs  (map-inputs table-id inputs)
-        ;; this shape feels wrong; we should nest it as `{:table-id, :row}` to be more composable.
-        rows->output (partial data-editing/invalidate-and-present! table-id)]
-    (perform-table-row-action! action-kw context next-inputs rows->output)))
+        next-inputs  (map-inputs table-id inputs)]
+    (perform-table-row-action! action-kw context next-inputs post-process)))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid/create]
   [_action context inputs :- [:sequential ::lib.schema.actions/row]]
@@ -75,9 +80,9 @@
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
   [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
   {:context context
-   :outputs (undo/undo! (:user-id context) (:scope context))})
+   :outputs (undo/undo! context (:user-id context) (:scope context))})
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
   [_action context _inputs :- [:sequential ::lib.schema.actions/nothing]]
   {:context context
-   :outputs (undo/redo! (:user-id context) (:scope context))})
+   :outputs (undo/redo! context (:user-id context) (:scope context))})

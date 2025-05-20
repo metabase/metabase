@@ -238,7 +238,9 @@
   [action
    scope
    arg-map-or-maps
-   & {:keys [policy existing-context]}]
+   & {:keys [policy existing-context user-id]}]
+  (when (and existing-context user-id)
+    (assert (= user-id (:user-id existing-context)) "Existing context has a consistent user-id"))
   (let [action-kw (keyword action)
         scope     (actions.scope/hydrate-scope scope)
         arg-maps  (if (map? arg-map-or-maps) [arg-map-or-maps] arg-map-or-maps)
@@ -293,8 +295,10 @@
                                   :database (:database arg-map)
                                   :query {:source-table (:table-id arg-map)}}))))
 
-      ;; TODO fix tons of tests which execute without user scope
-      (let [result (let [context (-> (or existing-context {:user-id (identity #_api/check-500 api/*current-user-id*)})
+      (let [result (let [context (-> existing-context
+                                     ;; TODO fix tons of tests which execute without user scope
+                                     (u/assoc-default :user-id (identity #_api/check-500
+                                                                (or user-id api/*current-user-id*)))
                                      (u/assoc-default :scope scope))]
                      (if-not driver
                        (perform-action-internal! action-kw context arg-maps)
@@ -477,6 +481,6 @@
 
 (defmethod normalize-action-arg-map :table.row/common
   [_action {:keys [database table-id row], row-arg :arg, :as _arg-map}]
-  {:database (or database (when table-id (cached-database-via-table-id table-id)))
+  {:database (or database (when table-id (:id (cached-database-via-table-id table-id))))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})

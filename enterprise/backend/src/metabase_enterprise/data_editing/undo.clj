@@ -1,12 +1,10 @@
 (ns metabase-enterprise.data-editing.undo
   (:require
    [clojure.walk :as walk]
-   [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [nano-id.core :as nano-id]
    [toucan2.core :as t2]))
 
 (def ^:private retention-total-batches 100)
@@ -181,17 +179,14 @@
 
 (defn- update-table-data!
   "Revert the underlying table data."
-  [undo-or-redo user-id scope batch]
-  (let [undo?     (= :undo undo-or-redo)
-        action-kw (keyword "undo" (name undo-or-redo))]
+  [undo-or-redo context batch]
+  (let [undo? (= :undo undo-or-redo)]
+    ;; Do a single perform-nested-action! call
     (doseq [[[table-id category] sub-batch] (u/group-by (juxt :table_id categorize) batch)
-            :let [rows (batch->rows undo? sub-batch)
-                  iid  (nano-id/nano-id)
-                  opts {:existing-context {:invocation_id    iid
-                                           :invocation-stack [[action-kw iid]]
-                                           :scope            scope}}]]
+            :let [rows   (batch->rows undo? sub-batch)
+                  inputs (map #(array-map :table-id table-id :row (update-keys % u/qualified-name)) rows)]]
       (case (if undo? (invert category) category)
-        :create (try (data-editing/perform-bulk-action! :table.row/create user-id scope table-id rows opts)
+        :create (try (actions/perform-nested-action! :table.row/create context inputs)
                      (catch Exception e
                        ;; Sometimes cols don't support a custom value being provided, e.g., GENERATED ALWAYS AS IDENTITY
                        (throw (ex-info "Failed to un-delete row(s)"
@@ -200,10 +195,12 @@
                                         :table-id  table-id
                                         :pks       (map :row_pk batch)}
                                        e))))
-        :update (data-editing/perform-bulk-action! :table.row/update user-id scope table-id rows opts)
-        :delete (data-editing/perform-bulk-action! :table.row/delete user-id scope table-id rows opts)))))
+        :update (actions/perform-nested-action! :table.row/update context inputs)
+        :delete (actions/perform-nested-action! :table.row/delete context inputs)))
+    ;; don't leak action outputs, we don't want to accidentally create more coupling to them.
+    true))
 
-(defn- undo*! [undo-or-redo user-id scope]
+(defn- undo*! [undo-or-redo context user-id scope]
   (let [undo? (= :undo undo-or-redo)
         batch (next-batch undo? user-id scope)]
     (cond
@@ -219,7 +216,7 @@
                                                :user-id user-id
                                                :scope   scope}))
       :else
-      (do (update-table-data! undo-or-redo user-id scope batch)
+      (do (update-table-data! undo-or-redo context batch)
           (t2/update! :model/Undo
                       {:batch_num (:batch_num (first batch))}
                       {:undone undo?})
@@ -231,10 +228,10 @@
 
 (defn undo!
   "Rollback the given user's last change to the given table."
-  [user-id scope]
-  (undo*! :undo user-id scope))
+  [context user-id scope]
+  (undo*! :undo context user-id scope))
 
 (defn redo!
   "Rollback the given user's last change to the given table."
-  [user-id scope]
-  (undo*! :redo user-id scope))
+  [context user-id scope]
+  (undo*! :redo context user-id scope))
