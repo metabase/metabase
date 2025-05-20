@@ -20,7 +20,7 @@
    [metabase.app-db.query]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)

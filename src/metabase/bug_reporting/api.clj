@@ -4,7 +4,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.system-info :as u.system-info]

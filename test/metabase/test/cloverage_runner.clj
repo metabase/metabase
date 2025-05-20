@@ -1,4 +1,4 @@
-(ns metabase.cloverage-runner
+(ns metabase.test.cloverage-runner
   (:require
    [cloverage.coverage]))
 

@@ -5,7 +5,7 @@
    [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]

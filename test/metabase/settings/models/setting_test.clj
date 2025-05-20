@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]

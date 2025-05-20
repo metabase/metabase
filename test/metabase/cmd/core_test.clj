@@ -1,7 +1,7 @@
-(ns metabase.cmd-test
+(ns metabase.cmd.core-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.cmd :as cmd]))
+   [metabase.cmd.core :as cmd]))
 
 (defn- do-with-captured-call-enterprise-calls! [thunk]
   (with-redefs [cmd/call-enterprise list]

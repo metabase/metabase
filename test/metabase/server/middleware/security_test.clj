@@ -3,7 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]

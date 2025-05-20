@@ -1,4 +1,4 @@
-import { isa as cljs_isa } from "cljs/metabase.types";
+import { isa as cljs_isa } from "cljs/metabase.types.core";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   BOOLEAN,

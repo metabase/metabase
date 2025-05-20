@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.actions.error :as actions.error]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
