@@ -1445,7 +1445,8 @@
            enterprise/sso}}
 
   enterprise/gsheets
-  {:api  #{metabase-enterprise.gsheets.api}
+  {:api  #{metabase-enterprise.gsheets.api
+           metabase-enterprise.gsheets.init}
    :uses #{api
            analytics
            premium-features
@@ -1478,7 +1479,8 @@
            settings}}
 
   enterprise/llm
-  {:api  #{metabase-enterprise.llm.api}
+  {:api  #{metabase-enterprise.llm.api
+           metabase-enterprise.llm.init}
    :uses #{analytics
            analyze
            api

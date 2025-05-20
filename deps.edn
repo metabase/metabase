@@ -252,7 +252,7 @@
     djblue/portal                {:mvn/version "0.59.0"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.7"}                     ; test runner
-    io.github.tonsky/clj-reload  {:mvn/version "0.9.5"}                     ; reloader
+    io.github.tonsky/clj-reload  {:mvn/version "0.9.6"}                     ; reloader
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -265,7 +265,7 @@
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                    ; clojure source parsing and rewriting
+    rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
@@ -407,7 +407,7 @@
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "3.0.5"}}}
+    thheller/shadow-cljs               {:mvn/version "3.1.1"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -694,7 +694,7 @@
    {com.bhauman/spell-spec            {:mvn/version "0.1.2"}                    ; used to find misspellings in YAML files
     expound/expound                   {:mvn/version "0.9.0"}                    ; better output of spec validation errors
     io.github.borkdude/grasp          {:mvn/version "0.1.4"}
-    io.github.clojure/tools.build     {:mvn/version "0.10.8"}
+    io.github.clojure/tools.build     {:mvn/version "0.10.9"}
     io.github.seancorfield/build-uber-log4j2-handler
     {:git/tag "v2.24.0" :git/sha "de93f51"}                                     ; collect binary files for log4j2
     org.clojure/data.xml              {:mvn/version "0.2.0-alpha9"}
