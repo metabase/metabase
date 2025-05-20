@@ -200,7 +200,7 @@
    ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
    ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
    ;; the application database, look at the implementation for fetching a `:metadata/column`
-   ;; in [[metabase.lib.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
+   ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
    ;; provider doesn't add these keys.
    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])

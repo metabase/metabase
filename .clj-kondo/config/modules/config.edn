@@ -336,6 +336,7 @@
            config
            events
            lib
+           lib-be
            models
            parameters
            permissions
@@ -499,8 +500,9 @@
           metabase.lib.ident
           metabase.lib.join.util
           metabase.lib.metadata
+          metabase.lib.metadata.cached-provider
           metabase.lib.metadata.calculation
-          metabase.lib.metadata.jvm
+          metabase.lib.metadata.invocation-tracker
           metabase.lib.metadata.protocols
           metabase.lib.normalize
           metabase.lib.options
@@ -527,15 +529,15 @@
           metabase.lib.walk}
    :uses #{config
            legacy-mbql
-           models
-           settings
            types
            util}}
 
   lib-be
   {:api #{metabase.lib-be.core
-          metabase.lib-be.init}
-   :uses #{models
+          metabase.lib-be.init
+          metabase.lib-be.metadata.jvm}
+   :uses #{lib
+           models
            settings
            task
            util}}
@@ -591,6 +593,7 @@
            classloader
            legacy-mbql
            lib
+           lib-be
            settings
            util}}
 
@@ -648,6 +651,7 @@
            driver
            legacy-mbql
            lib
+           lib-be
            models
            query-processor
            types
@@ -730,6 +734,7 @@
            dashboards
            events
            lib
+           lib-be
            models
            parameters
            queries
@@ -783,6 +788,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            models
            parameters
            permissions
@@ -944,6 +950,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            search
@@ -1230,6 +1237,7 @@
            driver
            events
            lib
+           lib-be
            models
            parameters
            permissions
@@ -1496,6 +1504,7 @@
            config
            legacy-mbql
            lib
+           lib-be
            models
            premium-features
            pulse
@@ -1635,7 +1644,7 @@
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
  ;;
  ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
- ;; together, e.g. `metabase.lib.metadata.jvm`.
+ ;; together, e.g. `metabase.lib-be.metadata.jvm`.
  :linters
  {:metabase/modules
   {:ignored-namespace-patterns
