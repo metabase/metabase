@@ -9,12 +9,12 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
    [metabase.content-verification.core :as moderation]
-   [metabase.db.query :as mdb.query]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -1369,7 +1369,7 @@
                   :database-id         true
                   :entity-id           true
                   :last-viewed-at      :last_used_at
-                  :native-query        [:case [:= "native" :query_type] :dataset_query]
+                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id

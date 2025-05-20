@@ -2,8 +2,8 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
+   [metabase.app-db.query :as mdb.query]
    [metabase.classloader.core :as classloader]
-   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]

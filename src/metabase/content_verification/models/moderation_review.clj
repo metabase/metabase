@@ -1,7 +1,7 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
+   [metabase.app-db.query :as mdb.query]
    [metabase.content-verification.impl :as moderation]
-   [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

@@ -1,8 +1,9 @@
 (ns metabase.search.appdb.specialization.postgres
   (:require
    [clojure.string :as str]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -156,7 +157,7 @@
 
 (defn- weighted-tsvector [weight text]
   ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
-  [:setweight [:to_tsvector [:inline (tsv-language)] [:cast (u.str/limit-bytes text 500000) :text]] [:inline weight]])
+  [:setweight [:to_tsvector [:inline (tsv-language)] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] [:inline weight]])
 
 (defmethod specialization/extra-entry-fields :postgres [entity]
   {:search_vector
