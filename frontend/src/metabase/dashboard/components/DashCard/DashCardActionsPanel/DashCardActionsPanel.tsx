@@ -9,6 +9,7 @@ import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
   isVisualizerDashboardCard,
+  isVisualizerDisabledVisualizeAnotherWay,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
 import type {
@@ -196,7 +197,8 @@ function DashCardActionsPanelInner({
       dashcard &&
       !isVisualizerDashboardCard(dashcard) &&
       !isVisualizerSupportedVisualization(dashcard?.card.display) &&
-      !isVirtualDashCard(dashcard)
+      !isVirtualDashCard(dashcard) &&
+      !isVisualizerDisabledVisualizeAnotherWay(dashcard?.card.display)
     ) {
       buttons.push(
         <DashCardActionButton
