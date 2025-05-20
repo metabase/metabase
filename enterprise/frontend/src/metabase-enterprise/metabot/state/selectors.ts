@@ -18,7 +18,6 @@ export const getMessages = createSelector(
   (metabot) => metabot.messages,
 );
 
-// TODO: unit test this
 export const getLastAgentMessagesByType = createSelector(
   getMessages,
   (messages) => {
@@ -27,9 +26,10 @@ export const getLastAgentMessagesByType = createSelector(
       return [];
     }
 
-    const start = messages.findLastIndex(
-      (msg) => msg.actor === "agent" && msg.type === lastMessage.type,
-    );
+    const start =
+      messages.findLastIndex(
+        (msg) => msg.actor !== "agent" || msg.type !== lastMessage.type,
+      ) + 1;
     return messages.slice(start).map(({ message }) => message);
   },
 );
