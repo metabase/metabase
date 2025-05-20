@@ -71,8 +71,10 @@ export const InputField = styled.input<InputProps>`
 
   &:focus,
   &:hover {
-    border-color: ${(props) => color(props.colorScheme)};
-    transition: border 300ms ease-in-out;
+    &:not(:disabled) {
+      border-color: ${(props) => color(props.colorScheme)};
+      transition: border 300ms ease-in-out;
+    }
   }
 
   &:disabled {

@@ -82,7 +82,7 @@ export const TableActionExecuteModal = ({
   return (
     <ModalContent
       data-testid="table-action-execute-modal"
-      title={ensuredAction.name}
+      title={actionOverrides?.name || ensuredAction.name}
       onClose={onClose}
     >
       <ActionParametersInputForm
