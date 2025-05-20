@@ -3,6 +3,8 @@ import _ from "underscore";
 
 import type { MetabotStoreState } from "./types";
 
+export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
+
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
 
@@ -50,4 +52,14 @@ export const getMetabotConversationId = createSelector(
 export const getMetabotState = createSelector(
   getMetabot,
   (metabot) => metabot.state,
+);
+
+export const getIsLongMetabotConversation = createSelector(
+  getMessages,
+  (messages) => {
+    const totalMessageLength = messages.reduce((sum, msg) => {
+      return sum + msg.message.length;
+    }, 0);
+    return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
+  },
 );

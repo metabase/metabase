@@ -182,6 +182,8 @@ export const MetabotChat = () => {
                 <Text lh={1} c="text-light" m={0} ta="center">
                   {jt`This chat is getting long. You can ${(
                     <UnstyledButton
+                      key="reset"
+                      data-testid="metabot-reset-long-chat"
                       display="inline"
                       c="brand"
                       td="underline"

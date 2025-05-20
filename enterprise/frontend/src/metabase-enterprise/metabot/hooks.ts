@@ -9,6 +9,7 @@ import {
 } from "metabase-enterprise/api";
 
 import {
+  getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
@@ -48,7 +49,9 @@ export const useMetabotAgent = () => {
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,
     ) as ReturnType<typeof getLastAgentMessagesByType>,
-    isLongConversation: messages.length > 6, // TODO: figure out how we want to calculate this
+    isLongConversation: useSelector(
+      getIsLongMetabotConversation as any,
+    ) as ReturnType<typeof getIsLongMetabotConversation>,
     resetConversation: () => dispatch(resetConversation()),
     submitInput: useCallback(
       (message: string, metabotId?: string) => {

@@ -137,6 +137,7 @@ export const MetabotChatEmbedding = ({
           )}
         </Flex>
         <Textarea
+          id="metabot-chat-input"
           data-testid="metabot-chat-input"
           w="100%"
           autosize

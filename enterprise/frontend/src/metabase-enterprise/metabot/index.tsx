@@ -34,6 +34,11 @@ if (hasPremiumFeature("metabot_v3")) {
             if (searchText) {
               submitInput(searchText);
             }
+            // HACK: if the user opens the command palette via the search button bar focus
+            // will be moved back to the search button bar if the metabot option is chosen
+            setTimeout(() => {
+              document.getElementById("metabot-chat-input")?.focus();
+            }, 100);
           },
         },
       ];

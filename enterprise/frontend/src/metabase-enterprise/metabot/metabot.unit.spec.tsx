@@ -20,7 +20,9 @@ import { createMockState } from "metabase-types/store/mocks";
 import { Metabot } from "./components/Metabot";
 import { MetabotProvider } from "./context";
 import {
+  LONG_CONVO_MSG_LENGTH_THRESHOLD,
   type MetabotState,
+  addUserMessage,
   metabotInitialState,
   metabotReducer,
   setVisible,
@@ -439,9 +441,36 @@ describe("metabot", () => {
       expect(afterResetState.messages).toStrictEqual([]);
     });
 
-    it.todo("should warn the chat is getting long if the conversation is long");
+    it("should warn the chat is getting long if the conversation is long w/ ability to clear history", async () => {
+      const { store } = setup();
+      const longMsg = "x".repeat(LONG_CONVO_MSG_LENGTH_THRESHOLD / 2);
 
-    it.todo("should be able to reset history through the long convo warning");
+      // adding messages this long via the ui's input makes the test hang
+      act(() => {
+        store.dispatch(addUserMessage(longMsg));
+      });
+      expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/This chat is getting long/),
+      ).not.toBeInTheDocument();
+
+      act(() => {
+        store.dispatch(addUserMessage(longMsg));
+      });
+      expect(
+        await screen.findByText(/This chat is getting long/),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByTestId("metabot-reset-long-chat"),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/This chat is getting long/),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
+    });
   });
 });
 
