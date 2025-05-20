@@ -175,7 +175,7 @@ type ChartSettingFieldPartitionProps = {
   question: Question;
   partitions: Partition[];
   columns: RemappingHydratedDatasetColumn[];
-  aggregatedColumns: RemappingHydratedDatasetColumn[];
+  aggregatedColumns?: RemappingHydratedDatasetColumn[];
   canEditColumns: boolean;
 };
 
@@ -254,6 +254,44 @@ export const ChartSettingFieldsPartition = ({
     }
   };
 
+  const query = question.query();
+
+  // If we're in unaggregated pivot mode, build up the aggregated version of
+  // the query from the viz settings to pass into the aggregation selection
+  // popover
+  const aggregatedQuery = useMemo(() => {
+    if (!canEditColumns) {
+      return query;
+    }
+
+    const aggregations = (value?.values as PivotAggregation[]) || [];
+    if (aggregations.length === 0) {
+      return query;
+    }
+
+    const breakoutColumns = Lib.breakoutableColumns(query, -1);
+    const operators = Lib.availableAggregationOperators(query, 0);
+
+    return aggregations.reduce((accQuery, agg) => {
+      const columnObj = agg.column
+        ? breakoutColumns.find(
+            (col) => Lib.displayInfo(query, -1, col).name === agg.column?.name,
+          )
+        : undefined;
+
+      const operator = operators.find(
+        (op) => Lib.displayInfo(query, -1, op).shortName === agg.name,
+      );
+
+      if (operator) {
+        const clause = Lib.aggregationClause(operator, columnObj);
+        return Lib.aggregate(accQuery, -1, clause);
+      }
+
+      return accQuery;
+    }, query);
+  }, [query, canEditColumns, value]);
+
   const updatedValue = useMemo(() => {
     // Pre-aggregated pivots: just look up columns by name
     if (!canEditColumns) {
@@ -264,36 +302,15 @@ export const ChartSettingFieldsPartition = ({
       );
     }
 
-    // Unaggregated pivots
+    // Unaggregated pivots: look up by name & binning in the pivot result
+    // columns (aggregatedColumns), when available
     return _.mapObject(value || {}, (partitionValue, partition) => {
       if (partition === "values") {
         const aggregations = partitionValue as PivotAggregation[];
-        const query = question.query();
-        const breakoutColumns = Lib.breakoutableColumns(query, -1);
-        const operators = Lib.availableAggregationOperators(query, 0);
-        return aggregations
-          .map((agg) => {
-            // Find the column being aggregated (if any)
-            let columnObj = undefined;
-            if (agg.column) {
-              columnObj = breakoutColumns.find(
-                (col) =>
-                  Lib.displayInfo(query, -1, col).name === agg.column?.name,
-              );
-            }
-
-            // Find the operator being used
-            const operator = operators.find((op) => {
-              return Lib.displayInfo(query, -1, op).shortName === agg.name;
-            });
-
-            if (operator) {
-              const clause = Lib.aggregationClause(operator, columnObj);
-              return clause;
-            }
-          })
-          .filter(Boolean);
-        //.filter(item => item.column !== null || !agg.column); // Keep items with columns or aggregations that don't need columns (like COUNT)
+        const cols = aggregations.map((agg) => {
+          return aggregatedColumns?.find((col) => col.name === agg.name);
+        });
+        return cols;
       } else {
         // For dimension partitions (rows, columns)
         const dimensionItems = partitionValue as (
@@ -303,14 +320,12 @@ export const ChartSettingFieldsPartition = ({
         return dimensionItems
           .map((item) => {
             const columnName = typeof item === "string" ? item : item.name;
-            return (aggregatedColumns || columns).find(
-              (col) => col.name === columnName,
-            );
+            return aggregatedColumns?.find((col) => col.name === columnName);
           })
           .filter((col): col is RemappingHydratedDatasetColumn => col != null);
       }
     });
-  }, [canEditColumns, columns, aggregatedColumns, value, question]);
+  }, [canEditColumns, columns, aggregatedColumns, value]);
 
   const onAddBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -371,44 +386,6 @@ export const ChartSettingFieldsPartition = ({
   const emptyColumnMessage = canEditColumns
     ? t`Add fields here`
     : t`Drag fields here`;
-
-  const query = question.query();
-
-  // If we're in unaggregated pivot mode, build up the aggregated version of
-  // the query from the viz settings to pass into the aggregation selection
-  // popover
-  const aggregatedQuery = useMemo(() => {
-    if (!canEditColumns) {
-      return query;
-    }
-
-    const aggregations = (value?.values as PivotAggregation[]) || [];
-    if (aggregations.length === 0) {
-      return query;
-    }
-
-    const breakoutColumns = Lib.breakoutableColumns(query, -1);
-    const operators = Lib.availableAggregationOperators(query, 0);
-
-    return aggregations.reduce((accQuery, agg) => {
-      const columnObj = agg.column
-        ? breakoutColumns.find(
-            (col) => Lib.displayInfo(query, -1, col).name === agg.column?.name,
-          )
-        : undefined;
-
-      const operator = operators.find(
-        (op) => Lib.displayInfo(query, -1, op).shortName === agg.name,
-      );
-
-      if (operator) {
-        const clause = Lib.aggregationClause(operator, columnObj);
-        return Lib.aggregate(accQuery, -1, clause);
-      }
-
-      return accQuery;
-    }, query);
-  }, [query, canEditColumns, value]);
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -508,21 +485,11 @@ export const ChartSettingFieldsPartition = ({
                           </Draggable>
                         );
                       } else if (partitionType === "metric") {
-                        const aggDisplay = Lib.displayInfo(
-                          query,
-                          -1,
-                          val as Lib.AggregationClause,
-                        );
-                        const datasetCol = (aggregatedColumns || columns).find(
-                          (col) => col.name === aggDisplay.name,
-                        );
-                        const aggDisplayName = aggDisplay.displayName;
-
-                        if (datasetCol) {
+                        if (col) {
                           return (
                             <Draggable
-                              key={`draggable-${aggDisplayName}-${index}`}
-                              draggableId={`draggable-${aggDisplayName}`}
+                              key={`draggable-${col.name}-${index}`}
+                              draggableId={`draggable-${col.name}`}
                               index={index}
                             >
                               {(provided) => (
@@ -533,13 +500,13 @@ export const ChartSettingFieldsPartition = ({
                                   className={CS.mb1}
                                 >
                                   <Column
-                                    key={`${partitionName}-${aggDisplayName}`}
-                                    column={datasetCol}
+                                    key={`${partitionName}-${col.name}`}
+                                    column={col}
                                     onEditFormatting={handleEditFormatting}
                                     onRemove={() =>
                                       onRemoveBreakout(partitionName, index)
                                     }
-                                    title={aggDisplayName}
+                                    title={col.display_name}
                                   />
                                 </Box>
                               )}
