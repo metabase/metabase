@@ -79,7 +79,6 @@ export const UndoButton = styled(Link)`
 
 export const DismissIcon = styled(Icon)<{ color?: string }>`
   margin-left: ${space(2)};
-  color: ${({ color: iconColor = "bg-dark" }) => color(iconColor)};
   cursor: pointer;
 
   :hover {
