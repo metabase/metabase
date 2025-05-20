@@ -332,7 +332,7 @@
           (is (= 75 (categories-row-count)))
           (is (= [{:table-id table-id, :op :deleted, :row {:id 75}}
                   {:table-id table-id, :op :deleted, :row {:id 74}}]
-                 (clojure.walk/postwalk
+                 (walk/postwalk
                   (fn [x]
                     (if (map? x)
                       (u/lower-case-map-keys x)
