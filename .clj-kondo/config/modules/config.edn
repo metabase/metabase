@@ -387,6 +387,7 @@
            config
            connection-pool
            database-routing
+           events
            legacy-mbql
            lib
            lib-be
@@ -437,10 +438,8 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{driver
-           models
-           util
-           view-log}}
+   :uses #{models
+           util}}
 
   formatter
   {:api  #{metabase.formatter}
@@ -797,6 +796,7 @@
            revisions
            search
            util
+           view-log
            warehouse-schema}}
 
   query-analysis
