@@ -4,7 +4,6 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import Modal from "metabase/components/Modal";
 import { NoDataError } from "metabase/components/errors/NoDataError";
 import { useDispatch } from "metabase/lib/redux";
@@ -33,12 +32,13 @@ import type {
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { TableActionExecuteModal } from "./actions/TableActionExecuteModal";
+import { useTableActions } from "./actions/use-table-actions";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
-import { useTableActions } from "./use-table-actions";
 import { useTableCRUD } from "./use-table-crud";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableSorting } from "./use-table-sorting";
@@ -320,11 +320,14 @@ export const EditTableDashcardVisualization = ({
         isOpen={isActionExecuteModalOpen}
         onClose={handleExecuteModalClose}
       >
-        <ActionExecuteModal
-          actionId={activeActionState?.actionId}
-          initialValues={activeActionState?.rowData}
-          onClose={handleExecuteModalClose}
-        />
+        {activeActionState && (
+          <TableActionExecuteModal
+            actionId={activeActionState.actionId}
+            initialValues={activeActionState.rowData}
+            actionOverrides={activeActionState.actionOverrides}
+            onClose={handleExecuteModalClose}
+          />
+        )}
       </Modal>
       <DeleteBulkRowConfirmationModal
         opened={isDeleteBulkRequested}

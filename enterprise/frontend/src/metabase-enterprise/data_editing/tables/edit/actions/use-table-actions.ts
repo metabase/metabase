@@ -2,6 +2,7 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
 import { useListActionsQuery } from "metabase/api";
+import type { EditableTableActionsVizOverride } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionFormInitialValues,
   DashCardVisualizationSettings,
@@ -14,6 +15,8 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
+import { remapRowActionMappingsToActionOverride } from "./utils";
+
 export const useTableActions = ({
   visualizationSettings,
   datasetData,
@@ -24,6 +27,7 @@ export const useTableActions = ({
   const [activeActionState, setActiveActionState] = useState<{
     actionId: WritebackActionId;
     rowData: ActionFormInitialValues;
+    actionOverrides?: EditableTableActionsVizOverride;
   } | null>(null);
 
   const { data: actions } = useListActionsQuery({});
@@ -112,9 +116,14 @@ export const useTableActions = ({
         {} as ActionFormInitialValues,
       );
 
+      const actionOverrides = vizSettings
+        ? remapRowActionMappingsToActionOverride(vizSettings)
+        : undefined;
+
       setActiveActionState({
         actionId: action.id,
         rowData: remappedInitialActionValues || {},
+        actionOverrides,
       });
     },
     [datasetData, enabledActionsVizSettingsSet],

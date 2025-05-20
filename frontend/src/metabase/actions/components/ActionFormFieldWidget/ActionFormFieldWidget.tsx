@@ -29,6 +29,7 @@ const WIDGETS: Record<InputComponentType, FunctionComponent<any>> = {
 
 interface FormWidgetProps {
   formField: ActionFormFieldProps;
+  disabled?: boolean;
   hidden?: boolean;
   actions?: ReactNode;
 }
@@ -44,7 +45,7 @@ export const ActionFormFieldWidget = forwardRef(function FormFieldWidget(
   return (
     <Widget
       {...formField}
-      disabled={hidden}
+      disabled={hidden || formField.disabled}
       actions={actions}
       nullable
       ref={ref}

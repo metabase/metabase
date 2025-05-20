@@ -185,6 +185,7 @@ export interface FieldSettings {
   width?: Size;
   height?: number;
   hasSearch?: boolean;
+  readonly?: boolean;
 }
 
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
@@ -219,6 +220,7 @@ export type GetPublicAction = Pick<
 
 type RowActionFieldSettingsBase = {
   parameterId: ParameterId;
+  visibility?: "readonly" | "hidden";
 };
 
 export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {
@@ -241,11 +243,6 @@ export type RowActionFieldSettings =
   | ConstantRowActionFieldSettings;
 
 export type RowActionFieldSourceType = RowActionFieldSettings["sourceType"];
-
-export type PartialRowActionFieldSettingsMap = Record<
-  ParameterId,
-  PartialRowActionFieldSettings
->;
 
 export type PartialRowActionFieldSettings = RowActionFieldSettingsBase &
   Partial<RowActionFieldSettings>;

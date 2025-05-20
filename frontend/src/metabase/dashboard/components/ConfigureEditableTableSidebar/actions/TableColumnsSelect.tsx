@@ -1,35 +1,28 @@
 import { t } from "ttag";
 
-import { Select } from "metabase/ui";
-import type { Field, FieldId } from "metabase-types/api";
+import { FormSelect } from "metabase/forms";
+import type { Field } from "metabase-types/api";
 
 type TableColumnsSelectProps = {
-  value: FieldId | undefined;
+  name: string;
   columns: Field[];
-  onChange: (newValue: FieldId) => void;
 };
 
 export const TableColumnsSelect = ({
-  value,
+  name,
   columns,
-  onChange,
 }: TableColumnsSelectProps) => {
   const options = columns.map(({ id, name }) => ({
     value: String(id),
     label: name,
   }));
 
-  const handleChange = (newValue: string) => {
-    const fieldId = parseInt(newValue, 10);
-    onChange(fieldId);
-  };
-
   return (
-    <Select
+    <FormSelect
       label={t`Pick column`}
-      value={String(value)}
+      name={name}
       data={options}
-      onChange={handleChange}
+      shouldCastValueToNumber
     />
   );
 };
