@@ -18,7 +18,7 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.collections.api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]

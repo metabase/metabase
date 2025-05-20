@@ -1,4 +1,4 @@
-(ns metabase.formatter
+(ns metabase.formatter.impl
   "Provides functions that support formatting results data. In particular, customizing formatting for when timezone,
    column metadata, and visualization-settings are known. These functions can be used for uniform rendering of all
    artifacts such as generated CSV or image files that need consistent formatting across the board."
@@ -10,7 +10,7 @@
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util.currency :as currency]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -321,3 +321,13 @@
        (fn [value]
          (->TextWrapper (str value) value))
        identity))))
+
+(defn NumericWrapper?
+  "Is `x` an instance of `NumericWrapper`?"
+  [x]
+  (instance? NumericWrapper x))
+
+(defn TextWrapper?
+  "Is `x` an instance of `TextWrapper`?"
+  [x]
+  (instance? TextWrapper x))

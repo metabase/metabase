@@ -7,7 +7,7 @@
    [clojure.tools.namespace.file :as ns.file]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 

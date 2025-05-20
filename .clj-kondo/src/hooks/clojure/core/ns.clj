@@ -1,6 +1,7 @@
 (ns hooks.clojure.core.ns
   (:require
    [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]
    [hooks.common]
    [hooks.common.modules :as modules]))
 
@@ -59,12 +60,15 @@
                     (printf "Don't know how to figure out what namespace is being required in %s\n" (pr-str node)))))
           args)))
 
+(defn- ns-form-node->ns-symb-node [ns-form-node]
+  (some (fn [node]
+          (when (and (hooks/token-node? node)
+                     (not= (hooks/sexpr node) 'ns))
+            node))
+        (:children ns-form-node)))
+
 (defn- ns-form-node->ns-symb [ns-form-node]
-  (some-> (some (fn [node]
-                  (when (and (hooks/token-node? node)
-                             (not= (hooks/sexpr node) 'ns))
-                    node))
-                (:children ns-form-node))
+  (some-> (ns-form-node->ns-symb-node ns-form-node)
           hooks/sexpr))
 
 (defn- lint-modules [ns-form-node config]
@@ -83,9 +87,34 @@
                                        :message error
                                        :type    :metabase/modules))))))))
 
+(defn- lint-namespace-name [ns-form-node]
+ ; NOCOMMIT
+  (when-let [ns-symb-node (ns-form-node->ns-symb-node ns-form-node)]
+    (when-not (contains? (hooks.common/ignored-linters ns-symb-node) :metabase/namespace-name)
+      (let [parts (str/split (str (hooks/sexpr ns-symb-node)) #"\.")]
+        (when (and (<= (count parts) 2)
+                   (#{"metabase" "metabase-enterprise"} (first parts))
+                   ;; exclude test namespaces for now
+                   (not (str/ends-with? (last parts) "test")))
+          (hooks/reg-finding! (assoc (meta ns-symb-node)
+                                     :message "Metabase namespaces should have the form metabase[-enterprise].<module>.* [:metabase/namespace-name]"
+                                     :type    :metabase/namespace-name)))))))
+
 (defn lint-ns [x]
   (doto (:node x)
     lint-require-shapes
     lint-requires-on-new-lines
-    (lint-modules (modules/config x)))
+    (lint-modules (modules/config x))
+    lint-namespace-name)
   x)
+
+(comment
+  (lint-ns
+   {:node (hooks/parse-string
+           (pr-str
+            '(ns hooks.clojure.core.ns
+               (:require
+                [clj-kondo.hooks-api :as hooks]
+                [clojure.string :as str]
+                [hooks.common]
+                [hooks.common.modules :as modules]))))}))

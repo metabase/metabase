@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.spec :as mdb.spec]
-   [metabase.config :as config]))
+   [metabase.config.core :as config]))
 
 (defn- default-pg-spec [db]
   {:classname                     "org.postgresql.Driver"
