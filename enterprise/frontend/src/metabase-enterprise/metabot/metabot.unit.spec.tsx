@@ -28,11 +28,6 @@ import {
   setVisible,
 } from "./state";
 
-jest.mock(
-  "metabase-enterprise/metabot/components/MetabotChat/utils.ts",
-  () => ({ scrollTo: jest.fn() }),
-);
-
 function setup(
   options: {
     ui?: React.ReactElement;

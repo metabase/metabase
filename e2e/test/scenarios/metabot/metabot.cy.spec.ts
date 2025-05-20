@@ -5,7 +5,8 @@ import {
   closeMetabotViaShortcutKey,
   metabotChatInput,
   mockMetabotResponse,
-  openMetabotViaNewMenu,
+  openMetabotViaCommandPalette,
+  openMetabotViaSearchButton,
   openMetabotViaShortcutKey,
   popover,
   restore,
@@ -39,23 +40,26 @@ describe("Metabot UI", () => {
   });
 
   // token feature has been disabled so skipping for now - there's currently decent coverage for UI related things in our unit tests
-  describe.skip("EE", () => {
+  describe("EE", () => {
     beforeEach(() => {
       setTokenFeatures("all");
       cy.visit("/");
       cy.wait("@sessionProperties");
     });
 
-    // FIXME: shortcut keys aren't working in CI only, but work locally
-    it.skip("should be able to be opened and closed", () => {
-      openMetabotViaNewMenu();
+    it("should be able to be opened and closed", () => {
+      openMetabotViaSearchButton();
       closeMetabotViaCloseButton();
+
+      openMetabotViaCommandPalette();
+      closeMetabotViaCloseButton();
+
       openMetabotViaShortcutKey();
       closeMetabotViaShortcutKey();
     });
 
-    it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
-      openMetabotViaNewMenu();
+    it.skip("should allow a user to send a message to the agent and handle successful or failed responses", () => {
+      openMetabotViaSearchButton();
       chatMessages().should("not.exist");
 
       mockMetabotResponse({
