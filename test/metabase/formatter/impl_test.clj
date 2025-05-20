@@ -1,8 +1,8 @@
-(ns metabase.formatter-test
+(ns metabase.formatter.impl-test
   (:refer-clojure :exclude [format])
   (:require
    [clojure.test :refer :all]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.impl :as formatter]
    [metabase.models.visualization-settings :as mb.viz]))
 
 (defn- format-with-field-id

@@ -4,7 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]

@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]))
+   [metabase.types.core]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

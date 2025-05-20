@@ -10,7 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]

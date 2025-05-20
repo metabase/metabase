@@ -13,7 +13,7 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]

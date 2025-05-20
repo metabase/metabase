@@ -10,7 +10,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.audit-app.core :as audit]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]

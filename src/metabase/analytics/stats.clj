@@ -15,7 +15,7 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.appearance.core :as appearance]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.internal-stats.core :as internal-stats]

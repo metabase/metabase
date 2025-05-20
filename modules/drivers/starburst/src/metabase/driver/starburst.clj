@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
