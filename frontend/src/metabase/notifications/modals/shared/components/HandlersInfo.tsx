@@ -101,7 +101,9 @@ const formatEmailHandlerInfo = (
 };
 
 const formatSlackHandlerInfo = (handler: NotificationHandlerSlack) => {
-  return handler.recipients[0]?.details.value;
+  return handler.recipients
+    .map((recipient) => recipient.details.value)
+    .join(", ");
 };
 
 const formatHttpHandlersInfo = (

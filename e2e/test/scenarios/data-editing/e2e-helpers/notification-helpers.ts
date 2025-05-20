@@ -10,11 +10,6 @@ type Interception = {
   };
 };
 
-/**
- * Fills in the custom template fields with the provided subject and body
- * @param subject The subject template to use
- * @param body The body template to use
- */
 export const fillInCustomTemplate = (subject: string, body: string) => {
   cy.findByTestId("email-template-subject")
     .find(".cm-content")
@@ -54,13 +49,7 @@ export const fillInCustomTemplate = (subject: string, body: string) => {
     });
 };
 
-/**
- * Verifies that the notification was created with the expected custom template
- * @param response The intercepted response from the notification creation request
- * @param expectedSubject The expected subject template
- * @param expectedBody The expected body template
- */
-export const verifyNotificationTemplate = (
+export const verifyNotificationTemplateResponse = (
   response: Interception,
   expectedSubject: string,
   expectedBody: string,
@@ -73,20 +62,12 @@ export const verifyNotificationTemplate = (
   expect(stringifiedTemplate).to.contain(expectedBody);
 };
 
-/**
- * Creates a notification with a custom template
- * @param eventName The name of the event to select (e.g., "when new records are created")
- * @param subject The subject template to use
- * @param body The body template to use
- */
 export const createNotificationWithCustomTemplate = (
   eventName: string | RegExp,
   subject: string,
   body: string,
 ) => {
-  // Open the notification creation modal
   cy.findByTestId("table-notification-create").within(() => {
-    // Select the event type
     cy.findByTestId("notification-event-select").click();
     cy.document()
       .findByRole("option", {
@@ -94,10 +75,8 @@ export const createNotificationWithCustomTemplate = (
       })
       .click();
 
-    // Fill in the custom templates
     fillInCustomTemplate(subject, body);
 
-    // Submit the form
     cy.findByRole("button", { name: "Done" }).click();
   });
 

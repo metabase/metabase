@@ -61,7 +61,7 @@ export function ConfigureEditableTableFilters({
   };
 
   if (!query) {
-    return <div>ERROR: no query</div>;
+    return <div>{t`ERROR: no query`}</div>;
   }
 
   return (
