@@ -33,7 +33,7 @@
 (defmethod serdes/dependencies "Metabot"
   [{:keys [entities]}]
   (into #{}
-        (map #(assoc {:model "Card"} :id (:model_id %)))
+        (map #(assoc {:model "Card"} :id (:metabot_model_entity_id %)))
         entities))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
