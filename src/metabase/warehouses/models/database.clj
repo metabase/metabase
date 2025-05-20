@@ -122,7 +122,7 @@
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
-  [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
+  [{:keys [details is_full_sync is_on_demand] :as database}]
   (match [(boolean (:let-user-control-scheduling details)) is_full_sync is_on_demand]
     [false _ _]
     (merge
@@ -132,10 +132,8 @@
 
     ;; "Regularly on a schedule"
     ;; -> sync both steps, schedule should be provided
-    [true true false]
-    (do
-      (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
-      database)
+    [true true _]
+    database
 
     ;; "Only when adding a new filter" or "Never, I'll do it myself"
     ;; -> Sync metadata only
