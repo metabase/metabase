@@ -11565,7 +11565,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: metabot_model_entity_id
+                  name: model_id
                   type: int
                   remarks: The ID of the model this entity references
                   constraints:

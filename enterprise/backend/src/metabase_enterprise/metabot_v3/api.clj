@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -83,22 +84,25 @@
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (let [limit (or (request/limit) default-entities-page-size)
         offset (or (request/offset) 0)
+        root-collection (collection/root-collection-with-ui-details nil)
         entities (t2/select [:model/MetabotEntity
-                             :id
-                             :metabot_model_entity_id
+                             :model_id
                              :model
                              [:card.name :name]
                              :created_at
                              [:collection.id :collection_id]
                              [:collection.name :collection_name]]
-                            {:join [[:report_card :card] [:= :metabot_model_entity_id :card.id]
-                                    [:collection :collection] [:= :card.collection_id :collection.id]]
+                            {:left-join [[:report_card :card] [:= :model_id :card.id]
+                                         [:collection :collection] [:= :card.collection_id :collection.id]]
                              :where [:= :metabot_id id]
                              :limit limit
                              :offset offset
                              :order-by [[:name :asc]]})
         total (t2/count :model/MetabotEntity :metabot_id id)]
-    {:items entities
+    {:items (for [entity entities]
+              (cond-> entity
+                (nil? (:collection_id entity)) (assoc :collection_id (:id root-collection)
+                                                      :collection_name (:name root-collection))))
      :total total
      :limit limit
      :offset offset}))
@@ -109,34 +113,34 @@
    _query-params
    {:keys [items]} :- [:map
                        [:items [:sequential [:map
-                                             [:metabot_model_entity_id pos-int?]
+                                             [:id pos-int?]
                                              [:model [:enum "dataset" "metric"]]]]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
-    (doseq [{:keys [metabot_model_entity_id model]} items]
+    (doseq [{model-id :id model :model} items]
       (when-not (t2/exists? :model/MetabotEntity
                             :metabot_id id
                             :model model
-                            :metabot_model_entity_id metabot_model_entity_id)
+                            :model_id model-id)
         (t2/insert! :model/MetabotEntity
                     {:metabot_id id
                      :model model
-                     :metabot_model_entity_id metabot_model_entity_id}))))
+                     :model_id model-id}))))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:metabot-model-entity-id" :model #"dataset|metric"]
+(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:model-id" :model #"dataset|metric"]
   "Remove an entity from this metabot's access list"
-  [{:keys [id model metabot-model-entity-id]} :- [:map
-                                                  [:id pos-int?]
-                                                  [:model [:enum "dataset" "metric"]]
-                                                  [:metabot-model-entity-id pos-int?]]]
+  [{:keys [id model model-id]} :- [:map
+                                   [:id pos-int?]
+                                   [:model [:enum "dataset" "metric"]]
+                                   [:model-id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/delete! :model/MetabotEntity
               :metabot_id id
               :model model
-              :metabot_model_entity_id metabot-model-entity-id)
+              :model_id model-id)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

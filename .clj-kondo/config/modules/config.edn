@@ -1499,6 +1499,7 @@
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
+           collections
            config
            legacy-mbql
            lib

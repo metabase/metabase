@@ -18,13 +18,13 @@
                      :model/Card {card-id-1 :id} {:name "Test Card 1"
                                                   :collection_id collection-id}
                      :model/Card {card-id-2 :id} {:name "Test Card 2"
-                                                  :collection_id collection-id}
+                                                  :collection_id nil}
                      :model/MetabotEntity _ {:metabot_id metabot-id
                                              :model "dataset"
-                                             :metabot_model_entity_id card-id-1}
+                                             :model_id card-id-1}
                      :model/MetabotEntity _ {:metabot_id metabot-id
                                              :model "dataset"
-                                             :metabot_model_entity_id card-id-2}]
+                                             :model_id card-id-2}]
 
         (testing "should return entities for a metabot"
           (let [response (mt/user-http-request :crowberto :get 200
@@ -32,9 +32,9 @@
             (is (= 2 (:total response)))
             (is (= 2 (count (:items response))))
             (is (= #{card-id-1 card-id-2}
-                   (set (map :metabot_model_entity_id (:items response)))))
-            (is (every? #(= collection-id %) (map :collection_id (:items response))))
-            (is (every? #(= "Test Collection" %) (map :collection_name (:items response))))))
+                   (set (map :model_id (:items response)))))
+            (is (= #{collection-id "root"} (into #{} (map :collection_id (:items response)))))
+            (is (= #{"Test Collection" "Our analytics"} (into #{} (map :collection_name (:items response)))))))
 
         (testing "should support pagination"
           (let [response (mt/user-http-request :crowberto :get 200
@@ -64,8 +64,8 @@
                                                   :collection_id collection-id}]
 
         (testing "should add entities to metabot access list"
-          (let [entities {:items [{:metabot_model_entity_id (str card-id-1) :model "dataset"}
-                                  {:metabot_model_entity_id (str card-id-2) :model "dataset"}]}]
+          (let [entities {:items [{:id card-id-1 :model "dataset"}
+                                  {:id card-id-2 :model "dataset"}]}]
 
             ;; Make the API call to add entities
             (mt/user-http-request :crowberto :put 204
@@ -76,7 +76,7 @@
             (let [added-entities (t2/select :model/MetabotEntity
                                             :metabot_id metabot-id)]
               (is (= #{card-id-1 card-id-2}
-                     (set (map :metabot_model_entity_id added-entities))))
+                     (set (map :model_id added-entities))))
               (is (= [:dataset :dataset] (mapv :model added-entities))))))))))
 
 (deftest metabot-entities-put-duplicates-test
@@ -88,10 +88,10 @@
                                                   :collection_id collection-id}
                      :model/Card {card-id-2 :id} {:name "Test Card 2"
                                                   :collection_id collection-id}
-                     :model/MetabotEntity _ {:metabot_id metabot-id :metabot_model_entity_id card-id-1 :model "metric"}
-                     :model/MetabotEntity _ {:metabot_id metabot-id :metabot_model_entity_id card-id-2 :model "dataset"}]
+                     :model/MetabotEntity _ {:metabot_id metabot-id :model_id card-id-1 :model "metric"}
+                     :model/MetabotEntity _ {:metabot_id metabot-id :model_id card-id-2 :model "dataset"}]
         (testing "should not add duplicate entities"
-          (let [entities {:items [{:metabot_model_entity_id (str card-id-1) :model "metric"}]}] ;; This entity already exists
+          (let [entities {:items [{:id card-id-1 :model "metric"}]}] ;; This entity already exists
 
             ;; Make the API call again with an existing entity
             (mt/user-http-request :crowberto :put 204
@@ -112,7 +112,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403
                                        (format "ee/metabot-v3/metabots/%d/entities" metabot-id)
-                                       {:items [{:metabot_model_entity_id (str card-id-1) :model "metric"}]}))))))))
+                                       {:items [{:id (str card-id-1) :model "metric"}]}))))))))
 
 (deftest metabot-entities-put-404-non-existent-test
   (testing "PUT /api/ee/metabot-v3/metabots/:id/entities"
@@ -124,7 +124,7 @@
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
                                        (format "ee/metabot-v3/metabots/%d/entities" Integer/MAX_VALUE)
-                                       {:items [{:metabot_model_entity_id (str card-id-1) :model "dataset"}]}))))))))
+                                       {:items [{:id (str card-id-1) :model "dataset"}]}))))))))
 
 (deftest metabots-list-test
   (testing "GET /api/ee/metabot-v3/metabots"
@@ -155,10 +155,10 @@
                      :model/Card {card-id-2 :id} {:name "Test Card 2"
                                                   :collection_id collection-id}
                      :model/MetabotEntity _ {:metabot_id metabot-id
-                                             :metabot_model_entity_id card-id-1
+                                             :model_id card-id-1
                                              :model "dataset"}
                      :model/MetabotEntity {entity-id-2 :id} {:metabot_id metabot-id
-                                                             :metabot_model_entity_id card-id-2
+                                                             :model_id card-id-2
                                                              :model "metric"}]
 
         (testing "should delete the specified entity"
@@ -174,7 +174,7 @@
           (let [remaining-entities (t2/select :model/MetabotEntity :metabot_id metabot-id)]
             (is (= 1 (count remaining-entities)))
             (is (= entity-id-2 (:id (first remaining-entities))))
-            (is (= card-id-2 (:metabot_model_entity_id (first remaining-entities))))
+            (is (= card-id-2 (:model_id (first remaining-entities))))
             (is (= :metric (:model (first remaining-entities))))))
 
         (testing "should require superuser permissions"
