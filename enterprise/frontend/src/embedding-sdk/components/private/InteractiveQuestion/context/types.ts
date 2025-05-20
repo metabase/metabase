@@ -4,12 +4,12 @@ import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-loa
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
-  EntityTypeFilterKeys,
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk/types/question";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
@@ -18,7 +18,7 @@ type InteractiveQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypeFilter?: EntityTypeFilterKeys[];
+  entityTypeFilter?: EmbeddingEntityType[];
 
   /**
    * Whether to show the save button.

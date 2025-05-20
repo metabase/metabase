@@ -66,7 +66,7 @@ const interactiveEmbedSlice = createSlice({
     ) => {
       state.options = {
         ...state.options,
-        ...action.payload,
+        ...normalizeEntityTypes(action.payload),
       };
     },
   },
@@ -142,7 +142,7 @@ function normalizeEntityTypes(
     };
   }
 
-  return searchOptions;
+  return { ...searchOptions, entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES };
 }
 
 export const { setInitialUrlOptions, setOptions } =

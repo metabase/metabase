@@ -35,6 +35,34 @@ export default {
       control: { type: "radio" },
     },
     questionId: questionIdArgType,
+    entityTypeFilter: {
+      options: [
+        "model",
+        "table",
+        "model_table",
+        "empty",
+        "null",
+        "undefined",
+        "invalid",
+      ],
+      mapping: {
+        model: ["model"],
+        table: ["table"],
+        model_table: ["model", "table"],
+        empty: [],
+        null: null,
+        undefined: undefined,
+        invalid: ["metric", "question"],
+      },
+      control: {
+        type: "select",
+        labels: {
+          model: "Model only",
+          table: "Table only",
+          model_table: "Model and Table",
+        },
+      },
+    },
   },
 };
 
@@ -84,5 +112,8 @@ export const CreateQuestion = {
       </Box>
     );
   },
-  args: { questionId: "new" },
+  args: {
+    questionId: "new",
+    entityTypeFilter: ["model"],
+  },
 };
