@@ -6,7 +6,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Stack, Title } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
@@ -50,10 +50,6 @@ export const DataModel = ({ params }: Props) => {
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
       <Stack className={S.sidebar} flex="0 0 320px" gap={0} h="100%">
-        <Title order={2} px="xl" py="lg" pb="md">
-          {t`Data model`}
-        </Title>
-
         <RouterTablePicker
           databaseId={databaseId}
           schemaId={schemaId}

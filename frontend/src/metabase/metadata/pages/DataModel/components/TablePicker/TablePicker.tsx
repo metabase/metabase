@@ -22,7 +22,7 @@ export function TablePicker({
 
   return (
     <Stack mih={200} h="100%">
-      <Box px="xl">
+      <Box p="xl" pb={0}>
         <Input
           value={query}
           onChange={(evt) => setQuery(evt.target.value)}
