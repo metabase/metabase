@@ -444,8 +444,9 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
-  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
+export function clickActionsPopover() {
+  const selector = `${POPOVER_ELEMENT}[data-testid=click-actions-popover]`;
+  return cy.get(selector);
 }
 
 export function segmentEditorPopover() {
