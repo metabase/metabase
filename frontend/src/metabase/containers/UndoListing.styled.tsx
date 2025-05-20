@@ -29,7 +29,6 @@ export const ToastCard = styled(Card)<{
 }>`
   padding: 10px ${space(2)};
   margin-top: ${space(1)};
-  min-width: 310px;
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
   background-color: var(--mb-color-background-inverse);
   ${({ noBorder }) =>
