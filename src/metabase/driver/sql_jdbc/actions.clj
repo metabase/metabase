@@ -636,7 +636,7 @@
                  :op       :deleted
                  :row      (select-keys
                             (let [row before]
-                              ;; Hideous workaround for QP and direct JDBC disagreeing on case
+                              ;; Hideous workaround for QP and direct JDBC disagreeing on upper versus lower case.
                               (merge (update-keys row (comp keyword u/upper-case-en name))
                                      (u/lower-case-map-keys row)
                                      row))

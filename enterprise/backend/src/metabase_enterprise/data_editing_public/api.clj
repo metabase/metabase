@@ -27,7 +27,8 @@
           table-id (:table_id hook)
           inputs   (for [r rows]
                      {:table-id table-id, :row r})]
-      {:created (count (actions/perform-action! :table.row/create scope inputs {:user-id user-id}))})))
+      {:created (count (:outputs (actions/perform-action! :table.row/create scope inputs {:user-id user-id
+                                                                                          :policy :data-editing})))})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

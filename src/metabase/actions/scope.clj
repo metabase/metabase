@@ -78,4 +78,5 @@
                               (dissoc :database-id))
     (:dashboard-id scope) (dissoc :collection-id)
     (:dashcard-id scope)  (-> (dissoc :card-id)
-                              (dissoc :dashboard-id))))
+                              (dissoc :dashboard-id))
+    (:webhook-id scope)   (dissoc :table-id)))

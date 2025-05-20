@@ -332,16 +332,20 @@
           (is (= 75 (categories-row-count)))
           (is (= [{:table-id table-id, :op :deleted, :row {:id 75}}
                   {:table-id table-id, :op :deleted, :row {:id 74}}]
-                 (map u/lower-case-map-keys
-                      (:outputs
-                       (actions/perform-action! :table.row/delete
-                                                test-scope
-                                                [{:database (mt/id)
-                                                  :table-id table-id
-                                                  :arg      {(format-field-name :id) 75}}
-                                                 {:database (mt/id)
-                                                  :table-id table-id
-                                                  :arg      {(format-field-name :id) 74}}])))))
+                 (clojure.walk/postwalk
+                  (fn [x]
+                    (if (map? x)
+                      (u/lower-case-map-keys x)
+                      x))
+                  (:outputs
+                   (actions/perform-action! :table.row/delete
+                                            test-scope
+                                            [{:database (mt/id)
+                                              :table-id table-id
+                                              :arg      {(format-field-name :id) 75}}
+                                             {:database (mt/id)
+                                              :table-id table-id
+                                              :arg      {(format-field-name :id) 74}}])))))
           (is (= 73 (categories-row-count))))))))
 
 (deftest table-row-delete-failure-test
