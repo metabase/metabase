@@ -1,4 +1,4 @@
-(ns metabase.logger-test
+(ns metabase.logger.core-test
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -6,7 +6,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.test :as mt])
   (:import
    (org.apache.logging.log4j Level)

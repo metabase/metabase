@@ -106,7 +106,6 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.docs
-          metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
           metabase.api.routes.common
@@ -118,7 +117,6 @@
            config
            embedding
            events
-           logger
            models
            premium-features
            server
@@ -541,10 +539,14 @@
            util}}
 
   logger
-  {:api  #{metabase.logger
+  {:api  #{metabase.logger.api
+           metabase.logger.core
            metabase.logger.init}
-   :uses #{classloader
-           config}}
+   :uses #{analytics
+           api
+           classloader
+           config
+           util}}
 
   login-history
   {:api #{metabase.login-history.api
