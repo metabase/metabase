@@ -2,6 +2,7 @@ import produce from "immer";
 import { useState } from "react";
 import { t } from "ttag";
 
+import metabot from "assets/img/metabot-96x96.svg";
 import { useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -9,6 +10,7 @@ import {
   Center,
   Flex,
   Icon,
+  Image,
   Loader,
   Text,
   Title,
@@ -64,9 +66,13 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
   if (!display && !isLoading) {
     return (
       <Center h="100%" w="100%" mx="auto" className={className}>
-        <Flex direction="row" align="center" gap={20}>
-          <Icon c="text-light" name="arrow_left" size={30} />
-          <Title c="text-light">{t`Select a dataset to start`}</Title>
+        <Flex direction="column" align="center" gap={12}>
+          <Image src={metabot} mb={10} h={96} w={96} />
+          <Title size="h3" c="text">{t`Start by selecting a dataset`}</Title>
+          <Title
+            size="h5"
+            c="text-light"
+          >{t`Find something to visualize in the column on the left.`}</Title>
         </Flex>
       </Center>
     );
