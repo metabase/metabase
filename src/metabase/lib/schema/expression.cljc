@@ -141,9 +141,6 @@
 (mr/def ::temporal
   (expression-schema :type/Temporal "expression returning a date, time, or date time"))
 
-(mr/def ::*
-  (expression-schema :type/* "expression returning anything"))
-
 (def orderable-types
   "Set of base types that are orderable."
   #{:type/Text :type/Number :type/Temporal :type/Boolean :type/MongoBSONID})
