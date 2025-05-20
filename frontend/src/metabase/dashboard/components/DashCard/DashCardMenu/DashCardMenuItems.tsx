@@ -29,7 +29,7 @@ type DashCardMenuItemsProps = {
   isDownloadingData: boolean;
   onDownload: () => void;
   onEditVisualization?: () => void;
-  onOpenQuestion: (cardId: CardId | null) => void;
+  onOpenQuestion?: (cardId: CardId | null) => void;
   dashcardId?: DashCardId;
 };
 export const DashCardMenuItems = ({
@@ -164,7 +164,7 @@ export const DashCardMenuItems = ({
     );
   });
 
-  if (visualizerRawSeries.length > 0) {
+  if (visualizerRawSeries.length > 0 && onOpenQuestion) {
     elements.push(
       <Menu
         trigger="click-hover"

@@ -52,7 +52,7 @@ interface DashCardMenuProps {
   visualizationSettings?: VisualizationSettings;
   downloadsEnabled: boolean;
   onEditVisualization?: () => void;
-  onOpenQuestion: (cardId: CardId | null) => void;
+  onOpenQuestion?: (cardId: CardId | null) => void;
 }
 
 export type DashCardMenuItem = {
