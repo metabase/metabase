@@ -882,6 +882,25 @@
                 :column lib-col}]
               drills)))))
 
+(deftest ^:parallel foreign-key?-test
+  (let [products+orders-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                  (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                                             [(lib/=
+                                                               (meta/field-metadata :products :id)
+                                                               (meta/field-metadata :orders :product-id))])))
+        source-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns orders-query))
+        joined-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns products+orders-query))
+        source-table-pk       (m/find-first #(= (:id %) (meta/id :orders :id))
+                                            (lib/returned-columns orders-query))]
+    (testing "foreign key from source table"
+      (is (lib.drill-thru.common/foreign-key? orders-query -1 source-table-fk)))
+    (testing "foreign key from joined table"
+      (is (not (lib.drill-thru.common/foreign-key? products+orders-query -1 joined-table-fk))))
+    (testing "primary key from source table"
+      (is (not (lib.drill-thru.common/foreign-key? products+orders-query -1 source-table-pk))))))
+
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"
     (doseq [[input expected] [[:null nil]

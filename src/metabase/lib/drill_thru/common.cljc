@@ -10,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -51,6 +52,28 @@
   "Does the source table for this `query` have more than one primary key?"
   [query]
   (> (count (lib.metadata.calculation/primary-keys query)) 1))
+
+(defn primary-key?
+  "Is `column` a primary key of `query`?
+
+  Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] AND `column` is found in the list returned
+  by [[lib.metadata.calculation/primary-keys]]."
+  [query stage-number column]
+  (boolean (and (lib.types.isa/primary-key? column)
+                (->> query
+                     lib.metadata.calculation/source-table-fields-or-returned-columns
+                     (lib.equality/find-matching-column query stage-number column)))))
+
+(defn foreign-key?
+  "Is `column` a foreign key of `query`?
+
+  Returns true iff `column` satisfies [[lib.types.isa/foreign-key?]] AND `column` is found in the list returned
+  by [[lib.metadata.calculation/foreign-keys]]."
+  [query stage-number column]
+  (boolean (and (lib.types.isa/foreign-key? column)
+                (->> query
+                     lib.metadata.calculation/source-table-fields-or-returned-columns
+                     (lib.equality/find-matching-column query stage-number column)))))
 
 (defn drill-value->js
   "Convert a drill value to a JS value."
