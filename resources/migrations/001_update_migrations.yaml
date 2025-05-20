@@ -11406,13 +11406,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: model_type
+                  name: model
                   type: varchar(32)
                   remarks: The type of model this entity references
                   constraints:
                     nullable: false
               - column:
-                  name: model_id
+                  name: metabot_model_entity_id
                   type: int
                   remarks: The ID of the model this entity references
                   constraints:
@@ -11451,26 +11451,6 @@ databaseChangeLog:
                   name: metabot_id
 
   - changeSet:
-      id: v55.2025-05-19T16:49:48
-      author: edpaget
-      comment: Add index on metabot_entity.model_id and model_type
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabot_entity
-                indexName: idx_metabot_entity_model_id_model_type
-      changes:
-        - createIndex:
-            tableName: metabot_entity
-            indexName: idx_metabot_entity_model_id_model_type
-            columns:
-              - column:
-                  name: model_id
-              - column:
-                  name: model_type
-
-  - changeSet:
       id: v55.2025-05-19T16:49:49
       author: edpaget
       comment: Add foreign key constraint on metabot_entity.metabot_id
@@ -11488,6 +11468,50 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_metabot_entity_metabot_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v55.2025-05-19T16:50:49
+      author: edpaget
+      comment: Create the default metabot instances
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 2
+            sql: >-
+              SELECT COUNT(*) FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      rollback:
+        - sql:
+            sql: >-
+              DELETE metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Metabot'
+                  , 'Metabot instance for internal users.'
+                  , 'metabotmetabotmetabot'
+                  , now()
+                  , now()
+              );
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Embeddeded Metabot'
+                  , 'Metabot instance for embedded metabase users.'
+                  , 'embeddedmetabotmetabo'
+                  , now()
+                  , now()
+              );
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
