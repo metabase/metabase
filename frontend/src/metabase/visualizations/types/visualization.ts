@@ -314,6 +314,7 @@ export type VisualizationDefinition = {
   supportPreviewing?: boolean;
   supportsSeries?: boolean;
   supportsVisualizer?: boolean;
+  disableVisualizeAnotherWay?: boolean;
   disableReplaceCard?: boolean;
   disableNavigateToNewCardFromDashboard?: boolean;
 
