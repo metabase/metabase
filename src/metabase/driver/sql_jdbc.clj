@@ -287,3 +287,18 @@
   (if-let [sql-exception (extract-sql-exception e)]
     (impl-query-canceled? driver sql-exception)
     false))
+
+(defmulti impl-table-known-to-not-exist?
+  "Implementing multimethod for is table known to not exist. Use this instead of implementing
+  driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
+  based drivers."
+  {:added "0.53.17" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-table-known-to-not-exist? ::driver/driver [_ _] false)
+
+(defmethod driver/table-known-to-not-exist? :sql-jdbc [driver e]
+  (if-let [sql-exception (extract-sql-exception e)]
+    (impl-table-known-to-not-exist? driver sql-exception)
+    false))
