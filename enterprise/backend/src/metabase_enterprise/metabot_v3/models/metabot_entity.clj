@@ -19,6 +19,12 @@
 (t2/deftransforms :model/MetabotEntity
   {:model mi/transform-keyword})
 
+;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
+
+(defmethod serdes/hash-fields :model/MetabotEntity
+  [_table]
+  [:metabot_id :model :metabot_model_entity_id])
+
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defmethod serdes/generate-path "MetabotEntity" [_ entity]
