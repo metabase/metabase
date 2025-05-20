@@ -36,4 +36,15 @@ describe("LoadingView", () => {
       screen.getByText(/but is currently taking longer./),
     ).toBeInTheDocument();
   });
+
+  it("should show the usually slow message even when the expected duration is 0 (metabase#57869)", () => {
+    setup({
+      expectedDuration: 0,
+      isSlow: "usually-slow",
+    });
+
+    expect(
+      screen.queryByText(/This usually takes an average of 0 seconds/),
+    ).not.toBeInTheDocument();
+  });
 });
