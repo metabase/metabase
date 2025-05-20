@@ -1,9 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { c, t } from "ttag";
+import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
@@ -27,29 +29,33 @@ import type { MetabotEntity, MetabotId } from "metabase-types/api";
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
   return (
-    <Flex p="xl">
-      <MetabotNavPane />
-      <Stack px="xl">
-        <SettingHeader
-          id="configure-metabot"
-          title={t`Configure Metabot`}
-          // eslint-disable-next-line no-literal-metabase-strings -- admin settings
-          description={t`Metabot is Metabase's AI agent. To help Metabot more easily find and focus on the data you care about most, select the models and metrics it should be able to use to create queries.`}
-        />
-        <SettingHeader
-          id="allow-metabot"
-          title={t`Items Metabot is allowed to use`}
-        />
-        <MetabotConfigurationPane metabotId={metabotId} />
-      </Stack>
-    </Flex>
+    <ErrorBoundary>
+      <Flex p="xl">
+        <MetabotNavPane />
+        <Stack px="xl">
+          <SettingHeader
+            id="configure-metabot"
+            title={t`Configure Metabot`}
+            // eslint-disable-next-line no-literal-metabase-strings -- admin settings
+            description={t`Metabot is Metabase's AI agent. To help Metabot more easily find and focus on the data you care about most, select the models and metrics it should be able to use to create queries.`}
+          />
+          <SettingHeader
+            id="allow-metabot"
+            title={t`Items Metabot is allowed to use`}
+          />
+          <MetabotConfigurationPane metabotId={metabotId} />
+        </Stack>
+      </Flex>
+    </ErrorBoundary>
   );
 }
 
 function MetabotNavPane() {
-  const { data: metabots, isLoading } = useListMetabotsQuery();
+  const { data, isLoading } = useListMetabotsQuery();
   const metabotId = useMetabotIdPath();
   const dispatch = useDispatch();
+
+  const metabots = useMemo(() => _.sortBy(data?.items ?? [], "id"), [data]);
 
   useEffect(() => {
     const hasMetabotId = metabots?.some((metabot) => metabot.id === metabotId);
@@ -59,14 +65,14 @@ function MetabotNavPane() {
     }
   }, [metabots, metabotId, dispatch]);
 
-  if (isLoading || !metabots) {
+  if (isLoading || !data) {
     return <LoadingAndErrorWrapper loading />;
   }
 
   return (
     <Flex direction="column" w="266px" flex="0 0 auto">
       <LeftNavPane>
-        {metabots.map((metabot) => (
+        {metabots?.map((metabot) => (
           <LeftNavPaneItem
             key={metabot.id}
             name={metabot.name}
@@ -90,7 +96,10 @@ function MetabotConfigurationPane({
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
-  if (!metabotId || isLoading || !entityList) {
+  if (!metabotId) {
+    return null;
+  }
+  if (isLoading || !entityList) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -100,25 +109,29 @@ function MetabotConfigurationPane({
     const result = await addEntities({
       id: metabotId,
       entities: [
+        ...entityList?.items.map((e) =>
+          _.pick(e, ["model", "id", "metabot_model_entity_id"]),
+        ),
         {
-          model_id: entity.id,
-          model_type: entity.model,
+          metabot_model_entity_id: entity.id,
+          id: entity.id,
+          model: entity.model,
         },
       ],
     });
 
     if (result.error) {
       sendToast({ message: t`Error adding ${entity.name}`, icon: "warning" });
-      close();
     }
+    close();
   };
 
   return (
     <Stack>
       <Flex gap="md">
         <Text fw="bold">
-          {c("{0} is the number of items")
-            .t` ${entityList?.data?.length} items`}
+          {c("{0} is the number of items in a list")
+            .t`${entityList?.items?.length} items`}
         </Text>
         <Text>{t`We recommend keeping this to no more than 30.`}</Text>
       </Flex>
@@ -127,7 +140,7 @@ function MetabotConfigurationPane({
           {t`Add items`}
         </Button>
       </Box>
-      <MetabotEntitiesTable entities={entityList.data} />
+      <MetabotEntitiesTable entities={entityList.items} />
       {isOpen && (
         <QuestionPickerModal
           title={t`Select items`}
@@ -147,14 +160,24 @@ function MetabotConfigurationPane({
 function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
   const [deleteEntity] = useDeleteMetabotEntitiesMutation();
   const metabotId = useMetabotIdPath();
+  const [sendToast] = useToast();
 
-  const handleDelete = (entity: MetabotEntity) => {
+  const handleDelete = async (entity: MetabotEntity) => {
     if (metabotId) {
-      deleteEntity({
+      const result = await deleteEntity({
         metabotId,
         entityModel: entity.model,
-        entityId: entity.id,
+        entityId: entity.metabot_model_entity_id,
       });
+
+      if (result.error) {
+        sendToast({
+          message: t`Error removing ${entity.name}`,
+          icon: "warning",
+        });
+      } else {
+        sendToast({ message: t`Removed ${entity.name}` });
+      }
     }
   };
 
@@ -173,7 +196,15 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
       rowRenderer={(row) => (
         <tr key={row.id}>
           <td style={{ padding: "8px 16px" }}>
-            <Link to={modelToUrl(row) as string} variant="brand">
+            <Link
+              to={
+                modelToUrl({
+                  ...row,
+                  id: row.metabot_model_entity_id,
+                }) as string
+              }
+              variant="brand"
+            >
               <Flex align="center" gap="sm">
                 <Icon {...getIcon(row)} />
                 <Text>{row.name}</Text>

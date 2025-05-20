@@ -19,7 +19,7 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_METABOT.adminNavItem = [
     {
-      name: t`Ai`,
+      name: t`AI`,
       path: "/admin/metabot",
       key: "metabot",
     },
