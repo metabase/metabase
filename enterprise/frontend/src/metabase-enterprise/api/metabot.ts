@@ -19,7 +19,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         body,
       }),
     }),
-    listMetabots: builder.query<MetabotInfo[], void>({
+    listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
         url: "/api/ee/metabot-v3/metabots",
@@ -27,7 +27,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       providesTags: ["metabots-list"],
     }),
     listMetabotsEntities: builder.query<
-      { data: MetabotEntity[] & PaginationResponse },
+      { items: MetabotEntity[] & PaginationResponse },
       MetabotId
     >({
       query: (id: number) => ({
@@ -49,7 +49,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       query: ({ id, entities }) => ({
         method: "PUT",
         url: `/api/ee/metabot-v3/metabots/${id}/entities`,
-        body: entities,
+        body: { items: entities },
       }),
       invalidatesTags: ["metabot-entities-list"],
     }),
