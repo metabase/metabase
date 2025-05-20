@@ -414,3 +414,11 @@
 (def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial sql/call :quarter))
 (def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial sql/call :year))
 (def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial sql/call :concat))
+
+(defn current-datetime-honeysql-form
+  "HoneySQL form that should be used to get the current `datetime` (or equivalent), e.g. `:%now`."
+  [db-type]
+  (case db-type
+    :h2       (with-database-type-info :%now "timestamp")
+    :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
+    :postgres (with-database-type-info :%now "timestamptz")))
