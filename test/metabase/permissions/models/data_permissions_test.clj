@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]

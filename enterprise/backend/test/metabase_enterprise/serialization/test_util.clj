@@ -3,10 +3,10 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.names :as names]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
@@ -57,7 +57,7 @@
 (defn create! [model & {:as properties}]
   (first (t2/insert-returning-instances! model (merge (mt/with-temp-defaults model) properties))))
 
-(defn -data-source-url [^metabase.db.data_source.DataSource data-source]
+(defn -data-source-url [^metabase.app_db.data_source.DataSource data-source]
   (.url data-source))
 
 (defmacro with-db [data-source & body]
@@ -76,7 +76,7 @@
      ;; DB should stay open as long as `conn` is held open.
      (with-open [_conn (.getConnection data-source)]
        (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
-       (with-db data-source (mdb/finish-db-setup))
+       (with-db data-source (mdb/finish-db-setup!))
        (f data-source)))))
 
 (defn do-with-dbs

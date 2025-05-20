@@ -10,10 +10,10 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config :as config :refer [*request-id*]]
-   [metabase.db :as mdb]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -382,10 +382,10 @@
 
     ;; Try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`. Then see if
     ;; the root-level ancestor is a Personal Collection (Personal Collections can only exist in the Root Collection.)
-    (t2/exists? :model/Collection
-                :id                (first (location-path->ids
-                                           (:location collection)))
-                :personal_owner_id [:not= nil]))))
+    (when-let [id (first (location-path->ids (:location collection)))]
+      (t2/exists? :model/Collection
+                  :id                id
+                  :personal_owner_id [:not= nil])))))
 
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.

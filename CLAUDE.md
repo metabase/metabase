@@ -85,7 +85,7 @@ This ensures your changes maintain valid syntax and structure.
 2. Evaluate the file's namespace and make sure it loads correctly with:
 
 ```
-mage -repl --namespace metabase.db.connection
+mage -repl --namespace metabase.app-db.connection
 ```
 
 3. Call functions in the namespace with test inputs, and observe that the outputs are correct 3.1

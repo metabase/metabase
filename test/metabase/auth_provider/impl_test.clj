@@ -1,13 +1,13 @@
 (ns metabase.auth-provider.impl-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.api.database :as api.database]
    [metabase.auth-provider.impl :as auth-provider]
    [metabase.http-client :as client]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.warehouses.api :as api.database]))
 
 (deftest auth-integration-test
   (mt/test-drivers #{:postgres :mysql}

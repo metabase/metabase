@@ -25,7 +25,6 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.database :as database]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
@@ -44,6 +43,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
+   [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -579,7 +579,7 @@
                     (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
                     (testing "Connection succeeds and migration occurs"
                       (log/with-no-logs
-                        (log.capture/with-log-messages-for-level [messages [metabase.models.database :info]]
+                        (log.capture/with-log-messages-for-level [messages [metabase.warehouses.models.database :info]]
                           (is (= details-to-succeed
                                  (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
                                                                                   :details details))))

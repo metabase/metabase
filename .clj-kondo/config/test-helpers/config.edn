@@ -49,28 +49,30 @@
      metabase.actions.models/insert!
      metabase.analytics.snowplow-test/fake-track-event-impl!
      metabase.analytics.snowplow/track-event-impl!
+     metabase.app-db.core/finish-db-setup!
+     metabase.app-db.core/migrate!
+     metabase.app-db.core/setup-db!
+     metabase.app-db.schema-migrations-test.impl/run-migrations-in-range!
+     metabase.app-db.setup/migrate!
+     metabase.app-db.setup/setup-db!
      metabase.channel.email-test/reset-inbox!
      metabase.channel.email/send-email!
      metabase.cmd.dump-to-h2/dump-to-h2!
      metabase.cmd.load-from-h2/load-from-h2!
      metabase.content-verification.models.moderation-review/create-review!
      metabase.core.core/ensure-audit-db-installed!
-     metabase.db.schema-migrations-test.impl/run-migrations-in-range!
-     metabase.db.setup/migrate!
-     metabase.db.setup/setup-db!
-     metabase.db/migrate!
-     metabase.db/setup-db!
      metabase.driver.mongo-test/create-database-from-row-maps!
      metabase.driver.postgres-test/create-enums-db!
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
      metabase.indexed-entities.models.model-index/add-values!
+     metabase.driver.sql-jdbc.connection.ssh-tunnel-test/start-mock-servers!
+     metabase.driver.sql-jdbc.connection.ssh-tunnel-test/stop-mock-servers!
      metabase.indexed-entities.task.index-values/job-init!
      metabase.model-persistence.models.persisted-info/ready-database!
      metabase.model-persistence.task.persist-refresh/job-init!
      metabase.model-persistence.task.persist-refresh/refresh-tables!
      metabase.model-persistence.task.persist-refresh/schedule-persistence-for-database!
-     metabase.models.field-values/create-or-update-full-field-values!
      metabase.models.on-demand-test/add-dashcard-with-parameter-mapping!
      metabase.permissions.models.collection.graph-test/clear-graph-revisions!
      metabase.permissions.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
@@ -129,5 +131,4 @@
      metabase.test/with-temp-env-var-value!
      metabase.upload.impl-test/set-local-infile!
      metabase.util.files/create-dir-if-not-exists!
-     metabase.util.ssh-test/start-mock-servers!
-     metabase.util.ssh-test/stop-mock-servers!}}}}
+     metabase.warehouse-schema.models.field-values/create-or-update-full-field-values!}}}}

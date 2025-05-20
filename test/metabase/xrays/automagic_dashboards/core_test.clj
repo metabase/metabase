@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -11,11 +12,13 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -733,6 +736,20 @@
               (is (false? (str/ends-with? question-dashboard-name "question")))
               (is (false? (str/ends-with? question-dashboard-name "model")))
               (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
+
+(deftest model-based-automagic-dashboards-have-correct-parameter-mappings-test
+  (testing "Dashcard parameter mappings have valid targets when X-raying models (#58214)"
+    (mt/dataset test-data
+      (mt/with-temp
+        [:model/Card {model-id :id} {:table_id      (mt/id :orders)
+                                     :dataset_query (mt/mbql-query orders)
+                                     :type          :model}]
+        (is (vector? (-> (qp.card-test/run-query-for-card model-id) :data :results_metadata :columns)))
+        (let [model-card (t2/select-one :model/Card model-id)
+              dashboard (magic/automagic-analysis model-card nil)
+              parameter-mappings (eduction (comp (keep :parameter_mappings) cat) (:dashcards dashboard))
+              dimension? (mr/validator mbql.s/dimension)]
+          (is (every? (comp dimension? :target) parameter-mappings)))))))
 
 (deftest test-table-title-test
   (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"

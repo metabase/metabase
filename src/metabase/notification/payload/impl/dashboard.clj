@@ -2,10 +2,10 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
-   [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.send :as notification.send]
+   [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

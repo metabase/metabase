@@ -4,7 +4,7 @@
   (:require
    [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]

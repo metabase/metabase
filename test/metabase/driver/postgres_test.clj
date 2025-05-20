@@ -10,8 +10,8 @@
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
    [metabase.config :as config]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.sql :as driver.sql]
@@ -1356,7 +1356,7 @@
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
       (drop-if-exists-and-create-db! "composite-pks-test")
-      (with-redefs [metadata-queries/nested-field-sample-limit 4]
+      (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
           (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]

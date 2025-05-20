@@ -18,8 +18,6 @@ title: Driver interface changelog
 
 - Added the multi-method `adjust-schema-qualification` that allows drivers to to qualify, or unqualify table schemas based on enabling or disabling multi-level-schema support. Drivers may need to implement `sql.qp/->honeysql [driver ::h2x/identifier]` to properly quote fully qualified schemas.
 
-- Added a new abstract driver mix-in `:metabase.driver.sql.query-processor.boolean-is-comparison/boolean-is-comparison` that can be inherited by drivers that require boolean literal constants to be converted to comparison expressions in the top level of WHERE, AND, OR, NOT, and CASE clauses.
-
 - Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
 
 - Added a feature `:expressions/float` for drivers that support casting text to floats.
@@ -38,6 +36,21 @@ title: Driver interface changelog
   `site-uuid` now lives in `metabase.system.core`. If you were using this namespace, please update your code
   accordingly. You should be able to find the correct one by looking at how those settings are used in our first-party
   drivers.
+
+- The namespaces `metabase.models.field`, `metabase.models.field-values`, and `metabase.models.table` have been moved
+  to `metabase.warehouse-schema.field`, `metabase.warehouse-schema.field-values`, and
+  `metabase.warehouse-schema.table` respectively. You shouldn't use these namespaces directly in your drivers, but if
+  you did, please update your references.
+
+- `metabase.driver.sql.query-processor/->honeysql` is no longer supported for `:model/Table` (support for this was
+  deprecated in 0.48.0) -- methods for this will no longer be used; if you have such a method, migrate it to
+  `:metadata/table` instead. If you have a `:model/Table` and need a `:metadata/table` instead (such as in
+  implementations of `metabase.driver/table-rows-seq`) you can use `metabase.lib.metadata/table`.
+
+- `metabase.db.metadata-queries` has been removed; the parts meant for usage by drivers have been moved to
+  `metabase.driver.common.table-rows-sample`.
+
+- `metabase.util.ssh` has been moved to `metabase.driver.sql-jdbc.connection.ssh-tunnel`.
 
 ## Metabase 0.54.0
 
