@@ -1801,7 +1801,10 @@
 
   enterprise/tenants
   {:api #{}
-   :uses #{api util request}}
+   :uses #{api
+           models
+           util
+           request}}
 
   enterprise/upload-management
   {:team "Admin Webapp"
