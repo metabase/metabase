@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   Fragment,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -11,7 +12,6 @@ import {
   type TransitionStatus,
 } from "react-transition-group";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
@@ -40,7 +40,6 @@ import {
 } from "./UndoListing.styled";
 
 const TOAST_TRANSITION_DURATION = 300;
-const TOAST_TRANSITION_DELAY = 1;
 const MARGIN = 8;
 
 function DefaultMessage({
@@ -166,6 +165,7 @@ export function UndoListing() {
 }
 
 const target = document.createElement("div");
+document.body.appendChild(target);
 
 // The react transition group state transitions are flaky in cypress
 // so disable them for altogether.
@@ -180,18 +180,18 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
-  // lastId changes when a new undo is added
+  const ref = useRef<HTMLUListElement>(null);
   const prevUndos = useRef<Undo[]>([]);
 
-  const ref = useRef<HTMLUListElement>(null);
   const [heights, setHeights] = useState<number[]>([]);
+  const [transitionState, setTransitionState] = useState<
+    Record<string, boolean>
+  >({});
 
-  const [extendedUndos, setExtendedUndos] =
-    useState<(Undo & { in?: boolean })[]>(undos);
-
-  useLayoutEffect(() => {
+  useEffect(() => {
     // When a new undo is added, we move the Portals' target to the
-    // end of the body so that its' children render on top.
+    // end of the body so that its renders on top of the z-index stack, and
+    // thus on top of any other overlays.
     //
     // To be reliable this needs to happen after other renders have settled,
     // so we do this in a timeout. Otherwise there might be other Portals
@@ -200,38 +200,38 @@ export function UndoListOverlay({
     // To avoid resetting the transition state of the toasts, we track the
     // when the target was appended to the body and only enable the transition
     // once the target has been appended (via the custom in: prop on the Undo).
-    const prev = prevUndos.current;
+    const prev = prevUndos.current ?? [];
     prevUndos.current = undos;
 
-    if (_.isEqual(undos, prev)) {
-      // the undo list has not changed, we do not need to move the target
+    if (prev.length >= undos.length) {
+      // Avoid moving the portal if we're not adding new undos.
+      // Undos transitioning out do not need to be rendered on top.
       return;
     }
 
-    const t = setTimeout(() => {
+    const timeout = setTimeout(() => {
       document.body.appendChild(target);
-      setExtendedUndos(undos.map((undo) => ({ ...undo, in: true })));
-    }, TOAST_TRANSITION_DELAY);
-    return () => clearTimeout(t);
+
+      // Allow new items to transition
+      setTransitionState(function (prevState) {
+        const newState = Object.fromEntries(
+          undos.map((undo) => [undo.id, true]),
+        );
+        return { ...prevState, ...newState };
+      });
+    }, 1);
+    return () => clearTimeout(timeout);
   }, [undos]);
 
   useLayoutEffect(() => {
     // We measure the height of all toasts so we know where to render
     // the next one.
-    const els = Array.from(
-      ref.current?.querySelectorAll("[data-testid='toast-undo']") ?? [],
+    setHeights(
+      undos
+        .map((undo) => undo.ref?.current?.getBoundingClientRect().height ?? 0)
+        .filter((height) => height > 0),
     );
-
-    const newHeights = els
-      .map((el) => {
-        return el.getBoundingClientRect().height;
-      })
-      .filter((height) => height > 0);
-
-    if (!_.isEqual(heights, newHeights)) {
-      setHeights(newHeights);
-    }
-  }, [extendedUndos, heights]);
+  }, [undos]);
 
   function heightAtIndex(index: number) {
     return heights.reduce((acc, height, idx) => {
@@ -251,28 +251,31 @@ export function UndoListOverlay({
         className={ZIndex.Overlay}
       >
         <Group appear enter exit component={null}>
-          {extendedUndos.map((undo, index) => (
-            <Transition
-              key={undo._domId}
-              in={undo.in}
-              timeout={{
-                enter: 0,
-                exit: TOAST_TRANSITION_DURATION,
-              }}
-              nodeRef={undo.ref}
-              mountOnEnter
-              unmountOnExit
-            >
-              {(state) => (
-                <UndoToast
-                  undo={undo}
-                  onUndo={() => onUndo(undo)}
-                  onDismiss={() => onDismiss(undo)}
-                  style={transition(state, heightAtIndex(index))}
-                />
-              )}
-            </Transition>
-          ))}
+          {undos.map(
+            (undo, index) =>
+              transitionState[undo.id] && (
+                <Transition
+                  key={undo._domId}
+                  in
+                  timeout={{
+                    enter: 0,
+                    exit: TOAST_TRANSITION_DURATION,
+                  }}
+                  nodeRef={undo.ref}
+                  mountOnEnter
+                  unmountOnExit
+                >
+                  {(state) => (
+                    <UndoToast
+                      undo={undo}
+                      onUndo={() => onUndo(undo)}
+                      onDismiss={() => onDismiss(undo)}
+                      style={transition(state, heightAtIndex(index))}
+                    />
+                  )}
+                </Transition>
+              ),
+          )}
         </Group>
       </UndoList>
     </Portal>
@@ -289,7 +292,7 @@ function transition(state: TransitionStatus, bottom: number) {
   if (state === "entering") {
     return {
       opacity: 0,
-      transform: `translate(-20px, ${-bottom}px)`,
+      transform: `translate(-30px, ${-bottom}px)`,
       zIndex: 1,
     };
   }
@@ -315,7 +318,7 @@ function transition(state: TransitionStatus, bottom: number) {
   if (state === "exited") {
     return {
       opacity: 0,
-      transform: `translate(0, ${-bottom}px)`,
+      transform: `translate(-30px, ${-bottom}px)`,
       transition,
       zIndex: 1,
     };
