@@ -281,8 +281,7 @@
                                                  (for [table old-tables]
                                                    (-> table
                                                        (dissoc :id)
-                                                       (assoc :db_id new-db-id
-                                                              :entity_id (u/generate-nano-id))))))]
+                                                       (assoc :db_id new-db-id)))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
 
