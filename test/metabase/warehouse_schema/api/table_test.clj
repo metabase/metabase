@@ -603,7 +603,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
