@@ -484,11 +484,12 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       getSdkRoot().within(() => {
         H.assertElementNeverExists({
-          selector: "[data-testid='sdk-error-container']",
+          shouldNotExistSelector: "[data-testid='sdk-error-container']",
+          successSelector: "[data-testid='table-header']",
           rejectionMessage:
             "sdk errors should not show up when rendering an interactive question in strict mode",
           pollInterval: 20,
-          timeout: 500,
+          timeout: 15000,
         });
 
         cy.log("should show the question's visualization");

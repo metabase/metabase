@@ -59,41 +59,47 @@ export function isFixedPositionElementVisible(element: HTMLElement): boolean {
  * Asserts that an element never exists from when this assertion was called
  * up until the timeout expires, checked at every polling interval.
  *
- * @param selector - selector of the element to check for
+ * @param shouldNotExistSelector - selector of the element that should not exist
+ * @param successSelector - selector of the element that when present, marks the assertion as successful
  * @param rejectionMessage - message to reject with if the element exists
  * @param pollInterval - how often to check for the element
- * @param timeout - how long to wait for the element to not exist
+ * @param timeout - how long to wait before failing the test
  */
 export function assertElementNeverExists({
-  selector,
+  shouldNotExistSelector,
+  successSelector,
   rejectionMessage,
   pollInterval,
   timeout,
 }: {
-  selector: string;
+  shouldNotExistSelector: string;
+  successSelector: string;
   rejectionMessage: string;
   pollInterval: number;
   timeout: number;
 }) {
   cy.window().then((win) => {
     return new Cypress.Promise((resolve, reject) => {
-      let foundError = false;
-
       const checkInterval = setInterval(() => {
-        const errorMessage = win.document.querySelector(selector);
+        const shouldNotExistElement = win.document.querySelector(
+          shouldNotExistSelector,
+        );
+        const successElement = win.document.querySelector(successSelector);
 
-        if (errorMessage) {
-          foundError = true;
+        if (shouldNotExistElement) {
           clearInterval(checkInterval);
           reject(new Error(rejectionMessage));
+        } else if (successElement) {
+          clearInterval(checkInterval);
+          resolve();
         }
       }, pollInterval);
 
       setTimeout(() => {
+        const timeoutMessage = `timeout exceeded after ${timeout}ms. expect "${successSelector}" to eventually exist.`;
+
         clearInterval(checkInterval);
-        if (!foundError) {
-          resolve();
-        }
+        reject(new Error(timeoutMessage));
       }, timeout);
     });
   });
