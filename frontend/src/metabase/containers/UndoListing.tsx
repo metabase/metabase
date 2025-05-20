@@ -170,6 +170,16 @@ document.body.appendChild(target);
 // The react transition group state transitions are flaky in cypress
 // so disable them for altogether.
 const Group = "Cypress" in window ? Fragment : TransitionGroup;
+const Item =
+  "Cypress" in window
+    ? function MockItem({
+        children,
+      }: {
+        children: (state: TransitionStatus) => ReactNode;
+      }) {
+        return children("entered");
+      }
+    : Transition;
 
 export function UndoListOverlay({
   undos,
@@ -200,16 +210,16 @@ export function UndoListOverlay({
     // To avoid resetting the transition state of the toasts, we track the
     // when the target was appended to the body and only enable the transition
     // once the target has been appended (via the custom in: prop on the Undo).
-    const prev = prevUndos.current ?? [];
-    prevUndos.current = undos;
-
-    if (prev.length >= undos.length) {
-      // Avoid moving the portal if we're not adding new undos.
-      // Undos transitioning out do not need to be rendered on top.
-      return;
-    }
-
     const timeout = setTimeout(() => {
+      const prev = prevUndos.current ?? [];
+      prevUndos.current = undos;
+
+      if (prev.length >= undos.length) {
+        // Avoid moving the portal if we're not adding new undos.
+        // Undos transitioning out do not need to be rendered on top.
+        return;
+      }
+
       document.body.appendChild(target);
 
       // Allow new items to transition
@@ -254,7 +264,7 @@ export function UndoListOverlay({
           {undos.map(
             (undo, index) =>
               transitionState[undo.id] && (
-                <Transition
+                <Item
                   key={undo._domId}
                   in
                   timeout={{
@@ -273,7 +283,7 @@ export function UndoListOverlay({
                       style={transition(state, heightAtIndex(index))}
                     />
                   )}
-                </Transition>
+                </Item>
               ),
           )}
         </Group>
