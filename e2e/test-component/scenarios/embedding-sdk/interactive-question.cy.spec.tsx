@@ -475,4 +475,27 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     });
   });
+
+  it("should not show any sdk error when showing a question in strict mode", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        strictMode: true,
+      });
+
+      getSdkRoot().within(() => {
+        H.assertElementNeverExists({
+          shouldNotExistSelector: "[data-testid='sdk-error-container']",
+          successSelector: "[data-testid='table-header']",
+          rejectionMessage:
+            "sdk errors should not show up when rendering an interactive question in strict mode",
+          pollInterval: 20,
+          timeout: 15000,
+        });
+
+        cy.log("should show the question's visualization");
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
+      });
+    });
+  });
 });
