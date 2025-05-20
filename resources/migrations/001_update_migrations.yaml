@@ -11323,6 +11323,80 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  - changeSet:
+      id: v55.2025-05-20T10:00:00
+      author: ranquild
+      comment: Drop metabase_database.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T11:00:00
+      author: ranquild
+      comment: Drop metabase_table.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_table
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T12:00:00
+      author: ranquild
+      comment: Drop metabase_field.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_field
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
