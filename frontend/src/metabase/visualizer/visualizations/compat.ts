@@ -69,45 +69,10 @@ export function groupColumnsBySuitableVizSettings(
   }
 
   if (isCartesianChart(display)) {
-    const ownDimensions = ownColumns.filter(
-      (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-    );
-
-    if (ownDimensions.length === 0) {
+    const hasCompatibleDimensions =
+      checkDimensionCompatibilityForCartesianCharts(ownColumns, columns);
+    if (!hasCompatibleDimensions) {
       return {};
-    }
-
-    const dimensions = columns.filter(
-      (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-    );
-    const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
-      isDate(col),
-    );
-
-    if (timeDimensions.length > 0) {
-      const isCompatible = ownColumns.some((field) => isDate(field));
-      if (!isCompatible) {
-        return {};
-      }
-    }
-
-    if (otherDimensions.length > 0) {
-      const isCompatible = otherDimensions.every((dimension) =>
-        ownColumns.some((field) => dimension.id && field.id === dimension.id),
-      );
-      if (!isCompatible) {
-        return {};
-      }
-    }
-
-    const ownOtherDimensions = ownDimensions.filter((col) => !isDate(col));
-    if (ownOtherDimensions.length > 0) {
-      const isCompatible = ownOtherDimensions.every((dimension) =>
-        columns.some((field) => dimension.id && field.id === dimension.id),
-      );
-      if (!isCompatible) {
-        return {};
-      }
     }
   }
 
@@ -134,4 +99,52 @@ export function groupColumnsBySuitableVizSettings(
   } else {
     return {};
   }
+}
+
+function checkDimensionCompatibilityForCartesianCharts(
+  ownColumns: DatasetColumn[],
+  columns: DatasetColumn[] | Field[],
+) {
+  const ownDimensions = ownColumns.filter(
+    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
+  );
+
+  if (ownDimensions.length === 0) {
+    return false;
+  }
+
+  const ownOtherDimensions = ownDimensions.filter((col) => !isDate(col));
+  if (ownOtherDimensions.length > 0) {
+    const isCompatible = ownOtherDimensions.every((dimension) =>
+      columns.some((field) => dimension.id && field.id === dimension.id),
+    );
+    if (!isCompatible) {
+      return false;
+    }
+  }
+
+  const dimensions = columns.filter(
+    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
+  );
+  const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
+    isDate(col),
+  );
+
+  if (timeDimensions.length > 0) {
+    const isCompatible = ownColumns.some((field) => isDate(field));
+    if (!isCompatible) {
+      return false;
+    }
+  }
+
+  if (otherDimensions.length > 0) {
+    const isCompatible = otherDimensions.every((dimension) =>
+      ownColumns.some((field) => dimension.id && field.id === dimension.id),
+    );
+    if (!isCompatible) {
+      return false;
+    }
+  }
+
+  return true;
 }
