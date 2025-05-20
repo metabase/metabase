@@ -631,5 +631,7 @@
                                    #_(add-pivot-group-breakout 0))
              all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)
-             res               (process-multiple-queries all-queries rff column-mapping-fn)]
-         res)))))
+             _ (def pivot-opts pivot-opts)
+             _ (def query query)
+             _ (def all-queries all-queries)]
+         (process-multiple-queries all-queries rff column-mapping-fn))))))
