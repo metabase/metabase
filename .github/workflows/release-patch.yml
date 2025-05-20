@@ -8,6 +8,10 @@ on:
         description: 'Major Metabase version (e.g. 45, 52, 68)'
         type: number
         required: true
+      allow_red_patch:
+        description: DANGEROUSLY allow releasing from the last commit, regardless of the state of CI
+        type: boolean
+        default: false
   schedule:
     - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
 
@@ -52,29 +56,39 @@ jobs:
                 branch: `release-x.${majorVersion}.x`,
               });
 
+              const latestCommit = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/release-x.${majorVersion}.x`,
+              });
+
+              const releaseCommit = String(context.payload.inputs.allow_red_patch) === "true"
+                ? latestCommit.data.object.sha
+                : goodCommit;
+
               const hasBeenReleased = await hasCommitBeenReleased({
                 github,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: goodCommit,
+                ref: releaseCommit,
                 majorVersion: Number(majorVersion),
               });
 
-              if (nextPatch && goodCommit && !hasBeenReleased) {
+              if (nextPatch && releaseCommit && !hasBeenReleased) {
                 await github.rest.actions.createWorkflowDispatch({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: 'tag-for-release.yml',
                   ref: 'refs/heads/master',
                   inputs: {
-                    commit: goodCommit,
+                    commit: releaseCommit,
                     version: nextPatch,
                     auto: true,
                   }
                 });
               } else {
                 console.log(
-                  { nextPatch, goodCommit, hasBeenReleased }
+                  { nextPatch, goodCommit, releaseCommit, hasBeenReleased }
                 );
                 console.error(`No new patch version or no green commit found for v${majorVersion}`);
               }
