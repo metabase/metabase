@@ -13,6 +13,7 @@
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -286,6 +287,7 @@
                     :model/SearchIndexMetadata
                     :engine :appdb
                     :version *index-version-id*
+                    :lang_code (i18n/site-locale-string)
                     :status :active
                     {:order-by [[:created_at :desc]]}))
 

@@ -1,4 +1,4 @@
-(ns metabase.models.dimension
+(ns metabase.warehouse-schema.models.dimension
   "Dimensions are used to define remappings for Fields handled automatically when those Fields are encountered by the
   Query Processor. For a more detailed explanation, refer to the documentation in
   `metabase.query-processor.middleware.add-dimension-projections`."
@@ -28,8 +28,6 @@
   [(serdes/hydrated-hash :field)
    (serdes/hydrated-hash :human_readable_field)
    :created_at])
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]
