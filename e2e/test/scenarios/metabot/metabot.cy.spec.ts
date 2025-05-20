@@ -1,5 +1,6 @@
 import {
   assertChatVisibility,
+  chatMessages,
   closeMetabotViaCloseButton,
   closeMetabotViaShortcutKey,
   metabotChatInput,
@@ -10,7 +11,6 @@ import {
   restore,
   sendMetabotMessage,
   setTokenFeatures,
-  userMessages,
 } from "e2e/support/helpers";
 
 describe("Metabot UI", () => {
@@ -56,7 +56,7 @@ describe("Metabot UI", () => {
 
     it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
       openMetabotViaNewMenu();
-      userMessages().should("not.exist");
+      chatMessages().should("not.exist");
 
       mockMetabotResponse({
         statusCode: 200,
@@ -68,7 +68,7 @@ describe("Metabot UI", () => {
       metabotChatInput()
         .should("have.attr", "placeholder")
         .and("eq", "Doing science...");
-      userMessages()
+      chatMessages()
         .should("exist")
         .should("have.text", "You are... but don't tell anyone!");
 
@@ -77,7 +77,7 @@ describe("Metabot UI", () => {
         body: whoIsYourFavoriteResponse,
       });
       sendMetabotMessage("Who is your favorite?");
-      userMessages()
+      chatMessages()
         .should("exist")
         .should("have.text", "I'm currently offline, try again later.");
     });

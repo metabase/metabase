@@ -183,5 +183,10 @@ export const stopProcessing = () => (dispatch: Dispatch) => {
 export const stopProcessingAndNotify =
   (message?: string) => (dispatch: Dispatch) => {
     dispatch(stopProcessing());
-    dispatch(addAgentMessage(message || t`I can’t do that, unfortunately.`));
+    dispatch(
+      addAgentMessage({
+        type: "error",
+        message: message || t`I can’t do that, unfortunately.`,
+      }),
+    );
   };

@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import type { MetabotStoreState } from "./types";
 
@@ -13,6 +14,22 @@ export const getMetabotVisible = createSelector(
 export const getMessages = createSelector(
   getMetabot,
   (metabot) => metabot.messages,
+);
+
+// TODO: unit test this
+export const getLastAgentMessagesByType = createSelector(
+  getMessages,
+  (messages) => {
+    const lastMessage = _.last(messages);
+    if (!lastMessage || lastMessage.actor === "user") {
+      return [];
+    }
+
+    const start = messages.findLastIndex(
+      (msg) => msg.actor === "agent" && msg.type === lastMessage.type,
+    );
+    return messages.slice(start).map(({ message }) => message);
+  },
 );
 
 export const getIsProcessing = createSelector(

@@ -10,6 +10,7 @@ import {
 
 import {
   getIsProcessing,
+  getLastAgentMessagesByType,
   getMessages,
   getMetabotVisible,
   resetConversation,
@@ -44,6 +45,9 @@ export const useMetabotAgent = () => {
       [dispatch],
     ),
     messages,
+    lastAgentMessages: useSelector(
+      getLastAgentMessagesByType as any,
+    ) as ReturnType<typeof getLastAgentMessagesByType>,
     isLongConversation: messages.length > 6, // TODO: figure out how we want to calculate this
     resetConversation: () => dispatch(resetConversation()),
     submitInput: useCallback(

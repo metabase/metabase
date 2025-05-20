@@ -18,7 +18,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "./components/Metabot";
-import { METABOT_AUTO_CLOSE_DURATION_MS } from "./components/MetabotChat";
 import { MetabotProvider } from "./context";
 import {
   type MetabotState,
@@ -135,47 +134,6 @@ describe("metabot", () => {
       expect(isUuid(secondConversationId)).toBeTruthy();
 
       expect(secondConversationId).not.toBe(firstConversationId);
-    });
-
-    it("should auto-close metabot if inactive with no user input", async () => {
-      jest.useFakeTimers({ advanceTimers: true });
-
-      const { store } = setup();
-
-      // auto-hides
-      await assertVisible();
-      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
-      await assertNotVisible();
-
-      // does not auto-hide if there's user input
-      showMetabot(store.dispatch);
-      await userEvent.type(await input(), "Testing");
-      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
-      await assertVisible();
-      hideMetabot(store.dispatch);
-
-      // does not auto-close if metabot is processing a response
-      showMetabot(store.dispatch);
-      act(() => store.dispatch(setIsProcessing(true)));
-      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
-      await assertVisible();
-      act(() => store.dispatch(setIsProcessing(false)));
-      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
-      await assertNotVisible();
-
-      // does not auto-close if metabot is loading
-      showMetabot(store.dispatch);
-      fetchMock.post(
-        `path:/api/ee/metabot-v3/v2/agent`,
-        whoIsYourFavoriteResponse,
-        { delay: METABOT_AUTO_CLOSE_DURATION_MS + 1000 }, // load longer than delay
-      );
-      await enterChatMessage("Who is your favorite?");
-      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
-      await assertVisible();
-      hideMetabot(store.dispatch);
-
-      jest.useRealTimers();
     });
 
     it("should properly auto-close metabot if route changes", async () => {

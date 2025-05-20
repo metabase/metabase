@@ -10,10 +10,10 @@ import { useMetabotAgent } from "../hooks";
 import { MetabotChat } from "./MetabotChat";
 
 interface MetabotProps {
-  isAdminApp: boolean;
+  hide?: boolean;
 }
 
-export const Metabot = ({ isAdminApp }: MetabotProps) => {
+export const Metabot = ({ hide }: MetabotProps) => {
   const currentUser = useSelector(getCurrentUser);
 
   const { visible, setVisible } = useMetabotAgent();
@@ -33,14 +33,14 @@ export const Metabot = ({ isAdminApp }: MetabotProps) => {
 
   useEffect(
     function autoCloseOnAdmin() {
-      if (isAdminApp) {
+      if (hide) {
         setVisible(false);
       }
     },
-    [isAdminApp, setVisible],
+    [hide, setVisible],
   );
 
-  if (!visible || isAdminApp) {
+  if (!visible || hide) {
     return null;
   }
 

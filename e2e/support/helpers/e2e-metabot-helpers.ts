@@ -65,7 +65,7 @@ export function sendMetabotMessage(input: string) {
     .type("{Enter}");
 }
 
-export function userMessages() {
+export function chatMessages() {
   return cy.findAllByTestId("metabot-chat-message");
 }
 

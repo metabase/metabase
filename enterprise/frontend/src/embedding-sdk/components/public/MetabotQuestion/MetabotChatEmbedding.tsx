@@ -106,11 +106,11 @@ export const MetabotChatEmbedding = ({
   }, [dispatch]);
 
   useEffect(() => {
-    const normalizedMessages = metabot.userMessages.filter(
+    const normalizedMessages = metabot.lastAgentMessages.filter(
       (message) => message !== METABOT_RESULTS_MESSAGE,
     );
     onMessages(normalizedMessages);
-  }, [metabot.userMessages, onMessages]);
+  }, [metabot.lastAgentMessages, onMessages]);
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">

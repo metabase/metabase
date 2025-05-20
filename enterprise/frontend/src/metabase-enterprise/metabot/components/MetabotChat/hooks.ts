@@ -42,8 +42,9 @@ export function useAutoscrollMessages(
       if (shouldAutoScroll) {
         const userMessages =
           scrollContainerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
+        const lastUserMessage = _.last(userMessages);
 
-        const distanceFromTop = _.last(userMessages)?.offsetTop ?? 0;
+        const distanceFromTop = lastUserMessage?.offsetTop ?? 0;
         const headerHeight =
           headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
 
