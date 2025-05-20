@@ -178,6 +178,7 @@ const TemplateToolbarButton = React.forwardRef<
   return (
     <Tooltip label={label} ref={ref}>
       <ActionIcon
+        aria-label={label}
         size={size}
         variant="viewHeader"
         style={{
@@ -239,7 +240,7 @@ const TemplateInfoTooltip = ({ context }: TemplateInfoTooltipProps) => {
               textDecoration: "underline",
             }}
           >
-            Handlebars
+            {t`Handlebars`}
           </a>
         )} syntax.`}</Text>
         <Text>{jt`Use ${(<code key="brackets">{"{{ }}"}</code>)} to reference fields, ${(<code key="key">{"@key"}</code>)} and ${(<code key="value">{"@value"}</code>)} when iterating over objects, or ${(<code key="index">{"@index"}</code>)} for arrays.`}</Text>
@@ -254,7 +255,7 @@ const TemplateInfoTooltip = ({ context }: TemplateInfoTooltipProps) => {
               textDecoration: "underline",
             }}
           >
-            this formatting reference
+            {t`this formatting reference`}
           </a>
         )}.`}</Text>
         <Text>{t`Example payload for selected alert:`}</Text>
@@ -684,12 +685,16 @@ export const NotificationChannelsPicker = ({
                 <Stack gap="xs">
                   <Text size="sm" fw={700}>{t`Subject`}</Text>
                   <TemplateEditor
+                    data-testid="email-template-subject"
                     variant="textinput"
                     placeholder={t`Alert from {{payload.result.table.name}} table`}
                     templateContext={templateContext["channel/email"]}
                     defaultValue={getTemplateValue("email", "subject")}
                     onChange={(value) => {
                       handleTemplateChange("email", "subject", value, true);
+                    }}
+                    onBlur={(value) => {
+                      handleTemplateChange("email", "subject", value);
                     }}
                     onFocus={(initialValue) => {
                       handleTemplateChange(
@@ -711,6 +716,7 @@ export const NotificationChannelsPicker = ({
                   <Text size="sm" fw={700}>{t`Message`}</Text>
                   <TemplateEditor
                     variant="textarea"
+                    data-testid="email-template-body"
                     placeholder={t`Your custom email template`}
                     templateContext={templateContext["channel/email"]}
                     minHeight="10rem"
@@ -780,11 +786,15 @@ export const NotificationChannelsPicker = ({
               <Stack gap="xs">
                 <Text size="sm" fw={700}>{t`Message`}</Text>
                 <TemplateEditor
+                  data-testid="slack-template-body"
                   minHeight="10rem"
                   height="10rem"
-                  placeholder={t`Your custom Markdown template`}
+                  placeholder={t`Your custom Slack template`}
                   templateContext={templateContext["channel/slack"]}
                   defaultValue={getTemplateValue("slack", "body")}
+                  onFocus={(value) => {
+                    handleTemplateChange("slack", "body", value, true);
+                  }}
                   onChange={(value) => {
                     handleTemplateChange("slack", "body", value, true);
                   }}

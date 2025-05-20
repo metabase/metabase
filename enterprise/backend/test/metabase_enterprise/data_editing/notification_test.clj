@@ -160,7 +160,7 @@
                              message)))
     :channel/email (fn [[email :as emails]]
                      (is (= 1 (count emails)))
-                     (is (=? {:subject "A new record was deleted from \"CATEGORIES\" by Crowberto Corv"
+                     (is (=? {:subject "A record was deleted from \"CATEGORIES\" by Crowberto Corv"
                               :body    [{"<strong>A record was <i>deleted</i></strong> in <span[^>]*>Table CATEGORIES</span> by Crowberto Corv" true
                                          "Field" true
                                          "Value" true

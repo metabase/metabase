@@ -611,9 +611,7 @@ export const CreateOrEditTableNotificationModal = ({
             (isEditMode && !hasChanges)
           }
           onClickOperation={onCreateOrEditAlert}
-        >
-          {isEditMode ? t`Update` : t`Create`}
-        </ButtonWithStatus>
+        />
       </Flex>
 
       {hasChanges && (
