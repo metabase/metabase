@@ -5,8 +5,13 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.request.core :as request]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(def ^:private Slug (mu/with-api-error-message tenant/Slug
+                                               (deferred-tru "invalid slug")))
 
 (api.macros/defendpoint :post "/"
   "Create a new Tenant"
@@ -14,7 +19,7 @@
    _query-params
    tenant :- [:map {:closed true}
               [:name ms/NonBlankString]
-              [:slug ms/NonBlankString]]]
+              [:slug Slug]]]
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
   (t2/insert! :model/Tenant tenant))

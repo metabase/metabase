@@ -2,10 +2,21 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
+
+(def Slug [:re #"^[-_a-z0-9]{1,255}$"])
+
+(t2/define-before-insert :model/Tenant
+  [tenant]
+  ;; The API layer is responsible for doing validation with nice error messages, here we just throw as a final layer
+  ;; of defense.
+  (u/prog1 tenant
+    (mu/validate-throw Slug (:slug tenant))))
 
 (defn tenant-exists?
   "Given a tenant name, returns truthy if the name (or its slugified version) is already reserved."
