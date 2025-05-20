@@ -69,14 +69,14 @@
   color: var(--mb-color-text-dark);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
-  margin-bottom: var(--mantine-spacing-xs);
+  margin-bottom: var(--mantine-spacing-sm);
 }
 
 .error {
   color: var(--mb-color-error);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
-  margin-top: var(--mantine-spacing-xs);
+  margin-top: var(--mantine-spacing-sm);
 
   &::first-letter {
     text-transform: capitalize;

@@ -37,20 +37,6 @@
   }
 }
 
-.SelectLabel {
-  color: var(--mb-color-text-primary);
-  font-size: var(--mantine-font-size-md);
-  line-height: var(--mantine-line-height-md);
-  margin-bottom: var(--mantine-spacing-xs);
-}
-
-.SelectDescription {
-  color: var(--mb-color-text-dark);
-  font-size: var(--mantine-font-size-sm);
-  line-height: var(--mantine-line-height-sm);
-  margin-bottom: var(--mantine-spacing-xs);
-}
-
 .SelectInput {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background);
