@@ -66,7 +66,7 @@
   "List configured metabot instances"
   []
   (api/check-superuser)
-  (t2/select :model/Metabot {:order-by [[:name :asc]]}))
+  {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
 
 (api.macros/defendpoint :get "/metabots/:id"
   "Retrieve one metabot instance"
@@ -85,20 +85,20 @@
         offset (or (request/offset) 0)
         entities (t2/select [:model/MetabotEntity
                              :id
-                             :model_id
-                             :model_type
+                             :metabot_model_entity_id
+                             :model
                              [:card.name :name]
                              :created_at
                              [:collection.id :collection_id]
                              [:collection.name :collection_name]]
-                            {:join [[:report_card :card] [:= :model_id :card.id]
+                            {:join [[:report_card :card] [:= :metabot_model_entity_id :card.id]
                                     [:collection :collection] [:= :card.collection_id :collection.id]]
                              :where [:= :metabot_id id]
                              :limit limit
                              :offset offset
                              :order-by [[:name :asc]]})
         total (t2/count :model/MetabotEntity :metabot_id id)]
-    {:data entities
+    {:items entities
      :total total
      :limit limit
      :offset offset}))
@@ -107,35 +107,36 @@
   "Update the entities this metabot has access to"
   [{:keys [id]} :- [:map [:id pos-int?]]
    _query-params
-   entities :- [:sequential [:map
-                             [:model_id pos-int?]
-                             [:model_type [:enum "dataset" "metric"]]]]]
+   {:keys [items]} :- [:map
+                       [:items [:sequential [:map
+                                             [:metabot_model_entity_id pos-int?]
+                                             [:model [:enum "dataset" "metric"]]]]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
-    (doseq [{:keys [model_id model_type]} entities]
+    (doseq [{:keys [metabot_model_entity_id model]} items]
       (when-not (t2/exists? :model/MetabotEntity
                             :metabot_id id
-                            :model_type model_type
-                            :model_id model_id)
+                            :model model
+                            :metabot_model_entity_id metabot_model_entity_id)
         (t2/insert! :model/MetabotEntity
                     {:metabot_id id
-                     :model_type model_type
-                     :model_id model_id}))))
+                     :model model
+                     :metabot_model_entity_id metabot_model_entity_id}))))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :delete ["/metabots/:id/entities/:model-type/:model-id" :model-type #"dataset|metric"]
+(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:metabot-model-entity-id" :model #"dataset|metric"]
   "Remove an entity from this metabot's access list"
-  [{:keys [id model-type model-id]} :- [:map
-                                        [:id pos-int?]
-                                        [:model-type [:enum "dataset" "metric"]]
-                                        [:model-id pos-int?]]]
+  [{:keys [id model metabot-model-entity-id]} :- [:map
+                                                  [:id pos-int?]
+                                                  [:model [:enum "dataset" "metric"]]
+                                                  [:metabot-model-entity-id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/delete! :model/MetabotEntity
               :metabot_id id
-              :model_type model-type
-              :model_id model-id)
+              :model model
+              :metabot_model_entity_id metabot-model-entity-id)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

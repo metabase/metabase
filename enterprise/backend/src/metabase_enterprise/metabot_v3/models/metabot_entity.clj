@@ -26,6 +26,6 @@
    (serdes/infer-self-path "MetabotEntity" entity)])
 
 (defmethod serdes/make-spec "MetabotEntity" [_model-name _opts]
-  {:copy      [:model :model_id]
+  {:copy      [:model :metabot_model_entity_id]
    :transform {:created_at (serdes/date)
                :metabot_id (serdes/parent-ref)}})
