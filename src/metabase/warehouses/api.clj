@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
@@ -484,7 +483,7 @@
   (api/check-superuser)
   (check-database-exists id)
   (let [table-ids (t2/select-pks-set :model/Table :db_id id)]
-    (first (mdb.query/query
+    (first (mdb/query
             {:select [:*]
              :from   (for [model database-usage-models
                            :let [query (database-usage-query model id table-ids)]

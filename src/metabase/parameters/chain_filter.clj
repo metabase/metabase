@@ -67,7 +67,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
@@ -190,22 +189,22 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb.query/query {:select    [[:fk-field.id :f1]
-                                           [:fk-table.id :t1]
-                                           [:pk-field.id :f2]
-                                           [:pk-field.table_id :t2]]
-                               :from      [[:metabase_field :fk-field]]
-                               :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                           :fk-table.active]
-                                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                           [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                           :pk-field.active]]
-                               :where     [:and
-                                           [:= :database.id database-id]
-                                           [:not= :fk-field.fk_target_field_id nil]
-                                           :fk-field.active]
-                               :order-by [[:fk-field.id :desc]
-                                          [:pk-field.id :desc]]})]
+  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
+                                     [:fk-table.id :t1]
+                                     [:pk-field.id :f2]
+                                     [:pk-field.table_id :t2]]
+                         :from      [[:metabase_field :fk-field]]
+                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                     :fk-table.active]
+                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                                     :pk-field.active]]
+                         :where     [:and
+                                     [:= :database.id database-id]
+                                     [:not= :fk-field.fk_target_field_id nil]
+                                     :fk-field.active]
+                         :order-by [[:fk-field.id :desc]
+                                    [:pk-field.id :desc]]})]
     (reduce
      (partial merge-with merge)
      {}
@@ -493,8 +492,8 @@
                [:metabase_field :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
-               (mdb.query/isa :source.semantic_type :type/PK)
-               (mdb.query/isa :dest.semantic_type :type/Name)]
+               (mdb/isa :source.semantic_type :type/PK)
+               (mdb/isa :dest.semantic_type :type/Name)]
    :limit     1})
 
 (defn- remapped-field-id-query [field-id]
@@ -512,7 +511,7 @@
                          :from      [:metabase_field]
                          :where     [:and
                                      [:= :id field-id]
-                                     (mdb.query/isa :semantic_type :type/FK)]
+                                     (mdb/isa :semantic_type :type/FK)]
                          :limit     1}
                         "fk->pk->name")
                        ;; Implicit PK Field-> [Name] Field remapping

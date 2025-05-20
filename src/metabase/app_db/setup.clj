@@ -7,13 +7,13 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
-   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -110,15 +110,22 @@
           (liquibase/release-lock-if-needed! liquibase)
           (throw e))))))
 
+;;; this is duplicated from [[metabase.driver.sql-jdbc.connection/can-connect-with-spec?]] but it lets us decouple the
+;;; `app-db` and `driver` modules.
+(defn- can-connect-with-spec?
+  [^javax.sql.DataSource data-source]
+  (let [[first-row] (jdbc/query {:datasource data-source} ["SELECT 1"])
+        [result]    (vals first-row)]
+    (= result 1)))
+
 (mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
-  (classloader/require 'metabase.driver.sql-jdbc.connection)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
-    (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
+    (try (assert (can-connect-with-spec? data-source) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]

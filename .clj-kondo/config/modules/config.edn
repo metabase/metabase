@@ -142,14 +142,14 @@
    :uses :any}
 
   app-db
-  {:api  #{metabase.app-db.core
-           metabase.app-db.query
+  {:api  #{metabase.app-db.cluster-lock ; TODO FIXME
+           metabase.app-db.core
+           metabase.app-db.init
            metabase.app-db.setup}
    :uses #{auth-provider
            classloader
            config
            connection-pool
-           driver
            task
            util}}
 
@@ -850,6 +850,7 @@
    :uses #{analytics
            analyze
            api
+           app-db
            appearance
            audit-app
            cache
@@ -1181,12 +1182,11 @@
 
   util
   {:api :any
-   :uses #{classloader
-           app-db
+   :uses #{app-db
            channel
+           classloader
            config
            dashboards
-           driver
            legacy-mbql
            lib
            parameters
@@ -1207,6 +1207,7 @@
            metabase.view-log.init}
    :uses #{analytics
            api
+           app-db
            audit-app
            events
            models

@@ -1,22 +1,23 @@
-(ns metabase.util.cluster-lock
+(ns metabase.app-db.cluster-lock
   "Utility for taking a cluster wide lock using the application database"
   (:require
-   [metabase.app-db.core :as mdb]
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
-   [metabase.driver :as driver]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection PreparedStatement SQLTimeoutException)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private cluster-lock-timeout-seconds 1)
 
 (defn- is-canceled-statement?
-  [e]
-  (driver/query-canceled? (mdb/db-type) e))
+  [^Throwable e]
+  (or (instance? SQLTimeoutException e)
+      (when-let [cause (ex-cause e)]
+        (is-canceled-statement? cause))))
 
 (def ^:private default-retry-config
   {:max-attempts 5
@@ -64,7 +65,7 @@
              [:retry-config      {:optional true} [:ref ::retry/retry-overrides]]]]
    thunk :- ifn?]
   (cond
-    (= (mdb/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking
+    (= (mdb.connection/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking
     (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
     :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
                 lock-name-str (str (namespace lock-name) "/" (name lock-name))

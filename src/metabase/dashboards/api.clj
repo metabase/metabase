@@ -10,7 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
@@ -587,7 +587,7 @@
                     (when (request/paged?)
                       {:limit (request/limit)
                        :offset (request/offset)}))
-        cards      (mdb.query/query query)]
+        cards      (app-db/query query)]
     {:total  (count cards)
      :data   (api.collection/post-process-rows {}
                                                (t2/select-one :model/Collection :id (:collection_id dashboard))

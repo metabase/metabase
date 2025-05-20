@@ -3,12 +3,12 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
