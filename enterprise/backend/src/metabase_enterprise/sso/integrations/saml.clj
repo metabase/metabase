@@ -33,8 +33,10 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.integrations.saml-utils :as saml-utils]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+   [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -137,7 +139,7 @@
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
-      (str (acs-url) "?token=true&origin=" (java.net.URLEncoder/encode origin "UTF-8"))
+      (str (acs-url) "?token=" (token-utils/generate-token) "&origin=" (java.net.URLEncoder/encode origin "UTF-8"))
 
       ;; Case 2: No redirect parameter
       (nil? redirect)
@@ -176,8 +178,8 @@
                                                      :protocol-binding :post})]
         (if embedding-sdk-header?
           {:status 200
-           :body {:url (get-in response [:headers "location"])
-                  :method "saml"}
+           :body  {:url (get-in response [:headers "location"])
+                   :method "saml"}
            :headers {"Content-Type" "application/json"}}
           response))
       (catch Throwable e
@@ -218,11 +220,15 @@
                        (when-let [s (some-> relay-state u/decode-base64)]
                          (when-not (str/blank? s)
                            s)))
-        ;; Check if token is requested and remove parameter
-        token-requested? (and continue-url
-                              (re-find #"[?&]token=true" continue-url))
+        ;; Extract token value from URL parameter
+        token-value (when continue-url
+                      (second (re-find #"[?&]token=([^&]+)" continue-url)))
+        ;; Check if token is valid using token-utils
+        token-valid? (when token-value
+                       (token-utils/validate-token token-value))
+        ;; Remove token parameter
         url-without-token (when continue-url
-                            (str/replace continue-url #"[?&]token=true(&|$)" "$1"))
+                            (str/replace continue-url #"[?&]token=[^&]+(&|$)" "$1"))
         ;; Extract origin parameter
         origin-param (when url-without-token
                        (second (re-find #"[?&]origin=([^&]+)" url-without-token)))
@@ -237,54 +243,10 @@
                              (str/replace url-without-token #"[?&]origin=[^&]+(&|$)" "$1")
                              url-without-token)]
     {:continue-url continue-url
-     :token-requested? token-requested?
+     :token-value token-value
+     :token-valid? token-valid?
      :clean-continue-url clean-continue-url
      :origin origin}))
-
-(defn- create-token-response
-  "Create a token response with HTML and JavaScript to post the auth message"
-  [session origin continue-url]
-  (let [current-time (quot (System/currentTimeMillis) 1000)
-        expiration-time (+ current-time 86400)]
-    {:status 200
-     :headers {"Content-Type" "text/html"}
-     :body (str "<!DOCTYPE html>
-<html>
-<head>
-  <title>Authentication Complete</title>
-  <script>
-    const authData = {
-      id: \"" (:key session) "\",
-      exp: " expiration-time ",
-      iat: " current-time ",
-      status: \"ok\"
-    };
-    if (window.opener) {
-      try {
-        window.opener.postMessage({
-          type: 'SAML_AUTH_COMPLETE',
-          authData: authData
-        }, '" origin "');
-
-        setTimeout(function() {
-          window.close();
-        }, 500);
-      } catch(e) {
-        console.error('Error sending message:', e);
-        document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
-      }
-    } else {
-      window.location.href = '" continue-url "';
-    }
-  </script>
-</head>
-<body style=\"background-color: white; margin: 20px; padding: 20px;\">
-  <h3>Authentication complete</h3>
-  <p>This window should close automatically.</p>
-  <p>If it doesn't close, please click the button below:</p>
-  <button onclick=\"window.close()\">Close Window</button>
-</body>
-</html>")}))
 
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
@@ -292,9 +254,12 @@
   [{:keys [params], :as request}]
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
-
   ;; Process continue URL and extract needed parameters
-  (let [{:keys [continue-url token-requested? clean-continue-url origin]} (process-relay-state-params (:RelayState params))]
+  (let [{:keys [continue-url token-value token-valid? clean-continue-url origin]} (process-relay-state-params (:RelayState params))]
+    ;; Check if token is present but not valid
+    (when (and token-value (not token-valid?))
+      (throw (ex-info (tru "Invalid authentication token")
+                      {:status-code 401})))
 
     (sso-utils/check-sso-redirect continue-url)
     (try
@@ -327,8 +292,8 @@
                             :user-attributes attrs
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (system/site-url)))]
-        (if token-requested?
-          (create-token-response session origin clean-continue-url)
+        (if token-value
+          (saml-utils/create-token-response session origin clean-continue-url)
           (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
       (catch Throwable e
         (log/error e "SAML response validation failed")

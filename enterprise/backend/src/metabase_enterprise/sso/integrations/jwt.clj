@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
-   [metabase-enterprise.sso.integrations.jwt-token-utils :as jwt-token-utils]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+   [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase.embedding.settings :as embed.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -124,8 +124,8 @@
   true)
 
 (defn ^:private generate-response-token
-  [session jwt-data validation-token]
-  (if (and (jwt-token-utils/validate-token validation-token) (embed.settings/enable-embedding-sdk))
+  [session jwt-data]
+  (if  (embed.settings/enable-embedding-sdk)
 
     (response/response
      {:status :ok
@@ -152,8 +152,8 @@
   (let [jwt-data (when jwt (session-data jwt request))
         is-sdk? (sso-utils/is-embedding-sdk-header? request)]
     (cond
-      (and is-sdk? jwt) (generate-response-token (:session jwt-data) (:jwt-data jwt-data) (jwt-token-utils/get-token-from-header))
-      is-sdk?           (response/response {:url (sso-settings/jwt-identity-provider-uri) :method "jwt" :hash (jwt-token-utils/generate-token)})
+      (and is-sdk? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))
+      is-sdk?           (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"}))
       jwt               (request/set-session-cookies request
                                                      (response/redirect (:redirect-url jwt-data))
                                                      (:session jwt-data)
