@@ -51,11 +51,11 @@ For example: you could create three separate [query builder](../query-builder/ed
 ```sql
 -- example of a query that retrieves results of questions and combines them with UNION
 
-SELECT 'Leads' as step, * from {{#120-leads}}
+SELECT 'Leads' as step, * from {% raw %}{{#120-leads}}{% endraw %}
 UNION
-SELECT 'Qualified' as step, * from {{#121-qualified}}
+SELECT 'Qualified' as step, * from {% raw %}{{#121-qualified}}{% endraw %}
 UNION
-SELECT 'Prospects' as step, * from {{#122-prospects}}
+SELECT 'Prospects' as step, * from {% raw %}{{#122-prospects}}{% endraw %}
 
 ```
 
