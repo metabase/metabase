@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # This script merges translations from the given branch into the current branch.
 #
+# It's useful to run this after backporting a translation PR, since that PR may
+# remove translations from the release branch that are still needed on that
+# branch. With this script, you can restore these translations by merging the
+# translations from the release branch into the backport branch.
+#
 # In case of a conflict, the translation in the current branch is used. To give
 # precedence to translations in the other branch, use the -o flag.
 #
@@ -33,7 +38,7 @@ while getopts "o" opt; do
   esac
 done
 
-# Ensure the source branch argument is provided
+# Ensure the other branch argument is provided
 if [[ -z "$otherBranch" ]]; then
   usage
 fi
@@ -41,10 +46,10 @@ fi
 remove_unnecessary_wrapping() {
   local input=""
   while IFS= read -r line; do
-    input+="$line"$'EscapedNewline'
+    input+="$line"$'EscapedNewlineInMergeScript'
   done
 
-  echo -E "$input" | sed 's/\(msgid\|msgstr\) ""EscapedNewline"/\1 "/g' | sed 's/EscapedNewline/\n/g'
+  echo -E "$input" | sed 's/\(msgid\|msgstr\) ""EscapedNewlineInMergeScript"/\1 "/g' | sed 's/EscapedNewlineInMergeScript/\n/g'
 }
 
 for po in locales/*.po; do
