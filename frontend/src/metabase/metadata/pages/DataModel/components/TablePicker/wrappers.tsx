@@ -20,18 +20,18 @@ export function RouterTablePicker(props: TreePath) {
 
 export function UncontrolledTablePicker({
   initialValue,
-  onChange: onChange_,
+  onChange,
 }: {
   initialValue: TreePath;
   onChange?: (path: TreePath) => void;
 }) {
   const [value, setValue] = useState(initialValue);
-  const onChange = useCallback(
+  const handleChange = useCallback(
     (value: TreePath) => {
-      onChange_?.(value);
+      onChange?.(value);
       setValue(value);
     },
-    [onChange_],
+    [onChange],
   );
-  return <TablePicker value={value} onChange={onChange} />;
+  return <TablePicker value={value} onChange={handleChange} />;
 }
