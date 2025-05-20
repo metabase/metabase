@@ -73,6 +73,8 @@ export type TableUndoRedoResponse = {
   result?: Record<ConcreteTableId, TableOperation[]>;
 };
 
-export type EditableTableActionsVizOverride = Partial<ActionFormSettings> & {
+export type EditableTableActionsVizOverride = Partial<
+  Omit<ActionFormSettings, "fields">
+> & {
   fields?: Record<ParameterId, Partial<FieldSettings>>;
 };
