@@ -60,7 +60,7 @@ for po in locales/*.po; do
 
   echo "Merging translations from $sourceBranch:$po into $po"
 
-  msgcat --no-wrap --use-first <(git show "$sourceBranch:$po") "$po" | remove_unnecessary_wrapping > "$mergedPoFile"
+  msgcat --no-wrap --use-first "$po" <(git show "$sourceBranch:$po") | remove_unnecessary_wrapping > "$mergedPoFile"
 
   # Outputting directly to $po while reading it causes problems, so we output
   # to a temporary file, then replace the .po file with it
