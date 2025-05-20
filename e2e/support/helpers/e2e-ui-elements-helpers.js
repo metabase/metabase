@@ -445,7 +445,8 @@ export function tableHeaderClick(headerString) {
 }
 
 export function clickActionsPopover() {
-  return popover("click-actions-popover");
+  const selector = `${POPOVER_ELEMENT}[data-testid=click-actions-popover]`;
+  return cy.get(selector);
 }
 
 export function segmentEditorPopover() {
