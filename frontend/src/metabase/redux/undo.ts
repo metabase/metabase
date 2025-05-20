@@ -16,7 +16,7 @@ let nextUndoId = 0;
 
 export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
   return (dispatch, getState) => {
-    const { icon = "check", timeout = 5000, canDismiss = true } = undo;
+    const { icon = "check_filled", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;
     // if we're overwriting an existing undo, clear its timeout
     const currentUndo = getUndo(getState(), id);

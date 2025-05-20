@@ -17,7 +17,7 @@ const TestComponent = () => {
             // @ts-expect-error - we shouldn't hardcode ids in application code
             id: TEST_TOAST_ID,
             message: "Yeah Toast!",
-            icon: "check",
+            icon: "check_filled",
             timeout: 9000,
           })
         }
