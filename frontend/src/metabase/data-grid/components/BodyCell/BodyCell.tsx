@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type React from "react";
+import React from "react";
 import { type MouseEventHandler, memo, useCallback, useMemo } from "react";
 
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
@@ -23,6 +23,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   align = "left",
   variant = "text",
   wrap = false,
+  formatNewlines = false,
   canExpand = false,
   columnId,
   rowIndex,
@@ -78,10 +79,18 @@ export const BodyCell = memo(function BodyCell<TValue>({
           data-grid-cell-content
           className={cx(S.content, {
             [S.noWrap]: !wrap,
+            [S.formatNewlines]: formatNewlines,
           })}
           data-testid={contentTestId}
         >
-          {formattedValue}
+          {formatNewlines && typeof formattedValue === "string"
+            ? formattedValue.split("\n").map((line, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <br />}
+                  {line}
+                </React.Fragment>
+              ))
+            : formattedValue}
         </div>
       ) : null}
 
