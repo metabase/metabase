@@ -177,13 +177,20 @@
              (or (:is_attached_dwh database)
                  (and (not *copy-h2-database-details*)
                       (= (:engine database) "h2"))) (assoc :details "{}"))))
+
     :model/Setting
     ;; Never create dumps with read-only-mode turned on.
     ;; It will be confusing to restore from and prevent key rotation.
     (remove (fn [{k :key}] (= k "read-only-mode")))
+
+    :model/Table
+    ;; unique_table_helper is a computed/generated column
+    (map #(dissoc % :unique_table_helper))
+
     :model/Field
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
+
     ;; else
     identity))
 
