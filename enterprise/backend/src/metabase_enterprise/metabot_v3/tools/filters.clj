@@ -2,9 +2,9 @@
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
