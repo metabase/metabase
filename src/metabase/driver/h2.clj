@@ -329,8 +329,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
-  [_driver]
-  (h2x/with-database-type-info :%now "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defn- add-to-1970 [expr unit-str]
   [:timestampadd

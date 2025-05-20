@@ -208,8 +208,8 @@
    :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
-  [_]
-  :%getdate)
+  [_driver]
+  :%getdate) ; TODO -- this should include type info
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
