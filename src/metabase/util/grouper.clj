@@ -13,7 +13,7 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]

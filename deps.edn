@@ -160,10 +160,10 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.20"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.20"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.20"}
-  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.20"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.21"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.21"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.21"}
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.21"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.2.1"}             ; GraalVM platform, required by JS engine
@@ -249,7 +249,7 @@
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
-    djblue/portal                {:mvn/version "0.59.0"}                    ; ui for inspecting values
+    djblue/portal                {:mvn/version "0.59.1"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.7"}                     ; test runner
     io.github.tonsky/clj-reload  {:mvn/version "0.9.6"}                     ; reloader
@@ -265,7 +265,7 @@
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                    ; clojure source parsing and rewriting
+    rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
     ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing

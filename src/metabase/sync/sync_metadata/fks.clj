@@ -2,7 +2,7 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
    [honey.sql :as sql]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
