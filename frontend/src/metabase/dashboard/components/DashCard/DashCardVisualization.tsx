@@ -31,6 +31,7 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  CardId,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -286,6 +287,30 @@ export function DashCardVisualization({
     [dashcard],
   );
 
+  const findCardById = useCallback(
+    (cardId?: CardId | null) => {
+      const lookupSeries = isVisualizerDashboardCard(dashcard)
+        ? rawSeries
+        : series;
+      return (
+        lookupSeries.find((series) => series.card.id === cardId)?.card ??
+        lookupSeries[0].card
+      );
+    },
+    [rawSeries, dashcard, series],
+  );
+
+  const onOpenQuestion = useCallback(
+    (cardId: CardId | null) => {
+      const card = findCardById(cardId);
+      onChangeCardAndRun?.({
+        previousCard: findCardById(card?.id),
+        nextCard: card,
+      });
+    },
+    [findCardById, onChangeCardAndRun],
+  );
+
   const actionButtons = useMemo(() => {
     if (!question) {
       return null;
@@ -332,11 +357,15 @@ export function DashCardVisualization({
         downloadsEnabled={downloadsEnabled}
         question={question}
         result={mainSeries}
+        visualizerRawSeries={
+          isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+        }
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
         token={token}
         uuid={uuid}
         onEditVisualization={onEditVisualization}
+        onOpenQuestion={onOpenQuestion}
       />
     );
   }, [
@@ -345,11 +374,12 @@ export function DashCardVisualization({
     isXray,
     isPublicOrEmbedded,
     isEditing,
-    dashcard.id,
-    dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
     onEditVisualization,
+    onOpenQuestion,
+    dashcard,
+    rawSeries,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -398,6 +428,7 @@ export function DashCardVisualization({
       onChangeLocation={onChangeLocation}
       token={token}
       uuid={uuid}
+      findCardById={findCardById}
     />
   );
 }

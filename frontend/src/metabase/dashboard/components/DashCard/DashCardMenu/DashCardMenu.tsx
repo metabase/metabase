@@ -31,9 +31,11 @@ import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
+  CardId,
   DashCardId,
   DashboardId,
   Dataset,
+  RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -42,6 +44,7 @@ import { DashCardMenuItems } from "./DashCardMenuItems";
 interface DashCardMenuProps {
   question: Question;
   result: Dataset;
+  visualizerRawSeries?: RawSeries;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
@@ -49,6 +52,7 @@ interface DashCardMenuProps {
   visualizationSettings?: VisualizationSettings;
   downloadsEnabled: boolean;
   onEditVisualization?: () => void;
+  onOpenQuestion: (cardId: CardId | null) => void;
 }
 
 export type DashCardMenuItem = {
@@ -75,11 +79,13 @@ function isDashCardMenuEmpty(plugins?: MetabasePluginsConfig) {
 export const DashCardMenu = ({
   question,
   result,
+  visualizerRawSeries,
   dashboardId,
   dashcardId,
   uuid,
   token,
   onEditVisualization,
+  onOpenQuestion,
 }: DashCardMenuProps) => {
   const store = useStore();
   const { plugins } = useInteractiveDashboardContext();
@@ -150,9 +156,11 @@ export const DashCardMenu = ({
         dashcardId={dashcardId}
         question={question}
         result={result}
+        visualizerRawSeries={visualizerRawSeries}
         isDownloadingData={isDownloadingData}
         onDownload={() => setMenuView("download")}
         onEditVisualization={onEditVisualization}
+        onOpenQuestion={onOpenQuestion}
       />
     );
   };

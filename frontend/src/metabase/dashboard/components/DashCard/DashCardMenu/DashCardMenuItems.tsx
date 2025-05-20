@@ -13,24 +13,33 @@ import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { DashCardId, Dataset } from "metabase-types/api";
+import type {
+  CardId,
+  DashCardId,
+  Dataset,
+  RawSeries,
+} from "metabase-types/api";
 
 import { canDownloadResults, canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
   question: Question;
   result: Dataset;
+  visualizerRawSeries?: RawSeries;
   isDownloadingData: boolean;
   onDownload: () => void;
   onEditVisualization?: () => void;
+  onOpenQuestion: (cardId: CardId | null) => void;
   dashcardId?: DashCardId;
 };
 export const DashCardMenuItems = ({
   question,
   result,
+  visualizerRawSeries = [],
   isDownloadingData,
   onDownload,
   onEditVisualization,
+  onOpenQuestion,
   dashcardId,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
@@ -139,7 +148,7 @@ export const DashCardMenuItems = ({
     dispatch,
   ]);
 
-  return menuItems.map((item) => {
+  const elements = menuItems.map((item) => {
     const { iconName, key, ...rest } = item;
 
     return (
@@ -154,4 +163,57 @@ export const DashCardMenuItems = ({
       </Menu.Item>
     );
   });
+
+  if (visualizerRawSeries.length > 0) {
+    elements.push(
+      <Menu
+        trigger="click-hover"
+        key="open-questions"
+        shadow="md"
+        position="right"
+        width={200}
+      >
+        <Menu.Target>
+          <Menu.Item
+            fw="bold"
+            styles={{
+              // styles needed to override the hover styles
+              // as hovering is bugged for submenus
+              // this'll be much better in v8
+              item: {
+                backgroundColor: "transparent",
+                color: "var(--mb-color-text-primary)",
+              },
+              itemSection: {
+                color: "var(--mb-color-text-primary)",
+              },
+            }}
+            leftSection={<Icon name="external" aria-hidden />}
+            rightSection={<Icon name="chevronright" aria-hidden />}
+          >
+            {t`View question(s)`}
+          </Menu.Item>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {visualizerRawSeries.map((dataset, index) => {
+            const card = dataset.card;
+
+            return (
+              <Menu.Item
+                key={`MB_VIEW_QUESTION_${index}`}
+                onClick={() => {
+                  onOpenQuestion(card.id);
+                }}
+                leftSection={<Icon name="external" aria-hidden />}
+              >
+                {card.name}
+              </Menu.Item>
+            );
+          })}
+        </Menu.Dropdown>
+      </Menu>,
+    );
+  }
+
+  return elements;
 };

@@ -177,6 +177,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  findCardById: (cardId?: CardId | null) => Card<DatasetQuery>;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -418,6 +419,7 @@ class Visualization extends PureComponent<
   }
 
   getClickActions(clickedObject?: ClickObject | null) {
+    const { findCardById } = this.props;
     if (!clickedObject) {
       return [];
     }
@@ -438,7 +440,7 @@ class Visualization extends PureComponent<
         )
       : clickedObject;
 
-    const card = this.findCardById(clicked.cardId);
+    const card = findCardById(clicked.cardId);
 
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
@@ -457,15 +459,15 @@ class Visualization extends PureComponent<
       : [];
   }
 
-  findCardById = (cardId?: CardId | null) => {
-    const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
-    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
-    const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
-    return (
-      lookupSeries.find((series) => series.card.id === cardId)?.card ??
-      lookupSeries[0].card
-    );
-  };
+  // findCardById = (cardId?: CardId | null) => {
+  //   const { dashcard, rawSeries = [], visualizerRawSeries = [] } = this.props;
+  //   const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+  //   const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
+  //   return (
+  //     lookupSeries.find((series) => series.card.id === cardId)?.card ??
+  //     lookupSeries[0].card
+  //   );
+  // };
 
   getNormalizedSizes = () => {
     const { width, height } = this.props;
@@ -520,8 +522,10 @@ class Visualization extends PureComponent<
     nextCard,
     objectId,
   }: Pick<OnChangeCardAndRunOpts, "nextCard" | "objectId">) => {
-    this.props.onChangeCardAndRun?.({
-      previousCard: this.findCardById(nextCard?.id),
+    const { findCardById, onChangeCardAndRun } = this.props;
+
+    onChangeCardAndRun?.({
+      previousCard: findCardById(nextCard?.id),
       nextCard,
       objectId,
     });
