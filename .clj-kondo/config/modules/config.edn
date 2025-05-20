@@ -322,6 +322,7 @@
 
   dashboards
   {:api  #{metabase.dashboards.api
+           metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
@@ -780,6 +781,7 @@
            collections
            config
            content-verification
+           dashboards
            events
            legacy-mbql
            lib
@@ -1180,11 +1182,10 @@
 
   util
   {:api :any
-   :uses #{classloader
-           app-db
+   :uses #{app-db
            channel
+           classloader
            config
-           dashboards
            driver
            legacy-mbql
            lib
