@@ -1,6 +1,9 @@
 import type {
+  ActionFormSettings,
   ConcreteTableId,
   DatasetColumn,
+  FieldSettings,
+  ParameterId,
   RowValue,
 } from "metabase-types/api";
 
@@ -68,4 +71,8 @@ export type TableOperation = [string, Record<string, RowValue>];
 export type TableUndoRedoResponse = {
   batch_num?: number;
   result?: Record<ConcreteTableId, TableOperation[]>;
+};
+
+export type EditableTableActionsVizOverride = Partial<ActionFormSettings> & {
+  fields?: Record<ParameterId, Partial<FieldSettings>>;
 };

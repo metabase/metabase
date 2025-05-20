@@ -17,5 +17,12 @@ export const TableColumnsSelect = ({
     label: name,
   }));
 
-  return <FormSelect label={t`Pick column`} name={name} data={options} />;
+  return (
+    <FormSelect
+      label={t`Pick column`}
+      name={name}
+      data={options}
+      shouldCastValueToNumber
+    />
+  );
 };

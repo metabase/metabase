@@ -50,19 +50,29 @@ export function RowActionSettingsModalContent({
 
   const hasParameters = !!selectedAction?.parameters?.length;
 
-  const sortedParameters = useMemo(() => {
+  const writeableParameters = useMemo(() => {
     const actionParameters = selectedAction?.parameters ?? [];
 
-    return actionParameters && selectedAction?.visualization_settings?.fields
-      ? actionParameters.toSorted(
-          sortActionParams(selectedAction?.visualization_settings),
-        )
-      : actionParameters || [];
+    const sorted =
+      actionParameters && selectedAction?.visualization_settings?.fields
+        ? actionParameters.toSorted(
+            sortActionParams(selectedAction?.visualization_settings),
+          )
+        : actionParameters || [];
+
+    if (selectedAction?.visualization_settings?.fields) {
+      return sorted.filter(
+        ({ id }) =>
+          !selectedAction?.visualization_settings?.fields?.[id]?.hidden,
+      );
+    }
+
+    return sorted;
   }, [selectedAction]);
 
   const initialValues = useMemo(() => {
     return {
-      parameters: sortedParameters.map(({ id }) => {
+      parameters: writeableParameters.map(({ id }) => {
         if (isEditMode) {
           const mapping = rowActionSettings?.parameterMappings?.find(
             ({ parameterId }) => id === parameterId,
@@ -72,14 +82,13 @@ export function RowActionSettingsModalContent({
           }
         }
 
-        // TODO: use real parameter id, not a field id
         return {
           parameterId: id,
           sourceType: "ask-user",
         } as RowActionFieldSettings;
       }),
     };
-  }, [isEditMode, rowActionSettings?.parameterMappings, sortedParameters]);
+  }, [isEditMode, rowActionSettings?.parameterMappings, writeableParameters]);
 
   const getIsFormInvalid = (values: { parameters: RowActionFieldSettings[] }) =>
     selectedAction != null &&
@@ -91,8 +100,6 @@ export function RowActionSettingsModalContent({
 
   const handleSubmit = useCallback(
     (values: { parameters: RowActionFieldSettings[] }) => {
-      // console.log("handleSubmit", values);
-
       if (selectedAction) {
         onSubmit({
           action: selectedAction,
@@ -152,7 +159,7 @@ export function RowActionSettingsModalContent({
                   <Box className={S.ParametersListContainer}>
                     <RowActionParameterMappingForm
                       action={selectedAction}
-                      parameters={sortedParameters}
+                      parameters={writeableParameters}
                       values={values}
                       tableColumns={tableColumns}
                     />

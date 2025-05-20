@@ -18,6 +18,7 @@ export type ActionFormFieldProps = {
   optional?: boolean;
   options?: ActionFormOption[];
   field?: Field;
+  disabled?: boolean;
 };
 
 export type ActionFormProps = {
