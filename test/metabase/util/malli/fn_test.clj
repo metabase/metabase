@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
    [clojure.walk :as walk]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]

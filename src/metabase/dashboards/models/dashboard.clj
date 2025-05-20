@@ -6,7 +6,7 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.events.core :as events]

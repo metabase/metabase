@@ -303,7 +303,7 @@
     ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
     ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
     ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
-    ;; discussion in the `metabase.types` namespace.
+    ;; discussion in the [[metabase.types.core]] namespace.
     java.time.OffsetTime           :type/TimeWithTZ
     java.time.OffsetDateTime       :type/DateTimeWithTZ
     java.time.ZonedDateTime        :type/DateTimeWithZoneID

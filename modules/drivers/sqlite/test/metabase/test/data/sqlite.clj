@@ -1,7 +1,7 @@
 (ns metabase.test.data.sqlite
   (:require
    [clojure.java.io :as io]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]

@@ -9,7 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.init]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]

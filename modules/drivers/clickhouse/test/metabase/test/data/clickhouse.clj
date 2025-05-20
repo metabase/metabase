@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.query :as mdb.query]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

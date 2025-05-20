@@ -3,7 +3,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
