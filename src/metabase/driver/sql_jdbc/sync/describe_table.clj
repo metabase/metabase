@@ -107,7 +107,8 @@
                (range 1 (inc (.getColumnCount metadata))))))
           (catch Exception e
             ;; if the table does not exist, we do nothing rather than failing with an exception
-            (when-not (driver/table-known-to-not-exist? driver e)
+            (if (driver/table-known-to-not-exist? driver e)
+              init
               (throw e))))))))
 
 (defn- jdbc-fields-metadata

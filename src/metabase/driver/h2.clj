@@ -626,3 +626,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :h2 [_ ^SQLException e]
   (= (.getErrorCode e) 57014))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
+  [_ e]
+  (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))

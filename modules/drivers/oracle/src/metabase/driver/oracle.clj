@@ -725,3 +725,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :oracle [_ ^SQLException e]
   (= (.getErrorCode e) 1013))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :oracle
+  [_ ^SQLException e]
+  (= (.getErrorCode e) 942))
