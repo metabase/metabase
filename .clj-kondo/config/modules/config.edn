@@ -516,7 +516,7 @@
           metabase.search.ingestion
           metabase.search.init
           metabase.search.spec}
-   :uses #{analytics api audit config db driver models permissions premium-features public-settings request startup task util}}
+   :uses #{analytics api audit config db driver events models permissions premium-features public-settings request startup task util}}
 
   segments
   {:api  #{metabase.segments.api}
