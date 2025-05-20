@@ -44,7 +44,7 @@ describe("LoadingView", () => {
     });
 
     expect(
-      screen.queryByText(/This usually takes an average of 0 seconds/),
-    ).not.toBeInTheDocument();
+      screen.getByText(/This usually takes an average of/),
+    ).toBeInTheDocument();
   });
 });
