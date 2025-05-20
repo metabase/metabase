@@ -38,7 +38,7 @@ function setup(
     ui?: React.ReactElement;
     metabotPluginInitialState?: MetabotState;
     currentUser?: User | null | undefined;
-    promptSuggestions: { prompt: string }[];
+    promptSuggestions?: { prompt: string }[];
   } | void,
 ) {
   const settings = mockSettings({

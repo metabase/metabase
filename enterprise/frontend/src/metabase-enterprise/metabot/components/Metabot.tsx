@@ -32,7 +32,7 @@ export const Metabot = ({ hide }: MetabotProps) => {
   }, [visible, setVisible, currentUser]);
 
   useEffect(
-    function autoCloseOnAdmin() {
+    function closeViaPropChange() {
       if (hide) {
         setVisible(false);
       }

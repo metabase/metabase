@@ -17,38 +17,6 @@
   justify-content: space-between;
 }
 
-@keyframes rotate-background {
-  0% {
-    background-position: 110%;
-  }
-
-  100% {
-    background-position: -10%;
-  }
-}
-
-.thinkingText {
-  --spread: 120px;
-  --base-gradient-color: var(--mb-color-bg-white);
-  --base-color: var(--mb-color-brand);
-  --bg: linear-gradient(
-    90deg,
-    #0000 calc(50% - var(--spread)),
-    var(--base-gradient-color),
-    #0000 calc(50% + var(--spread))
-  );
-
-  color: transparent;
-  background-clip: text;
-  background-size:
-    250% 100%,
-    auto;
-  background-image: var(--bg),
-    linear-gradient(var(--base-color), var(--base-color));
-  animation: rotate-background 2000ms ease infinite;
-  font-weight: bold;
-}
-
 .inputContainer {
   padding: 0 0.75rem 0 0.25rem;
   display: flex;
@@ -148,19 +116,4 @@
 
 .textInputContainer {
   padding: 0 1rem 1rem;
-}
-
-.markdown {
-  ol,
-  ul {
-    list-style-type: auto;
-    list-style-position: inside;
-    padding: 0;
-
-    ol,
-    ul {
-      padding-left: revert;
-      padding-right: revert;
-    }
-  }
 }
