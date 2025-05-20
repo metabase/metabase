@@ -32,7 +32,6 @@
    [metabase.cmd.load-from-h2-test :as load-from-h2-test]
    [metabase.collections.models.collection :as collection]
    [metabase.config :as config]
-   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
