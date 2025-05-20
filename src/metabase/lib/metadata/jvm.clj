@@ -176,7 +176,7 @@
              :table
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
-     ;; TODO
+     ;; TODO use the correct field id-based ident
      {:ident (str "field__" (:id field))}
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
