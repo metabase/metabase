@@ -271,8 +271,8 @@
           (is (= 75
                  (categories-row-count)))
           (is (= (walk/keywordize-keys
-                  [{id-col 76, name-col "NEW_A"}
-                   {id-col 77, name-col "NEW_B"}])
+                  [{:table-id table-id, :op :created, :row {id-col 76, name-col "NEW_A"}}
+                   {:table-id table-id, :op :created, :row {id-col 77, name-col "NEW_B"}}])
                  (:outputs
                   (actions/perform-action! :table.row/create
                                            test-scope
@@ -328,22 +328,25 @@
   (testing "table.row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= 75
-               (categories-row-count)))
-        (is (= [{:id 75}
-                {:id 74}]
-               (map u/lower-case-map-keys
-                    (:outputs
-                     (actions/perform-action! :table.row/delete
-                                              test-scope
-                                              [{:database (mt/id)
-                                                :table-id (mt/id :categories)
-                                                :arg      {(format-field-name :id) 75}}
-                                               {:database (mt/id)
-                                                :table-id (mt/id :categories)
-                                                :arg      {(format-field-name :id) 74}}])))))
-        (is (= 73
-               (categories-row-count)))))))
+        (let [table-id (mt/id :categories)]
+          (is (= 75 (categories-row-count)))
+          (is (= [{:table-id table-id, :op :deleted, :row {:id 75}}
+                  {:table-id table-id, :op :deleted, :row {:id 74}}]
+                 (walk/postwalk
+                  (fn [x]
+                    (if (map? x)
+                      (u/lower-case-map-keys x)
+                      x))
+                  (:outputs
+                   (actions/perform-action! :table.row/delete
+                                            test-scope
+                                            [{:database (mt/id)
+                                              :table-id table-id
+                                              :arg      {(format-field-name :id) 75}}
+                                             {:database (mt/id)
+                                              :table-id table-id
+                                              :arg      {(format-field-name :id) 74}}])))))
+          (is (= 73 (categories-row-count))))))))
 
 (deftest table-row-delete-failure-test
   (testing "table.row/delete"
@@ -415,28 +418,29 @@
   (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (with-actions-test-data-and-actions-permissively-enabled!
-        (is (= [[1 "African"]
-                [2 "American"]
-                [3 "Artisan"]]
-               (first-three-categories)))
-        (is (= [{:id 1 :name "Seed Bowl"}
-                {:id 2 :name "Millet Treat"}]
-               (let [id   (format-field-name :id)
-                     name (format-field-name :name)]
-                 (:outputs
-                  (actions/perform-action! :table.row/update
-                                           test-scope
-                                           (for [row [{id 1, name "Seed Bowl"}
-                                                      {id 2, name "Millet Treat"}]]
-                                             {:database (mt/id)
-                                              :table-id (mt/id :categories)
-                                              :row      row}))))))
-
-        (testing "rows should be updated in the DB"
-          (is (= [[1 "Seed Bowl"]
-                  [2 "Millet Treat"]
+        (let [table-id (mt/id :categories)]
+          (is (= [[1 "African"]
+                  [2 "American"]
                   [3 "Artisan"]]
-                 (first-three-categories))))))))
+                 (first-three-categories)))
+          (is (= [{:table-id table-id, :op :updated, :row {:id 1 :name "Seed Bowl"}}
+                  {:table-id table-id, :op :updated, :row {:id 2 :name "Millet Treat"}}]
+                 (let [id   (format-field-name :id)
+                       name (format-field-name :name)]
+                   (:outputs
+                    (actions/perform-action! :table.row/update
+                                             test-scope
+                                             (for [row [{id 1, name "Seed Bowl"}
+                                                        {id 2, name "Millet Treat"}]]
+                                               {:database (mt/id)
+                                                :table-id table-id
+                                                :row      row}))))))
+
+          (testing "rows should be updated in the DB"
+            (is (= [[1 "Seed Bowl"]
+                    [2 "Millet Treat"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))
 
 (deftest table-row-update-failure-test
   (testing "table.row/update"
@@ -528,7 +532,8 @@
       (with-open [ssh-server (basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled!
-            (let [ssh-port (.getPort ^SshServer ssh-server)]
+            (let [ssh-port (.getPort ^SshServer ssh-server)
+                  table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
                 (t2/update! 'Database (mt/id)
                             ;; enable ssh tunnel
@@ -549,12 +554,12 @@
                                         (for [row [{id 1, name "Seed Bowl"}
                                                    {id 2, name "Millet Treat"}]]
                                           {:database (mt/id)
-                                           :table-id (mt/id :categories)
+                                           :table-id table-id
                                            :row      row}))))
                                     (catch Exception e e))]
                   (if correct-password?
-                    (is (= [{:id 1, :name "Seed Bowl"}
-                            {:id 2, :name "Millet Treat"}]
+                    (is (= [{:table-id table-id, :op :updated, :row {:id 1, :name "Seed Bowl"}}
+                            {:table-id table-id, :op :updated, :row {:id 2, :name "Millet Treat"}}]
                            response))
                     (do
                       (is (instance? Exception response) "Did not get an error with wrong password")
