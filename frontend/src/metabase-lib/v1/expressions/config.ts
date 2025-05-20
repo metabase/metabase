@@ -328,8 +328,8 @@ const CONVERSION = defineClauses(
         {
           name: t`value`,
           type: "expression",
-          description: t`The string, number or bytes to convert to a date.`,
-          example: "2025-03-20T12:45:04.55",
+          description: t`The string to convert to a datetime.`,
+          example: "2025-03-20 12:45:04.55",
         },
       ],
     },

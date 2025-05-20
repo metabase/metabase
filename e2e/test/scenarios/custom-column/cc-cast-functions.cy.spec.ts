@@ -144,17 +144,17 @@ const DATE_TEST_CASES: CastTestCase[] = [
 const DATETIME_TEST_CASES: CastTestCase[] = [
   {
     name: "String",
-    expression: 'datetime("2025-03-20T20:03")',
+    expression: 'datetime("2025-03-20 12:03")',
     filterOperator: "On",
-    filterValue: "March 20, 2025|20:03",
+    filterValue: "March 20, 2025|12:03",
     expectedRowCount: 200,
   },
   {
     name: "StringExpression",
     expression:
-      'datetime(concat("2025-03-", case([ID] = 1, "10", "20"), "T20:03"))',
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 20:03"))',
     filterOperator: "Before",
-    filterValue: "March 20, 2025|20:03",
+    filterValue: "March 20, 2025|12:03",
     expectedRowCount: 1,
   },
 ];
