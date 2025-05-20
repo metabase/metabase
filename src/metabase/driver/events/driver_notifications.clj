@@ -1,4 +1,4 @@
-(ns metabase.events.driver-notifications
+(ns metabase.driver.events.driver-notifications
   "Driver notifications are used to let drivers know database details or other relevant information has
   changed (`:database-update`) or that a Database has been deleted (`:database-delete`). Drivers can choose to be
   notified of these events by implementing the `metabase.driver/notify-database-updated` multimethod. At the time of
