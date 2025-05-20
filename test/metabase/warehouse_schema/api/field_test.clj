@@ -24,17 +24,17 @@
     :name     "test-data (h2)"
     :features (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :settings {}}
-   (select-keys (mt/db) [:id :entity_id :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
+   (select-keys (mt/db) [:id :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
 
 (deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (=? (merge
              (t2/select-one [:model/Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
-                             :database_position :database_required :database_is_auto_increment :entity_id]
+                             :database_position :database_required :database_is_auto_increment]
                             :id (mt/id :users :name))
              {:table_id         (mt/id :users)
               :table            (merge
-                                 (t2/select-one [:model/Table :created_at :updated_at :entity_id
+                                 (t2/select-one [:model/Table :created_at :updated_at
                                                  :initial_sync_status :view_count]
                                                 :id (mt/id :users))
                                  {:description             nil
