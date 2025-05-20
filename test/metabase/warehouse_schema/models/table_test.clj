@@ -364,3 +364,8 @@
             (is (= #{table-id-1 table-id-2 table-id-3}
                    (fetch-visible-ids user-info permission-map :id))
                 "Clause should filter correctly when requiring :blocked level")))))))
+
+(deftest create-table-entity-id
+  (testing "Tables should get :entity_id on creation"
+    (mt/with-temp [:model/Table {entity-id :entity_id} {}]
+      (is (some? entity-id)))))

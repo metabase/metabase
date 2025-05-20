@@ -60,10 +60,7 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
-  ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
-  ;; cause duplication rather than good matching if the two instances are later linked by serdes.
-  #_(derive :hook/entity-id))
+  (derive :hook/entity-id))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :before :model/Database
   [_model _explicit-attributes f]

@@ -95,3 +95,8 @@
       (is (= "913269d5"
              (serdes/raw-hash ["child" (serdes/identity-hash table) (serdes/identity-hash parent2)])
              (serdes/identity-hash child2))))))
+
+(deftest create-field-entity-id
+  (testing "Fields should get :entity_id on creation"
+    (mt/with-temp [:model/Field {entity-id :entity_id} {}]
+      (is (some? entity-id)))))
