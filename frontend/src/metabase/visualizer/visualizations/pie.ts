@@ -98,7 +98,8 @@ export function addColumnToPieChart(
   }
 
   if (isDimension(column) && !isMetric(column)) {
-    const dimensions = settings["pie.dimension"] ?? [];
+    const dimensions =
+      state.settings["pie.dimension"] ?? settings["pie.dimension"] ?? [];
     state.settings["pie.dimension"] = [...dimensions, column.name];
   }
 }

@@ -157,7 +157,8 @@ export function addMetricColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const metrics = settings["graph.metrics"] ?? [];
+  const metrics =
+    state.settings["graph.metrics"] ?? settings["graph.metrics"] ?? [];
   const isInUse = metrics.includes(columnRef.name);
   if (isInUse) {
     return;
@@ -184,7 +185,8 @@ export function addDimensionColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const dimensions = settings["graph.dimensions"] ?? [];
+  const dimensions =
+    state.settings["graph.dimensions"] ?? settings["graph.dimensions"] ?? [];
   const isInUse = dimensions.includes(columnRef.name);
   if (isInUse) {
     return;
