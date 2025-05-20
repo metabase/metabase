@@ -31,8 +31,10 @@ jobs:
     needs: [files-changed]
     if: |
       !cancelled() &&
-      (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+      (
+        needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+        needs.files-changed.outputs.documentation == 'true'
+      )
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
@@ -50,6 +52,125 @@ jobs:
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: resources/embedding-sdk
+
+  # Builds the target branch for a PR (base ref)
+  build-base-ref:
+    needs: [files-changed]
+    if: |
+      github.event_name == 'pull_request' &&
+      !cancelled() &&
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
+  embedding-sdk-bundle-size-check:
+    needs: [files-changed, build, build-base-ref]
+    if: |
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      needs.build.result == 'success' &&
+      needs.build-base-ref.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    env:
+      EMBEDDING_SDK_CURRENT_DIST_TEMP_PATH: 'temp/embedding-sdk-current'
+      EMBEDDING_SDK_BASE_REF_DIST_TEMP_PATH: 'temp/embedding-sdk-base-ref'
+      MAX_BUNDLE_SIZE_DIFF_PERCENT: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve Embedding SDK dist artifact for current commit
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/${{ env.EMBEDDING_SDK_CURRENT_DIST_TEMP_PATH }}
+      - name: Retrieve Embedding SDK dist artifact for base ref
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/${{ env.EMBEDDING_SDK_BASE_REF_DIST_TEMP_PATH }}
+      - name: Calculate bundle sizes
+        id: bundle-sizes
+        shell: bash
+        run: |
+          sum_js_file_sizes() {
+            dir="$1"
+            total=0
+            files=$(find "$dir" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) 2>/dev/null)
+
+            # Detect OS for stat option
+            if stat --version >/dev/null 2>&1; then
+              # GNU stat (Linux)
+              size_cmd="stat -c '%s'"
+            else
+              # BSD stat (macOS)
+              size_cmd="stat -f '%z'"
+            fi
+
+            for f in $files; do
+              [ -f "$f" ] && size=$(eval $size_cmd "\"$f\"") && total=$((total + size))
+            done
+
+            echo "$total"
+          }
+
+          current_dir="${{ github.workspace }}/${{ env.EMBEDDING_SDK_CURRENT_DIST_TEMP_PATH }}/dist"
+          base_ref_dir="${{ github.workspace }}/${{ env.EMBEDDING_SDK_BASE_REF_DIST_TEMP_PATH }}/dist"
+
+          current_size=$(sum_js_file_sizes "$current_dir")
+          current_size=${current_size:-1}
+
+          base_ref_size=$(sum_js_file_sizes "$base_ref_dir")
+          base_ref_size=${base_ref_size:-1}
+
+          echo "current_size=$current_size" >> $GITHUB_OUTPUT
+          echo "base_ref_size=$base_ref_size" >> $GITHUB_OUTPUT
+      - name: Compare sizes and check threshold
+        run: |
+          current_size="${{ steps.bundle-sizes.outputs.current_size }}"
+          base_ref_size="${{ steps.bundle-sizes.outputs.base_ref_size }}"
+
+          diff=$((current_size - base_ref_size))
+          percent=$(( diff * 100 / base_ref_size ))
+
+          echo "Current size: $current_size bytes"
+          echo "Base ref size: $base_ref_size bytes"
+          echo "Difference: $diff bytes ($percent%)"
+
+          max_percent="${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}"
+
+          if [ "$percent" -gt "$max_percent" ]; then
+            echo "Bundle size increased by $percent% (>$max_percent%)"
+            echo "size_increased=true" >> $GITHUB_OUTPUT
+          else
+            echo "size_increased=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR if bundle size has increased
+        uses: ./.github/actions/notify-pull-request
+        if: |
+          success() &&
+          steps.compare.outputs.size_increased == 'true'
+        with:
+          remove-previous-comment: true
+          add-new-comment: true
+          message: "⚠️ Embedding SDK bundle size increased by more than ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%."
+          include-log: false
 
   embedding-sdk-cli-snippets-type-check:
     needs: [files-changed, build]
@@ -148,6 +269,7 @@ jobs:
 
   embedding-sdk-tests-result:
     needs:
+      - embedding-sdk-bundle-size-check
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-no-exposed-internal-types-validate
