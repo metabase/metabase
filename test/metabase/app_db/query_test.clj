@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.format :as app-db.format]
    [metabase.app-db.query :as mdb.query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -18,7 +19,7 @@
   "Ensure that the formatted native query derived from an mbql query produce the same results."
   [q]
   (let [{:keys [query]} (qp.compile/compile q)
-        formatted-query (mdb.query/format-sql query)
+        formatted-query (app-db.format/format-sql query)
         native-query    {:database (mt/id)
                          :type     :native
                          :native   {:query formatted-query}}]
