@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Draggable,
   Droppable,
@@ -190,6 +190,16 @@ export const ChartSettingFieldsPartition = ({
   aggregatedColumns,
   canEditColumns,
 }: ChartSettingFieldPartitionProps) => {
+  const [pendingAggCols, setPendingAggCols] = useState<
+    RemappingHydratedDatasetColumn[] | null
+  >(null);
+
+  useEffect(() => {
+    if (aggregatedColumns) {
+      setPendingAggCols(null);
+    }
+  }, [aggregatedColumns]);
+
   const handleEditFormatting = (
     column: RemappingHydratedDatasetColumn,
     targetElement: HTMLElement,
@@ -216,6 +226,7 @@ export const ChartSettingFieldsPartition = ({
         return "metric";
     }
   };
+
   const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
     if (!source || !destination) {
       return;
@@ -251,6 +262,23 @@ export const ChartSettingFieldsPartition = ({
           column,
         ),
       });
+    }
+
+    // Since aggregatedColumns is the source of truth for the order of pivot
+    // measures, we need to swap the aggregation indexes so that the order
+    // doesn't flicker between drag-and-drop and query re-run.
+    // TODO:this feels pretty hacky
+    if (aggregatedColumns && destinationPartition === "values") {
+      const newPendingAggCols = aggregatedColumns.map((col) => {
+        if (col?.aggregation_index === sourceIndex) {
+          col.aggregation_index = destinationIndex;
+        } else if (col?.aggregation_index === destinationIndex) {
+          col.aggregation_index = sourceIndex;
+        }
+
+        return col;
+      });
+      setPendingAggCols(newPendingAggCols);
     }
   };
 
@@ -307,8 +335,10 @@ export const ChartSettingFieldsPartition = ({
     return _.mapObject(value || {}, (partitionValue, partition) => {
       if (partition === "values") {
         const aggregations = partitionValue as PivotAggregation[];
-        const cols = aggregations.map((agg) => {
-          return aggregatedColumns?.find((col) => col.name === agg.name);
+        const cols = aggregations.map((_agg, aggIndex) => {
+          return (pendingAggCols || aggregatedColumns)?.find((col) => {
+            return col?.aggregation_index === aggIndex;
+          });
         });
         return cols;
       } else {
@@ -325,7 +355,7 @@ export const ChartSettingFieldsPartition = ({
           .filter((col): col is RemappingHydratedDatasetColumn => col != null);
       }
     });
-  }, [canEditColumns, columns, aggregatedColumns, value]);
+  }, [canEditColumns, columns, aggregatedColumns, pendingAggCols, value]);
 
   const onAddBreakout = (
     partition: keyof PivotTableColumnSplitSetting,
@@ -377,6 +407,31 @@ export const ChartSettingFieldsPartition = ({
     partition: keyof PivotTableColumnSplitSetting,
     index: number,
   ) => {
+    onChange({
+      ...value,
+      [partition]: columnRemove(value[partition], index),
+    });
+  };
+
+  const onRemoveAggregation = (
+    partition: keyof PivotTableColumnSplitSetting,
+    index: number,
+  ) => {
+    if (!aggregatedColumns) {
+      return;
+    }
+
+    const updated = aggregatedColumns
+      .filter((col) => col.aggregation_index !== index)
+      .map((col) => {
+        // Adjust aggregation_index of columns that came after the removed index
+        if (col.aggregation_index != null && col.aggregation_index > index) {
+          return { ...col, aggregation_index: col.aggregation_index - 1 };
+        }
+        return col;
+      });
+
+    setPendingAggCols(updated);
     onChange({
       ...value,
       [partition]: columnRemove(value[partition], index),
@@ -516,7 +571,7 @@ export const ChartSettingFieldsPartition = ({
                                     column={col}
                                     onEditFormatting={handleEditFormatting}
                                     onRemove={() =>
-                                      onRemoveBreakout(partitionName, index)
+                                      onRemoveAggregation(partitionName, index)
                                     }
                                     title={col.display_name}
                                   />
