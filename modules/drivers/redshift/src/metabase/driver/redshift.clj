@@ -540,7 +540,6 @@
   [_ role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
         needs-quote           (re-find special-chars-pattern role)]
-    (tap> {:red (format "SET SESSION AUTHORIZATION %s;" role)})
     (if needs-quote
       (format "SET SESSION AUTHORIZATION \"%s\";" role)
       (format "SET SESSION AUTHORIZATION %s;" role))))

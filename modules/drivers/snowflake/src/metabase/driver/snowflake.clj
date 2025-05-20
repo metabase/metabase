@@ -824,7 +824,6 @@
   [_ role]
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
         needs-quote           (re-find special-chars-pattern role)]
-    (tap> {:snowflake-role (format "USE ROLE \"%s\";" role)})
     (if needs-quote
       (format "USE ROLE \"%s\";" role)
       (format "USE ROLE %s;" role))))
