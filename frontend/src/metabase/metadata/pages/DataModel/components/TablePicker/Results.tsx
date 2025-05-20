@@ -7,7 +7,7 @@ import { Box, Flex, Icon, Skeleton } from "metabase/ui";
 
 import S from "./Results.module.css";
 import type { FlatItem, TreePath } from "./types";
-import { getIconForType, hasChildren } from "./utils";
+import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
@@ -207,7 +207,7 @@ export function Results({
                       })}
                     />
                   )}
-                  <Icon name={getIconForType(type)} className={S.icon} />
+                  <Icon name={TYPE_ICONS[type]} className={S.icon} />
                   {isLoading ? (
                     <Loading />
                   ) : (

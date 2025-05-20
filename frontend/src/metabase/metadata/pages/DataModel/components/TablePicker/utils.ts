@@ -33,12 +33,11 @@ const CHILD_TYPES = {
   table: null,
 } as const;
 
-export function getIconForType(type: ItemType): IconName {
-  if (type === "table") {
-    return "table2";
-  }
-  return type;
-}
+export const TYPE_ICONS: Record<ItemType, IconName> = {
+  table: "table2",
+  schema: "folder",
+  database: "database",
+};
 
 export function hasChildren(type: ItemType): boolean {
   return type !== "table";
