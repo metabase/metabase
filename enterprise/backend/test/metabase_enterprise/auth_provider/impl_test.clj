@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase.app-db.data-source :as mdb.data-source]
    [metabase.auth-provider.core :as auth-provider]
-   [metabase.db.data-source :as mdb.data-source]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

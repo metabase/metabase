@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import fs from "fs";
-
 import path from "path";
 
 import { MOCK_SERVER_PACKAGE_JSON } from "../cli/constants/mock-server-package-json";

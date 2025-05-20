@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])

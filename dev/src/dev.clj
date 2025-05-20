@@ -67,8 +67,8 @@
    [metabase.channel.email :as email]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
-   [metabase.db.env :as mdb.env]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.env :as mdb.env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -355,9 +355,9 @@
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one :model/Database :name "Application Database")
         #_:clj-kondo/ignore
-        (let [details (#'metabase.db.env/broken-out-details
+        (let [details (#'metabase.app-db.env/broken-out-details
                        (mdb/db-type)
-                       @#'metabase.db.env/env)
+                       @#'metabase.app-db.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
