@@ -50,7 +50,6 @@ safely_mktemp() {
   echo $tempFile
 }
 
-#for po in locales/*.po; do
 for po in locales/*.po; do
   set -f
 
