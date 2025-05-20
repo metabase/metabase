@@ -1,0 +1,80 @@
+.EditableTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+
+.ParametersModalModalLeftSection {
+  width: 20rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--mb-color-border);
+
+  &:before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to top,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 1) 90%
+    );
+    height: 2rem;
+    top: 0;
+    left: 0;
+    width: 19rem;
+  }
+
+  &:after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 1) 90%
+    );
+    height: 2rem;
+    bottom: 0;
+    left: 0;
+    width: 19rem;
+  }
+}
+
+.ParametersModalRightSection {
+  width: 30rem;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.ParametersForm {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ParametersListContainer {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
+  padding: 0.5rem 1.5rem 1.5rem;
+}
+
+.ParametersModalFooter {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.ParameterWidget {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  background-color: var(--mb-color-bg-light);
+  padding: 1rem;
+}
