@@ -3,7 +3,10 @@
 # branch.
 #
 # Example usage:
-#   merge-translations release-x.54.x
+#   ./bin/i18n/merge-translations release-x.54.x
+#
+# Run this script from the root directory since it assumes that .po files exist
+# in a locales/ directory.
 
 sourceBranch=$1
 
