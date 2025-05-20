@@ -287,28 +287,26 @@ export function DashCardVisualization({
     [dashcard],
   );
 
-  const findCardById = useCallback(
-    (cardId?: CardId | null) => {
+  const onOpenQuestion = useCallback(
+    (cardId: CardId | null) => {
       const lookupSeries = isVisualizerDashboardCard(dashcard)
         ? rawSeries
         : series;
-      return (
-        lookupSeries.find((series) => series.card.id === cardId)?.card ??
-        lookupSeries[0].card
-      );
-    },
-    [rawSeries, dashcard, series],
-  );
 
-  const onOpenQuestion = useCallback(
-    (cardId: CardId | null) => {
-      const card = findCardById(cardId);
+      const card =
+        lookupSeries.find((series) => series.card.id === cardId)?.card ??
+        lookupSeries[0].card;
+
+      const previousCard =
+        lookupSeries.find((series) => series.card.id === card?.id)?.card ??
+        lookupSeries[0].card;
+
       onChangeCardAndRun?.({
-        previousCard: findCardById(card?.id),
+        previousCard,
         nextCard: card,
       });
     },
-    [findCardById, onChangeCardAndRun],
+    [onChangeCardAndRun, dashcard, rawSeries, series],
   );
 
   const actionButtons = useMemo(() => {
@@ -428,7 +426,6 @@ export function DashCardVisualization({
       onChangeLocation={onChangeLocation}
       token={token}
       uuid={uuid}
-      findCardById={findCardById}
     />
   );
 }
