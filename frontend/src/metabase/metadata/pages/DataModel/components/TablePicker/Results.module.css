@@ -16,28 +16,25 @@
     outline: 2px solid var(--mb-color-focus);
   }
 
-  &.active {
-    background-color: var(--mb-color-brand-light);
+  &.active,
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
     color: var(--mb-color-brand);
+
+    .icon {
+      opacity: 1;
+    }
   }
 
   &.table {
     padding-left: var(--mantine-spacing-md);
     padding-right: var(--mantine-spacing-sm);
   }
-
-  &:not(:focus-visible, .active):hover {
-    background-color: var(--mb-color-bg-medium);
-  }
 }
 
 .icon {
   opacity: 0.5;
   flex-shrink: 0;
-
-  .active & {
-    opacity: 1;
-  }
 }
 
 .chevron {
