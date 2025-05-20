@@ -38,6 +38,7 @@ import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -716,6 +717,7 @@ export const PLUGIN_METABOT = {
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
   getMetabotVisible: (_state: State) => false,
+  SearchButton: SearchButton,
 };
 
 type DashCardMenuItemGetter = (

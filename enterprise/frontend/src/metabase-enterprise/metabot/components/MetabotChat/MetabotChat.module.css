@@ -10,7 +10,8 @@
 }
 
 .header {
-  padding: 1.5rem var(--paddxing-x) 1rem;
+  /* top padding is set to visually align w/ the dashboard action buttons */
+  padding: 1.25rem var(--paddxing-x) 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;

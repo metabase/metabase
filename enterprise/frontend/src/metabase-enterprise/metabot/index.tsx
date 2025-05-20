@@ -6,6 +6,7 @@ import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
+import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
@@ -16,6 +17,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
   PLUGIN_METABOT.MetabotContext = MetabotContext;
   PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
+  PLUGIN_METABOT.getMetabotVisible = getMetabotVisible as any; // TODO: fix type
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
     const { submitInput, setVisible } = useMetabotAgent();
 
@@ -46,7 +48,7 @@ if (hasPremiumFeature("metabot_v3")) {
     }, [searchText, submitInput, setVisible]);
   };
 
-  PLUGIN_METABOT.getMetabotVisible = getMetabotVisible as any; // TODO: fix type
+  PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }
