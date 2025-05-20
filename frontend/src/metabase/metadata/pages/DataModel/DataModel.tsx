@@ -14,6 +14,7 @@ import {
   PreviewSection,
   RouterTablePicker,
   TableSection,
+  usePreviewType,
 } from "./components";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
@@ -23,10 +24,6 @@ interface Props {
 }
 
 const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
-
-// TODO: remove this in Milestone 2
-// https://linear.app/metabase/project/up-level-admin-metadata-editing-0399213bee40
-const PREVIEW_NOT_IMPLEMENTED_YET = true;
 
 export const DataModel = ({ params }: Props) => {
   const { databaseId, tableId, schemaId, fieldId } = parseRouteParams(params);
@@ -46,15 +43,46 @@ export const DataModel = ({ params }: Props) => {
         },
   );
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const [previewType, setPreviewType] = usePreviewType();
 
   return (
     <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`}>
-      <Stack className={S.sidebar} flex="0 0 320px" gap={0} h="100%">
+      <Stack
+        className={S.sidebar}
+        flex="0 0 320px"
+        gap={0}
+        h="100%"
+        bg="bg-white"
+      >
         <RouterTablePicker
           databaseId={databaseId}
           schemaId={schemaId}
           tableId={tableId}
         />
+      </Stack>
+
+      <Stack
+        className={S.sidebar}
+        flex="0 0 320px"
+        gap={0}
+        h="100%"
+        bg="bg-white"
+      >
+        <Box className={S.tableSectionContainer} h="100%" pb="lg" px="xl">
+          <LoadingAndErrorWrapper error={error} loading={isLoading}>
+            {table && (
+              <TableSection
+                /**
+                 * Make sure internal component state is reset when changing tables.
+                 * This is to avoid state mix-up with optimistic updates.
+                 */
+                key={table.id}
+                params={params}
+                table={table}
+              />
+            )}
+          </LoadingAndErrorWrapper>
+        </Box>
       </Stack>
 
       {tableId && (
@@ -98,7 +126,7 @@ export const DataModel = ({ params }: Props) => {
       )}
 
       {!isEmptyStateShown && (
-        <Flex bg="accent-gray-light" flex="1">
+        <>
           <Box flex="0 0 400px" h="100%">
             <LoadingAndErrorWrapper
               className={S.contentLoadingAndErrorWrapper}
@@ -119,12 +147,19 @@ export const DataModel = ({ params }: Props) => {
             </LoadingAndErrorWrapper>
           </Box>
 
-          {!PREVIEW_NOT_IMPLEMENTED_YET && (
-            <Box flex="1" p="xl" pl={0}>
-              <PreviewSection fieldId={fieldId} />
+          {field && (
+            <Box flex="1 1 200px" p="xl" pl={0} miw={0}>
+              <PreviewSection
+                databaseId={databaseId}
+                tableId={tableId}
+                fieldId={fieldId}
+                field={field}
+                previewType={previewType}
+                onPreviewTypeChange={setPreviewType}
+              />
             </Box>
           )}
-        </Flex>
+        </>
       )}
     </Flex>
   );
