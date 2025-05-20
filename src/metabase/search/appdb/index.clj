@@ -257,14 +257,16 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [entries (map document->entry documents)
+  (let [active-table (active-table)
+        entries (map document->entry documents)
         ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated? (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
+        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
         (log/trace "indexed documents for " <>)
-        (analytics/set! :metabase-search/appdb-index-size (t2/count (active-table)))))))
+        (when active-updated?
+          (analytics/set! :metabase-search/appdb-index-size (t2/count #p (name #p active-table))))))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
