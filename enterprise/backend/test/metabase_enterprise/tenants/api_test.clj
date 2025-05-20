@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn with-premium-feature-fixture [f]
@@ -29,15 +31,53 @@
              (mt/user-http-request :crowberto :post 400 "ee/tenants/"
                                    {:name "Foo" :slug "my-tenant"}))))))
 
+(deftest can-get-tenant-info
+  (mt/with-temp [:model/Tenant {id1 :id} {:name "Tenant Name" :slug "Sluggy McSluggerson"}
+                 :model/User _ {:tenant_id id1}]
+    (is (= {:id id1
+            :name "Tenant Name"
+            :slug "Sluggy McSluggerson"
+            :member_count 1}
+           (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id1))))))
+
+(deftest can-update-tenant
+  (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}
+                 :model/Tenant {other-id :id} {:name "Other Name" :slug "sluggy2"}]
+    (is (= {:id id
+            :name "New Name"
+            :slug "sluggy"
+            :member_count 0}
+           (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id) {:name "New Name"})))
+    (is (= "This name is already taken."
+           (mt/user-http-request :crowberto :put 400 (str "ee/tenants/" id) {:name "Other Name"})))))
+
 (deftest can-list-tenants
   (testing "I can list tenants"
     (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "Slug 1"}
                    :model/User {} {:tenant_id id1}
                    :model/Tenant {id2 :id} {:name "Name 2" :slug "Slug 2"}]
-      (is (=? [{:id id1 :member_count 1}
-               {:id id2 :member_count 0}]
+      (is (=? {:data [{:id id1 :member_count 1}
+                      {:id id2 :member_count 0}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/")))
-      (is (=? [{:id id1 :name "Name 1" :slug "Slug 1"}]
+      (is (=? {:data [{:id id1 :name "Name 1" :slug "Slug 1"}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?limit=1")))
-      (is (=? [{:id id2}]
+      (is (=? {:data [{:id id2}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?offset=1"))))))
+
+(deftest can-get-tenant-members
+  (testing "I can list tenant members"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "Slug"}
+                   :model/User _ {:tenant_id id}
+                   :model/User _ {:tenant_id id}
+                   :model/User _ {:tenant_id id}]
+      (is (=? {:data [{} {} {}]}
+              (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id "/members"))))
+      (is (mr/validate [:map {:closed true}
+                        [:data
+                         [:sequential
+                          [:map {:closed true}
+                           [:id ms/PositiveInt]
+                           [:first_name ms/NonBlankString]
+                           [:last_name ms/NonBlankString]
+                           [:email ms/NonBlankString]]]]]
+                       (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id "/members")))))))

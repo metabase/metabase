@@ -19,24 +19,43 @@
                  "This tenant name or slug is already taken.")
   (t2/insert! :model/Tenant tenant))
 
+(defn- present-tenants [tenants]
+  (t2/hydrate tenants :member_count))
+
+(defn- present-tenant [tenant]
+  (first (present-tenants [tenant])))
+
 (api.macros/defendpoint :get "/"
   "Get all tenants"
   [_ _ _]
-  (t2/hydrate (t2/select :model/Tenant (cond-> {}
-                                         true (assoc :order-by [[:id :asc]])
-                                         (request/paged?) (assoc :limit (request/limit) :offset (request/offset))))
-              :member_count))
+  {:data (present-tenants
+          (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]}
+                                     (request/paged?) (assoc :limit (request/limit) :offset (request/offset)))))})
 
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
   "Update a tenant (right now, only name)"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- [:map {:closed true} [:name ms/NonBlankString]]]
-  (t2/update! :model/Tenant {:id id} tenant))
+  (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
+                 "This name is already taken.")
+  (t2/update! :model/Tenant {:id id} tenant)
+  (present-tenant (t2/select-one :model/Tenant :id id)))
 
 (api.macros/defendpoint :get "/:id"
+  "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (t2/hydrate (t2/select-one :model/Tenant :id id) :member_count))
+  (present-tenant (t2/select-one :model/Tenant :id id)))
+
+(api.macros/defendpoint :get "/:id/members"
+  "Get the members of a tenant"
+  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  {:data (->> (t2/select :model/User (cond-> {:where
+                                              [:and
+                                               [:= :tenant_id id]
+                                               [:= :type "personal"]]}
+                                       (request/paged?) (assoc :limit (request/limit) :offset (request/offset))))
+              (map #(select-keys % [:id :first_name :last_name :email])))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenants` routes"
