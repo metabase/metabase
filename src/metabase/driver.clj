@@ -1382,7 +1382,7 @@
 
 (defmulti table-known-to-not-exist?
   "Test if an exception is due to a table not existing."
-  {:added "0.53.17" :arglists '([driver ^Throwable e])}
+  {:added "0.54.10" :arglists '([driver ^Throwable e])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

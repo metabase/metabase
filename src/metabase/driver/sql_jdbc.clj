@@ -292,7 +292,7 @@
   "Implementing multimethod for is table known to not exist. Use this instead of implementing
   driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
   based drivers."
-  {:added "0.53.17" :arglists '([driver ^SQLException e])}
+  {:added "0.54.10" :arglists '([driver ^SQLException e])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
