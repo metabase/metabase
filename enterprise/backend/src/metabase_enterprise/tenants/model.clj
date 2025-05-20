@@ -33,7 +33,7 @@
   (mi/instances-with-hydrated-data
    tenants k
    (fn []
-     (->> (t2/query {:select [[:tenant_id] [[:count :*]]]
+     (->> (t2/query {:select [[:tenant_id] [[:count :*] :count]]
                      :from [(t2/table-name :model/User)]
                      :where [:and
                              [:in :tenant_id (map u/the-id tenants)]
