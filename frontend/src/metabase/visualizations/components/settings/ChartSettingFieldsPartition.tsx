@@ -414,22 +414,34 @@ export const ChartSettingFieldsPartition = ({
             <Droppable
               droppableId={partitionName}
               type={partitionType}
-              renderClone={(provided, _snapshot, _rubric) => (
-                <Box
-                  ref={provided.innerRef}
-                  {...provided.draggableProps}
-                  {...provided.dragHandleProps}
-                  mb="0.5rem"
-                >
-                  {
-                    //<Column
-                    //  onEditFormatting={handleEditFormatting}
-                    //  column={updatedColumns[rubric.source.index]}
-                    //  title={getColumnTitle(updatedColumns[rubric.source.index])}
-                    ///>
-                  }
-                </Box>
-              )}
+              renderClone={(provided, _snapshot, rubric) => {
+                const col = updatedColumns[rubric.source.index];
+                if (col) {
+                  return (
+                    <Box
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      mb="0.5rem"
+                    >
+                      <Column
+                        onEditFormatting={handleEditFormatting}
+                        column={col}
+                        title={getColumnTitle(col)}
+                      />
+                    </Box>
+                  );
+                } else {
+                  return (
+                    <Box
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      mb="0.5rem"
+                    ></Box>
+                  );
+                }
+              }}
             >
               {(provided, snapshot) => (
                 <Box
