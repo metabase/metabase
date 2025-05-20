@@ -10,7 +10,6 @@
     :refer [fully-qualified-name->context]]
    [metabase-enterprise.serialization.upsert :refer [maybe-upsert-many!]]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
    [metabase.config.core :as config]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
