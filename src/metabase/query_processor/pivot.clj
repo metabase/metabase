@@ -610,10 +610,6 @@
             full-breakout-combination (splice-in-remap breakout-combination remap)]
         (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
-#_(defn- nest-query
-    [query]
-    (assoc query :query {:source-query (:query query)}))
-
 (defn- original-cols
   [query]
   (or (-> (qp.store/with-metadata-provider (:database query)
@@ -624,37 +620,6 @@
         (-> (qp/process-query (dissoc query :info))
             :data
             :cols))))
-
-#_(defn- outer-query-with-breakouts
-    [query column-split]
-    (try
-      (let [base-query-cols (original-cols query)
-            pivot-row-cols (reduce
-                            (fn [acc {:keys [name]}]
-                              (conj acc
-                                    (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
-                            []
-                            (:rows column-split))
-            pivot-col-cols (reduce
-                            (fn [acc {:keys [name]}]
-                              (conj acc
-                                    (u/seek (fn [col] (= (:name col) name)) base-query-cols)))
-                            []
-                            (:columns column-split))]
-        (if (get-in query [:query :source-query :native])
-          (-> query
-              (assoc-in [:query :breakout]
-                        [(:field_ref (first pivot-row-cols))
-                         (:field_ref (first pivot-col-cols))])
-              (assoc-in [:query :aggregation] [["count"]]))
-          (-> (qp.store/with-metadata-provider (:database query)
-                (lib/query (qp.store/metadata-provider) query))
-              (add-breakouts pivot-row-cols)
-              (add-breakouts pivot-col-cols)
-              (lib/aggregate (lib/count)))))
-      (catch Exception e
-        (log/error e "Error in outer-query-with-breakouts")
-        (throw e))))
 
 (defn- add-breakouts
   [query breakout-cols]
@@ -738,9 +703,10 @@
       (not-empty (:pivot_rows col-split))))))
 
 (defn- is-unaggregated-query?
-  "Is this query an unaggregated query with no pivot settings set yet? If so, we run it as-is, not as a pivot."
+  "Is this query an unaggregated query with no pivot rows/cols set yet? If so, we run it as-is, not as a pivot."
   [query]
-  (or (= (:pivot_unagg_column_split query) {:rows [] :columns [] :value []})
+  (or (= (select-keys (:pivot_unagg_column_split query) [:rows :columns])
+         {:rows [] :columns []})
       (= (:pivot_unagg_column_split query) [])))
 
 (mu/defn run-pivot-query
@@ -781,9 +747,6 @@
                                       (:pivot_cols query))
                base-query         (dissoc query :info :pivot_unagg_column_split)
                query2 (nest-mbql-query base-query unagg-column-split)
-               ; nested-query       (-> (lib/query (qp.store/metadata-provider) base-query)
-               ;                        lib/append-stage)
-               ; query2             (outer-query-with-breakouts nested-query unagg-column-split)
                query3             (-> query2
                                       (assoc-in [:middleware :pivot-options] {:pivot-rows new-pivot-rows
                                                                               :pivot-cols new-pivot-cols
