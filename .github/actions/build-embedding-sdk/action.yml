@@ -1,0 +1,35 @@
+name: Build Embedding SDK Package
+description: |
+  Checks out a given ref, prepares environments, builds the Embedding SDK,
+  and uploads it as an artifact.
+
+inputs:
+  ref:
+    description: 'Git ref to checkout'
+    required: false
+  artifact-name:
+    description: 'Name for the uploaded artifact'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref }}
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
+    - name: Build Embedding SDK package
+      shell: bash
+      run: yarn build-embedding-sdk
+    - name: Prepare Embedding SDK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: resources/embedding-sdk
+    # Checkout back the current commit to complete post-run logic
+    - uses: actions/checkout@v4
