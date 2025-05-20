@@ -1,0 +1,94 @@
+name: Embedding SDK Bundle Size Check
+description: |
+  Downloads two build artifacts, compares bundle sizes, and sets output if size increase exceeds the threshold.
+
+inputs:
+  current-artifact-name:
+    description: 'Name of the artifact for the current commit'
+    required: true
+  current-dist-path:
+    description: 'Relative temp dir to extract current artifact to'
+    required: true
+  base-ref-artifact-name:
+    description: 'Name of the artifact for the base ref'
+    required: true
+  base-ref-dist-path:
+    description: 'Relative temp dir to extract base artifact to'
+    required: true
+  max-bundle-size-diff-percent:
+    description: 'Percent threshold for bundle size increase'
+    required: false
+    default: '5'
+
+outputs:
+  size_increased:
+    description: "true if bundle size increase is above threshold"
+    value: ${{ steps.compare.outputs.size_increased }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - name: Download artifact (current)
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.current-artifact-name }}
+        path: ${{ github.workspace }}/${{ inputs.current-dist-path }}
+    - name: Download artifact (base)
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.base-ref-artifact-name }}
+        path: ${{ github.workspace }}/${{ inputs.base-ref-dist-path }}
+    - name: Calculate bundle sizes
+      id: bundle-sizes
+      shell: bash
+      run: |
+        sum_js_file_sizes() {
+          dir="$1"
+          total=0
+          files=$(find "$dir" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) 2>/dev/null)
+
+          # Detect OS for stat option
+          if stat --version >/dev/null 2>&1; then
+            # GNU stat (Linux)
+            size_cmd="stat -c '%s'"
+          else
+            # BSD stat (macOS)
+            size_cmd="stat -f '%z'"
+          fi
+
+          for f in $files; do
+            [ -f "$f" ] && size=$(eval $size_cmd "\"$f\"") && total=$((total + size))
+          done
+
+          echo "$total"
+        }
+
+        current_dir="${{ github.workspace }}/${{ inputs.current-dist-path }}/dist"
+        base_ref_dir="${{ github.workspace }}/${{ inputs.base-ref-dist-path }}/dist"
+
+        current_size=$(sum_js_file_sizes "$current_dir")
+        current_size=${current_size:-1}
+
+        base_ref_size=$(sum_js_file_sizes "$base_ref_dir")
+        base_ref_size=${base_ref_size:-1}
+
+        echo "current_size=$current_size" >> $GITHUB_OUTPUT
+        echo "base_ref_size=$base_ref_size" >> $GITHUB_OUTPUT
+    - name: Compare sizes and set output
+      id: compare
+      shell: bash
+      run: |
+        current_size="${{ steps.bundle-sizes.outputs.current_size }}"
+        base_ref_size="${{ steps.bundle-sizes.outputs.base_ref_size }}"
+        diff=$((current_size - base_ref_size))
+        percent=$(( diff * 100 / base_ref_size ))
+        echo "Current size: $current_size bytes"
+        echo "Base ref size: $base_ref_size bytes"
+        echo "Difference: $diff bytes ($percent%)"
+        max_percent="${{ inputs.max-bundle-size-diff-percent }}"
+        if [ "$percent" -gt "$max_percent" ]; then
+          echo "size_increased=true" >> $GITHUB_OUTPUT
+        else
+          echo "size_increased=false" >> $GITHUB_OUTPUT
+        fi
