@@ -1041,3 +1041,23 @@
    group by category_id
    order by 1 asc
    limit 2;")
+
+(doseq [driver [:postgres]]
+  (defmethod driver/database-supports? [driver :test/rls-impersonation]
+    [_driver _feature _database]
+    true))
+
+(doseq [driver [:redshift]]
+  (defmethod driver/database-supports? [driver :test/rls-impersonation]
+    [_driver _feature _database]
+    false))
+
+(doseq [driver [:postgres]]
+  (defmethod driver/database-supports? [driver :test/column-level-impersonation]
+    [_driver _feature _database]
+    true))
+
+(doseq [driver [:redshift :sqlserver]]
+  (defmethod driver/database-supports? [driver :test/column-level-impersonation]
+    [_driver _feature _database]
+    false))

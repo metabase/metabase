@@ -306,13 +306,12 @@
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
-          (let [schema-table (str schema "." table-name)
-                columns (:columns perms)
+          (let [columns (:columns perms)
                 select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))]
             (doseq [statement [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)
                                (if (seq columns)
-                                 (format "GRANT SELECT (%s) ON %s TO %s" select-cols schema-table role-name)
-                                 (format "GRANT SELECT ON %s TO %s" schema-table role-name))]]
+                                 (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
+                                 (format "GRANT SELECT ON %s TO %s" table-name role-name))]]
               (tap> {:red2 statement})
               (jdbc/execute! spec [statement] {:transaction? false}))))))))
 

@@ -169,20 +169,19 @@
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
-          (let [table-name (sql.tx/qualify-and-quote driver table-name)]
-            (when (:rls perms)
-              (let [policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
-                                         (sql.qp/format-honeysql :postgres (:rls perms))))]
-                (doseq [statement [(format "ALTER TABLE %s enable ROW LEVEL SECURITY" table-name)
-                                   (format "CREATE POLICY role_policy_%s ON %s FOR SELECT TO %s USING %s"
-                                           (mt/random-name) table-name role-name policy-cond)]]
-                  (jdbc/execute! spec [statement] {:transaction? false}))))
-            (let [columns (:columns perms)
-                  select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
-                  grant-stmt (if (seq columns)
-                               (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
-                               (format "GRANT SELECT ON %s TO %s" table-name role-name))]
-              (jdbc/execute! spec [grant-stmt] {:transaction? false}))))))))
+          (when (:rls perms)
+            (let [policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
+                                       (sql.qp/format-honeysql driver (:rls perms))))]
+              (doseq [statement [(format "ALTER TABLE %s enable ROW LEVEL SECURITY" table-name)
+                                 (format "CREATE POLICY role_policy_%s ON %s FOR SELECT TO %s USING %s"
+                                         (mt/random-name) table-name role-name policy-cond)]]
+                (jdbc/execute! spec [statement] {:transaction? false}))))
+          (let [columns (:columns perms)
+                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
+                grant-stmt (if (seq columns)
+                             (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name))]
+            (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
 
 (defmethod tx/create-and-grant-roles! :postgres
   [driver details roles user-name]
