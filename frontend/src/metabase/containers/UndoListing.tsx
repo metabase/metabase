@@ -40,6 +40,7 @@ import {
 } from "./UndoListing.styled";
 
 const TOAST_TRANSITION_DURATION = 300;
+const TOAST_TRANSITION_DELAY = 1;
 const MARGIN = 8;
 
 function DefaultMessage({
@@ -180,22 +181,47 @@ export function UndoListOverlay({
   onDismiss: (undo: Undo) => void;
 }) {
   // lastId changes when a new undo is added
-  const lastId = undos.at(-1)?._domId;
+  const prevUndos = useRef<Undo[]>([]);
 
   const ref = useRef<HTMLUListElement>(null);
   const [heights, setHeights] = useState<number[]>([]);
 
-  useLayoutEffect(() => {
-    // When a new undo is added, we move the target to the
-    // end of the body so that it is always on top
-    document.body.appendChild(target);
-  }, [lastId]);
+  const [extendedUndos, setExtendedUndos] =
+    useState<(Undo & { in?: boolean })[]>(undos);
 
   useLayoutEffect(() => {
-    // measure the heights of each toast
+    // When a new undo is added, we move the Portals' target to the
+    // end of the body so that its' children render on top.
+    //
+    // To be reliable this needs to happen after other renders have settled,
+    // so we do this in a timeout. Otherwise there might be other Portals
+    // that end up rendering at the same time and this makes the order unpredictable.
+    //
+    // To avoid resetting the transition state of the toasts, we track the
+    // when the target was appended to the body and only enable the transition
+    // once the target has been appended (via the custom in: prop on the Undo).
+    const prev = prevUndos.current;
+    prevUndos.current = undos;
+
+    if (_.isEqual(undos, prev)) {
+      // the undo list has not changed, we do not need to move the target
+      return;
+    }
+
+    const t = setTimeout(() => {
+      document.body.appendChild(target);
+      setExtendedUndos(undos.map((undo) => ({ ...undo, in: true })));
+    }, TOAST_TRANSITION_DELAY);
+    return () => clearTimeout(t);
+  }, [undos]);
+
+  useLayoutEffect(() => {
+    // We measure the height of all toasts so we know where to render
+    // the next one.
     const els = Array.from(
       ref.current?.querySelectorAll("[data-testid='toast-undo']") ?? [],
     );
+
     const newHeights = els
       .map((el) => {
         return el.getBoundingClientRect().height;
@@ -205,7 +231,7 @@ export function UndoListOverlay({
     if (!_.isEqual(heights, newHeights)) {
       setHeights(newHeights);
     }
-  }, [undos, heights]);
+  }, [extendedUndos, heights]);
 
   function heightAtIndex(index: number) {
     return heights.reduce((acc, height, idx) => {
@@ -225,10 +251,10 @@ export function UndoListOverlay({
         className={ZIndex.Overlay}
       >
         <Group appear enter exit component={null}>
-          {undos.map((undo, index) => (
+          {extendedUndos.map((undo, index) => (
             <Transition
               key={undo._domId}
-              in
+              in={undo.in}
               timeout={{
                 enter: 0,
                 exit: TOAST_TRANSITION_DURATION,
