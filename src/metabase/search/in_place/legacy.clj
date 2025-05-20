@@ -4,9 +4,10 @@
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -107,6 +108,8 @@
    ;; returned for indexed-entity
    :pk_ref              :text
    :model_index_id      :integer
+   ;; returned for Card
+   :entity_id           :text
    ;; returned for Card and Action
    :dataset_query       :text))
 
@@ -355,7 +358,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id :entity_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
@@ -451,7 +454,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- :metabase.models.card/type
+  [model :- ::queries.schema/card-type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])

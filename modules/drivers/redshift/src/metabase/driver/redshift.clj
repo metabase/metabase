@@ -19,7 +19,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -51,6 +51,11 @@
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [driver database & args]
   (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+
+;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/dynamic-database-types-lookup :redshift
+  [driver database database-types]
+  ((get-method driver/dynamic-database-types-lookup :sql-jdbc) driver database database-types))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -460,7 +465,7 @@
        (json/encode {:dashboard_id        dashboard-id
                      :chart_id            card-id
                      :optional_user_id    executed-by
-                     :optional_account_id (public-settings/site-uuid)
+                     :optional_account_id (system/site-uuid)
                      :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))

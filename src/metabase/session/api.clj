@@ -7,13 +7,13 @@
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
-   [metabase.events :as events]
-   [metabase.models.user :as user]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -167,8 +167,8 @@
   "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
   in which case disable reset for them as long as the Google SSO feature is enabled."
   [sso-source]
-  (if (and (= sso-source :google) (not (public-settings/sso-enabled?)))
-    (public-settings/google-auth-enabled?)
+  (if (and (= sso-source :google) (not (sso/sso-enabled?)))
+    (sso/google-auth-enabled)
     (some? sso-source)))
 
 (defn- forgot-password-impl
@@ -185,7 +185,7 @@
         ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
-              password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+              password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
@@ -304,6 +304,15 @@
         (do-login)
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
+
+(api.macros/defendpoint :post "/password-check"
+  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+  {:valid true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

@@ -9,6 +9,7 @@ import { UpsellBigCard } from "./components";
 import S from "./components/Upsells.module.css";
 import { useUpsellLink } from "./components/use-upsell-link";
 import { UPGRADE_URL } from "./constants";
+
 export const UpsellWhitelabel = ({ source }: { source: string }) => {
   const isWhitelabeled = useHasTokenFeature("whitelabel");
 

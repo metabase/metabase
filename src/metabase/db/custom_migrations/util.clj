@@ -1,8 +1,8 @@
 (ns metabase.db.custom-migrations.util
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
+   [metabase.classloader.core :as classloader]
    [metabase.db.connection :as mdb.connection]
-   [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]))
 
 (defn- set-jdbc-backend-properties! []
@@ -24,7 +24,7 @@
   Since we don't really need to run migrations against the scheduler in tests, this function will throw an exception if it sees an already-running scheduler.
   The various 'run this test with a temp database' functions should set `*allow-temp-scheduling*` to false so this call does nothing, so you should still never see the exception."
   [f]
-  (when  *allow-temp-scheduling*
+  (when *allow-temp-scheduling*
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
     (let [scheduler (qs/initialize)]

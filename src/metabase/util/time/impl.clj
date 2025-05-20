@@ -60,7 +60,7 @@
   "The first day of the week varies by locale, but Metabase has a setting that overrides it.
   In JVM, we can just read the setting directly."
   []
-  ((requiring-resolve 'metabase.settings.deprecated-grab-bag/start-of-week)))
+  ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
 
 (def default-options
   "The default map of options."

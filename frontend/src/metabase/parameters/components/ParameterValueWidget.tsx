@@ -278,6 +278,8 @@ export const ParameterValueWidget = ({
                 <FormattedParameterValue
                   parameter={parameter}
                   value={value}
+                  cardId={question?.id()}
+                  dashboardId={dashboard?.id}
                   placeholder={placeholderText}
                   isPopoverOpen={isOpen}
                 />

@@ -4,7 +4,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { createQuery } from "metabase-lib/test-helpers";
-import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
+import { getHelpText } from "metabase-lib/v1/expressions";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {

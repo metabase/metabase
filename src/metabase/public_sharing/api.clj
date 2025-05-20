@@ -5,21 +5,18 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.dataset :as api.dataset]
-   [metabase.api.field :as api.field]
    [metabase.api.macros :as api.macros]
-   [metabase.db.query :as mdb.query]
-   [metabase.events :as events]
+   [metabase.dashboards.api :as api.dashboard]
+   [metabase.events.core :as events]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
+   [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.parameters.params :as params]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -27,6 +24,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -35,6 +33,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -58,15 +57,8 @@
   However, since card.parameters is a recently added feature, there may be instances where a template-tag
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
-  [{:keys [parameters] :as card}]
-  (let [template-tag-parameters     (card/template-tag-parameters card)
-        id->template-tags-parameter (m/index-by :id template-tag-parameters)
-        id->parameter               (m/index-by :id parameters)]
-    (assoc card :parameters (vals (reduce-kv (fn [acc id parameter]
-                                               ;; order importance: we want the info from `template-tag` to be merged last
-                                               (update acc id #(merge % parameter)))
-                                             id->parameter
-                                             id->template-tags-parameter)))))
+  [card]
+  (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
@@ -76,7 +68,7 @@
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
@@ -138,11 +130,11 @@
           (qp (update query :info merge info) rff))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
-  [export-format]
-  (case export-format
-    "csv"  :public-csv-download
-    "xlsx" :public-xlsx-download
-    "json" :public-json-download
+  [export-format :- [:maybe :keyword]]
+  (case (keyword export-format)
+    :csv  :public-csv-download
+    :xlsx :public-xlsx-download
+    :json :public-json-download
     :public-question))
 
 (mu/defn process-query-for-card-with-id
@@ -189,7 +181,7 @@
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map
                                     [:uuid          ms/UUIDString]
-                                    [:export-format api.dataset/ExportFormat]]
+                                    [:export-format ::qp.schema/export-format]]
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
@@ -256,9 +248,10 @@
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (validation/check-public-sharing-enabled)
-  (u/prog1 (dashboard-with-uuid uuid)
-    (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (validation/check-public-sharing-enabled)
+    (u/prog1 (dashboard-with-uuid uuid)
+      (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
@@ -310,14 +303,14 @@
       (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
-                               :export-format api.dataset/export-format-regex]
+                               :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map
                                                         [:uuid          ms/UUIDString]
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
-                                                        [:export-format (into [:enum] api.dataset/export-formats)]]
+                                                        [:export-format ::qp.schema/export-format]]
    _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
                                                       [:parameters    {:optional true} [:maybe
@@ -431,181 +424,6 @@
 ;;; |                                        FieldValues, Search, Remappings                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; -------------------------------------------------- Field Values --------------------------------------------------
-
-(defn- query->referenced-field-ids
-  "Get the IDs of all Fields referenced by an MBQL `query` (not including any parameters)."
-  [query]
-  (lib.util.match/match (:query query) [:field id _] id))
-
-(defn- card->referenced-field-ids
-  "Return a set of all Field IDs referenced by `card`, in both the MBQL query itself and in its parameters ('template
-  tags')."
-  [card]
-  (set (concat (query->referenced-field-ids (:dataset_query card))
-               (params/card->template-tag-field-ids card))))
-
-(defn- check-field-is-referenced-by-card
-  "Check to make sure the query for Card with `card-id` references Field with `field-id`. Otherwise, or if the Card
-  cannot be found, throw an Exception."
-  [field-id card-id]
-  (let [card                 (api/check-404 (t2/select-one [:model/Card :dataset_query :card_schema] :id card-id))
-        referenced-field-ids (card->referenced-field-ids card)]
-    (api/check-404 (contains? referenced-field-ids field-id))))
-
-(defn- check-search-field-is-allowed
-  "Check whether a search Field is allowed to be used in conjunction with another Field. A search Field is allowed if
-  *any* of the following conditions is true:
-
-  *  `search-field-id` and `field-id` are both the same Field
-  *  `search-field-id` is equal to the other Field's Dimension's `human-readable-field-id`
-  *  field is a `:type/PK` Field and search field is a `:type/Name` Field belonging to the same Table.
-
-  If none of these conditions are met, you are not allowed to use the search field in combination with the other
-  field, and an 400 exception will be thrown."
-  [field-id search-field-id]
-  {:pre [(integer? field-id) (integer? search-field-id)]}
-  (api/check-400
-   (or (= field-id search-field-id)
-       (t2/exists? :model/Dimension :field_id field-id, :human_readable_field_id search-field-id)
-       ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
-       ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (t2/select-one-fn :table_id :model/Field :id field-id, :semantic_type (mdb.query/isa :type/PK))]
-         (t2/exists? :model/Field :id search-field-id, :table_id table-id, :semantic_type (mdb.query/isa :type/Name))))))
-
-(defn- check-field-is-referenced-by-dashboard
-  "Check that `field-id` belongs to a Field that is used as a parameter in a Dashboard with `dashboard-id`, or throw a
-  404 Exception."
-  [field-id dashboard-id]
-  (let [dashboard       (-> (t2/select-one :model/Dashboard :id dashboard-id)
-                            api/check-404
-                            (t2/hydrate [:dashcards :card]))
-        param-field-ids (params/dashcards->param-field-ids (:dashcards dashboard))]
-    (api/check-404 (contains? param-field-ids field-id))))
-
-(defn card-and-field-id->values
-  "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
-  [card-id field-id]
-  (check-field-is-referenced-by-card field-id card-id)
-  (api.field/field->values (t2/select-one :model/Field :id field-id)))
-
-(api.macros/defendpoint :get "/card/:uuid/field/:field-id/values"
-  "Fetch FieldValues for a Field that is referenced by a public Card."
-  [{:keys [uuid field-id]} :- [:map
-                               [:uuid     ms/UUIDString]
-                               [:field-id ms/PositiveInt]]]
-  (validation/check-public-sharing-enabled)
-  (let [card-id (t2/select-one-pk :model/Card :public_uuid uuid, :archived false)]
-    (card-and-field-id->values card-id field-id)))
-
-(defn dashboard-and-field-id->values
-  "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id` which itself is present
-  in Dashboard with `dashboard-id`."
-  [dashboard-id field-id]
-  (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (api.field/field->values (t2/select-one :model/Field :id field-id)))
-
-(api.macros/defendpoint :get "/dashboard/:uuid/field/:field-id/values"
-  "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
-  [{:keys [uuid field-id]} :- [:map
-                               [:uuid     ms/UUIDString]
-                               [:field-id ms/PositiveInt]]]
-  (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (dashboard-and-field-id->values dashboard-id field-id)))
-
-;;; --------------------------------------------------- Searching ----------------------------------------------------
-
-(defn search-card-fields
-  "Wrapper for `metabase.api.field/search-values` for use with public/embedded Cards. See that functions
-  documentation for a more detailed explanation of exactly what this does."
-  [card-id field-id search-id value limit]
-  (check-field-is-referenced-by-card field-id card-id)
-  (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (t2/select-one :model/Field :id field-id) (t2/select-one :model/Field :id search-id) value limit))
-
-(defn search-dashboard-fields
-  "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
-  documentation for a more detailed explanation of exactly what this does."
-  [dashboard-id field-id search-id value limit]
-  (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (check-search-field-is-allowed field-id search-id)
-  (api.field/search-values (t2/select-one :model/Field :id field-id) (t2/select-one :model/Field :id search-id) value limit))
-
-(api.macros/defendpoint :get "/card/:uuid/field/:field-id/search/:search-field-id"
-  "Search for values of a Field that is referenced by a public Card."
-  [{:keys [uuid field-id search-field-id]} :- [:map
-                                               [:uuid            ms/UUIDString]
-                                               [:field-id        ms/PositiveInt]
-                                               [:search-field-id ms/PositiveInt]]
-   {:keys [value limit]} :- [:map
-                             [:value ms/NonBlankString]
-                             [:limit {:optional true} [:maybe ms/PositiveInt]]]]
-  (validation/check-public-sharing-enabled)
-  (let [card-id (t2/select-one-pk :model/Card :public_uuid uuid, :archived false)]
-    (search-card-fields card-id field-id search-field-id value limit)))
-
-(api.macros/defendpoint :get "/dashboard/:uuid/field/:field-id/search/:search-field-id"
-  "Search for values of a Field that is referenced by a Card in a public Dashboard."
-  [{:keys [uuid field-id search-field-id]} :- [:map
-                                               [:uuid            ms/UUIDString]
-                                               [:field-id        ms/PositiveInt]
-                                               [:search-field-id ms/PositiveInt]]
-   {:keys [value limit]} :- [:map
-                             [:value ms/NonBlankString]
-                             [:limit {:optional true} [:maybe ms/PositiveInt]]]]
-  (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
-    (search-dashboard-fields dashboard-id field-id search-field-id value limit)))
-
-;;; --------------------------------------------------- Remappings ---------------------------------------------------
-
-(defn- field-remapped-values [field-id remapped-field-id, ^String value-str]
-  (let [field          (api/check-404 (t2/select-one :model/Field :id field-id))
-        remapped-field (api/check-404 (t2/select-one :model/Field :id remapped-field-id))]
-    (check-search-field-is-allowed field-id remapped-field-id)
-    (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
-
-(defn card-field-remapped-values
-  "Return the reampped Field values for a Field referenced by a *Card*. This explanation is almost useless, so see the
-  one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
-  [card-id field-id remapped-field-id, ^String value-str]
-  (check-field-is-referenced-by-card field-id card-id)
-  (field-remapped-values field-id remapped-field-id value-str))
-
-(defn dashboard-field-remapped-values
-  "Return the reampped Field values for a Field referenced by a *Dashboard*. This explanation is almost useless, so see
-  the one in `metabase.api.field/remapped-value` if you would actually like to understand what is going on here."
-  [dashboard-id field-id remapped-field-id, ^String value-str]
-  (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (field-remapped-values field-id remapped-field-id value-str))
-
-(api.macros/defendpoint :get "/card/:uuid/field/:field-id/remapping/:remapped-id"
-  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
-  Cards."
-  [{:keys [uuid field-id remapped-id]} :- [:map
-                                           [:uuid        ms/UUIDString]
-                                           [:field-id    ms/PositiveInt]
-                                           [:remapped-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
-  (validation/check-public-sharing-enabled)
-  (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
-    (card-field-remapped-values card-id field-id remapped-id value)))
-
-(api.macros/defendpoint :get "/dashboard/:uuid/field/:field-id/remapping/:remapped-id"
-  "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
-  Dashboards."
-  [{:keys [uuid field-id remapped-id]} :- [:map
-                                           [:uuid        ms/UUIDString]
-                                           [:field-id    ms/PositiveInt]
-                                           [:remapped-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
-                       [:value ms/NonBlankString]]]
-  (validation/check-public-sharing-enabled)
-  (let [dashboard-id (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false)]
-    (dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
-
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/values"
@@ -616,7 +434,7 @@
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-values card param-key))))
+      (queries/card-param-values card param-key))))
 
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
@@ -627,7 +445,17 @@
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-values card param-key query))))
+      (queries/card-param-values card param-key query))))
+
+(api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
+  [{:keys [uuid param-key]} :- [:map
+                                [:uuid      ms/UUIDString]
+                                [:param-key ms/NonBlankString]]
+   {:keys [value]}          :- [:map [:value :any]]]
+  (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
+    (request/as-admin
+      (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
@@ -635,10 +463,11 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (dashboard-with-uuid uuid)]
-    (request/as-admin
-      (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [dashboard (dashboard-with-uuid uuid)]
+      (request/as-admin
+        (binding [qp.perms/*param-values-query* true]
+          (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -650,7 +479,18 @@
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
+        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
+
+(api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
+  [{:keys [uuid param-key]} :- [:map
+                                [:uuid      ms/UUIDString]
+                                [:param-key ms/NonBlankString]]
+   {:keys [value]}          :- [:map [:value :any]]]
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (request/as-admin
+      (binding [qp.perms/*param-values-query* true]
+        (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

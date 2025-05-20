@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.classloader.core :as classloader]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -10,19 +11,18 @@
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
@@ -71,7 +71,8 @@
                               :datetime-diff             true
                               :expression-literals       true
                               :full-join                 false
-                              :index-info                true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                false
                               :now                       true
                               :percentile-aggregations   false
                               :regex                     true

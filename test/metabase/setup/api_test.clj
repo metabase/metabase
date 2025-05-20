@@ -6,17 +6,18 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.appearance.core :as appearance]
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.http-client :as client]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.settings.models.setting.cache-test :as setting.cache-test]
    [metabase.setup.api :as api.setup]
    [metabase.setup.core :as setup]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -81,7 +82,7 @@
             (testing "new User should be created"
               (is (t2/exists? :model/User :email email)))
             (testing "Creating a new admin user should set the `admin-email` Setting"
-              (is (= email (public-settings/admin-email))))
+              (is (= email (system/admin-email))))
             (testing "Should record :user-joined in the Audit Log (#12933)"
               (let [user-id (u/the-id (t2/select-one :model/User :email email))]
                 (is (= {:topic    :user-joined
@@ -343,9 +344,9 @@
                     (t2/exists? :model/Database :engine "h2", :name db-name))))
            (testing "Settings should not be changed"
              (is (not= site-name
-                       (public-settings/site-name)))
+                       (appearance/site-name)))
              (is (= "en"
-                    (public-settings/site-locale))))
+                    (system/site-locale))))
            (testing "Setup token should still be set"
              (is (= setup-token
                     (setup/setup-token))))))))))

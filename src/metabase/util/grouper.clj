@@ -13,8 +13,12 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
+   [metabase.db :as mdb]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
    (grouper.core Grouper)))
@@ -34,18 +38,41 @@
   ;; :admin instead of :internal because we want to change this during e2e testing
   :visibility :admin)
 
-(p/import-vars
- [grouper
-  start!
-  shutdown!])
+;;; the sole purpose of this wrapper is so we can keep the original function around so we can call it directly on the
+;;; current thread if we're processing stuff synchronously
+(mr/def ::fn-or-var
+  [:or (ms/InstanceOfClass clojure.lang.Var) fn?])
 
-(defn submit!
+(mr/def ::grouper-wrapper
+  [:map
+   [:f       ::fn-or-var]
+   [:grouper (ms/InstanceOfClass Grouper)]])
+
+(mu/defn start! :- ::grouper-wrapper
+  "Wrapper around [[grouper/start!]]."
+  [f :- ::fn-or-var & options]
+  ;; this wrapper is so we can use Vars which Grouper normally doesn't allow.
+  #_{:clj-kondo/ignore [:redundant-fn-wrapper]}
+  (let [f*      (fn [items]
+                  (f items))
+        grouper (apply grouper/start! f* options)]
+    {:f f, :grouper grouper}))
+
+(mu/defn shutdown!
+  "Wrapper around [[grouper/shutdown!]]."
+  [grouper :- ::grouper-wrapper]
+  (grouper/shutdown! (:grouper grouper)))
+
+(mu/defn submit!
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
-  We use grouper for fire-and-forget scenarios, so we don't care about the result."
-  [& args]
-  (let [p (apply grouper/submit! args)]
-    (when (synchronous-batch-updates)
-      ;; wake up the group immediately and wait for it to finish
-      (.wakeUp ^Grouper (first args))
-      (deref p))
+   We use grouper for fire-and-forget scenarios, so we don't care about the result."
+  [grouper-wrapper :- ::grouper-wrapper object & options]
+  (let [synchronous? (or (synchronous-batch-updates)
+                         ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
+                         ;; back the transaction at the end (as we do in tests)
+                         (mdb/in-transaction?))]
+    (if synchronous?
+      (let [f (:f grouper-wrapper)]
+        (f [object]))
+      (apply grouper/submit! (:grouper grouper-wrapper) object options))
     nil))

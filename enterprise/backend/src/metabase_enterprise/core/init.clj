@@ -8,4 +8,8 @@
   (:require
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.cache.init]
-   [metabase-enterprise.enhancements.init]))
+   [metabase-enterprise.enhancements.init]
+   [metabase-enterprise.gsheets.init]
+   [metabase-enterprise.llm.init]
+   [metabase-enterprise.scim.init]
+   [metabase-enterprise.stale.init]))

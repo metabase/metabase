@@ -3,12 +3,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { GoogleAuthForm } from "metabase/admin/settings/auth/components/GoogleAuthForm";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import { UpsellWhitelabel } from "metabase/admin/upsells";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS,
-  PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
@@ -22,6 +21,8 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { AppearanceSettingsPage } from "../components/SettingsPages/AppearanceSettingsPage";
+import { AuthenticationSettingsPage } from "../components/SettingsPages/AuthenticationSettingsPage";
 import { EmailSettingsPage } from "../components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { PublicSharingSettingsPage } from "../components/SettingsPages/PublicSharingSettingsPage";
@@ -143,16 +144,28 @@ export const ADMIN_SETTINGS_SECTIONS = {
   authentication: {
     name: t`Authentication`,
     order: 60,
-    key: "authentication",
-    tabs:
-      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
-        ? undefined
-        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map((tab) => ({
-            ...tab,
-            isActive: tab.key === "authentication",
-          })),
-    settings: [], // added by plugins
+    component: () => <AuthenticationSettingsPage tab="authentication" />,
+    settings: [],
     adminOnly: true,
+  },
+  "authentication/user-provisioning": {
+    name: t`Authentication`,
+    order: 61,
+    component: () => <AuthenticationSettingsPage tab="user-provisioning" />,
+    settings: [],
+    adminOnly: true,
+  },
+  "authentication/api-keys": {
+    name: t`Authentication`,
+    order: 62,
+    component: () => <AuthenticationSettingsPage tab="api-keys" />,
+    settings: [],
+    adminOnly: true,
+  },
+  "authentication/google": {
+    component: GoogleAuthForm,
+    order: 63,
+    settings: [],
   },
   maps: {
     name: t`Maps`,
@@ -308,23 +321,40 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
+  appearance: {
+    // OSS Version
+    name: t`Appearance`,
+    getHidden: (settings) => settings["token-features"]?.whitelabel,
+    order: 133,
+    component: () => <AppearanceSettingsPage />,
+    isUpsell: true,
+    settings: [],
+  },
+  whitelabel: {
+    // EE Version
+    name: t`Appearance`,
+    getHidden: (settings) => !settings["token-features"]?.whitelabel,
+    order: 134,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/branding": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="branding" />,
+    settings: [],
+  },
+  "whitelabel/conceal-metabase": {
+    name: t`Appearance`,
+    component: () => <AppearanceSettingsPage tab="conceal-metabase" />,
+    settings: [],
+  },
   cloud: {
     name: t`Cloud`,
     getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
-    order: 132,
+    order: 140,
     component: CloudPanel,
-    settings: [],
-    isUpsell: true,
-  },
-  whitelabel: {
-    name: t`Appearance`,
-    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
-    order: 133,
-    component: (props) => (
-      <UpsellWhitelabel {...props} source="settings-appearance" />
-    ),
     settings: [],
     isUpsell: true,
   },

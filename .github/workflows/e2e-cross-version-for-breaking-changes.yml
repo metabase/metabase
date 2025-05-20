@@ -46,7 +46,7 @@ jobs:
           MB_EDITION: ee
           CYPRESS_CI: true
         run: |
-          bash bin/backward-compatibility-test.sh \
+          node bin/backward-compatibility-test.js \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             build
 
@@ -61,9 +61,9 @@ jobs:
           CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
           CYPRESS_CI: true
         run: |
-          bash bin/backward-compatibility-test.sh \
+          node bin/backward-compatibility-test.js \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             start > /dev/null & \
-            bash bin/backward-compatibility-test.sh \
+            node bin/backward-compatibility-test.js \
             ${{ inputs.fe-ref }} ${{ inputs.be-ref }} \
             test

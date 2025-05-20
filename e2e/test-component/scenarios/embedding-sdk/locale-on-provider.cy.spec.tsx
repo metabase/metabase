@@ -1,9 +1,9 @@
 import {
-  InteractiveDashboard,
+  InteractiveQuestion,
   MetabaseProvider,
 } from "@metabase/embedding-sdk-react";
 
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { updateSetting } from "e2e/support/helpers/api";
 import {
   AUTH_PROVIDER_URL,
@@ -38,7 +38,7 @@ function setup({
       }}
       locale={locale}
     >
-      <InteractiveDashboard dashboardId={ORDERS_DASHBOARD_ID} />,
+      <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
     </MetabaseProvider>,
   );
 
@@ -60,9 +60,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", {
-        name: "Automatische Aktualisierung",
-      }).should("exist");
+      cy.findByText("Zusammenfassen").should("exist");
     });
   });
 
@@ -70,9 +68,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     setup({ locale: "de" });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", {
-        name: "Automatische Aktualisierung",
-      }).should("exist");
+      cy.findByText("Zusammenfassen").should("exist");
     });
   });
 
@@ -84,9 +80,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", {
-        name: "Automatische Aktualisierung",
-      }).should("exist");
+      cy.findByText("Zusammenfassen").should("exist");
     });
   });
 
@@ -98,9 +92,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", {
-        name: "Atualização automática",
-      }).should("exist");
+      cy.findByText("Resumir").should("exist");
     });
   });
 
@@ -112,9 +104,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.findByRole("button", {
-        name: "自動刷新",
-      }).should("exist");
+      cy.findByText("匯總(Summarize)").should("exist");
     });
   });
 
@@ -123,9 +113,7 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
 
     // should not do any request, as `en` doesn't need loading
     getSdkRoot().within(() => {
-      cy.findByRole("button", {
-        name: "Auto Refresh",
-      }).should("exist");
+      cy.findByText("Summarize").should("exist");
     });
   });
 });

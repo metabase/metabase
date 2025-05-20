@@ -11,6 +11,7 @@ const esmPackages = [
   "hast.*",
   "html-void-elements",
   "is-absolute-url",
+  "jose",
   "property-information",
   "rehype-external-links",
   "screenfull",

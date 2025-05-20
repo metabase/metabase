@@ -431,7 +431,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("c").realPress("f");
     cy.findByRole("dialog", { name: /collection/i }).should("exist");
     cy.realPress("Escape");
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
       event_detail: "create-new-collection",
     });
@@ -442,7 +442,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     // Using a command palette action registered as a shortcut should only
     // emit snowplow events when using keyboard shortcuts, not command palette
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "keyboard_shortcut_performed",
         event_detail: "create-new-dashboard",
@@ -453,7 +453,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("c").realPress("d");
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "keyboard_shortcut_performed",
         event_detail: "create-new-dashboard",
@@ -471,7 +471,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     H.navigationSidebar().should("not.be.visible");
     cy.realPress("[");
     H.navigationSidebar().should("be.visible");
-    H.expectGoodSnowplowEvent(
+    H.expectUnstructuredSnowplowEvent(
       {
         event: "keyboard_shortcut_performed",
         event_detail: "toggle-navbar",
@@ -484,7 +484,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
       "equal",
       `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     );
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
       event_detail: "navigate-personal-collection",
     });
@@ -492,7 +492,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
       event_detail: "navigate-trash",
     });
@@ -501,9 +501,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     H.navigationSidebar().should("be.visible");
     // Mantine Modals
-    H.newButton("Collection").click();
+    H.startNewCollectionFromSidebar();
 
-    H.modal()
+    cy.findByTestId("new-collection-modal")
       .findByLabelText(/collection it's saved in/i)
       .click();
 
@@ -518,7 +518,8 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("Escape");
     // Legacy Modals
 
-    H.newButton("Action").click();
+    H.startNewAction();
+
     // Remove focus
     H.modal()
       .findByText(/Build custom forms/)

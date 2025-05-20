@@ -3,18 +3,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dashboard :as api.dashboard]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
-   [metabase.models.card :as card]
-   [metabase.models.params :as params]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.parameters.params :as params]
    [metabase.public-sharing.api :as api.public]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
@@ -106,10 +105,11 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(mu/defn- resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
+(mu/defn- resolve-dashboard-parameters :- [:sequential [:map
+                                                        [:id ms/NonBlankString]]]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
-  that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  [[metabase.api.dashboard/process-query-for-dashcard]]."
+  that can be passed to various functions in the [[metabase.dashboards.api]] namespace such as
+  [[metabase.dashboards.api/process-query-for-dashcard]]."
   [dashboard-id :- ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
@@ -332,7 +332,8 @@
                                                         (contains? param-ids-to-remove parameter_id)) param-mappings))))]
     (-> dashboard
         (update :dashcards #(map remove-parameters %))
-        (update :param_fields #(apply dissoc % field-ids-to-remove)))))
+        ;; TODO cleanup
+        (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
 
 (defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
@@ -353,10 +354,10 @@
 (defn- get-embed-dashboard-context
   "If a certain export-format is given, return the correct embedded dashboard context."
   [export-format]
-  (case export-format
-    "csv"  :embedded-csv-download
-    "xlsx" :embedded-xlsx-download
-    "json" :embedded-json-download
+  (case (keyword export-format)
+    :csv  :embedded-csv-download
+    :xlsx :embedded-xlsx-download
+    :json :embedded-json-download
     :embedded-dashboard))
 
 (defn process-query-for-dashcard
@@ -382,13 +383,13 @@
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
-  values according to [[api.card/param-values]]."
+  values according to [[queries/card-param-values]]."
   [{:keys [unsigned-token card param-key search-prefix]}]
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
-                                (card/template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug) parameters))
-        slug->id            (into {} (map (juxt :slug :id) parameters))
+                                (queries/card-template-tag-parameters card))
+        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
@@ -402,7 +403,7 @@
       (try
         (binding [api/*current-user-permissions-set* (atom #{"/"})
                   api/*is-superuser?* true]
-          (api.card/param-values card param-key search-prefix))
+          (queries/card-param-values card param-key search-prefix))
         (catch Throwable e
           (throw (ex-info (.getMessage e)
                           {:card-id       (u/the-id card)
@@ -424,6 +425,56 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
+(defn card-param-remapped-value
+  "Get the remapped value of card parameter value. Does security checks to ensure the parameter is on the card,
+  and then gets the remapped parameter value according to [[queries/card-param-remapped-value]]."
+  [{:keys [unsigned-token card param-key value]}]
+  (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        parameters          (or (seq (:parameters card))
+                                (queries/card-template-tag-parameters card))
+        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        slug->id            (set/map-invert id->slug)
+        searched-param-slug (get id->slug param-key)
+        embedding-params    (:embedding_params card)]
+    (try
+      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+        (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter."
+                             (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (when (get slug-token-params (keyword searched-param-slug))
+        (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT."
+                             (pr-str searched-param-slug))
+                        {:status-code 400})))
+      (try
+        (binding [api/*current-user-permissions-set* (atom #{"/"})
+                  api/*is-superuser?* true]
+          (queries/card-param-remapped-value card param-key value))
+        (catch Throwable e
+          (throw (ex-info (.getMessage e)
+                          {:card-id   (u/the-id card)
+                           :param-key param-key
+                           :value     value}
+                          e))))
+      (catch Throwable e
+        (let [e (ex-info (.getMessage e)
+                         {:card-id (u/the-id card)
+                          :card-params (:parametres card)
+                          :allowed-param-slugs embedding-params
+                          :slug->id            slug->id
+                          :id->slug            id->slug
+                          :param-id            param-key
+                          :param-slug          searched-param-slug
+                          :token-params        slug-token-params}
+                         e)]
+          (log/errorf e "embedded card-param-values error\n%s"
+                      (u/pprint-to-str (u/all-ex-data e)))
+          (throw e))))))
+
+(defn- unsigned-token->dashboard-id
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+       (eid-translation/->id :model/Dashboard)))
+
 (defn dashboard-param-values
   "Common implementation for fetching parameter values for embedding and preview-embedding.
   Optionally pass a map with `:preview` containing `true` (or some non-falsy value) to disable checking
@@ -432,8 +483,7 @@
   [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
-        pre-dashboard-id                               (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard-id                                   (eid-translation/->id :model/Dashboard pre-dashboard-id)
+        dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -446,8 +496,8 @@
                                                           published-embedding-params
                                                           (get unsigned-token :_embedding_params))
                                                          published-embedding-params)
-        id->slug                                       (into {} (map (juxt :id :slug) parameters))
-        slug->id                                       (into {} (map (juxt :slug :id) parameters))
+        id->slug                                       (into {} (map (juxt :id :slug)) parameters)
+        slug->id                                       (set/map-invert id->slug)
         searched-param-slug                            (get id->slug searched-param-id)]
     (try
       ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
@@ -462,7 +512,7 @@
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})
                     api/*is-superuser?*                true]
-            (api.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
+            (parameters.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
@@ -480,3 +530,43 @@
                          e)]
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
+
+(defn dashboard-param-remapped-value
+  "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
+  ([token param-key value]
+   (dashboard-param-remapped-value token param-key value nil))
+  ([token param-key value {:keys [preview] :or {preview false}}]
+   (let [unsigned-token             (embed/unsign token)
+         dashboard-id               (unsigned-token->dashboard-id unsigned-token)
+         _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
+         dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
+         slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+         parameters                 (:parameters dashboard)
+         id->slug                   (into {} (map (juxt :id :slug)) parameters)
+         slug->id                   (set/map-invert id->slug)
+         published-embedding-params (:embedding_params dashboard)
+         ;; when previewing an embed, embedding-params should come from the token,
+         ;; since a user may be changing them prior to publishing the Embed, which is what actually persists
+         ;; the settings to the Appdb.
+         embedding-params           (if preview
+                                      (merge published-embedding-params
+                                             (get unsigned-token :_embedding_params))
+                                      published-embedding-params)
+         param-slug                 (get id->slug param-key)
+         locked-param-ids           (into #{}
+                                          (keep (fn [[param param-type]]
+                                                  (when (= param-type "locked")
+                                                    (-> param name slug->id))))
+                                          embedding-params)]
+     ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
+     (when (not= (get embedding-params (keyword param-slug)) "enabled")
+       (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter." (pr-str param-slug))
+                       {:status-code 400})))
+     (when (get slug-token-params (keyword param-slug))
+       (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str param-slug))
+                       {:status-code 400})))
+     (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})
+                           (select-keys locked-param-ids))]
+       (binding [api/*current-user-permissions-set* (atom #{"/"})
+                 api/*is-superuser?*                true]
+         (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints))))))

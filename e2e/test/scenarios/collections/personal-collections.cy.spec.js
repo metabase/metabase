@@ -142,8 +142,7 @@ describe("personal collections", () => {
           cy.signIn(user);
 
           cy.visit("/collection/root");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Your personal collection").click();
+          H.navigationSidebar().findByText("Your personal collection").click();
 
           // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
@@ -165,11 +164,9 @@ describe("personal collections", () => {
           );
 
           H.openCollectionMenu();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          H.popover().within(() => cy.findByText("Move to trash").click());
-          H.modal().findByRole("button", { name: "Move to trash" }).click();
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Trashed collection");
+          H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
+          cy.findByTestId("toast-undo").should("contain", "Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
@@ -178,7 +175,7 @@ describe("personal collections", () => {
 });
 
 function addNewCollection(name) {
-  H.newButton("Collection").click();
+  H.startNewCollectionFromSidebar();
   cy.findByPlaceholderText("My new fantastic collection").type(name, {
     delay: 0,
   });

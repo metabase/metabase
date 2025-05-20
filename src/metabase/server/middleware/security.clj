@@ -4,11 +4,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.config :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.request.core :as request]
+   [metabase.server.settings :as server.settings]
+
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -120,7 +122,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
-                                  (when (public-settings/anon-tracking-enabled)
+                                  (when (analytics/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
@@ -148,7 +150,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
+                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
@@ -158,7 +160,7 @@
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
-                                 (when (public-settings/anon-tracking-enabled)
+                                 (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?

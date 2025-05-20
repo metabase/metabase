@@ -573,17 +573,6 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via static embedding?
 
-### `MB_ENABLE_FIELD_USAGE_ANALYSIS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `enable-field-usage-analysis`
-
-Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
-    application database.
-
-    Turn off by default since we haven't had an user-facing feature that uses this data yet.
-
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1126,6 +1115,10 @@ The base URL where dashboard notitification links will point to instead of the M
 - Default: `3`
 
 The size of the thread pool used to send notifications.
+
+If Metabase stops sending notifications like alerts, it may be because long-running
+  queries are clogging the notification queue. You may be able to unclog the queue by
+  increasing the size of the thread pool dedicated to notifications.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 

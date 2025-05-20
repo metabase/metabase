@@ -5,10 +5,10 @@
    [metabase.config :as config]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.log :as log])
   (:import
    (com.mongodb ConnectionString MongoClientSettings MongoClientSettings$Builder MongoCredential)
    (com.mongodb.connection SslSettings$Builder)))

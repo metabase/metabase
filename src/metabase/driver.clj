@@ -10,9 +10,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.auth-provider :as auth-provider]
+   [metabase.auth-provider.core :as auth-provider]
+   [metabase.classloader.core :as classloader]
    [metabase.driver.impl :as driver.impl]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
@@ -34,7 +34,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
     (try
       (notify-database-updated driver database)
       (catch Throwable e
@@ -675,6 +675,7 @@
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection
 
+    ;; Index sync is turned off across the application as it is not used ATM.
     ;; Does the driver support column(s) support storing index info
     :index-info
 
@@ -1036,7 +1037,7 @@
 
   WARNING! Implementations of this method may create new SSH tunnels, which need to be cleaned up. DO NOT USE THIS
   METHOD DIRECTLY UNLESS YOU ARE GOING TO BE CLEANING UP ANY CREATED TUNNELS! Instead, you probably want to
-  use [[metabase.util.ssh/with-ssh-tunnel]]. See #24445 for more information."
+  use [[metabase.driver.sql-jdbc.connection.ssh-tunnel/with-ssh-tunnel]]. See #24445 for more information."
   {:added "0.39.0" :arglists '([driver db-details])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
@@ -1132,7 +1133,7 @@
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
   using the query result processing function `rff`.
-  The default implementation defined in [[metabase.db.metadata-queries]] runs a
+  The default implementation defined in [[[metabase.driver.common.table-rows-sample]] runs a
   row sampling MBQL query using the regular query processor to produce the
   sample rows. This is good enough in most cases so this multimethod should not
   be implemented unless really necessary.
