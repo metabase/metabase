@@ -434,9 +434,9 @@ const visualizerSlice = createSlice({
       if (isCartesianChart(state.display)) {
         if (well === "all") {
           removeColumnFromCartesianChart(state, settings, name);
-          removeBubbleSizeFromCartesianChart(state, name); // TODO Add settings for consistency?
+          removeBubbleSizeFromCartesianChart(state, name);
         } else if (well === "bubble") {
-          removeBubbleSizeFromCartesianChart(state, name); // TODO Add settings for consistency?
+          removeBubbleSizeFromCartesianChart(state, name);
         } else {
           removeColumnFromCartesianChart(state, settings, name);
         }
