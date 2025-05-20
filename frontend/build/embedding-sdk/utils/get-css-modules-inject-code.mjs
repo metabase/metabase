@@ -4,27 +4,29 @@ import { CSS_MODULE_INJECT_FUNCTION_NAME } from "../constants/css-module-inject-
 
 export const getCssModulesInjectCode = async () => {
   const code = `
-    function ${CSS_MODULE_INJECT_FUNCTION_NAME}(css, { insertAt } = {}) {
-      if (!css || typeof document === 'undefined') return
+    if (typeof window['${CSS_MODULE_INJECT_FUNCTION_NAME}'] !== 'function') {
+       window['${CSS_MODULE_INJECT_FUNCTION_NAME}'] = function (css, { insertAt } = {}) {
+        if (!css || typeof document === 'undefined') return
 
-      const head = document.head || document.getElementsByTagName('head')[0]
-      const style = document.createElement('style')
-      style.type = 'text/css'
+        const head = document.head || document.getElementsByTagName('head')[0]
+        const style = document.createElement('style')
+        style.type = 'text/css'
 
-      if (insertAt === 'top') {
-        if (head.firstChild) {
-          head.insertBefore(style, head.firstChild)
+        if (insertAt === 'top') {
+          if (head.firstChild) {
+            head.insertBefore(style, head.firstChild)
+          } else {
+            head.appendChild(style)
+          }
         } else {
           head.appendChild(style)
         }
-      } else {
-        head.appendChild(style)
-      }
 
-      if (style.styleSheet) {
-        style.styleSheet.cssText = css
-      } else {
-        style.appendChild(document.createTextNode(css))
+        if (style.styleSheet) {
+          style.styleSheet.cssText = css
+        } else {
+          style.appendChild(document.createTextNode(css))
+        }
       }
     }
   `;

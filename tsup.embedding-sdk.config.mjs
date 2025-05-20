@@ -225,12 +225,8 @@ await build({
     const cssModulesInjectCode = await getCssModulesInjectCode();
     await setupBanners({
       buildPath: BUILD_PATH,
-      getBanners: ({ isMainBundle }) => {
-        return [
-          LICENSE_BANNER,
-          // Right now all css modules are in the main bundle
-          isMainBundle ? cssModulesInjectCode : null,
-        ];
+      getBanners: () => {
+        return [LICENSE_BANNER, cssModulesInjectCode];
       },
     });
   },
