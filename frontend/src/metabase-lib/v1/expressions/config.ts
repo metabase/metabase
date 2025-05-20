@@ -323,7 +323,7 @@ const CONVERSION = defineClauses(
       displayName: "datetime",
       type: "datetime",
       requiresFeature: "expressions/datetime",
-      description: () => t`Converts an ISO 8601 datetime string to a datetime.`,
+      description: () => t`Converts a datetime string to a datetime.`,
       args: () => [
         {
           name: t`value`,
