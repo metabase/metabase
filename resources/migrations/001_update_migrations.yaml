@@ -11635,7 +11635,7 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: >-
-              DELETE metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+              DELETE FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
       changes:
         - sql:
             sql: >-
