@@ -88,20 +88,23 @@
         entities (t2/select [:model/MetabotEntity
                              :model_id
                              :model
-                             [:card.name :name]
+                             [[:coalesce :card.name :collection.name] :name]
                              :created_at
-                             [:collection.id :collection_id]
-                             [:collection.name :collection_name]]
-                            {:left-join [[:report_card :card] [:= :model_id :card.id]
-                                         [:collection :collection] [:= :card.collection_id :collection.id]]
+                             [:parent_collection.id :collection_id]
+                             [:parent_collection.name :collection_name]]
+                            {:left-join [[:report_card :card] [:and [:in :model [[:inline "dataset"] [:inline "metric"]]]  [:= :model_id :card.id]]
+                                         [:collection :collection] [:and [:= :model [:inline "collection"]]  [:= :model_id :collection.id]]
+                                         ;; TODO: How to join parent collections from the location column?
+                                         [:collection :parent_collection] [:= :card.collection_id :parent_collection.id]]
                              :where [:= :metabot_id id]
                              :limit limit
                              :offset offset
                              :order-by [[:name :asc]]})
         total (t2/count :model/MetabotEntity :metabot_id id)]
-    {:items (for [entity entities]
+    {:items (for [{:keys [collection_id model] :as entity} entities]
               (cond-> entity
-                (nil? (:collection_id entity)) (assoc :collection_id (:id root-collection)
+                (and (nil? collection_id)
+                     (not= :collection model)) (assoc :collection_id (:id root-collection)
                                                       :collection_name (:name root-collection))))
      :total total
      :limit limit
@@ -114,7 +117,7 @@
    {:keys [items]} :- [:map
                        [:items [:sequential [:map
                                              [:id pos-int?]
-                                             [:model [:enum "dataset" "metric"]]]]]]]
+                                             [:model [:enum "dataset" "metric" "collection"]]]]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
@@ -129,11 +132,11 @@
                      :model_id model-id}))))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:model-id" :model #"dataset|metric"]
+(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:model-id" :model #"dataset|metric|collection"]
   "Remove an entity from this metabot's access list"
   [{:keys [id model model-id]} :- [:map
                                    [:id pos-int?]
-                                   [:model [:enum "dataset" "metric"]]
+                                   [:model [:enum "dataset" "metric" "collection"]]
                                    [:model-id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
