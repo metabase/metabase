@@ -86,9 +86,14 @@ export function chatMessages() {
   return cy.findAllByTestId("metabot-chat-message");
 }
 
+export function lastChatMessage() {
+  // eslint-disable-next-line no-unsafe-element-filtering
+  return chatMessages().last();
+}
+
 export const mockMetabotResponse = (response: StaticResponse) => {
   return cy
-    .intercept("POST", "/api/ee/metabot-v3/agent", (req) => {
+    .intercept("POST", "/api/ee/metabot-v3/v2/agent", (req) => {
       req.reply(response);
     })
     .as("metabotAgent");

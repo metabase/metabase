@@ -17,7 +17,9 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
   PLUGIN_METABOT.MetabotContext = MetabotContext;
   PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
-  PLUGIN_METABOT.getMetabotVisible = getMetabotVisible as any; // TODO: fix type
+  // TODO: make enterprise store + fix type
+  PLUGIN_METABOT.getMetabotVisible =
+    getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
     const { submitInput, setVisible } = useMetabotAgent();
 
