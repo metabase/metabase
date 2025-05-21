@@ -175,9 +175,10 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -234,38 +235,6 @@
              assert-valid-object]]
     (f permissions)))
 
-;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
-
-(def ^:private MapOrID
-  [:or :map ms/PositiveInt])
-
-(mu/defn collection-readwrite-path :- perms.u/PathSchema
-  "Return the permissions path for *readwrite* access for a `collection-or-id`."
-  [collection-or-id :- MapOrID]
-  (if-not (get collection-or-id :metabase.collections.models.collection.root/is-root?)
-    (format "/collection/%d/" (u/the-id collection-or-id))
-    (if-let [collection-namespace (:namespace collection-or-id)]
-      (format "/collection/namespace/%s/root/" (perms.u/escape-path-component (u/qualified-name collection-namespace)))
-      "/collection/root/")))
-
-(mu/defn collection-read-path :- perms.u/PathSchema
-  "Return the permissions path for *read* access for a `collection-or-id`."
-  [collection-or-id :- MapOrID]
-  (str (collection-readwrite-path collection-or-id) "read/"))
-
-(mu/defn application-perms-path :- perms.u/PathSchema
-  "Returns the permissions path for *full* access a application permission."
-  [perm-type]
-  (case perm-type
-    :setting
-    "/application/setting/"
-
-    :monitoring
-    "/application/monitoring/"
-
-    :subscription
-    "/application/subscription/"))
-
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
 (defn is-permissions-for-object?
@@ -307,7 +276,7 @@
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
   [permissions-set perm-type]
-  (set-has-full-permissions? permissions-set (application-perms-path perm-type)))
+  (set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type)))
 
 (mu/defn perms-objects-set-for-parent-collection :- [:set perms.u/PathSchema]
   "Implementation of `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
@@ -322,8 +291,8 @@
     read-or-write        :- [:enum :read :write]]
    ;; based on value of read-or-write determine the approprite function used to calculate the perms path
    (let [path-fn (case read-or-write
-                   :read  collection-read-path
-                   :write collection-readwrite-path)
+                   :read  permissions.path/collection-read-path
+                   :write permissions.path/collection-readwrite-path)
          collection-id (:collection_id this)]
      ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
      ;; Collection
@@ -388,7 +357,7 @@
   (when-let [current-user-id api/*current-user-id*]
     ;; [[api/*current-user-permissions-set*]] is dynamically bound
     (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
-      (.set #'api/*current-user-permissions-set* (delay (user/permissions-set current-user-id)))))
+      (.set #'api/*current-user-permissions-set* (delay (permissions.user/user-permissions-set current-user-id)))))
   nil)
 
 (mu/defn delete-related-permissions!
@@ -495,7 +464,7 @@
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
-  [collection-or-id :- MapOrID]
+  [collection-or-id :- permissions.path/MapOrID]
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
   (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
@@ -513,26 +482,26 @@
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id :- MapOrID collection-or-id :- MapOrID]
+  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
-  (delete-related-permissions! group-or-id (collection-readwrite-path collection-or-id)))
+  (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
-  [group-or-id :- MapOrID collection-or-id :- MapOrID]
+  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
     (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
-  (grant-permissions! (u/the-id group-or-id) (collection-readwrite-path collection-or-id)))
+  (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id :- MapOrID collection-or-id :- MapOrID]
+  [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (and (perms-group/is-tenant-group? group-or-id)
              (audit/is-collection-id-audit? (u/the-id collection-or-id)))
     (throw (ex-info (tru "Tenant Groups cannot receive any access to the audit collection.") {})))
-  (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
+  (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.

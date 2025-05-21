@@ -686,7 +686,6 @@
            query-processor
            request
            settings
-           users
            util}}
 
   pivot
@@ -1171,7 +1170,6 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
-           app-db
            appearance
            channel
            collections
