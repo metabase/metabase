@@ -20,6 +20,8 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
+const { H } = cy;
+
 describe("scenarios > embedding-sdk > interactive-question > creating a question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
