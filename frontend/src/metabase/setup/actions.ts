@@ -244,3 +244,17 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     dispatch(updateSettings(settingsToChange));
   },
 );
+
+export const setupEmbeddingSettings = createAsyncThunk(
+  "metabase/setup/SETUP_EMBEDDING_SETTINGS",
+  async (settings: Record<string, any>) => {
+    const response = await fetch("/api/setting", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(settings),
+    });
+    return response.json();
+  },
+);

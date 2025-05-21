@@ -3,29 +3,32 @@ import { useState } from "react";
 import { useDispatch } from "metabase/lib/redux";
 import { setupEmbeddingSettings } from "metabase/setup/actions";
 import { Box } from "metabase/ui";
+import type { DatabaseData, Table } from "metabase-types/api";
 
 import { DataConnectionStep } from "./steps/DataConnectionStep";
 import { FinalStep } from "./steps/FinalStep";
 import { ProcessingStep } from "./steps/ProcessingStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
 
-const STEPS = {
-  WELCOME: "welcome",
-  DATA_CONNECTION: "data_connection",
-  PROCESSING: "processing",
-  FINAL: "final",
-};
+type Step = "WELCOME" | "DATA_CONNECTION" | "PROCESSING" | "FINAL";
+
+const STEPS: Record<Step, Step> = {
+  WELCOME: "WELCOME",
+  DATA_CONNECTION: "DATA_CONNECTION",
+  PROCESSING: "PROCESSING",
+  FINAL: "FINAL",
+} as const;
 
 export const EmbeddingSetup = () => {
-  const [currentStep, setCurrentStep] = useState(STEPS.WELCOME);
-  const [database, setDatabase] = useState(null);
+  const [currentStep, setCurrentStep] = useState<Step>(STEPS.WELCOME);
+  const [database, setDatabase] = useState<DatabaseData | null>(null);
   const [processingStatus, setProcessingStatus] = useState("");
-  const [sandboxingColumn, setSandboxingColumn] = useState(null);
+  const [sandboxingColumn, setSandboxingColumn] = useState<Table | null>(null);
   const [error, setError] = useState("");
 
   const dispatch = useDispatch();
 
-  const handleDatabaseSubmit = async (databaseData) => {
+  const handleDatabaseSubmit = async (databaseData: DatabaseData) => {
     setCurrentStep(STEPS.PROCESSING);
     setProcessingStatus("Connecting to database...");
     setError("");
@@ -58,8 +61,8 @@ export const EmbeddingSetup = () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Check for potential sandboxing columns
-    const potentialColumns = createdDatabase.tables?.filter((table) =>
-      table.columns?.some(
+    const potentialColumns = createdDatabase.tables?.filter((table: Table) =>
+      table.fields?.some(
         (col) =>
           col.name.toLowerCase().includes("user") ||
           col.name.toLowerCase().includes("tenant") ||
@@ -67,7 +70,7 @@ export const EmbeddingSetup = () => {
       ),
     );
 
-    if (potentialColumns?.length > 0) {
+    if (potentialColumns && potentialColumns.length > 0) {
       setSandboxingColumn(potentialColumns[0]);
     }
 
@@ -103,9 +106,9 @@ export const EmbeddingSetup = () => {
       case STEPS.PROCESSING:
         return <ProcessingStep status={processingStatus} />;
       case STEPS.FINAL:
-        return (
+        return database ? (
           <FinalStep database={database} sandboxingColumn={sandboxingColumn} />
-        );
+        ) : null;
       default:
         return null;
     }
