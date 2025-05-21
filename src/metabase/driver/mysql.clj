@@ -1039,3 +1039,7 @@
   ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
   ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
   (contains? #{1317 1969 3024} (.getErrorCode e)))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))
