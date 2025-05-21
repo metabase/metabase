@@ -14,6 +14,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
+   [metabase.channel.urls :as urls]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
@@ -27,7 +28,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

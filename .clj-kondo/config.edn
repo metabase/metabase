@@ -379,7 +379,6 @@
     metabase.util.markdown                    markdown
     metabase.util.password                    u.password
     metabase.util.ui-logic                    ui-logic
-    metabase.util.urls                        urls
     metabase.xrays.core                       xrays
     monger.collection                         mcoll
     ring.mock.request                         ring.mock
