@@ -421,7 +421,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       getSdkRoot().within(() => {
         H.assertElementNeverExists({
           shouldNotExistSelector: "[data-testid='sdk-error-container']",
-          successSelector: "[data-testid='table-header']",
+          successSelector:
+            "[data-testid='interactive-question-result-toolbar']",
           rejectionMessage:
             "sdk errors should not show up when rendering an interactive question in strict mode",
           pollInterval: 20,
