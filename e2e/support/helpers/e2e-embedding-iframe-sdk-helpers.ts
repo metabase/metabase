@@ -120,7 +120,6 @@ export function prepareSdkIframeEmbedTest({
 }: {
   withTokenFeatures?: boolean;
 } = {}) {
-  // TODO: use a less privileged group that has "Our analytics" view permission
   const ADMIN_GROUP_ID = 2;
 
   restore();
