@@ -653,11 +653,19 @@ describe("scenarios > organization > entity picker", () => {
     it("should search for collections when there is no access to the root collection", () => {
       cy.signInAsAdmin();
       createTestCollections();
-      cy.log("grant `nocollection` user access to `First collection`");
+      cy.log(
+        "grant `nocollection` user access to `First collection` and `Another collection",
+      );
       cy.log("personal collections are always available");
-      cy.updateCollectionGraph({
-        [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "write" },
+      cy.get("@anotherCollection").then((anotherCollectionId) => {
+        cy.updateCollectionGraph({
+          [ALL_USERS_GROUP]: {
+            [FIRST_COLLECTION_ID]: "write",
+            [anotherCollectionId]: "write",
+          },
+        });
       });
+
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         collection_id: FIRST_COLLECTION_ID,
       });
@@ -676,15 +684,19 @@ describe("scenarios > organization > entity picker", () => {
         });
         localSearchTab("Collections").should("be.checked");
         assertSearchResults({
-          foundItems: ["First collection"],
-          notFoundItems: ["No Collection Tableton's Personal Collection"],
+          foundItems: ["Another collection"],
+          notFoundItems: [
+            "No Collection Tableton's Personal Collection",
+            "First Collection",
+          ],
         });
         selectGlobalSearchTab();
         assertSearchResults({
           foundItems: [
-            "First collection",
+            "Another collection",
             "No Collection Tableton's Personal Collection",
           ],
+          notFoundItems: ["First Collection"],
         });
       });
 
@@ -1227,6 +1239,12 @@ function createTestCollections() {
         name: `${collection.name} ${suffix}`,
       }),
     );
+  });
+
+  H.createCollection({
+    name: "Another collection",
+    parent_id: null,
+    alias: "anotherCollection",
   });
 }
 

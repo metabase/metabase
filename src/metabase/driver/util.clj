@@ -4,9 +4,9 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -270,12 +270,26 @@
   (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
 
-(defn features
-  "Return a set of all features supported by `driver` with respect to `database`."
-  [driver database]
+(defn- features* [driver database]
   (set (for [feature driver/features
              :when (supports? driver feature database)]
          feature)))
+
+(def ^:private memoized-features*
+  (memoize/memo
+   (-> features*
+       (vary-meta assoc ::memoize/args-fn
+                  (fn [[driver database]]
+                    [driver (mdb/unique-identifier) (:id database)
+                     (if (snake-hating-map? database)
+                       (:updated-at database)
+                       (:updated_at database))])))))
+
+(defn features
+  "Return a set of all features supported by `driver` with respect to `database`."
+  [driver database]
+  (let [f (if *memoize-supports?* memoized-features* features*)]
+    (f driver database)))
 
 (defn- supported-in-environment?
   "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the

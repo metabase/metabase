@@ -7,7 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]

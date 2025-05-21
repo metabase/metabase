@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.permissions.api :as api.permissions]
    [metabase.permissions.api-test-util :as perm-test-util]
    [metabase.permissions.models.data-permissions :as data-perms]

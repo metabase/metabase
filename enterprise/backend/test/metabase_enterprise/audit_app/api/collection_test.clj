@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]

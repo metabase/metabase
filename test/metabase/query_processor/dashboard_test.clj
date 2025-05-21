@@ -1,15 +1,13 @@
 (ns metabase.query-processor.dashboard-test
-  "There are more e2e tests in [[metabase.api.dashboard-test]]."
+  "There are more e2e tests in [[metabase.dashboards.api-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-;; there are more tests in [[metabase.api.dashboard-test]]
 
 (defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check

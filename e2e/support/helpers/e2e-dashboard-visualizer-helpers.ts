@@ -10,6 +10,7 @@ export function clickVisualizeAnotherWay(name: string) {
       .findByLabelText("Visualize another way")
       .click({ force: true });
   });
+  cy.findByTestId("visualization-canvas-loader").should("not.exist");
 }
 
 export function dataImporter() {
@@ -20,6 +21,14 @@ export function dataSource(dataSourceName: string) {
   return dataImporter()
     .findByText(dataSourceName)
     .parents("[data-testid='data-source-list-item']");
+}
+
+export function showUnderlyingQuestion(index: number, title: string) {
+  getDashboardCard(index).findByTestId("legend-caption-title").click();
+
+  cy.findByTestId("legend-caption-menu").within(() => {
+    cy.findByText(title).click();
+  });
 }
 
 /**
@@ -112,6 +121,35 @@ export function verticalWell() {
   return cy.findByTestId("vertical-well");
 }
 
+export function assertWellItemsCount(items: {
+  horizontal?: number;
+  vertical?: number;
+  pieMetric?: number;
+  pieDimensions?: number;
+}) {
+  const { horizontal, vertical, pieMetric, pieDimensions } = items;
+  if (horizontal) {
+    horizontalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", horizontal);
+    });
+  }
+  if (vertical) {
+    verticalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", vertical);
+    });
+  }
+  if (pieMetric) {
+    pieMetricWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", pieMetric);
+    });
+  }
+  if (pieDimensions) {
+    pieDimensionWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", pieDimensions);
+    });
+  }
+}
+
 export function assertWellItems(items: {
   horizontal?: string[];
   vertical?: string[];
@@ -122,6 +160,7 @@ export function assertWellItems(items: {
 
   if (horizontal) {
     horizontalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", horizontal.length);
       horizontal.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -130,6 +169,7 @@ export function assertWellItems(items: {
 
   if (vertical) {
     verticalWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", vertical.length);
       vertical.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -138,6 +178,7 @@ export function assertWellItems(items: {
 
   if (pieMetric) {
     pieMetricWell().within(() => {
+      cy.findAllByTestId("well-item").should("have.length", pieMetric.length);
       pieMetric.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -146,6 +187,10 @@ export function assertWellItems(items: {
 
   if (pieDimensions) {
     pieDimensionWell().within(() => {
+      cy.findAllByTestId("well-item").should(
+        "have.length",
+        pieDimensions.length,
+      );
       pieDimensions.forEach((item) => {
         cy.findByText(item).should("exist");
       });
@@ -201,6 +246,8 @@ export function saveDashcardVisualizerModal(
   modal().within(() => {
     cy.findByText(mode === "create" ? "Add to dashboard" : "Save").click();
   });
+
+  modal({ timeout: 6000 }).should("not.exist");
 }
 
 export function saveDashcardVisualizerModalSettings() {

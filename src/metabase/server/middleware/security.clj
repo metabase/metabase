@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]

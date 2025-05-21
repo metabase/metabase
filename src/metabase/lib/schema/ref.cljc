@@ -11,10 +11,10 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.types]
+   [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 (mr/def ::field.options
   [:merge

@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.models.user :as user]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]))
 
 (set! *warn-on-reflection* true)
