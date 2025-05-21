@@ -10,7 +10,7 @@
    [metabase.app-db.query :as mdb.query]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]

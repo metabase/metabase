@@ -2,7 +2,7 @@
   "Support for in-memory, thread-blocking retrying."
   (:require
    [malli.util :as mut]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]

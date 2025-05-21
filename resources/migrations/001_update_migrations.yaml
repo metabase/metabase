@@ -11476,6 +11476,84 @@ databaseChangeLog:
             tableName: metabase_table
             constraintName: idx_unique_table
 
+  - changeSet:
+      id: v55.2025-05-20T10:00:00
+      validCheckSum: 9:1ed306a6b2573b7b140275e5319fae2c
+      author: ranquild
+      comment: Drop metabase_database.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T11:00:00
+      validCheckSum: 9:b03020b86a754abc46edca465f91eb6f
+      author: ranquild
+      comment: Drop metabase_table.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_table
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T12:00:00
+      validCheckSum: 9:70285cb34c7e9e4dd25f322a46e21c04
+      author: ranquild
+      comment: Drop metabase_field.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_field
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
   # Relies on a heuristic that there is no entity_id that contains only `-` and digits. In this case we can safely
   # use numeric card IDs with padding to set entity_id.
   - changeSet:

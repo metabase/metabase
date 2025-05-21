@@ -504,7 +504,7 @@
         (testing "should search with the cached FieldValues when search without constraints"
           (mt/with-temp
             [:model/Field       field (-> (t2/select-one :model/Field (mt/id :categories :name))
-                                          (dissoc :id :entity_id)
+                                          (dissoc :id)
                                           (assoc :name "NAME2"))
              :model/FieldValues  _    {:field_id (:id field)
                                        :type     :full

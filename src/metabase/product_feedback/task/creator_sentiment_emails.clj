@@ -8,7 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]

@@ -27,7 +27,7 @@
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]

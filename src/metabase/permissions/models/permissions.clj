@@ -171,7 +171,7 @@
   (:require
    [clojure.string :as str]
    [metabase.audit-app.core :as audit]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
