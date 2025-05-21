@@ -1701,9 +1701,9 @@
   (testing "visualizer settings transform entity IDs <-> card IDs"
     (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
           card-id 621]
-      (with-redefs [serdes/*import-fk* (fn [entity-id model]
+      (with-redefs [serdes/*import-fk* (fn [_entity-id _model]
                                          card-id)
-                    serdes/*export-fk* (fn [card-id model]
+                    serdes/*export-fk* (fn [_card-id _model]
                                          card-entity-id)]
         (testing "transforms sourceId in column mappings"
           (let [input {:visualization

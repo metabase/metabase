@@ -1516,6 +1516,7 @@
       source-id)))
 
 (defn export-visualizer-settings
+  "Update embedded card ids to entity ids in visualizer dashcard settings"
   [settings]
   (m/update-existing-in
    settings
@@ -1598,6 +1599,7 @@
       source-id)))
 
 (defn import-visualizer-settings
+  "Update embedded entity ids to card ids in visualizer dashcard settings"
   [settings]
   (m/update-existing-in
    settings
