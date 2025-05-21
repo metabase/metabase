@@ -1,4 +1,4 @@
-(ns metabase.notification.payload.core-test
+(ns metabase-enterprise.notification.payload.core-test
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.core :as notification.payload]
@@ -21,6 +21,7 @@
                 :context     {:application_name     "Metabase Test"
                               :application_color    "#509EE3"
                               :application_logo_url "http://static.metabase.com/email_logo.png"
+                              :include_branding     false
                               :site_name            "Metabase Test"
                               :site_url             "https://metabase.com"
                               :admin_email          "ngoc@metabase.com"
