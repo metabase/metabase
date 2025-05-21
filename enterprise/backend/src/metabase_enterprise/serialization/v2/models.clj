@@ -15,6 +15,7 @@
    "Card"
    "Collection"
    "Dashboard"
+   "Metabot"
    "NativeQuerySnippet"
    "Timeline"])
 
@@ -34,6 +35,7 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
+   "MetabotEntity"
    "TimelineEvent"])
 
 (def excluded-models

@@ -42,6 +42,8 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
+    :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
