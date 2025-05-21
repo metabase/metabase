@@ -1,7 +1,7 @@
 /* TODO: rtl support */
 
 .container {
-  --paddxing-x: 1.5rem;
+  --padding-x: 1.5rem;
 
   width: 100%;
   height: 100%;
@@ -11,7 +11,7 @@
 
 .header {
   /* top padding is set to visually align w/ the dashboard action buttons */
-  padding: 1.25rem var(--paddxing-x) 1rem;
+  padding: 1.25rem var(--padding-x) 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -37,7 +37,7 @@
 }
 
 .inputContainerExpanded {
-  padding: 1rem var(--paddxing-x);
+  padding: 1rem var(--padding-x);
   align-items: flex-start;
   height: 8rem;
 }
@@ -67,7 +67,7 @@
 }
 
 .messagesContainer {
-  padding: 1rem var(--paddxing-x) 1.5rem;
+  padding: 1rem var(--padding-x) 1.5rem;
   height: 100%;
   display: flex;
   flex-direction: column;

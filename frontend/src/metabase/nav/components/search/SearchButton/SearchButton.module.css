@@ -15,6 +15,7 @@
   align-items: center;
   justify-content: space-between;
   font-weight: bold;
+  gap: 0.25rem;
 
   &:hover .shortcutText {
     color: var(--mb-color-text-light);

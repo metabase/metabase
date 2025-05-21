@@ -1,7 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -110,7 +110,7 @@ export const MetabotChat = () => {
           data-testid="metabot-chat-messages"
           ref={messagesRef}
         >
-          {/* empty state with no sugggested prompts */}
+          {/* empty state with no suggested prompts */}
           {!hasMessages && !hasSuggestions && (
             <Flex
               h="100%"
@@ -134,7 +134,7 @@ export const MetabotChat = () => {
             </Flex>
           )}
 
-          {/* empty state with sugggested prompts */}
+          {/* empty state with suggested prompts */}
           {!hasMessages && hasSuggestions && (
             <Stack gap="sm" data-testid="metabot-prompt-suggestions">
               <>
@@ -188,7 +188,8 @@ export const MetabotChat = () => {
                       c="brand"
                       td="underline"
                       onClick={() => metabot.resetConversation()}
-                    >{t`clear it`}</UnstyledButton>
+                    >{c("'it' refers to a chat with an AI agent")
+                      .t`clear it`}</UnstyledButton>
                   )}.`}
                 </Text>
               )}
@@ -224,7 +225,9 @@ export const MetabotChat = () => {
               placeholder={t`Tell me to do something, or ask a question`}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                const isModifiedKeyPress =
+                  e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
+                if (e.key === "Enter" && !isModifiedKeyPress) {
                   // prevent event from inserting new line + interacting with other content
                   e.preventDefault();
                   e.stopPropagation();

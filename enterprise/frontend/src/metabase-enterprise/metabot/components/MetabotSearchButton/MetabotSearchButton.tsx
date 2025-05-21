@@ -1,6 +1,6 @@
 import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { METAKEY } from "metabase/lib/browser";
@@ -20,7 +20,7 @@ export const MetabotSearchButton = () => {
 
   const isSmallScreen = useIsSmallScreen();
 
-  const label = t`Ask Metabot or search`;
+  const label = c("'Search' here is a verb").t`Ask Metabot or search`;
 
   if (isSmallScreen) {
     return (
@@ -37,8 +37,8 @@ export const MetabotSearchButton = () => {
 
   return (
     <Flex
-      h="36px"
-      w="240px"
+      h="2.25rem"
+      miw="15rem"
       justify="flex-start"
       align="center"
       style={{
