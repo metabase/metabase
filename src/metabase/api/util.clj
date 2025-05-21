@@ -4,10 +4,8 @@
   (:require
    [crypto.random :as crypto-random]
    [metabase.analytics.core :as analytics]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.api.open-api :as open-api]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)

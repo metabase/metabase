@@ -58,6 +58,7 @@
   :metabase/check-defmulti-arglists                    {:level :warning}
   :metabase/check-me-humanize                          {:level :warning}
   :metabase/defsetting-must-specify-export             {:level :warning}
+  :metabase/defsetting-namespace                       {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
   :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
@@ -705,8 +706,9 @@
    {:inline-def                              {:level :off}
     :missing-docstring                       {:level :off}
     :private-call                            {:level :off}
+    :discouraged-var                         {metabase.driver/database-supports? {:level :off}}
     :metabase/defsetting-must-specify-export {:level :off}
-    :discouraged-var                         {metabase.driver/database-supports? {:level :off}}}
+    :metabase/defsetting-namespace           {:level :off}}
 
    :hooks
    {:analyze-call

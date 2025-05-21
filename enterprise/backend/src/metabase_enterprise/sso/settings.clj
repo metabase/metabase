@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sso.integrations.sso-settings
+(ns metabase-enterprise.sso.settings
   "Namesapce for defining settings used by the SSO backends. This is separate as both the functions needed to support
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
@@ -298,3 +298,23 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :visibility :public
   :setter     :none
   :getter     (fn [] (or (saml-enabled) (jwt-enabled))))
+
+(defsetting ldap-sync-user-attributes
+  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
+  :type    :boolean
+  :default true
+  :audit   :getter)
+
+;; TODO - maybe we want to add a csv setting type?
+(defsetting ldap-sync-user-attributes-blacklist
+  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
+  :encryption :no
+  :default    "userPassword,dn,distinguishedName"
+  :type       :csv
+  :audit      :getter)
+
+(defsetting ldap-group-membership-filter
+  (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
+  :encryption :no
+  :default    "(member={dn})"
+  :audit      :getter)

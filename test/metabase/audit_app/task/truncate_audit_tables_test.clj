@@ -5,31 +5,11 @@
    [metabase.audit-app.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
-   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-
-(deftest audit-max-retention-days-test
-  (mt/with-temp-env-var-value! [mb-audit-max-retention-days nil]
-    (is (= 720 (task.truncate-audit-tables/audit-max-retention-days))))
-
-  (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
-    (is (= ##Inf (task.truncate-audit-tables/audit-max-retention-days))))
-
-  (mt/with-temp-env-var-value! [mb-audit-max-retention-days 100]
-    (is (= 100 (task.truncate-audit-tables/audit-max-retention-days))))
-
-  ;; Acceptable values have a lower bound of 30
-  (mt/with-temp-env-var-value! [mb-audit-max-retention-days 1]
-    (is (= 30 (task.truncate-audit-tables/audit-max-retention-days))))
-
-  (is (thrown-with-msg?
-       java.lang.UnsupportedOperationException
-       #"You cannot set audit-max-retention-days"
-       (setting/set! :audit-max-retention-days 30))))
 
 (defn- query-execution-defaults
   []
