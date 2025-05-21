@@ -60,12 +60,12 @@
 
 (defonce ^:private has-added-appender? (atom false))
 
-(defn context
+(defn- context
   "Get global logging context."
   ^LoggerContext []
   (LogManager/getContext (classloader/the-classloader) false))
 
-(defn configuration
+(defn- configuration
   "Get global logging configuration"
   ^Configuration []
   (.getConfiguration (context)))
@@ -83,7 +83,7 @@
 
 ;;; Custom loggers
 
-(defn logger-name
+(defn- logger-name
   "Get string name from symbol or ns"
   ^String [a-namespace]
   (if (instance? clojure.lang.Namespace a-namespace)
@@ -111,8 +111,8 @@
     (or (first (keep #(.getLayout ^AbstractAppender (val %)) (.getAppenders logger)))
         (recur (.getParent logger)))))
 
-(defprotocol MakeAppender
-  (make-appender ^AbstractAppender [out layout]))
+(defprotocol ^:private MakeAppender
+  (^:private make-appender ^AbstractAppender [out layout]))
 
 (extend-protocol MakeAppender
   java.io.File
@@ -131,15 +131,19 @@
        (.setLayout layout)
        (.setTarget out)))))
 
-(defn add-ns-logger
+(defn- add-ns-logger!
   "Add a logger for a given namespace to the configuration."
   [ns appender level additive]
   (let [logger-name (str ns)
         ns-logger   (LoggerConfig. logger-name level additive)]
     (.addAppender ns-logger appender level nil)
-    (.addLogger (configuration) logger-name ns-logger)
+    (doto (configuration)
+      ;; remove any existing loggers with this name
+      (.removeLogger logger-name)
+      (.addLogger logger-name ns-logger))
     ns-logger))
 
+;;; TODO -- we should deprecated this and use a version of [[metabase.util.log.capture]] instead for this purpose.
 (defn for-ns
   "Create separate logger for a given namespace(s) to fork out some logs."
   ^AutoCloseable [out nses & [{:keys [additive level]
@@ -150,7 +154,7 @@
         parents  (mapv effective-ns-logger nses)
         appender (make-appender out (find-logger-layout (first parents)))
         loggers  (vec (for [ns nses]
-                        (add-ns-logger ns appender level additive)))]
+                        (add-ns-logger! ns appender level additive)))]
     (.start appender)
     (.addAppender config appender)
 
@@ -159,8 +163,8 @@
     (reify AutoCloseable
       (close [_]
         (let [^AbstractConfiguration config (configuration)]
-          (doseq [logger loggers]
-            (.removeLogger config (.getName ^LoggerConfig logger)))
+          (doseq [^LoggerConfig logger loggers]
+            (.removeLogger config (.getName logger)))
           (.stop appender)
           ;; this method is only present in AbstractConfiguration
           (.removeAppender config (.getName appender))
