@@ -9,6 +9,7 @@
    [metabase.activity-feed.init]
    [metabase.analytics.init]
    [metabase.api.init]
+   [metabase.app-db.init]
    [metabase.appearance.init]
    [metabase.audit-app.init]
    [metabase.bug-reporting.init]
