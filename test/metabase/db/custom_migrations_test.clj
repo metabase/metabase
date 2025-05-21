@@ -24,6 +24,7 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
+   [metabase.db.custom-migrations.util :as custom-migrations.util]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
@@ -2553,8 +2554,8 @@
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
 (deftest migrate-alert-to-notification-test
   (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
-    (mt/with-temp-scheduler!
-      (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
+    (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
+      (binding [custom-migrations.util/*allow-temp-scheduling* true]
         (let [user-id     (:id (new-instance-with-default :core_user))
               database-id (:id (new-instance-with-default :metabase_database))
               card-id     (:id (new-instance-with-default :report_card
@@ -2584,11 +2585,11 @@
           (testing "after migration"
             (migrate!)
             (testing "pulse is migrated to notification"
-              (let [notification (t2/select-one :notification)
+              (let [notification      (t2/select-one :notification)
                     notification-card (t2/select-one :notification_card :id (:payload_id notification))
-                    subscription (t2/select-one :notification_subscription :notification_id (:id notification))
-                    handler      (t2/select-one :notification_handler :notification_id (:id notification))
-                    recipient    (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
+                    subscription      (t2/select-one :notification_subscription :notification_id (:id notification))
+                    handler           (t2/select-one :notification_handler :notification_id (:id notification))
+                    recipient         (t2/select-one :notification_recipient :notification_handler_id (:id handler))]
                 (is (= {:payload_type "notification/card"
                         :active       true
                         :creator_id   user-id}

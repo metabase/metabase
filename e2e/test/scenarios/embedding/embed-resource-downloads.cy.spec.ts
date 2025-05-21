@@ -77,7 +77,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
           dashboard_id: 0,
           dashboard_accessed_via: "static-embed",
@@ -104,7 +104,7 @@ H.describeWithSnowplowEE(
         H.exportFromDashcard(".csv");
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "static-embed",
@@ -186,7 +186,7 @@ H.describeWithSnowplowEE(
           H.exportFromDashcard(".csv");
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "dashcard",
             accessed_via: "static-embed",
@@ -251,7 +251,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".png", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -283,7 +283,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -368,7 +368,7 @@ H.describeWithSnowplowEE(
 
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "question",
             accessed_via: "static-embed",

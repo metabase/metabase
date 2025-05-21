@@ -119,7 +119,7 @@ H.describeWithSnowplow(
           it(`Can upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "csv_upload_successful",
             });
 
@@ -145,7 +145,7 @@ H.describeWithSnowplow(
           it(`Cannot upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "csv_upload_failed",
             });
 

@@ -102,10 +102,7 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
-      (do (sync-and-analyze-database*! database-id)
-          ;; Re-kick off the backfill entity ids job on every sync
-          ;; if a previous run is already running, this is a noop
-          (task/init! :metabase.lib-be.task.backfill-entity-ids/BackfillEntityIds)))))
+      (sync-and-analyze-database*! database-id))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Sync and analyze the database"}
