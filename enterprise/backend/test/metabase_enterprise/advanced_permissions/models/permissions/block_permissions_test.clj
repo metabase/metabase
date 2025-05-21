@@ -401,7 +401,7 @@
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms-group/all-users))
                                                       :table_id             (mt/id :checkins)
                                                       :card_id              card-id
                                                       :attribute_remappings {}}

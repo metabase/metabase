@@ -162,7 +162,7 @@
   (testing "Applying a basic sandbox does not affect the download permissions for a table"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms-group/all-users))
                                                       :table_id             (mt/id :checkins)
                                                       :card_id              card-id
                                                       :attribute_remappings {}}]
@@ -183,7 +183,7 @@
   (testing "Applying a advanced sandbox does not affect the download permissions for a table"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms-group/all-users))
                                                       :table_id             (mt/id :checkins)
                                                       :card_id              card-id
                                                       :attribute_remappings {}}]
