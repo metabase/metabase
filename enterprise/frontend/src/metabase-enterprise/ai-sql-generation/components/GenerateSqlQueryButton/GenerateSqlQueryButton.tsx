@@ -56,12 +56,13 @@ function canGenerateQuery(query: Lib.Query) {
 
 function getPrompt(query: Lib.Query, selectedQueryText: string | null) {
   const prompt =
-    selectedQueryText?.trim() ??
-    Lib.rawNativeQuery(query)
-      .split("\n")
-      .find((line) => line.startsWith(COMMENT_PREFIX))
-      ?.substring(COMMENT_PREFIX.length)
-      ?.trim();
+    selectedQueryText != null && selectedQueryText.length > 0
+      ? selectedQueryText.trim()
+      : Lib.rawNativeQuery(query)
+          .split("\n")
+          .find((line) => line.startsWith(COMMENT_PREFIX))
+          ?.substring(COMMENT_PREFIX.length)
+          ?.trim();
   return prompt != null && prompt.length > 0 ? prompt : null;
 }
 
