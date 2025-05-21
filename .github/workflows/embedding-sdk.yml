@@ -139,7 +139,7 @@ jobs:
 
   cross-version-for-breaking-changes:
     # run on: every pr that targets a release branch
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
+    # if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }} # TODO: uncomment this before merging
     uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
     secrets: inherit
     with:
