@@ -1,6 +1,4 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
-import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
@@ -13,7 +11,7 @@ import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { setOptions } from "metabase/redux/embed";
+import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type Question from "metabase-lib/v1/Question";
@@ -165,18 +163,11 @@ export const InteractiveQuestionProvider = ({
     loadAndQueryQuestion();
   }, [loadAndQueryQuestion]);
 
-  const previousEntityTypeFilter = usePrevious(entityTypes);
   const dispatch = useSdkDispatch();
 
   useEffect(() => {
-    if (!_.isEqual(previousEntityTypeFilter, entityTypes)) {
-      dispatch(
-        setOptions({
-          entity_types: entityTypes,
-        }),
-      );
-    }
-  }, [dispatch, entityTypes, previousEntityTypeFilter]);
+    dispatch(setEntityTypes(entityTypes));
+  }, [dispatch, entityTypes]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

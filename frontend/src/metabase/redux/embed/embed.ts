@@ -1,9 +1,19 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import {
+  type PayloadAction,
+  asyncThunkCreator,
+  buildCreateSlice,
+} from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import { parseSearchOptions } from "metabase/lib/browser";
 import type { InteractiveEmbeddingOptions } from "metabase-types/store";
+
+import { setEntityTypes } from "../embedding-data-picker";
+
+export const createSlice = buildCreateSlice({
+  creators: { asyncThunk: asyncThunkCreator },
+});
 
 export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions =
   {
@@ -17,7 +27,6 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
     header: true,
     additional_info: true,
     action_buttons: true,
-    entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
   };
 
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
@@ -37,39 +46,48 @@ export const urlParameterToBoolean = (
   }
 };
 
+interface Location {
+  search: string;
+}
 const interactiveEmbedSlice = createSlice({
   name: "interactiveEmbed",
   initialState: {
     options: {} as InteractiveEmbeddingOptions,
     isEmbeddingSdk: false,
   },
-  reducers: {
-    setInitialUrlOptions: (
-      state,
-      action: PayloadAction<{ search: string }>,
-    ) => {
-      const searchOptions = compose(
-        normalizeEntityTypes,
-        excludeNonInteractiveEmbeddingOptions,
-        parseSearchOptions,
-        normalizeEntityTypesCommaSeparatedSearchParameter,
-      )(action.payload.search);
+  reducers: (create) => ({
+    setInitialUrlOptions: create.asyncThunk(
+      ({ search }: Location, { dispatch }) => {
+        const { entity_types, ...searchOptions } = compose(
+          normalizeEntityTypes,
+          excludeNonInteractiveEmbeddingOptions,
+          parseSearchOptions,
+          normalizeEntityTypesCommaSeparatedSearchParameter,
+        )(search);
 
-      state.options = {
-        ...DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
-        ...searchOptions,
-      };
-    },
-    setOptions: (
-      state,
-      action: PayloadAction<Partial<InteractiveEmbeddingOptions>>,
-    ) => {
-      state.options = {
-        ...state.options,
-        ...normalizeEntityTypes(action.payload),
-      };
-    },
-  },
+        dispatch(setEntityTypes(entity_types));
+
+        return searchOptions;
+      },
+      {
+        pending: (state) => state,
+        fulfilled: (state, action) => {
+          state.options = {
+            ...DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
+            ...action.payload,
+          };
+        },
+      },
+    ),
+    setOptions: create.reducer(
+      (state, action: PayloadAction<Partial<InteractiveEmbeddingOptions>>) => {
+        state.options = {
+          ...state.options,
+          ...action.payload,
+        };
+      },
+    ),
+  }),
 });
 
 /**
@@ -112,11 +130,6 @@ function excludeNonInteractiveEmbeddingOptions(
 function normalizeEntityTypes(
   searchOptions: Partial<InteractiveEmbeddingOptions>,
 ): Partial<InteractiveEmbeddingOptions> {
-  const ALLOWED_ENTITY_TYPES: InteractiveEmbeddingOptions["entity_types"] = [
-    "model",
-    "table",
-  ];
-
   /**
    * `parseSearchOptions` would return either a string or an array of strings.
    */
@@ -125,20 +138,10 @@ function normalizeEntityTypes(
     const entityTypes = Array.isArray(entityTypesValueOrArray)
       ? entityTypesValueOrArray
       : [entityTypesValueOrArray];
-    const filteredEntityTypes = entityTypes.filter((type) =>
-      ALLOWED_ENTITY_TYPES.includes(type),
-    );
-
-    if (filteredEntityTypes.length === 0) {
-      return {
-        ...searchOptions,
-        entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
-      };
-    }
 
     return {
       ...searchOptions,
-      entity_types: filteredEntityTypes,
+      entity_types: entityTypes,
     };
   }
 
