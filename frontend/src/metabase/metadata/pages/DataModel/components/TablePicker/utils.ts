@@ -114,7 +114,10 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined) {
         return [];
       }
-      const res = await fetchSchemas({ id: databaseId }, true);
+      const res = await fetchSchemas(
+        { id: databaseId, include_hidden: true },
+        true,
+      );
       return Promise.all(
         res.data?.map(async (schema, _, schemas) => {
           const res = node<SchemaNode>({
