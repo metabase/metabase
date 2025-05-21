@@ -68,7 +68,6 @@
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
           (let [columns (:columns perms)
-                table-name (sql.tx/qualify-and-quote driver table-name)
                 select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
                 grant-stmt (if (seq columns)
                              (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)

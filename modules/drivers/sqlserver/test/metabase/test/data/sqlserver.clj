@@ -48,6 +48,15 @@
 
 (defmethod tx/create-and-grant-roles! :sqlserver
   [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [statement [(format (str "IF NOT EXISTS ("
+                                    "SELECT name FROM master.sys.server_principals WHERE name = '%s')"
+                                    " BEGIN CREATE LOGIN [%s] WITH PASSWORD = N'%s' END")
+                               user-name user-name
+                               (tx/db-test-env-var :sqlserver :password))
+                       (format "drop user if exists [%s];" user-name)
+                       (format "create user %s for login %s;" user-name user-name)]]
+      (jdbc/execute! spec [statement])))
   (drop-if-exists-and-create-role! driver details roles)
   (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
   (grant-role-to-user! driver details roles user-name))
