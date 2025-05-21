@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import { useLocation } from "react-use";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -15,8 +14,9 @@ import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { getIcon } from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { modelToUrl } from "metabase/lib/urls";
+import { getLocation } from "metabase/selectors/routing";
 import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 import {
   useAddMetabotEntitiesMutation,
@@ -228,7 +228,7 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
 }
 
 function useMetabotIdPath() {
-  const location = useLocation();
+  const location = useSelector(getLocation);
   const metabotId = Number(location?.pathname?.split("/").pop());
   return Number.isNaN(metabotId) ? null : metabotId;
 }
