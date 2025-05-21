@@ -278,7 +278,7 @@
                        {:transaction? false})))))
 
 (defmethod tx/create-and-grant-roles! :clickhouse
-  [driver details roles user-name]
+  [driver details roles user-name _default-role]
   (drop-if-exists-and-create-role! driver details roles user-name)
   (grant-select-table-to-role! driver details roles)
   (grant-role-to-user! driver details roles user-name))

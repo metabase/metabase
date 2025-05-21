@@ -386,12 +386,12 @@
 
 (defmulti create-and-grant-roles!
   "Creates the given roles and permissions for the database user"
-  {:added "0.55.0" :arglists '([driver details roles user-name])}
+  {:added "0.55.0" :arglists '([driver details roles user-name default-role])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod create-and-grant-roles! ::test-extensions
-  [_driver _details _roles _user-name]
+  [_driver _details _roles _user-name _default-role]
   nil)
 
 (defmulti drop-roles!
@@ -406,21 +406,22 @@
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
-  [driver details roles user-name f]
+  [driver details roles user-name default-role f]
   (try
-    (create-and-grant-roles! driver details roles user-name)
+    (create-and-grant-roles! driver details roles user-name default-role)
     (f)
     (finally
       (drop-roles! driver details roles user-name))))
 
 (defmacro with-temp-roles!
   "Creates the given roles and permissions for the database user, and drops them after execution"
-  [driver details roles user-name & body]
+  [driver details roles user-name default-role & body]
   `(with-temp-roles-fn!
      ~driver
      ~details
      ~roles
      ~user-name
+     ~default-role
      (fn [] ~@body)))
 
 (defmulti dbdef->connection-details

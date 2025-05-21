@@ -184,7 +184,7 @@
             (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
 
 (defmethod tx/create-and-grant-roles! :postgres
-  [driver details roles user-name]
+  [driver details roles user-name _default-role]
   (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
   (grant-select-table-to-role! driver details roles)
   (sql-jdbc.tx/grant-role-to-user! driver details roles user-name))

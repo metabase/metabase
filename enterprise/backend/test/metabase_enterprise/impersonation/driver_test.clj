@@ -172,7 +172,7 @@
   [_driver db]
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
-(deftest conn-impersonation-existing-db
+(deftest conn-impersonation-test-zero
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -185,6 +185,7 @@
           {db-role {venues-table {:columns []}}
            full-access-role {venues-table [] checkins-table []}}
           (impersonation-default-user driver/*driver*)
+          full-access-role
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database

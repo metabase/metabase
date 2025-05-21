@@ -47,7 +47,7 @@
                        {:transaction? false})))))
 
 (defmethod tx/create-and-grant-roles! :sqlserver
-  [driver details roles user-name]
+  [driver details roles user-name _default-role]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [statement [(format (str "IF NOT EXISTS ("
                                     "SELECT name FROM master.sys.server_principals WHERE name = '%s')"

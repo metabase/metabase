@@ -314,7 +314,7 @@
               (jdbc/execute! spec [statement] {:transaction? false}))))))))
 
 (defmethod tx/create-and-grant-roles! :redshift
-  [driver details roles _user-name]
+  [driver details roles _user-name _default-role]
   (drop-if-exists-and-create-role! driver details roles)
   (grant-select-table-to-role! driver details roles))
 
