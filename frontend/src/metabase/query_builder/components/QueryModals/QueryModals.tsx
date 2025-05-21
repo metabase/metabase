@@ -21,7 +21,6 @@ import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
-import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -163,13 +162,18 @@ export function QueryModals({
           options?.dashboardTabId,
         );
       } else if (isModel) {
-        dispatch(addUndo({ message: "Saved!" }));
         onCloseModal();
+        setQueryBuilderMode("view");
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, navigateToDashboardQuestionDashboard, dispatch, onCloseModal],
+    [
+      onOpenModal,
+      navigateToDashboardQuestionDashboard,
+      setQueryBuilderMode,
+      onCloseModal,
+    ],
   );
 
   switch (modal) {
