@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           public-sharing
            queries
            query-processor
            search
@@ -115,7 +116,6 @@
            api-routes
            classloader
            config
-           embedding
            events
            models
            premium-features
@@ -140,14 +140,14 @@
    :uses :any}
 
   app-db
-  {:api  #{metabase.app-db.core
-           metabase.app-db.query
+  {:api  #{metabase.app-db.cluster-lock ; TODO FIXME
+           metabase.app-db.core
+           metabase.app-db.init
            metabase.app-db.setup}
    :uses #{auth-provider
            classloader
            config
            connection-pool
-           driver
            task
            util}}
 
@@ -334,6 +334,7 @@
            channel
            collections
            config
+           embedding
            events
            lib
            lib-be
@@ -418,7 +419,8 @@
   {:api  #{metabase.embedding.api
            metabase.embedding.app-origins-sdk
            metabase.embedding.init
-           metabase.embedding.settings}
+           metabase.embedding.settings
+           metabase.embedding.validation}
    :uses #{analytics
            api
            config
@@ -730,7 +732,8 @@
   public-sharing
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
-           metabase.public-sharing.init}
+           metabase.public-sharing.init
+           metabase.public-sharing.validation}
    :uses #{actions
            analytics
            api
@@ -789,6 +792,7 @@
            config
            content-verification
            dashboards
+           embedding
            events
            legacy-mbql
            lib
@@ -859,6 +863,7 @@
    :uses #{analytics
            analyze
            api
+           app-db
            appearance
            audit-app
            cache
@@ -1193,7 +1198,6 @@
    :uses #{app-db
            classloader
            config
-           driver
            legacy-mbql
            lib
            settings
@@ -1213,6 +1217,7 @@
            metabase.view-log.init}
    :uses #{analytics
            api
+           app-db
            audit-app
            events
            models

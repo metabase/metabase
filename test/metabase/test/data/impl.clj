@@ -2,7 +2,6 @@
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -286,22 +285,22 @@
 
 (defn- copy-db-fks! [old-db-id new-db-id]
   (doseq [{:keys [source-field source-table target-field target-table]}
-          (mdb.query/query {:select    [[:source-field.name :source-field]
-                                        [:source-table.name :source-table]
-                                        [:target-field.name :target-field]
-                                        [:target-table.name :target-table]]
-                            :from      [[:metabase_field :source-field]]
-                            :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
-                                        [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
-                                        [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
-                            :where     [:and
-                                        [:= :source-table.db_id old-db-id]
-                                        [:= :target-table.db_id old-db-id]
-                                        :source-field.active
-                                        :target-field.active
-                                        :source-table.active
-                                        :target-table.active
-                                        [:not= :source-field.fk_target_field_id nil]]})]
+          (mdb/query {:select    [[:source-field.name :source-field]
+                                  [:source-table.name :source-table]
+                                  [:target-field.name :target-field]
+                                  [:target-table.name :target-table]]
+                      :from      [[:metabase_field :source-field]]
+                      :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
+                                  [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
+                                  [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
+                      :where     [:and
+                                  [:= :source-table.db_id old-db-id]
+                                  [:= :target-table.db_id old-db-id]
+                                  :source-field.active
+                                  :target-field.active
+                                  :source-table.active
+                                  :target-table.active
+                                  [:not= :source-field.fk_target_field_id nil]]})]
     (t2/update! :model/Field (the-field-id (the-table-id new-db-id source-table) source-field)
                 {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 

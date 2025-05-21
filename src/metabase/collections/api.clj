@@ -12,7 +12,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.driver.common.parameters :as params]
@@ -928,7 +927,7 @@
                              ;; :total_count
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
-        rows        (mdb.query/query limit-query)
+        rows        (mdb/query limit-query)
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []
