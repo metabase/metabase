@@ -1515,7 +1515,7 @@
       (str "card:" (*export-fk* (parse-long card-id) :model/Card))
       source-id)))
 
-(defn- export-visualizer-settings
+(defn export-visualizer-settings
   [settings]
   (m/update-existing-in
    settings
