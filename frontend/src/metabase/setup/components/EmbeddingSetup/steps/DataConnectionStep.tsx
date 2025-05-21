@@ -6,9 +6,13 @@ import type { DatabaseData } from "metabase-types/api";
 
 interface DataConnectionStepProps {
   onSubmit: (database: DatabaseData) => void;
+  error?: string;
 }
 
-export const DataConnectionStep = ({ onSubmit }: DataConnectionStepProps) => {
+export const DataConnectionStep = ({
+  onSubmit,
+  error,
+}: DataConnectionStepProps) => {
   return (
     <Stack gap="xl">
       <Stack gap="md">
@@ -16,6 +20,11 @@ export const DataConnectionStep = ({ onSubmit }: DataConnectionStepProps) => {
         <Text size="lg">
           {t`Connect to your database to get started with embedding. We'll automatically create models and X-rays for your data.`}
         </Text>
+        {error && (
+          <Text color="error" role="alert">
+            {error}
+          </Text>
+        )}
       </Stack>
 
       <DatabaseForm

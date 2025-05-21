@@ -21,16 +21,35 @@ export const EmbeddingSetup = () => {
   const [database, setDatabase] = useState(null);
   const [processingStatus, setProcessingStatus] = useState("");
   const [sandboxingColumn, setSandboxingColumn] = useState(null);
+  const [error, setError] = useState("");
 
   const dispatch = useDispatch();
 
   const handleDatabaseSubmit = async (databaseData) => {
-    setDatabase(databaseData);
     setCurrentStep(STEPS.PROCESSING);
-
-    // Simulate processing steps
     setProcessingStatus("Connecting to database...");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setError("");
+
+    // Actually create the database
+    let createdDatabase = null;
+    try {
+      const response = await fetch("/api/database", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(databaseData),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create database");
+      }
+      createdDatabase = await response.json();
+      setDatabase(createdDatabase);
+    } catch (err) {
+      setError(
+        "Failed to connect to the database. Please check your settings and try again.",
+      );
+      setCurrentStep(STEPS.DATA_CONNECTION);
+      return;
+    }
 
     setProcessingStatus("Creating models...");
     await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -39,7 +58,7 @@ export const EmbeddingSetup = () => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Check for potential sandboxing columns
-    const potentialColumns = databaseData.tables?.filter((table) =>
+    const potentialColumns = createdDatabase.tables?.filter((table) =>
       table.columns?.some(
         (col) =>
           col.name.toLowerCase().includes("user") ||
@@ -78,7 +97,9 @@ export const EmbeddingSetup = () => {
           <WelcomeStep onNext={() => setCurrentStep(STEPS.DATA_CONNECTION)} />
         );
       case STEPS.DATA_CONNECTION:
-        return <DataConnectionStep onSubmit={handleDatabaseSubmit} />;
+        return (
+          <DataConnectionStep onSubmit={handleDatabaseSubmit} error={error} />
+        );
       case STEPS.PROCESSING:
         return <ProcessingStep status={processingStatus} />;
       case STEPS.FINAL:
