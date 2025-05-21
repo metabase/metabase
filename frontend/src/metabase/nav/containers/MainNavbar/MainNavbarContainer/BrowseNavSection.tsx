@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
 import { useUserSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import {
   getEmbedOptions,
@@ -50,6 +51,7 @@ export const BrowseNavSection = ({
         component="button"
         c="text-medium"
         mb="sm"
+        className={CS.cursorPointer}
       >
         <SidebarHeading>{c("A verb, shown in the sidebar")
           .t`Browse`}</SidebarHeading>
