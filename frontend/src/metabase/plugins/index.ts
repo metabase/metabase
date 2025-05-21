@@ -720,7 +720,6 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
-  MetabotAdminPage: () => `placeholder`,
 };
 
 type DashCardMenuItemGetter = (

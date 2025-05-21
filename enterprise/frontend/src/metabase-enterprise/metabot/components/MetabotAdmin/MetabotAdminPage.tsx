@@ -1,42 +1,27 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import { c, t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
-import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
-import Markdown from "metabase/core/components/Markdown";
-import { getIcon } from "metabase/lib/icon";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
-import { getLocation } from "metabase/selectors/routing";
+import { useDispatch } from "metabase/lib/redux";
+import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 import {
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from "metabase/ui";
-import {
-  useAddMetabotEntitiesMutation,
-  useDeleteMetabotEntitiesMutation,
   useListMetabotsEntitiesQuery,
   useListMetabotsQuery,
+  useUpdateMetabotEntitiesMutation,
 } from "metabase-enterprise/api";
 import type { MetabotEntity, MetabotId } from "metabase-types/api";
 
-import MetabotWithStuff from "./MetabotWithStuff.svg?component";
+import { MetabotEntitiesTable } from "./MetabotEntityTable";
+import { useMetabotIdPath } from "./utils";
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
@@ -104,7 +89,7 @@ function MetabotConfigurationPane({
   const { data: entityList, isLoading } = useListMetabotsEntitiesQuery(
     metabotId ?? skipToken,
   );
-  const [addEntities] = useAddMetabotEntitiesMutation();
+  const [updateEntities] = useUpdateMetabotEntitiesMutation();
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
@@ -116,28 +101,33 @@ function MetabotConfigurationPane({
   }
 
   const handleAddEntity = async (
-    entity: Pick<MetabotEntity, "model" | "id" | "name">,
+    newEntity: Pick<MetabotEntity, "model" | "id" | "name">,
   ) => {
-    const result = await addEntities({
+    const newItems = [...entityList.items, newEntity].map((item) =>
+      _.pick(item, "model", "id"),
+    );
+
+    const result = await updateEntities({
       id: metabotId,
-      entities: [
-        ...entityList?.items.map((e) => _.pick(e, ["model", "id"])),
-        _.pick(entity, ["model", "id"]),
-      ],
+      entities: newItems,
     });
 
     if (result.error) {
-      sendToast({ message: t`Error adding ${entity.name}`, icon: "warning" });
+      sendToast({
+        message: t`Error adding ${newEntity.name}`,
+        icon: "warning",
+      });
     }
     close();
   };
+
+  const itemCount = entityList?.items?.length ?? 0;
 
   return (
     <Stack>
       <Flex gap="md">
         <Text fw="bold">
-          {c("{0} is the number of items in a list")
-            .t`${entityList?.items?.length} items`}
+          {ngettext(msgid`${itemCount} item`, `${itemCount} items`, itemCount)}
         </Text>
         <Text>{t`We recommend keeping this to no more than 30.`}</Text>
       </Flex>
@@ -162,96 +152,3 @@ function MetabotConfigurationPane({
     </Stack>
   );
 }
-
-function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
-  const [deleteEntity] = useDeleteMetabotEntitiesMutation();
-  const metabotId = useMetabotIdPath();
-  const [sendToast] = useToast();
-
-  const handleDelete = async (entity: MetabotEntity) => {
-    if (metabotId) {
-      const result = await deleteEntity({
-        metabotId,
-        entityModel: entity.model,
-        entityId: entity.id,
-      });
-
-      if (result.error) {
-        sendToast({
-          message: t`Error removing ${entity.name}`,
-          icon: "warning",
-        });
-      } else {
-        sendToast({ message: t`Removed ${entity.name}` });
-      }
-    }
-  };
-
-  return (
-    <Table
-      columns={[
-        { key: "item", name: t`Item` },
-        { key: "location", name: t`Location` },
-        { key: "delete", name: t`` },
-      ]}
-      rows={entities}
-      emptyBody={<EmptyTable />}
-      rowRenderer={(row) => (
-        <tr key={row.id}>
-          <td style={{ padding: "8px 16px" }}>
-            <Link to={String(modelToUrl(row))} variant="brand">
-              <Flex align="center" gap="sm">
-                <Icon {...getIcon(row)} />
-                <Text>{row.name}</Text>
-              </Flex>
-            </Link>
-          </td>
-          <td style={{ padding: "8px 16px" }}>
-            <Link
-              to={
-                modelToUrl({
-                  model: "collection",
-                  id: row.collection_id as number,
-                  name: row.collection_name,
-                }) as string
-              }
-              variant="brand"
-            >
-              <Flex align="center" gap="sm">
-                <Icon name="folder" />
-                <Text>{row.collection_name}</Text>
-              </Flex>
-            </Link>
-          </td>
-          <td style={{ padding: "8px" }}>
-            <Flex justify="end">
-              <Tooltip label={t`Remove`}>
-                <Button variant="subtle" onClick={() => handleDelete(row)}>
-                  <Icon name="close" c="text-medium" />
-                </Button>
-              </Tooltip>
-            </Flex>
-          </td>
-        </tr>
-      )}
-    />
-  );
-}
-
-function useMetabotIdPath() {
-  const location = useSelector(getLocation);
-  const metabotId = Number(location?.pathname?.split("/").pop());
-  return Number.isNaN(metabotId) ? null : metabotId;
-}
-
-const EmptyTable = () => (
-  <Stack py="6rem" gap="md" align="center">
-    <MetabotWithStuff />
-    <Title order={4}>{t`There's nothing here, yet`}</Title>
-    <Text>
-      <Markdown>
-        {t`Click on the **Add items** button to add models or metrics.`}
-      </Markdown>
-    </Text>
-  </Stack>
-);

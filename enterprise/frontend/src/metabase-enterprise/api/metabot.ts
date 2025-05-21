@@ -3,6 +3,7 @@ import _ from "underscore";
 import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
+  MetabotApiEntity,
   MetabotEntity,
   MetabotId,
   MetabotInfo,
@@ -10,12 +11,6 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-
-// the API returns "model_id" instead of "id", and we transform it here for compatibility
-// with existing components that expect "id"
-type MetabotEntityApi = Omit<MetabotEntity, "id"> & {
-  model_id: MetabotEntity["id"];
-};
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -43,7 +38,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: ["metabot-entities-list"],
       transformResponse: (
-        response: { items: MetabotEntityApi[] } & PaginationResponse,
+        response: { items: MetabotApiEntity[] } & PaginationResponse,
       ) => {
         // transform model_id to id in items
         return {
@@ -55,7 +50,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         };
       },
     }),
-    addMetabotEntities: builder.mutation<
+    updateMetabotEntities: builder.mutation<
       void,
       {
         id: MetabotId;
@@ -91,6 +86,6 @@ export const {
   useMetabotAgentMutation,
   useListMetabotsQuery,
   useListMetabotsEntitiesQuery,
-  useAddMetabotEntitiesMutation,
+  useUpdateMetabotEntitiesMutation,
   useDeleteMetabotEntitiesMutation,
 } = metabotApi;
