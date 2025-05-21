@@ -103,6 +103,7 @@ SELECT
     'no-self-service' AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
+JOIN metabase_database db ON mt.db_id = db.id
 WHERE NOT EXISTS (
     SELECT 1
     FROM data_permissions dp
