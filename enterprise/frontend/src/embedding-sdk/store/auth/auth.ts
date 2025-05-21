@@ -18,12 +18,16 @@ import type { Settings } from "metabase-types/api";
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
 
-import { jwtRefreshTokenFn } from "./jwt";
-import { popupRefreshTokenFn } from "./popup";
+import { jwtDefaultRefreshTokenFunction } from "./jwt";
+import { openSamlLoginPopup } from "./saml";
+import { samlTokenStorage } from "./saml-token-storage";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
+    // remove any stale tokens that might be there from a previous session=
+    samlTokenStorage.remove();
+
     // Setup JWT or API key
     const isValidInstanceUrl =
       authConfig.metabaseInstanceUrl &&
@@ -157,12 +161,12 @@ const safeStringify = (value: unknown) => {
 
 const getRefreshToken = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
-  customFetchRequestFunction:
+  customFetchRequestToken:
     | MetabaseAuthConfig["fetchRequestToken"]
     | null = null,
 ) => {
   // GET /auth/sso with headers
-  const urlResponse = await fetch(`${url}/auth/sso`, getFetchParams());
+  const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
   const urlResponseJson = await urlResponse.json();
 
   // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
@@ -171,10 +175,17 @@ const getRefreshToken = async (
 
   if (method === "saml") {
     // The URL should point to the SAML IDP
-    return popupRefreshTokenFn(responseUrl);
+    return openSamlLoginPopup(responseUrl);
   }
 
-  return jwtRefreshTokenFn(responseUrl, url, hash, customFetchRequestFunction);
+  if (method === "jwt") {
+    return jwtDefaultRefreshTokenFunction(
+      responseUrl,
+      url,
+      hash,
+      customFetchRequestToken,
+    );
+  }
 };
 
 const sessionSchema = Yup.object({
@@ -184,28 +195,15 @@ const sessionSchema = Yup.object({
   // as we don't use them, so we don't throw an error if they are missing
 });
 
-export function getFetchParams(hash: string | undefined = undefined) {
-  const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
-  const hashHeader:
-    | {
-        // eslint-disable-next-line no-literal-metabase-strings -- header name
-        readonly "X-Metabase-SDK-JWT-Hash": string;
-      }
-    | Record<string, never> = hash
-    ? ({
-        // eslint-disable-next-line no-literal-metabase-strings -- header name
-        "X-Metabase-SDK-JWT-Hash": hash,
-      } as const)
-    : ({} as const);
-  const fetchParams: RequestInit = {
-    method: "GET",
+export function getSdkRequestHeaders(hash?: string) {
+  return {
     headers: {
       // eslint-disable-next-line no-literal-metabase-strings -- header name
       "X-Metabase-Client": "embedding-sdk-react",
       // eslint-disable-next-line no-literal-metabase-strings -- header name
-      "X-Metabase-Client-Version": EMBEDDING_SDK_VERSION,
-      ...hashHeader,
+      "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
     },
   };
-  return fetchParams;
 }

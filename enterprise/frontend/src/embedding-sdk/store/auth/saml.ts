@@ -1,6 +1,6 @@
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 
-import { authTokenStorage } from "./saml-token-storage";
+import { samlTokenStorage } from "./saml-token-storage";
 
 /*
  * For the markup for the popup (nice rhyme), visit
@@ -15,14 +15,14 @@ import { authTokenStorage } from "./saml-token-storage";
  *  5) The IDP eventually redirects back to POST /auth/sso which returns HTML markup
  *      that postMessages the token to this window. We'll save it in localStorage for now.
  * */
-export const popupRefreshTokenFn = async (url: string) => {
+export const openSamlLoginPopup = async (idpUrl: string) => {
   return new Promise((resolve, reject) => {
     const width = 600;
     const height = 700;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
     const popup = window.open(
-      url,
+      idpUrl,
       "samlLoginPopup",
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`,
     );
@@ -39,7 +39,7 @@ export const popupRefreshTokenFn = async (url: string) => {
       }>,
     ) => {
       if (event.data && event.data.type === "SAML_AUTH_COMPLETE") {
-        authTokenStorage.set(event.data.authData);
+        samlTokenStorage.set(event.data.authData);
         window.removeEventListener("message", messageHandler);
         if (!popup.closed) {
           popup.close();

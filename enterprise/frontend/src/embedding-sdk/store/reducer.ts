@@ -12,7 +12,7 @@ import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
-import { authTokenStorage } from "./auth/saml-token-storage";
+import { samlTokenStorage } from "./auth/saml-token-storage";
 import { getSessionTokenState } from "./selectors";
 
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
@@ -42,7 +42,7 @@ export const getOrRefreshSession = createAsyncThunk(
   ) => {
     // necessary to ensure that we don't use a popup every time the user
     // refreshes the page
-    const storedAuthToken = authTokenStorage.get();
+    const storedAuthToken = samlTokenStorage.get();
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = storedAuthToken ?? state?.token;
 

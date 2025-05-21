@@ -35,7 +35,7 @@ export const getStorybookSdkAuthConfigForUser = (
       return { jwt };
     } catch (e) {
       console.error("Failed to generate JWT", e);
-      return new Error(`Failed to generate JWT for storybook: ${e}`);
+      throw new Error(`Failed to generate JWT for storybook: ${e}`);
     }
   },
 });
