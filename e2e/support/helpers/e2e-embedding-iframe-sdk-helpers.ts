@@ -53,12 +53,7 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
     }).as("dynamicPage");
 
     cy.visit(testPageUrl);
-
-    // debug: ensure that the embed test page is loaded
     cy.title().should("include", "Metabase Embed Test");
-
-    // debug: ensure that the embed.js script tag is loaded
-    cy.findByText("MetabaseEmbed found").should("be.visible");
 
     return cy
       .get("iframe")
@@ -100,18 +95,12 @@ function getSdkIframeEmbedHtml({
       <div id="metabase-embed-container"></div>
       ${insertHtml?.afterEmbed ?? ""}
 
-      <div id="debug">MetabaseEmbed missing</div>
-
       <script src="${EMBED_JS_PATH}"></script>
 
       <script>
         const { MetabaseEmbed } = window["metabase.embed"] ?? {};
 
         try {
-          if (MetabaseEmbed) {
-            document.querySelector("#debug").innerText = "MetabaseEmbed found";
-          }
-
           window.embed = new MetabaseEmbed({
             ${Object.entries(embedConfig)
               .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
