@@ -101,15 +101,18 @@
            sync
            util}}
 
+  ;; TODO -- consolidate these into a `.core` API namespace.
   api
-  {:api #{metabase.api.auth
-          metabase.api.common
+  {:api #{metabase.api.common
+          metabase.api.common.internal
           metabase.api.common.validation
           metabase.api.docs
+          metabase.api.init
           metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
           metabase.api.routes.common
+          metabase.api.settings
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{analytics
@@ -121,7 +124,7 @@
            logger
            models
            premium-features
-           server
+           request
            settings
            util
            enterprise/advanced-permissions}}
@@ -540,7 +543,6 @@
    :uses #{lib
            models
            settings
-           task
            util}}
 
   logger
