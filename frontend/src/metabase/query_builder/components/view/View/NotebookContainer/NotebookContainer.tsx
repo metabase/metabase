@@ -56,7 +56,8 @@ export const NotebookContainer = ({
 
   const renderNativePreview =
     isShowingNotebookNativePreview &&
-    canShowNativePreview({ question, queryBuilderMode: "notebook" });
+    (question.database() === null ||
+      canShowNativePreview({ question, queryBuilderMode: "notebook" }));
 
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
