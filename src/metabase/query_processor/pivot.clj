@@ -705,8 +705,8 @@
 (defn- is-unaggregated-query?
   "Is this query an unaggregated query with no pivot rows/cols set yet? If so, we run it as-is, not as a pivot."
   [query]
-  (or (= (select-keys (:pivot_unagg_column_split query) [:rows :columns])
-         {:rows [] :columns []})
+  (or (= (select-keys (:pivot_unagg_column_split query) [:rows :columns :values])
+         {:rows [] :columns [] :values []})
       (= (:pivot_unagg_column_split query) [])))
 
 (mu/defn run-pivot-query
