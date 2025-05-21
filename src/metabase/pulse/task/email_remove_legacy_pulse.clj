@@ -4,9 +4,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.channel.email :as email]
    [metabase.channel.template.core :as channel.template]
+   [metabase.channel.urls :as urls]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

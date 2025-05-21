@@ -13,6 +13,7 @@
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
+   [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
@@ -23,7 +24,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
-   [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)

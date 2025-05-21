@@ -214,7 +214,8 @@
            metabase.channel.render.core
            metabase.channel.settings
            metabase.channel.slack
-           metabase.channel.template.core}
+           metabase.channel.template.core
+           metabase.channel.urls}
    :uses #{analytics
            api
            app-db
@@ -1195,13 +1196,11 @@
   util
   {:api :any
    :uses #{app-db
-           channel
            classloader
            config
            driver
            legacy-mbql
            lib
-           parameters
            settings
            system}}
 
