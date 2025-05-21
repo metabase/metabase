@@ -30,6 +30,7 @@ const COLOR_NAMES = [
   "--mb-color-warning",
   "--mb-color-text-primary",
   "--mb-color-text-secondary",
+  "--mb-color-text-secondary-inverse",
   "--mb-color-text-tertiary",
   "--mb-color-text-selected",
   "--mb-color-text-brand",
