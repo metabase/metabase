@@ -811,3 +811,62 @@
                   (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
                          (->> (table-rows @test-table)
                               (sort-by first)))))))))))))
+
+(deftest describe-test
+  (let [desc-req #(mt/user-http-request-full-response
+                   (:user % :crowberto)
+                   :post
+                   "ee/data-editing/action/describe"
+                   (select-keys % [:scope :action]))
+        map-req #(mt/user-http-request-full-response
+                  (:user % :crowberto)
+                  :post
+                  "ee/data-editing/action/map"
+                  (select-keys % [:scope :base-action :action :mapping]))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                  :text      [:text]
+                                                                  :int       [:int]
+                                                                  :timestamp [:timestamp]
+                                                                  :date      [:date]}
+                                                                 {:primary-key [:id]})]
+
+          (def create-response (desc-req {:scope {:table-id @test-table}
+                                          :action "table.row/create"}))
+          (def update-response (desc-req {:scope {:table-id @test-table}
+                                          :action "table.row/update"}))
+          (def delete-response (desc-req {:scope {:table-id @test-table}
+                                          :action "table.row/delete"}))
+
+          (def create-body (:body create-response))
+          (def update-body (:body update-response))
+          (def delete-body (:body delete-response))
+
+          (let [r create-response
+                table (t2/select-one :model/Table @test-table)
+                fields (t2/select :model/Field :table_id @test-table)
+                field-id (u/index-by :name :id fields)]
+
+            (map :arg-path (:parameters (:action create-body)))
+
+            (is (= 200 (:status r))))
+
+          (mt/with-temp
+            [:model/Collection    collection {}
+             :model/Dashboard     dashboard  {:collection_id (:id collection)}
+             :model/DashboardCard dashcard   {:dashboard_id (:id dashboard)}]
+            ;; todo lookup editable to see how dashcard is set up
+            (def map-response (map-req {:scope {:dashcard-id (:id dashcard)}
+                                        :base-action "table.row/create"
+                                        :mapping {:title "Foo"
+                                                  :parameters {"table_id" {:type "expr", :expr {:type "const", :value @test-table}}}}}))
+            (def mad-response (desc-req {:scope {:dashcard-id (:id dashcard)}
+                                         :action (:action (:body map-response))})))))))
+
+;; mapping
+  ;; identity > map {} == same as original base
+  ;; model actions
+  #_())
+
