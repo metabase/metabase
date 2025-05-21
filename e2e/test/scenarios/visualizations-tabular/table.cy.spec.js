@@ -556,8 +556,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         size_y: 12,
       },
     }).then(({ body: { dashboard_id } }) => {
-      const wrappedRowInitialHeight = 104;
-      const updatedRowHeight = 87;
+      const wrappedRowInitialHeight = 87;
+      const updatedRowHeight = 70;
       H.visitDashboard(dashboard_id);
 
       H.assertRowHeight(0, wrappedRowInitialHeight);
@@ -618,6 +618,81 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findAllByTestId("row-id-cell")
       .eq(0)
       .should("have.text", 1);
+  });
+
+  it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
+    const sideColumnsWidth = 200;
+    const expandedSideColumnsWidth = 2 * sideColumnsWidth;
+    const idColumnWidth = 60;
+    const idExpandedWidth = 2 * idColumnWidth;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "reviews",
+        type: "model",
+        query: {
+          "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+        },
+        visualization_settings: {
+          "table.column_widths": [sideColumnsWidth, null, sideColumnsWidth], // middle column width is not set
+          column_settings: {
+            '["name","BODY"]': {
+              text_wrapping: true,
+            },
+          },
+          "table.columns": [
+            {
+              name: "BODY",
+              enabled: true,
+            },
+            {
+              name: "CREATED_AT",
+              enabled: false,
+            },
+            {
+              name: "ID",
+              enabled: true,
+            },
+            {
+              name: "PRODUCT_ID",
+              enabled: false,
+            },
+            {
+              name: "REVIEWER",
+              enabled: false,
+            },
+            {
+              name: "RATING",
+              enabled: true,
+            },
+          ],
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+
+      // Column widths should be expanded to the full width of the dashcard
+      H.getColumnWidth("Body").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("Rating").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("ID").should("be.gt", idExpandedWidth);
+
+      // Resize Body column
+      H.resizeTableColumn("BODY", -100);
+
+      // Ensure columns are not expanded to the full width of the dashcard after manual resizing
+      H.getColumnWidth("Body")
+        .should("be.gt", expandedSideColumnsWidth - 100)
+        .should("be.lt", expandedSideColumnsWidth);
+      H.getColumnWidth("Rating").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("ID").should("be.gt", idExpandedWidth);
+    });
   });
 
   it("should support resizing columns in dashcard viz settings", () => {
