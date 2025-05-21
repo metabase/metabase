@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-test :as perms-test]
+   [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -36,7 +36,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (is (contains?
            (permissions.user/user-permissions-set (mt/user->id :lucky))
-           (perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
+           (permissions.path/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
 
       (testing "...and for any descendant Collections of my Personal Collection?"
         (mt/with-temp [:model/Collection child-collection      {:name     "child"
@@ -45,7 +45,7 @@
                        :model/Collection grandchild-collection {:name     "grandchild"
                                                                 :location (collection/children-location child-collection)}]
           (is (set/subset?
-               #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
+               #{(permissions.path/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
                  "/collection/child/"
                  "/collection/grandchild/"}
                (->> (permissions.user/user-permissions-set (mt/user->id :lucky))
