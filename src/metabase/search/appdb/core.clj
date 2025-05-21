@@ -81,7 +81,12 @@
                       [:!= :search_index.model [:inline "table"]]
                       [:and
                        [:= :search_index.model [:inline "table"]]
-                       (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]]))
+                       [:exists {:select [1]
+                                 :from   [[:metabase_table :mt_toplevel]]
+                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id (case (mdb/db-type)
+                                                                                                   :mysql :signed
+                                                                                                   :integer)]]
+                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
