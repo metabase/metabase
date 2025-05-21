@@ -205,15 +205,11 @@ export const QueryValidator = () => {
 };
 
 const QueryValidatorEmpty = () => (
-  <tr>
-    <td colSpan={5}>
-      <Flex justify="center" p="1rem">
-        <Text fz="1rem" color="var(--mb-color-text-light)">
-          {t`No questions, models, or metrics with invalid references`}
-        </Text>
-      </Flex>
-    </td>
-  </tr>
+  <Flex justify="center" p="1rem">
+    <Text fz="1rem" color="var(--mb-color-text-light)">
+      {t`No questions, models, or metrics with invalid references`}
+    </Text>
+  </Flex>
 );
 
 const QueryValidatorRow = ({ row }: { row: TableRow }) => {

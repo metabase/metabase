@@ -1,15 +1,12 @@
-.NoResultsTableRow,
-.SkeletonTableRow {
-  &:hover {
-    background-color: transparent !important;
-  }
-}
-
 .SkeletonTableRow {
   height: 3rem;
 
   td {
     width: 20rem;
+  }
+
+  &:hover {
+    background-color: transparent !important;
   }
 }
 
