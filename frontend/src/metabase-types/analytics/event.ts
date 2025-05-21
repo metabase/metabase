@@ -117,6 +117,30 @@ export type VisualizeAnotherWayClickedEvent = ValidateEvent<{
   triggered_from: "question-list" | "dashcard-actions-panel";
 }>;
 
+export type VisualizerModalEvent = ValidateEvent<
+  | {
+      event:
+        | "visualizer_add_more_data_clicked"
+        | "visualizer_show_columns_clicked"
+        | "visualizer_settings_clicked"
+        | "visualizer_save_clicked"
+        | "visualizer_close_clicked"
+        | "visualizer_view_as_table_clicked";
+      triggered_from: "visualizer-modal";
+    }
+  | {
+      event: "visualizer_data_changed";
+      event_detail:
+        | "viz_type_changed"
+        | "datasource_removed"
+        | "datasource_added"
+        | "column_removed"
+        | "column_added";
+      event_data: string | null;
+      triggered_from: "visualizer-modal";
+    }
+>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -134,4 +158,5 @@ export type SimpleEvent =
   | NewEntityInitiatedEvent
   | NewButtonClickedEvent
   | NewButtonItemClickedEvent
-  | VisualizeAnotherWayClickedEvent;
+  | VisualizeAnotherWayClickedEvent
+  | VisualizerModalEvent;

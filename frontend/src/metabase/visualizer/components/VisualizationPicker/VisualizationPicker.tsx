@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { Center, Flex, Icon, Menu, SegmentedControl, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
@@ -55,7 +56,20 @@ export function VisualizationPicker({
         data={sensibleOptions.map((o, i) => ({
           value: o.value,
           label: (
-            <Center key={i} onClick={() => onChange(o.value)} p="sm">
+            <Center
+              key={i}
+              onClick={() => {
+                trackSimpleEvent({
+                  event: "visualizer_data_changed",
+                  event_detail: "viz_type_changed",
+                  triggered_from: "visualizer-modal",
+                  event_data: o.value,
+                });
+
+                onChange(o.value);
+              }}
+              p="sm"
+            >
               <Icon data-testid={o.value} name={o.icon} />
             </Center>
           ),

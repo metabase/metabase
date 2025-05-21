@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
 import {
@@ -39,7 +40,14 @@ export function Footer({ className }: { className?: string }) {
       {hasDatasets && (
         <Button
           ml="auto"
-          onClick={() => setVizSettingsSidebarOpen((isOpen) => !isOpen)}
+          onClick={() => {
+            trackSimpleEvent({
+              event: "visualizer_settings_clicked",
+              triggered_from: "visualizer-modal",
+            });
+
+            setVizSettingsSidebarOpen((isOpen) => !isOpen);
+          }}
         >{t`Settings`}</Button>
       )}
     </Flex>
