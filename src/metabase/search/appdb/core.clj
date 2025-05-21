@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.events :as events]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.search.appdb.index :as search.index]
@@ -17,8 +18,10 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
@@ -115,6 +118,7 @@
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
                        :version            @#'search.index/*index-version-id*
+                       :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
@@ -182,3 +186,11 @@
     (search.index/maybe-create-pending!))
   (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
     (search.index/activate-table!)))
+
+(derive :event/setting-update ::settings-changed-event)
+
+(methodical/defmethod events/publish-event! ::settings-changed-event
+  [_topic event]
+  (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
+    (log/info "Reindexing appdb index because the site locale changed.")
+    (search.engine/reindex! :search.engine/appdb {})))

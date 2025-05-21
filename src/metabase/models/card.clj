@@ -1308,7 +1308,7 @@
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
                   :last-viewed-at      :last_used_at
-                  :native-query        [:case [:= "native" :query_type] :dataset_query]
+                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id

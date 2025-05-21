@@ -426,6 +426,13 @@ export function assertRowHeight(index, height) {
     .should("have.css", "height", `${height}px`);
 }
 
+export function getColumnWidth(columnId) {
+  return cy
+    .findAllByTestId("header-cell")
+    .filter(`:contains(${columnId})`)
+    .invoke("width");
+}
+
 export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
@@ -445,7 +452,8 @@ export function tableHeaderClick(headerString) {
 }
 
 export function clickActionsPopover() {
-  return popover("click-actions-popover");
+  const selector = `${POPOVER_ELEMENT}[data-testid=click-actions-popover]`;
+  return cy.get(selector);
 }
 
 export function segmentEditorPopover() {

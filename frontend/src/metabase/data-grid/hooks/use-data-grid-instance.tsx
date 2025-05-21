@@ -7,7 +7,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePrevious, useUpdateEffect } from "react-use";
 import _ from "underscore";
 
@@ -28,24 +35,36 @@ import type {
 } from "metabase/data-grid/types";
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
+import { getScrollBarSize } from "metabase/lib/dom";
 import { isNotNull } from "metabase/lib/types";
 
-import { useCellSelection } from "./use-cell-selection";
+import { getTruncatedColumnSizing } from "../utils/column-sizing";
+import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
 
-// Setting pageSize to -1 to render all items
+import { useCellSelection } from "./use-cell-selection";
+import { useExpandColumnsToMinGridWidth } from "./use-expand-columns-to-min-grid-width";
+
+// Disable pagination by setting pageSize to -1
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
+// Creates a column order array with row ID column first if present
 const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
   _.uniq(
     hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
   );
 
+/**
+ * Main hook for creating and managing a data grid instance.
+ * Handles virtualization, column sizing/reordering, cell selection,
+ * pagination, and row selection.
+ */
 export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
   sorting,
   defaultRowHeight = 36,
+  minGridWidth: minGridWidthProp,
   rowId,
   truncateLongCellWidth = TRUNCATE_LONG_CELL_WIDTH,
   columnsOptions,
@@ -59,6 +78,7 @@ export const useDataGridInstance = <TData, TValue>({
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
 
+  // Initialize column order (either controlled or from column options)
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
       controlledColumnOrder ?? columnsOptions.map((column) => column.id),
@@ -66,12 +86,14 @@ export const useDataGridInstance = <TData, TValue>({
     ),
   );
 
+  // Track column widths (both controlled and measured)
   const [columnSizingMap, setColumnSizingMap] = useState<ColumnSizingState>(
     controlledColumnSizingMap ?? {},
   );
   const [measuredColumnSizingMap, setMeasuredColumnSizingMap] =
     useState<ColumnSizingState>({});
 
+  // Track which columns are expanded
   const [expandedColumnsMap, setExpandedColumnsMap] =
     useState<ExpandedColumnsState>(() => {
       return columnsOptions.reduce(
@@ -85,17 +107,12 @@ export const useDataGridInstance = <TData, TValue>({
 
   const { measureBodyCellDimensions, measureRoot } = useBodyCellMeasure(theme);
 
-  useUpdateEffect(() => {
-    if (controlledColumnSizingMap) {
-      setColumnSizingMap(controlledColumnSizingMap);
-    }
-  }, [controlledColumnSizingMap]);
-
-  // useEffect and useUpdateEffect is triggered after render, which causes flickering for controlled column order
-  useUpdateEffect(() => {
+  // Update column order when controlled value changes
+  useLayoutEffect(() => {
     setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
   }, [controlledColumnOrder, hasRowIdColumn]);
 
+  // Handler for updating column expanded state
   const handleUpdateColumnExpanded = useCallback(
     (columnName: string, isExpanded = true) => {
       setExpandedColumnsMap((prev) => {
@@ -105,6 +122,7 @@ export const useDataGridInstance = <TData, TValue>({
     [],
   );
 
+  // Handler for expand button click - expands column and adjusts width
   const handleExpandButtonClick = useCallback(
     (columnName: string, content: React.ReactNode) => {
       const newColumnWidth = Math.max(
@@ -117,7 +135,6 @@ export const useDataGridInstance = <TData, TValue>({
       };
 
       setColumnSizingMap(newColumnSizing);
-
       handleUpdateColumnExpanded(columnName);
     },
     [
@@ -128,6 +145,7 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
+  // Generate table columns configuration from options
   const columns = useMemo(() => {
     const rowIdColumnDefinition =
       rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
@@ -154,10 +172,17 @@ export const useDataGridInstance = <TData, TValue>({
     handleExpandButtonClick,
   ]);
 
+  // IDs of columns with fixed width that shouldn't be auto-resized
+  const fixedWidthColumnIds = useMemo(() => {
+    return [ROW_ID_COLUMN_ID];
+  }, []);
+
+  // Columns that need text wrapping
   const wrappedColumnsOptions = useMemo(() => {
     return columnsOptions.filter((column) => column.wrap);
   }, [columnsOptions]);
 
+  // Pagination state management
   const [pagination, setPagination] = useState<PaginationState>(
     pageSize != null && pageSize > 0
       ? {
@@ -177,6 +202,16 @@ export const useDataGridInstance = <TData, TValue>({
 
   const enablePagination =
     pagination?.pageSize !== DISABLED_PAGINATION_STATE.pageSize;
+
+  const minGridWidth = useMemo(() => {
+    if (!minGridWidthProp) {
+      return undefined;
+    }
+
+    return enablePagination
+      ? minGridWidthProp
+      : minGridWidthProp - getScrollBarSize();
+  }, [enablePagination, minGridWidthProp]);
 
   const table = useReactTable({
     data,
@@ -199,6 +234,7 @@ export const useDataGridInstance = <TData, TValue>({
     onPaginationChange: setPagination,
   });
 
+  // Calculate dynamic row heights for wrapped columns
   const measureRowHeight = useCallback(
     (rowIndex: number) => {
       if (wrappedColumnsOptions.length === 0) {
@@ -237,6 +273,7 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
+  // Enable row virtualization only when pagination is disabled
   const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
     gridRef,
@@ -249,16 +286,67 @@ export const useDataGridInstance = <TData, TValue>({
   const measureColumnWidths = useMeasureColumnWidths(
     table,
     columnsOptions,
-    truncateLongCellWidth,
     theme,
-    setMeasuredColumnSizingMap,
-    controlledColumnSizingMap,
     measurementRenderWrapper,
   );
+
+  // Applies measured column widths with optional truncation or expansion
+  const applyMeasuredColumnWidths = useCallback(
+    async (
+      preserveColumnSizingMap: ColumnSizingState = {},
+      truncatePreserved?: boolean, // whether to truncate the preserved column widths
+    ) => {
+      const handleColumnsMeasured = (
+        measuredColumnSizingMap: ColumnSizingState,
+      ) => {
+        // Combine measured and preserved widths, applying truncation as needed
+        const columnSizingMap = truncatePreserved
+          ? getTruncatedColumnSizing(
+              { ...measuredColumnSizingMap, ...preserveColumnSizingMap },
+              truncateLongCellWidth,
+            )
+          : {
+              ...getTruncatedColumnSizing(
+                measuredColumnSizingMap,
+                truncateLongCellWidth,
+              ),
+              ...preserveColumnSizingMap,
+            };
+
+        const newWidths = maybeExpandColumnWidths(
+          columnSizingMap,
+          fixedWidthColumnIds,
+          minGridWidth,
+        );
+
+        setMeasuredColumnSizingMap(measuredColumnSizingMap);
+        setColumnSizingMap(newWidths);
+      };
+
+      measureColumnWidths(
+        handleColumnsMeasured,
+        Object.keys(preserveColumnSizingMap),
+      );
+    },
+    [
+      measureColumnWidths,
+      truncateLongCellWidth,
+      fixedWidthColumnIds,
+      minGridWidth,
+    ],
+  );
+
+  // Initial measurement of column widths
+  useLayoutEffect(() => {
+    applyMeasuredColumnWidths(controlledColumnSizingMap, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { measureGrid, rowVirtualizer, columnVirtualizer } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
+
+  // Re-measure grid when column sizing or wrapping changes
   useEffect(() => {
     const didColumnSizingChange =
       prevColumnSizing.current != null &&
@@ -281,6 +369,7 @@ export const useDataGridInstance = <TData, TValue>({
     );
   }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
+  // Handle column resize from resize observer
   const handleColumnResize = useCallback(
     (columnName: string, width: number) => {
       const newWidth = Math.max(MIN_COLUMN_WIDTH, width);
@@ -302,12 +391,14 @@ export const useDataGridInstance = <TData, TValue>({
 
   useColumnResizeObserver(table.getState(), handleColumnResize);
 
+  // Setup column reordering functionality
   const columnsReordering = useColumnsReordering(
     table,
     gridRef,
     onColumnReorder,
   );
 
+  // Scroll to a specific row/column in the virtualized grid
   const scrollTo = useCallback(
     ({
       rowIndex,
@@ -326,6 +417,7 @@ export const useDataGridInstance = <TData, TValue>({
     [rowVirtualizer, columnVirtualizer],
   );
 
+  // Setup cell selection functionality
   const selection = useCellSelection({
     gridRef,
     table,
@@ -333,6 +425,7 @@ export const useDataGridInstance = <TData, TValue>({
     scrollTo,
   });
 
+  // Calculate total height of the grid based on rows
   const getTotalHeight = useCallback(() => {
     if (enableRowVirtualization) {
       return virtualGrid.rowVirtualizer.getTotalSize();
@@ -346,6 +439,7 @@ export const useDataGridInstance = <TData, TValue>({
     virtualGrid.rowVirtualizer,
   ]);
 
+  // Get rows that should be currently visible in the viewport
   const getVisibleRows = useCallback(() => {
     if (enableRowVirtualization) {
       return virtualGrid.virtualRows.map((virtualRow) => {
@@ -360,9 +454,9 @@ export const useDataGridInstance = <TData, TValue>({
     return table.getRowModel().rows;
   }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
 
+  // Auto-adjust column widths when pagination changes
   const previousPagination = usePrevious(pagination);
   useEffect(() => {
-    // Auto-adjusts column widths during pagination when sizes aren't explicitly specified
     if (
       pagination.pageSize === DISABLED_PAGINATION_STATE.pageSize ||
       !previousPagination
@@ -379,41 +473,48 @@ export const useDataGridInstance = <TData, TValue>({
         pagination.pageSize !== previousPagination.pageSize);
 
     if (shouldMeasureColumnsForPage) {
-      measureColumnWidths(controlledColumnSizingMap);
+      applyMeasuredColumnWidths(controlledColumnSizingMap);
     }
   }, [
     controlledColumnSizingMap,
-    measureColumnWidths,
+    applyMeasuredColumnWidths,
     pagination,
     columnsOptions,
     previousPagination,
   ]);
 
-  // If the column widths are not provided anymore, measure the column widths.
+  // Reset column widths if controlled sizing map is removed
   useUpdateEffect(() => {
     if (Object.keys(controlledColumnSizingMap ?? {}).length === 0) {
-      measureColumnWidths(controlledColumnSizingMap, true);
+      applyMeasuredColumnWidths({}, true);
     } else {
       setColumnSizingMap((prev) => ({ ...prev, ...controlledColumnSizingMap }));
     }
   }, [controlledColumnSizingMap]);
 
-  // When the column widths are not provided for all columns, measure the column widths.
-  // This can happen when new columns are added to the table.
+  // Re-measure when new columns are added that don't have width set
   useUpdateEffect(() => {
     const hasSizingForAllColumns = columnsOptions.every((column) => {
       return columnSizingMap[column.id] != null;
     });
 
     if (!hasSizingForAllColumns) {
-      measureColumnWidths(controlledColumnSizingMap);
+      applyMeasuredColumnWidths(controlledColumnSizingMap);
     }
   }, [
     columnsOptions,
     columnSizingMap,
     controlledColumnSizingMap,
-    measureColumnWidths,
+    applyMeasuredColumnWidths,
   ]);
+
+  // Ensure grid meets minimum width by expanding columns if needed
+  useExpandColumnsToMinGridWidth({
+    minGridWidth,
+    columnSizingMap,
+    setColumnSizingMap,
+    fixedWidthColumnIds,
+  });
 
   return {
     table,
@@ -423,7 +524,6 @@ export const useDataGridInstance = <TData, TValue>({
     measureRoot,
     columnsReordering,
     selection,
-    measureColumnWidths,
     enableRowVirtualization,
     getTotalHeight,
     getVisibleRows,

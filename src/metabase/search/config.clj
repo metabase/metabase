@@ -19,6 +19,15 @@
   :export?    true
   :audit      :getter)
 
+(defsetting search-language
+  (deferred-tru "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
+  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''")
+  :visibility :internal
+  :export?    false
+  :encryption :no
+  :default    nil
+  :type       :string)
+
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
