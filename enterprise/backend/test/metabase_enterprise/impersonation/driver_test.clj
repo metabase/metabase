@@ -7,7 +7,6 @@
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
-   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
@@ -136,11 +135,11 @@
   "metabase")
 
 (defmethod impersonation-default-user :snowflake
-  [driver]
+  [_driver]
   "METABASECI")
 
 (defmethod impersonation-default-user :clickhouse
-  [driver]
+  [_driver]
   "metabase")
 
 (defmulti impersonation-details
@@ -153,11 +152,11 @@
   (assoc (:details db) :user (impersonation-default-user driver)))
 
 (defmethod impersonation-details :postgres
-  [driver db]
+  [_driver db]
   (:details db))
 
 (defmethod impersonation-details :snowflake
-  [driver db]
+  [_driver db]
   (:details db))
 
 (defmulti impersonation-granting-details
@@ -174,7 +173,7 @@
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
 (deftest conn-impersonation-existing-db
-  (mt/test-drivers #{:clickhouse} #_#{:sqlserver :postgres :mysql :redshift :snowflake}
+  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")]

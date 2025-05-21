@@ -259,10 +259,8 @@
                                        (sql.qp/format-honeysql driver (:rls perms))))]
               (doseq [statement [(format "CREATE ROW POLICY role_policy_%s ON %s AS RESTRICTIVE FOR SELECT USING %s TO %s"
                                          (mt/random-name) table-name policy-cond role-name)]]
-                (tap> {:rls statement})
                 (jdbc/execute! spec [statement] {:transaction? false}))))
           (let [columns (:columns perms)
-                table-name1 (sql.tx/qualify-and-quote driver table-name)
                 select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
                 grant-stmt (if (seq columns)
                              (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
