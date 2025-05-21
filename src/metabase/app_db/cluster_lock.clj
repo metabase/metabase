@@ -3,6 +3,7 @@
   (:require
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
@@ -15,9 +16,7 @@
 
 (defn- is-canceled-statement?
   [^Throwable e]
-  (or (instance? SQLTimeoutException e)
-      (when-let [cause (ex-cause e)]
-        (is-canceled-statement? cause))))
+  (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e))
 
 (def ^:private default-retry-config
   {:max-attempts 5

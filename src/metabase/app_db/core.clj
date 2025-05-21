@@ -18,6 +18,7 @@
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
+   [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.config.core :as config]
@@ -26,7 +27,8 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.query/keep-me)
+         metabase.app-db.query/keep-me
+         metabase.app-db.query-cancelation/keep-me)
 
 (p/import-vars
  [mdb.connection
@@ -74,6 +76,9 @@
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]
+
+ [metabase.app-db.query-cancelation
+  query-canceled-exception?]
 
  [liquibase
   changelog-by-id])
