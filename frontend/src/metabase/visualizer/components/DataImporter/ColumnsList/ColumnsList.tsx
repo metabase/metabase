@@ -102,7 +102,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                   onClick={() => {
                     trackSimpleEvent({
                       event: "visualizer_data_changed",
-                      event_detail: "datasource_removed",
+                      event_detail: "visualizer_datasource_removed",
                       triggered_from: "visualizer-modal",
                       event_data: source.id,
                     });
@@ -142,7 +142,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                         if (!isSelected) {
                           trackSimpleEvent({
                             event: "visualizer_data_changed",
-                            event_detail: "column_added",
+                            event_detail: "visualizer_column_added",
                             triggered_from: "visualizer-modal",
                             event_data: `source: ${source.id}, column: ${column.name}`,
                           });
@@ -155,7 +155,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                           ? () => {
                               trackSimpleEvent({
                                 event: "visualizer_data_changed",
-                                event_detail: "column_removed",
+                                event_detail: "visualizer_column_removed",
                                 triggered_from: "visualizer-modal",
                                 event_data: `source: ${source.id}, column: ${column.name}`,
                               });

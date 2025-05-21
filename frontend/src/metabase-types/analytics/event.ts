@@ -131,11 +131,11 @@ export type VisualizerModalEvent = ValidateEvent<
   | {
       event: "visualizer_data_changed";
       event_detail:
-        | "viz_type_changed"
-        | "datasource_removed"
-        | "datasource_added"
-        | "column_removed"
-        | "column_added";
+        | "visualizer_viz_type_changed"
+        | "visualizer_datasource_removed"
+        | "visualizer_datasource_added"
+        | "visualizer_column_removed"
+        | "visualizer_column_added";
       event_data: string | null;
       triggered_from: "visualizer-modal";
     }
