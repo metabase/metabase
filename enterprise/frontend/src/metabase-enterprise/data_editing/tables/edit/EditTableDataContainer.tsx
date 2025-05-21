@@ -23,6 +23,7 @@ import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
@@ -105,6 +106,7 @@ export const EditTableDataContainer = ({
   const {
     isInserting,
     isDeleting,
+    isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -236,6 +238,11 @@ export const EditTableDataContainer = ({
         isLoading={isDeleting}
         onConfirm={onDeleteBulkConfirmation}
         onClose={cancelDeleteBulk}
+      />
+      <UnsavedLeaveConfirmationModal
+        isUpdating={isUpdating}
+        isDeleting={isDeleting}
+        isInserting={isInserting}
       />
     </>
   );

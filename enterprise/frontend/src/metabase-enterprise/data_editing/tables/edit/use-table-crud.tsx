@@ -45,7 +45,8 @@ export const useTableCRUD = ({
 
   const [deleteTableRows, { isLoading: isDeleting }] =
     useDeleteTableRowsMutation();
-  const [updateTableRows] = useUpdateTableRowsMutation();
+  const [updateTableRows, { isLoading: isUpdating }] =
+    useUpdateTableRowsMutation();
   const [insertTableRows, { isLoading: isInserting }] =
     useInsertTableRowsMutation();
 
@@ -254,6 +255,7 @@ export const useTableCRUD = ({
   return {
     isInserting,
     isDeleting,
+    isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 

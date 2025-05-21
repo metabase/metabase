@@ -35,6 +35,7 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
+import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
 import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
@@ -54,6 +55,7 @@ type EditTableDashcardVisualizationProps = {
   className?: string;
   visualizationSettings?: VisualizationSettings;
   question: Question;
+  withLeaveUnsavedConfirmation?: boolean;
 };
 
 export const EditTableDashcardVisualization = ({
@@ -65,6 +67,7 @@ export const EditTableDashcardVisualization = ({
   className,
   visualizationSettings,
   question,
+  withLeaveUnsavedConfirmation = true,
 }: EditTableDashcardVisualizationProps) => {
   const dispatch = useDispatch();
 
@@ -127,6 +130,7 @@ export const EditTableDashcardVisualization = ({
   const {
     isInserting,
     isDeleting,
+    isUpdating,
     tableFieldMetadataMap,
     cellsWithFailedUpdatesMap,
 
@@ -333,6 +337,13 @@ export const EditTableDashcardVisualization = ({
         onConfirm={onDeleteBulkConfirmation}
         onClose={cancelDeleteBulk}
       />
+      {withLeaveUnsavedConfirmation && (
+        <UnsavedLeaveConfirmationModal
+          isUpdating={isUpdating}
+          isDeleting={isDeleting}
+          isInserting={isInserting}
+        />
+      )}
     </Stack>
   );
 };
