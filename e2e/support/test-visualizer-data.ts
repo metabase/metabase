@@ -5,7 +5,6 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers/api";
 import type { CardId } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
 import type {
   VisualizerDataSourceId,
   VisualizerDataSourceNameReference,
@@ -165,34 +164,6 @@ function createDataSourceNameRef(
   id: VisualizerDataSourceId,
 ): VisualizerDataSourceNameReference {
   return `$_${id}_name`;
-}
-
-function createDatetimeColumn(opts: any = {}) {
-  return createMockColumn({
-    base_type: "type/DateTime",
-    effective_type: "type/DateTime",
-    semantic_type: null,
-    unit: "month",
-    ...opts,
-  });
-}
-
-function createCategoryColumn(opts: any = {}) {
-  return createMockColumn({
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    semantic_type: "type/Category",
-    ...opts,
-  });
-}
-
-function createNumericColumn(opts: any = {}) {
-  return createMockColumn({
-    base_type: "type/Integer",
-    effective_type: "type/Integer",
-    semantic_type: null,
-    ...opts,
-  });
 }
 
 export const ORDERS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
@@ -526,26 +497,6 @@ export function createVisualizerDashcardWithTimeseriesBreakout(
     visualization_settings: {
       visualization: {
         display: "line",
-        columns: [
-          createDatetimeColumn({
-            id: ORDERS.CREATED_AT,
-            name: "COLUMN_1",
-            display_name: "Created At: Month",
-          }),
-          createNumericColumn({
-            name: "COLUMN_2",
-            display_name: "Count",
-          }),
-          createDatetimeColumn({
-            id: PRODUCTS.CREATED_AT,
-            name: "COLUMN_3",
-            display_name: `Created At: Month (${PRODUCTS_COUNT_BY_CREATED_AT.name})`,
-          }),
-          createNumericColumn({
-            name: "COLUMN_4",
-            display_name: `Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`,
-          }),
-        ],
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -607,27 +558,6 @@ export function createVisualizerDashcardWithCategoryBreakout(
     visualization_settings: {
       visualization: {
         display: "bar",
-        columns: [
-          createCategoryColumn({
-            id: PRODUCTS.CATEGORY,
-            fk_field_id: ORDERS.PRODUCT_ID,
-            name: "COLUMN_1",
-            display_name: "Category",
-          }),
-          createNumericColumn({
-            name: "COLUMN_2",
-            display_name: "Count",
-          }),
-          createCategoryColumn({
-            id: PRODUCTS.CATEGORY,
-            name: "COLUMN_3",
-            display_name: `Category (${PRODUCTS_COUNT_BY_CATEGORY.name})`,
-          }),
-          createNumericColumn({
-            name: "COLUMN_4",
-            display_name: `Count (${PRODUCTS_COUNT_BY_CATEGORY.name})`,
-          }),
-        ],
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -679,17 +609,6 @@ export function createVisualizerPieChartDashcard(
     visualization_settings: {
       visualization: {
         display: "pie",
-        columns: [
-          createCategoryColumn({
-            id: PRODUCTS.CATEGORY,
-            name: "COLUMN_1",
-            display_name: "Category",
-          }),
-          createNumericColumn({
-            name: "COLUMN_2",
-            display_name: "Count",
-          }),
-        ],
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -731,10 +650,6 @@ export function createVisualizerFunnel(
     visualization_settings: {
       visualization: {
         display: "funnel",
-        columns: [
-          createCategoryColumn({ name: "COLUMN_1", display_name: "Step" }),
-          createNumericColumn({ name: "COLUMN_2", display_name: "Views" }),
-        ],
         columnValuesMapping: {
           COLUMN_1: [
             {
@@ -787,13 +702,6 @@ export function createVisualizerScalarFunnel(
     visualization_settings: {
       visualization: {
         display: "funnel",
-        columns: [
-          createNumericColumn({ name: "METRIC", display_name: "METRIC" }),
-          createCategoryColumn({
-            name: "DIMENSION",
-            display_name: "DIMENSION",
-          }),
-        ],
         columnValuesMapping: {
           METRIC: [
             {
