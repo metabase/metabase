@@ -259,7 +259,7 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::field-type
-  [:enum {:decode/tool-api-response (comp u/->snake_case_en name)}
+  [:enum {:decode/tool-api-response #(when % (-> % name u/->snake_case_en))}
    "boolean" "date" "datetime" "time" "number" "string"])
 
 (mr/def ::column
