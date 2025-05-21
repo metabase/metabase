@@ -27,7 +27,9 @@ export const sdkReducers = {
   qb: combineReducers(qb),
   visualizer,
   sdk,
-  plugins: combineReducers([PLUGIN_REDUCERS.metabotPlugin]),
+  plugins: combineReducers({
+    metabotPlugin: PLUGIN_REDUCERS.metabotPlugin,
+  }),
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>

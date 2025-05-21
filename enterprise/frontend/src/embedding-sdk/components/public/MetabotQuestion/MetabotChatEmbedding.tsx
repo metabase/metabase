@@ -50,6 +50,7 @@ export const MetabotChatEmbedding = ({
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
+    setMessage("");
     const metabotRequestPromise = metabot.submitInput(
       trimmedInput,
       EMBEDDING_METABOT_ID,
