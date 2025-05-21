@@ -215,13 +215,11 @@ export function UndoListOverlay({
       const prev = prevUndos.current ?? [];
       prevUndos.current = undos;
 
-      if (prev.length >= undos.length) {
+      if (prev.length < undos.length) {
         // Avoid moving the portal if we're not adding new undos.
         // Undos transitioning out do not need to be rendered on top.
-        return;
+        document.body.appendChild(target);
       }
-
-      document.body.appendChild(target);
 
       // Allow new items to transition
       setTransitionState(function (prevState) {
