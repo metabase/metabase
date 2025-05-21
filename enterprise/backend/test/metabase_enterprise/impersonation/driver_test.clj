@@ -248,7 +248,7 @@
 (deftest conn-impersonation-row-level-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/rls-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
-      (let [impersonation-role "impersonation.role"
+      (let [impersonation-role (u/lower-case-en (mt/random-name))
             venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")]
         (tx/with-temp-roles! driver/*driver*
           (impersonation-granting-details driver/*driver* (mt/db))
