@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -8,6 +10,12 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+
+// the API returns "model_id" instead of "id", and we transform it here for compatibility
+// with existing components that expect "id"
+type MetabotEntityApi = Omit<MetabotEntity, "id"> & {
+  model_id: MetabotEntity["id"];
+};
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -26,7 +34,7 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       providesTags: ["metabots-list"],
     }),
     listMetabotsEntities: builder.query<
-      { items: MetabotEntity[] & PaginationResponse },
+      { items: MetabotEntity[] } & PaginationResponse,
       MetabotId
     >({
       query: (id: number) => ({
@@ -34,15 +42,24 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/metabot-v3/metabots/${id}/entities`,
       }),
       providesTags: ["metabot-entities-list"],
+      transformResponse: (
+        response: { items: MetabotEntityApi[] } & PaginationResponse,
+      ) => {
+        // transform model_id to id in items
+        return {
+          ...response,
+          items: response.items.map((item) => ({
+            ..._.omit(item, "model_id"),
+            id: item.model_id,
+          })),
+        };
+      },
     }),
     addMetabotEntities: builder.mutation<
       void,
       {
         id: MetabotId;
-        entities: {
-          model_id: MetabotEntity["id"];
-          model_type: MetabotEntity["model"];
-        }[];
+        entities: Pick<MetabotEntity, "model" | "id">[];
       }
     >({
       query: ({ id, entities }) => ({

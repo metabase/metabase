@@ -139,8 +139,8 @@ export type MetabotInfo = {
 };
 
 export type MetabotEntity = {
-  id: CardId;
   name: string;
+  id: CardId;
   model: Extract<SearchModel, "dataset" | "metric">;
   collection_id: CollectionId;
   collection_name: string;
