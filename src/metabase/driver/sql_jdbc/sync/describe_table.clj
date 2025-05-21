@@ -87,23 +87,31 @@
 (defn- fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
   SELECT * query."
-  [driver ^Connection conn db-name-or-nil schema table]
+  [driver ^Connection conn db-name-or-nil schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
-        (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
-                    rs   (.executeQuery stmt)]
-          (let [metadata (.getMetaData rs)]
-            (reduce
-             ((map (fn [^Integer i]
-                     ;; TODO: missing :database-required column as ResultSetMetadata does not have information about
-                     ;; the default value of a column, so we can't make sure whether a column is required or not
-                     {:name                       (.getColumnName metadata i)
-                      :database-type              (.getColumnTypeName metadata i)
-                      :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
-             init
-             (range 1 (inc (.getColumnCount metadata))))))))))
+        (try
+          (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
+                      rs   (.executeQuery stmt)]
+            (let [metadata (.getMetaData rs)]
+              (reduce
+               ((map (fn [^Integer i]
+                       ;; TODO: missing :database-required column as ResultSetMetadata does not have information about
+                       ;; the default value of a column, so we can't make sure whether a column is required or not
+                       {:name                       (.getColumnName metadata i)
+                        :database-type              (.getColumnTypeName metadata i)
+                        :database-is-auto-increment (.isAutoIncrement metadata i)})) rf)
+               init
+               (range 1 (inc (.getColumnCount metadata))))))
+          (catch Exception e
+            (if (driver/table-known-to-not-exist? driver e)
+              ;; if the table does not exist, we just warn and ignore it, rather than failing with an exception
+              (do
+                (log/warnf e "Cannot sync Table %s: does not exist" table-name)
+                init)
+              (throw e))))))))
 
 (defn- jdbc-fields-metadata
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
