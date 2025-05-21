@@ -16,7 +16,9 @@ export function GenerateSqlQueryButton({
   const handleClick = async () => {
     const { data } = await generateSql({ prompt, database_id: databaseId });
     if (data) {
-      onGenerateQuery(data.generated_sql);
+      const singleLinePrompt = prompt.replaceAll("\n", " ");
+      const newQuery = `-- ${singleLinePrompt}\n${data.generated_sql}`;
+      onGenerateQuery(newQuery);
     }
   };
 
