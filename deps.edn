@@ -458,8 +458,7 @@
    {clj-kondo/clj-kondo {:mvn/version "2025.04.07"}}
 
    :main-opts
-   ["-m" "clj-kondo.main"
-    "--parallel"]}
+   ["-m" "clj-kondo.main"]}
 
   ;; clojure -M:kondo:kondo/all
   ;;
@@ -467,7 +466,8 @@
   :kondo/all
   {:main-opts
    ["-m" "clj-kondo.main"
-    "--parallel"
+    ;; disabled for now since this seems to cause random failures -- see https://github.com/clj-kondo/clj-kondo/issues/2218
+    #_"--parallel"
     ;; enable this if Kondo isn't working as expected or if LSP jump-to-definition is being fussy
     #_"--debug"
     "--lint"
