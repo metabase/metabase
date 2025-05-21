@@ -673,6 +673,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.models.query.permissions
+           metabase.permissions.path
            metabase.permissions.util}
    :uses #{api
            app-db
