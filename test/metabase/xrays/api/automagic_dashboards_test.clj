@@ -33,10 +33,10 @@
                    [:col                    :int]
                    [:size_x                 :int]
                    [:size_y                 :int]
-                   [:parameter_mappings     {:optional true} [:maybe  [:sequential [:map
-                                                                                    [:parameter_id :string]
-                                                                                    [:card_id :string]
-                                                                                    [:target [:cat :string [:sequential :any] :map]]]]]]
+                   [:parameter_mappings     {:optional true} [:maybe [:sequential [:map
+                                                                                   [:parameter_id :string]
+                                                                                   [:card_id :string]
+                                                                                   [:target [:cat :string [:sequential :any] :map]]]]]]
                    [:visualization_settings [:maybe :map]]]
                   dashcard)))))
 
