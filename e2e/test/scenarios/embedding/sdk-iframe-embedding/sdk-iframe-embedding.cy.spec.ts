@@ -14,36 +14,36 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.signOut();
   });
 
-  // it("should load the iframe -- experimental", () => {
-  //   const baseUrl = Cypress.config("baseUrl");
-  //   Cypress.config("baseUrl", null);
+  it("should load the iframe -- experimental", () => {
+    const dashboardId = ORDERS_DASHBOARD_ID;
+    const baseUrl = Cypress.config("baseUrl");
 
-  //   const dashboardId = ORDERS_DASHBOARD_ID;
+    cy.get<string>("@apiKey")
+      .then((apiKey) => {
+        cy.log(`api key = ${apiKey}`);
 
-  //   cy.get<string>("@apiKey")
-  //     .then((apiKey) => {
-  //       cy.log(`api key = ${apiKey}`);
+        Cypress.config("baseUrl", null);
 
-  //       cy.visit(
-  //         `e2e/test/scenarios/embedding/sdk-iframe-embedding/embedding-test.html?apiKey=${apiKey}&dashboardId=${dashboardId}`,
-  //       );
+        cy.visit(
+          `e2e/test/scenarios/embedding/sdk-iframe-embedding/embedding-test.html?apiKey=${apiKey}&dashboardId=${dashboardId}`,
+        );
 
-  //       const iframe = cy
-  //         .get("iframe")
-  //         .should("be.visible")
-  //         .its("0.contentDocument")
-  //         .should("exist")
-  //         .its("body")
-  //         .should("not.be.empty");
+        const iframe = cy
+          .get("iframe")
+          .should("be.visible")
+          .its("0.contentDocument")
+          .should("exist")
+          .its("body")
+          .should("not.be.empty");
 
-  //       iframe.within(() => {
-  //         cy.findByText("Metabase SDK").should("be.visible");
-  //       });
-  //     })
-  //     .then(() => {
-  //       Cypress.config("baseUrl", baseUrl);
-  //     });
-  // });
+        iframe.within(() => {
+          cy.findByText("Metabase SDK").should("be.visible");
+        });
+      })
+      .then(() => {
+        Cypress.config("baseUrl", baseUrl);
+      });
+  });
 
   it("displays a dashboard", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
