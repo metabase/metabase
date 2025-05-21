@@ -51,7 +51,7 @@ const COMMENT_PREFIX = "--";
 
 function canGenerateQuery(query: Lib.Query) {
   const engine = Lib.engine(query);
-  return engine != null && getEngineNativeType(engine) !== "sql";
+  return engine != null && getEngineNativeType(engine) === "sql";
 }
 
 function getPrompt(query: Lib.Query, selectedQueryText: string | null) {
