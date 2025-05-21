@@ -36,6 +36,7 @@
   set-database-permission!
   set-new-database-permissions!
   set-new-table-permissions!
+  set-table-permission!
   user-has-any-perms-of-type?
   user-has-permission-for-database?
   user-has-permission-for-table?
@@ -51,6 +52,7 @@
   grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!
+  grant-permissions!
   perms-objects-set-for-parent-collection
   revoke-application-permissions!
   revoke-collection-permissions!

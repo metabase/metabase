@@ -11,9 +11,7 @@
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.core :as search.engines.appdb]
@@ -448,7 +446,7 @@
                      :model/Card {card :id} {:collection_id parent-id :name (named "card")}
                      :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")}]
         (mt/with-full-data-perms-for-all-users!
-          (perms/revoke-collection-permissions! (perms-group/all-users) parent-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) parent-id)
           (testing "sanity check: before archiving, we can't see these items"
             (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
                                                    :archived true :q search-name)))))
@@ -467,7 +465,7 @@
                    (set (map (comp :id :collection) (:data (mt/user-http-request :crowberto :get 200 "/search"
                                                                                  :archived true :q search-name)))))))
           (testing "if we are granted permissions on the original collection, we can see the trashed items"
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent-id)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-id)
             (is (= #{dash card model}
                    (set (map :id (:data (mt/user-http-request :rasta :get 200 "/search"
                                                               :archived true :q search-name))))))))))))
@@ -938,8 +936,8 @@
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
+        (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(default-table-search-row "RoundTable")]
                  (binding [*search-request-results-database-id* db-id]
@@ -949,8 +947,8 @@
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp [:model/Database                   {db-id :id} {}
                    :model/Table                      table {:name "RoundTable", :db_id db-id}]
-      (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
-        (data-perms/set-table-permission! (perms-group/all-users) table :perms/create-queries :no)
+      (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
+        (perms/set-table-permission! (perms/all-users-group) table :perms/create-queries :no)
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
@@ -1482,7 +1480,7 @@
                 :type            nil}
                (-> result :data first :collection))))
 
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-2)
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll-2)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              (u/the-id coll-1)
                 :name            "Collection 1"
@@ -1490,7 +1488,7 @@
                 :type            nil}
                (-> result :data first :collection))))
 
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-1)
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll-1)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              "root"
                 :name            "Our analytics"
@@ -1511,8 +1509,8 @@
                    :model/Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
                                                                         :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
                                                      {:archived true}))
