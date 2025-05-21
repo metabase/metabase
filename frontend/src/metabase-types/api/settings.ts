@@ -445,6 +445,7 @@ interface PublicSettings {
 }
 
 export type UserSettings = {
+  "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;

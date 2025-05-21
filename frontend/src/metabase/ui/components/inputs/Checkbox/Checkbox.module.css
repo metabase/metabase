@@ -55,6 +55,10 @@
   align-items: center;
 }
 
+.inner {
+  align-self: flex-start;
+}
+
 .input {
   cursor: pointer;
   border: 1px solid var(--mb-color-bg-dark);
