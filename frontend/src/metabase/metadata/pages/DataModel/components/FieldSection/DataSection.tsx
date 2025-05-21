@@ -39,7 +39,7 @@ export const DataSection = ({ field }: Props) => {
   return (
     <Stack gap="md">
       <Box>
-        <SectionPill icon="database" title={t`Data`} />
+        <SectionPill title={t`Data`} />
       </Box>
 
       <TextInput
