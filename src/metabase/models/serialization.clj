@@ -1597,7 +1597,7 @@
       (str "card:" (*import-fk* card-entity-id :model/Card))
       source-id)))
 
-(defn- import-visualizer-settings
+(defn import-visualizer-settings
   [settings]
   (m/update-existing-in
    settings
