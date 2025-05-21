@@ -1,12 +1,13 @@
-(ns metabase.api.logger
+(ns metabase.logger.api
   "/api/logger endpoints"
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -16,6 +17,12 @@
    (java.util.concurrent.atomic AtomicInteger)))
 
 (set! *warn-on-reflection* true)
+
+(api.macros/defendpoint :get "/logs"
+  "Logs."
+  []
+  (validation/check-has-application-permission :monitoring)
+  (logger/messages))
 
 (defn- all-namespace-names
   []

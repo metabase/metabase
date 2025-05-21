@@ -12,7 +12,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]

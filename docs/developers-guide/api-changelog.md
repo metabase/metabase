@@ -18,6 +18,8 @@ title: API changelog
 
 - `POST /api/util/password_check` has been renamed to `POST /api/session/password-check`.
 
+- `GET /api/util/logs` has been renamed to `GET /api/logger/logs`.
+
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:

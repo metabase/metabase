@@ -2,26 +2,7 @@
   "Tests for /api/util"
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
-   [metabase.util.log :as log]))
-
-(deftest logs-test
-  (testing "Call includes recent logs (#24616)"
-    (mt/with-log-level :warn
-      (let [message "Sample warning message for test"]
-        (log/warn message)
-        (let [logs (mt/user-http-request :crowberto :get 200 "util/logs")]
-          (is (pos? (count logs)) "No logs returned from `util/logs`")
-          (is (some (comp #(re-find (re-pattern message) %) :msg) logs)
-              "Recent message not found in `util/logs`"))))))
-
-(deftest ^:parallel permissions-test
-  (testing "/util/logs"
-    (testing "Requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "util/logs"))))
-    (testing "Call successful for superusers"
-      (mt/user-http-request :crowberto :get 200 "util/logs"))))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel permissions-test-4
   (testing "/diagnostic_info/connection_pool_info"

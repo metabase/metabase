@@ -106,7 +106,6 @@
           metabase.api.common
           metabase.api.common.validation
           metabase.api.docs
-          metabase.api.logger
           metabase.api.macros
           metabase.api.open-api
           metabase.api.routes.common
@@ -118,7 +117,6 @@
            config
            embedding
            events
-           logger
            models
            premium-features
            server
@@ -213,7 +211,8 @@
            metabase.channel.render.core
            metabase.channel.settings
            metabase.channel.slack
-           metabase.channel.template.core}
+           metabase.channel.template.core
+           metabase.channel.urls}
    :uses #{analytics
            api
            app-db
@@ -543,10 +542,14 @@
            util}}
 
   logger
-  {:api  #{metabase.logger
+  {:api  #{metabase.logger.api
+           metabase.logger.core
            metabase.logger.init}
-   :uses #{classloader
-           config}}
+   :uses #{analytics
+           api
+           classloader
+           config
+           util}}
 
   login-history
   {:api #{metabase.login-history.api
@@ -1189,13 +1192,11 @@
   util
   {:api :any
    :uses #{app-db
-           channel
            classloader
            config
            driver
            legacy-mbql
            lib
-           parameters
            settings
            system}}
 
