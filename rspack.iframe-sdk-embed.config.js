@@ -15,7 +15,7 @@ const SCRIPT_TAG_PATH = path.resolve(
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
 const OUT_FILE_NAME = "embed.v1.js";
-const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "app/tmp-embed-js");
+const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
 
 module.exports = {
   name: "iframe_sdk_embed_v1",
