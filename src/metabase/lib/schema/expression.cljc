@@ -3,6 +3,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.ident :as ident]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -197,7 +198,7 @@
     #_tag :any
     #_opts [:map
             [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
-            [:ident               [:ref {:decode/normalize common/normalize-string-key} ::common/non-blank-string]]]
+            [:ident               [:ref {:decode/normalize common/normalize-string-key} ::ident/fresh-ident]]]
     #_args [:* :any]]])
 
 ;;; the `:expressions` definition map as found as a top-level key in an MBQL stage

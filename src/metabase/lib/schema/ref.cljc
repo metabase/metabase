@@ -9,6 +9,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.ident :as ident]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.types]
@@ -35,7 +36,9 @@
     ;; are bucketed -- if a column contains `:inherited-temporal-unit`, it was bucketed already in previous stages,
     ;; so nil default picked to avoid another round of bucketing. Shall user bucket the column again, they have to
     ;; select the bucketing explicitly in QB.
-    [:inherited-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]]])
+    [:inherited-temporal-unit                    {:optional true} [:ref ::temporal-bucketing/unit]]
+    ;; Only appears on field refs used as breakouts, giving the fresh :ident for that new column.
+    [:ident                                      {:optional true} [:ref ::ident/fresh-ident]]]])
 
 (mr/def ::field.literal.options
   [:merge
@@ -85,7 +88,8 @@
   [:merge
    ::common/options
    [:map
-    [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]]])
+    [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:ident                                      {:optional true} [:ref ::ident/fresh-ident]]]])
 
 (mbql-clause/define-mbql-clause :expression
   [:tuple

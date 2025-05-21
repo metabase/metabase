@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ident :as lib.schema.ident]
    [metabase.util.malli.registry :as mr]))
 
 ;;; Column vs Field?
@@ -146,6 +147,7 @@
    [:base-type ::lib.schema.common/base-type]
    ;; This is nillable because internal remap columns have `:id nil`.
    [:id             {:optional true} [:maybe ::lib.schema.id/field]]
+   [:ident          {:optional true} [:ref ::lib.schema.ident/ident]]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
