@@ -92,7 +92,10 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined || schemaId === undefined) {
         return [];
       }
-      const res = await fetchTables({ id: databaseId, schema: schemaId }, true);
+      const res = await fetchTables(
+        { id: databaseId, schema: schemaId, include_hidden: true },
+        true,
+      );
       return (
         res?.data?.map((table) =>
           node<TableNode>({
