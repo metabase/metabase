@@ -11599,15 +11599,6 @@ databaseChangeLog:
               WHERE entity_id IS NULL;
       rollback: # nothing to do
 
-  - changeSet:
-      id: v55.2025-05-20T21:00:00
-      validCheckSum: ANY
-      author: ranquild
-      comment: Backfill report_card.entity_id for cases not handled by the SQL migration
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.BackfillCardEntityIds"
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
