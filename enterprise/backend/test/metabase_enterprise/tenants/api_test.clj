@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.test :as mt]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn with-premium-feature-fixture [f]
@@ -67,21 +65,3 @@
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?limit=1")))
       (is (=? {:data [{:id id2}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?offset=1"))))))
-
-(deftest can-get-tenant-members
-  (testing "I can list tenant members"
-    (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "slug"}
-                   :model/User _ {:tenant_id id}
-                   :model/User _ {:tenant_id id}
-                   :model/User _ {:tenant_id id}]
-      (is (=? {:data [{} {} {}]}
-              (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id "/members"))))
-      (is (mr/validate [:map {:closed true}
-                        [:data
-                         [:sequential
-                          [:map {:closed true}
-                           [:id ms/PositiveInt]
-                           [:first_name ms/NonBlankString]
-                           [:last_name ms/NonBlankString]
-                           [:email ms/NonBlankString]]]]]
-                       (mt/user-http-request :crowberto :get 200 (str "ee/tenants/" id "/members")))))))

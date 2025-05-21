@@ -52,16 +52,6 @@
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (present-tenant (t2/select-one :model/Tenant :id id)))
 
-(api.macros/defendpoint :get "/:id/members"
-  "Get the members of a tenant"
-  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  {:data (->> (t2/select :model/User (cond-> {:where
-                                              [:and
-                                               [:= :tenant_id id]
-                                               [:= :type "personal"]]}
-                                       (request/paged?) (assoc :limit (request/limit) :offset (request/offset))))
-              (map #(select-keys % [:id :first_name :last_name :email])))})
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenants` routes"
   (api.macros/ns-handler *ns* api/+check-superuser +auth))

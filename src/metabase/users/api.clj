@@ -136,24 +136,33 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn- user-clauses
+(mu/defn- user-clauses
   "Honeysql clauses for filtering on users
   - with a status,
   - with a query,
   - with a group_id,
   - with include_deactivated"
-  [status query group_ids include_deactivated]
+  [{:keys [status query group-ids include-deactivated tenant]}
+   :- [:map
+       [:status {:optional true} [:maybe :string]]
+       [:query {:optional true} [:maybe :string]]
+       [:group-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+       [:include-deactivated {:optional true} [:maybe ms/BooleanValue]]
+       [:tenant {:optional true} [:maybe
+                                  [:map
+                                   [:id [:maybe ms/PositiveInt]]]]]]]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include_deactivated))
+    true                                    (sql.helpers/where (status-clause status include-deactivated))
+    tenant                                  (sql.helpers/where [:= :tenant_id (:id tenant)])
     ;; don't send the internal user
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
-    (some? group_ids)                       (sql.helpers/right-join
+    (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? group-ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group-ids])
     (some? (request/limit))                 (sql.helpers/limit (request/limit))
     (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
@@ -172,6 +181,7 @@
    `status` and `include_deactivated` requires superuser permissions.
    - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.
    If both params are passed, `status` takes precedence.
+  - if a `tenant_id` is passed, only users with that tenant_id will be returned.
 
   For users with segmented permissions, return only themselves.
 
@@ -179,20 +189,25 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated]}
+   {:keys [status query group_id include_deactivated tenant_id]}
    :- [:map
        [:status              {:optional true} [:maybe :string]]
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
+       [:tenant_id           {:default nil} [:maybe ms/PositiveInt]]]]
   (or
    api/*is-superuser?*
    (if group_id
      (validation/check-manager-of-group group_id)
      (validation/check-group-manager)))
-  (let [include_deactivated include_deactivated
-        group-id-clause     (when group_id [group_id])
-        clauses             (user-clauses status query group-id-clause include_deactivated)]
+  (let [clauses             (user-clauses {:status status
+                                           :query query
+                                           :group-ids (when group_id [group_id])
+                                           :include-deactivated include_deactivated
+                                           :tenant {:id (if api/*is-superuser?*
+                                                          tenant_id
+                                                          (:tenant_id @api/*current-user*))}})]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
@@ -207,7 +222,7 @@
                  api/*is-group-manager?*)
              (t2/hydrate :group_ids)
              ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
-             group-id-clause
+             group_id
              distinct)
      :total  (-> (t2/query
                   (merge {:select [[[:count [:distinct :core_user.id]] :count]]
@@ -240,14 +255,16 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (-> (user-clauses nil nil nil nil)
+  (letfn [(all [] (let [clauses (-> (user-clauses {:tenant (when-not api/*is-superuser?*
+                                                             {:id (:tenant_id @api/*current-user*)})})
                                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user-clauses nil nil nil nil)
+                                 clauses  (cond-> (user-clauses {:tenant (when-not api/*is-superuser?*
+                                                                           {:id (:tenant_id @api/*current-user*)})})
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
