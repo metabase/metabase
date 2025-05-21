@@ -430,3 +430,8 @@
   reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
   []
   (ddiff/pretty-print (kondo-config-diff)))
+
+(comment
+  (module-dependencies 'lib)
+
+  (module-usages-of-other-module 'lib 'models))

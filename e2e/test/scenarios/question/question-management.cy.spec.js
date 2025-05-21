@@ -97,6 +97,19 @@ describe(
                       .parents("li")
                       .should("have.attr", "aria-selected", "true");
                   });
+
+                  if (user === "admin") {
+                    H.openQuestionActions();
+                    cy.findByTestId("move-button").click();
+                    H.entityPickerModal().within(() => {
+                      cy.findByRole("button", {
+                        name: /Orders in a dashboard/,
+                      }).should("exist");
+                      cy.findByRole("button", { name: /Bobby Table/ }).should(
+                        "not.exist",
+                      );
+                    });
+                  }
                 });
 
                 it("should be able to move the question to a collection created on the go", () => {

@@ -105,7 +105,6 @@
   {:api #{metabase.api.auth
           metabase.api.common
           metabase.api.common.validation
-          metabase.api.dataset
           metabase.api.docs
           metabase.api.logger
           metabase.api.macros
@@ -117,18 +116,11 @@
            api-routes
            classloader
            config
-           driver
            embedding
            events
-           legacy-mbql
-           lib
            logger
-           model-persistence
            models
-           parameters
            premium-features
-           queries
-           query-processor
            server
            settings
            util
@@ -274,8 +266,8 @@
            util}}
 
   cmd
-  {:api  #{metabase.cmd
-           metabase.cmd.copy
+  {:api  #{metabase.cmd.copy
+           metabase.cmd.core
            metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
@@ -316,7 +308,7 @@
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
-  {:api  #{metabase.config}
+  {:api  #{metabase.config.core}
    :uses #{}}
 
   ;; this is not actually a real module, but comes from one of our libraries.
@@ -344,6 +336,7 @@
            config
            events
            lib
+           lib-be
            models
            parameters
            permissions
@@ -395,6 +388,7 @@
            config
            connection-pool
            database-routing
+           events
            legacy-mbql
            lib
            lib-be
@@ -445,13 +439,11 @@
   events
   {:api  #{metabase.events.core
            metabase.events.init}
-   :uses #{driver
-           models
-           util
-           view-log}}
+   :uses #{models
+           util}}
 
   formatter
-  {:api  #{metabase.formatter}
+  {:api  #{metabase.formatter.core}
    :uses #{appearance
            models
            system
@@ -508,8 +500,9 @@
           metabase.lib.ident
           metabase.lib.join.util
           metabase.lib.metadata
+          metabase.lib.metadata.cached-provider
           metabase.lib.metadata.calculation
-          metabase.lib.metadata.jvm
+          metabase.lib.metadata.invocation-tracker
           metabase.lib.metadata.protocols
           metabase.lib.normalize
           metabase.lib.options
@@ -536,15 +529,15 @@
           metabase.lib.walk}
    :uses #{config
            legacy-mbql
-           models
-           settings
            types
            util}}
 
   lib-be
   {:api #{metabase.lib-be.core
-          metabase.lib-be.init}
-   :uses #{models
+          metabase.lib-be.init
+          metabase.lib-be.metadata.jvm}
+   :uses #{lib
+           models
            settings
            task
            util}}
@@ -598,9 +591,9 @@
    :uses #{api
            app-db
            classloader
-           driver
            legacy-mbql
            lib
+           lib-be
            settings
            util}}
 
@@ -658,6 +651,7 @@
            driver
            legacy-mbql
            lib
+           lib-be
            models
            query-processor
            types
@@ -740,6 +734,7 @@
            dashboards
            events
            lib
+           lib-be
            models
            parameters
            queries
@@ -793,6 +788,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            models
            parameters
            permissions
@@ -805,6 +801,7 @@
            revisions
            search
            util
+           view-log
            warehouse-schema}}
 
   query-analysis
@@ -821,6 +818,7 @@
 
   query-processor
   {:api #{metabase.query-processor
+          metabase.query-processor.api
           metabase.query-processor.card
           metabase.query-processor.compile
           metabase.query-processor.dashboard
@@ -869,6 +867,7 @@
            lib-be
            model-persistence
            models
+           parameters
            permissions
            pivot
            premium-features
@@ -951,6 +950,7 @@
            events
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            search
@@ -1128,7 +1128,8 @@
            util}}
 
   types
-  {:api  #{metabase.types}
+  {:api  #{metabase.types.core
+           metabase.types.init}
    :uses #{util}}
 
   upload
@@ -1236,6 +1237,7 @@
            driver
            events
            lib
+           lib-be
            models
            parameters
            permissions
@@ -1502,6 +1504,7 @@
            config
            legacy-mbql
            lib
+           lib-be
            models
            premium-features
            pulse
@@ -1641,13 +1644,12 @@
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
  ;;
  ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
- ;; together, e.g. `metabase.lib.metadata.jvm`.
+ ;; together, e.g. `metabase.lib-be.metadata.jvm`.
  :linters
  {:metabase/modules
   {:ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "test-setup"                       ; anything that contains `test-setup`
-     "^metabase(?:-enterprise)?\\.test" ; anything starting with `metabase.test` or `metabase-enterprise.test`
-     "^metabase\\.http-client$"}}}}     ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                               ; anything ending in `-test`
+     "test[-.]util"                         ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                          ; anything that contains `test.impl`
+     "test-setup"                           ; anything that contains `test-setup`
+     "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`

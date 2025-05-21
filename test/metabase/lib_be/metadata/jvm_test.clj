@@ -1,15 +1,14 @@
-(ns metabase.lib.metadata.jvm-test
-  #_{:clj-kondo/ignore [:discouraged-namespace]}
+(ns metabase.lib-be.metadata.jvm-test
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.test :as mt]

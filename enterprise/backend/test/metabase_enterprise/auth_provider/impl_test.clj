@@ -5,9 +5,9 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.driver.util :as driver.u]
-   [metabase.http-client :as client]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.http-client :as client]
    [metabase.util.http :as u.http]
    [metabase.util.json :as json])
   (:import

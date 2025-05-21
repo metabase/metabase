@@ -54,6 +54,10 @@
   [_original-model _k]
   :model/Table)
 
+(t2/define-after-select :model/Table
+  [table]
+  (dissoc table :is_defective_duplicate :unique_table_helper))
+
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
@@ -294,7 +298,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :entity_id]
+               :database_require_filter :is_defective_duplicate :unique_table_helper]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})

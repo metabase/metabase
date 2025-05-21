@@ -47,7 +47,6 @@ import {
   addColumnToCartesianChart,
   cartesianDropHandler,
   combineWithCartesianChart,
-  isCompatibleWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
   removeBubbleSizeFromCartesianChart,
   removeColumnFromCartesianChart,
@@ -221,6 +220,7 @@ export const addDataSource = createAsyncThunk(
         ...copy(state),
         settings,
       },
+      state.datasets,
       dataSource,
       dataset,
     );
@@ -344,6 +344,7 @@ const visualizerSlice = createSlice({
       if (state.display === "funnel") {
         addColumnToFunnel(
           state,
+          state.datasets as Record<string, Dataset>,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -353,16 +354,13 @@ const visualizerSlice = createSlice({
         return;
       }
 
-      state.columns.push(column);
-      state.columnValuesMapping[column.name] = [columnRef];
-
       if (isCartesianChart(state.display)) {
         addColumnToCartesianChart(
           state,
+          state.datasets as Record<string, Dataset>,
+          dataset.data.cols,
           column,
           columnRef,
-          // Prevents "Type instantiation is excessively deep" error
-          dataset as Dataset,
           dataSource,
         );
 
@@ -382,7 +380,13 @@ const visualizerSlice = createSlice({
           );
         }
       } else if (state.display === "pie") {
-        addColumnToPieChart(state, column);
+        addColumnToPieChart(
+          state,
+          state.datasets as Record<string, Dataset>,
+          dataset.data.cols,
+          column,
+          columnRef,
+        );
       }
     },
     removeColumn: (
@@ -573,6 +577,7 @@ const visualizerSlice = createSlice({
 
 function maybeCombineDataset(
   state: VisualizerVizDefinitionWithColumns,
+  datasets: Record<string, Dataset>,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
 ) {
@@ -580,15 +585,12 @@ function maybeCombineDataset(
     return;
   }
 
-  if (
-    isCartesianChart(state.display) &&
-    isCompatibleWithCartesianChart(state, dataset)
-  ) {
-    combineWithCartesianChart(state, dataset, dataSource);
+  if (isCartesianChart(state.display)) {
+    combineWithCartesianChart(state, datasets, dataset, dataSource);
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, dataset, dataSource);
+    combineWithPieChart(state, datasets, dataset, dataSource);
   }
 
   if (state.display === "funnel") {

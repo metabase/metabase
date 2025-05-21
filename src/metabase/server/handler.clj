@@ -3,7 +3,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
    [metabase.server.middleware.exceptions :as mw.exceptions]

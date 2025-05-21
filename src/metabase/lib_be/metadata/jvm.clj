@@ -1,4 +1,4 @@
-(ns metabase.lib.metadata.jvm
+(ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [clojure.core.cache :as cache]
@@ -10,7 +10,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -19,7 +18,6 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
@@ -170,15 +168,15 @@
 
 (t2/define-after-select :metadata/column
   [field]
-  (let [entity-id      (serdes/backfill-entity-id field)
-        field          (instance->metadata field :metadata/column)
+  (let [field          (instance->metadata field :metadata/column)
         dimension-type (some-> (:dimension/type field) keyword)]
     (merge
      (dissoc field
              :table
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
-     {:ident entity-id}
+     ;; TODO use the correct field id-based ident
+     {:ident (str "field__" (:name field))}
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
        {:lib/external-remap {:lib/type :metadata.column.remapping/external

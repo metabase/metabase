@@ -5,7 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]

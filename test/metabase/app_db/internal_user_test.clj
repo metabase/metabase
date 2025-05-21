@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

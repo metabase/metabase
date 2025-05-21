@@ -15,7 +15,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]

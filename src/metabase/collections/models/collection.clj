@@ -13,7 +13,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config :as config :refer [*request-id*]]
+   [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

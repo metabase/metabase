@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.dataset-test
+(ns ^:mb/driver-tests metabase.query-processor.api-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
@@ -8,17 +8,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
@@ -27,6 +26,7 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -442,6 +442,8 @@
                (mt/user-http-request :crowberto :post 200 "dataset/native"
                                      (mt/mbql-query venues {:fields [$id $name]}))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel compile-test-6
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
@@ -461,6 +463,8 @@
                               {:default "b"}]}}))
                      :query json/decode first (get-in ["$project" "E"])))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
   (mt/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
@@ -473,6 +477,8 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
@@ -500,6 +506,8 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
+;; historical test: don't do this going forward
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel pivot-dataset-with-added-expression-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data

@@ -25,7 +25,7 @@ export function GenerateSqlQueryButton({
       <Button
         className={className}
         variant="subtle"
-        leftSection={<Icon name="sparkles" />}
+        leftSection={<Icon name="metabot" />}
         loading={isLoading}
         disabled={isEmpty}
         onClick={handleClick}

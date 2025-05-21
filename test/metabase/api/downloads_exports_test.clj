@@ -18,7 +18,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.impl :as formatter]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]

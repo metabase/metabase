@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
