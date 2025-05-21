@@ -187,10 +187,7 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
 
     H.modal().within(() => {
-      H.removeDataSource(LANDING_PAGE_VIEWS.name);
-      cy.findByText("Funnel").click();
       H.switchToAddMoreData();
-      H.selectDataset(LANDING_PAGE_VIEWS.name);
       H.addDataset(CHECKOUT_PAGE_VIEWS.name);
       H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
       H.switchToColumnsList();
