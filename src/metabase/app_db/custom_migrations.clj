@@ -34,6 +34,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [nano-id.core :as nano-id]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -1759,3 +1760,14 @@
 ;; [[metabase.notification.task.send/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
+
+(define-migration BackfillCardEntityIds
+  (run!
+   (fn [{:keys [id]}]
+     (let [entity-id (nano-id/nano-id)]
+       (t2/query {:update :report_card
+                  :set    {:entity_id entity-id}
+                  :where  [:= :id id]})))
+   (t2/reducible-query {:select [:id]
+                        :from   [:report_card]
+                        :where  [:= :entity_id nil]})))

@@ -11476,6 +11476,38 @@ databaseChangeLog:
             tableName: metabase_table
             constraintName: idx_unique_table
 
+  # Relies on a heuristic that there is no entity_id that contains only `-` and digits. In this case we can safely
+  # use numeric card IDs with padding to set entity_id.
+  - changeSet:
+      id: v55.2025-05-19T20:00:00
+      validCheckSum: 9:acb2d9c3a9cfe969d6742c63615eaac5
+      author: ranquild
+      comment: Best-effort backfill of report_card.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*)
+              FROM report_card
+              WHERE entity_id IS NOT NULL AND REGEXP_LIKE(entity_id, '^[-0-9]*$');
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET entity_id = LPAD(CAST(id AS ${text.type}), 21, '-')
+              WHERE entity_id IS NULL;
+      rollback: # nothing to do
+
+  - changeSet:
+      id: v55.2025-05-20T21:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Backfill report_card.entity_id for cases not handled by the SQL migration
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillCardEntityIds"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

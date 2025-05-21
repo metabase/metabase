@@ -1067,9 +1067,7 @@
           ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
-          (with-redefs [database/set-new-database-permissions! (constantly nil)
-                        ;; The entity_id column doesn't exist on Databases until 54, but it will be set automatically.
-                        mi/add-entity-id                       identity]
+          (with-redefs [database/set-new-database-permissions! (constantly nil)]
             (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
               (let [default-db                {:name       "DB"
                                                :engine     "postgres"
@@ -2617,3 +2615,32 @@
           (testing "after downgrade"
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
+
+(deftest backfill-card-entity-ids-test
+  (testing "Backfill report_card.entity_id"
+    (impl/test-migrations "v55.2025-05-20T15:00:00" [migrate!]
+      (let [user-id (t2/insert-returning-pks! :core_user
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
+            database-id (t2/insert-returning-pks! :metabase_database
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-defaults {:name                   (mt/random-name)
+                           :entity_id              nil
+                           :dataset_query          "{}"
+                           :display                "table"
+                           :visualization_settings "{}"
+                           :creator_id             user-id
+                           :database_id            database-id
+                           :created_at             :%now
+                           :updated_at             :%now}]
+        (t2/insert-returning-pks! :report_card (repeat 2 card-defaults))
+        (is (t2/exists? :report_card :entity_id nil))
+        (migrate!)
+        (is (not (t2/exists? :report_card :entity_id nil)))))))
