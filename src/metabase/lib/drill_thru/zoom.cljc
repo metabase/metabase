@@ -36,11 +36,9 @@
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
 (defn- zoom-drill* [column value]
