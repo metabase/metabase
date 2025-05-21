@@ -14,6 +14,15 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.signOut();
   });
 
+  it("should be able to retrieve the script tag source -- experimental", () => {
+    cy.request("http://localhost:4000/app/dist/embed.v1.js").then(
+      (response) => {
+        expect(response.status).to.eq(200);
+        expect(response.body).to.be.a("string").and.not.be.empty;
+      },
+    );
+  });
+
   it("should load the iframe -- experimental", () => {
     const dashboardId = ORDERS_DASHBOARD_ID;
     const baseUrl = Cypress.config("baseUrl");

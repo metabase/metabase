@@ -96,6 +96,8 @@ function getSdkIframeEmbedHtml({
       </style>
     </head>
     <body>
+      <h1>Metabase Embed Test Page</h1>
+
       ${insertHtml?.beforeEmbed ?? ""}
       <div id="metabase-embed-container"></div>
       ${insertHtml?.afterEmbed ?? ""}
