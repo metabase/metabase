@@ -75,17 +75,13 @@
             json/decode)))))
 
 (deftest load-entrypoint-template-contains-user-locale
-  (let [get-lang (fn [html]
-                   (let [[_ lang :as matched?] (re-find #"lang=\"(\w+)\"" html)]
-                     (is matched? "did not find `lang` in HTML")
-                     lang))]
-    (binding [i18n/*user-locale* "es"]
-      (is (= "es" (get-lang (#'index/load-entrypoint-template "index" false {})))))
-    (binding [i18n/*user-locale* "en"]
-      (is (= "en" (get-lang (#'index/load-entrypoint-template "index" false {})))))
-    (mt/with-temporary-setting-values [site-locale "es"]
-      ;; site locale is used as the default
-      (is (= "es" (get-lang (#'index/load-entrypoint-template "index" false {}))))
-      ;; but we can override with the user locale
-      (binding [i18n/*user-locale* "fr"]
-        (is (= "fr" (get-lang (#'index/load-entrypoint-template "index" false {}))))))))
+  (binding [i18n/*user-locale* "es"]
+    (is (= "es" (:language (#'index/template-parameters false {})))))
+  (binding [i18n/*user-locale* "en"]
+    (is (= "en" (:language (#'index/template-parameters false {})))))
+  (mt/with-temporary-setting-values [site-locale "es"]
+    ;; site locale is used as the default
+    (is (= "es" (:language (#'index/template-parameters false {}))))
+    ;; but we can override with the user locale
+    (binding [i18n/*user-locale* "fr"]
+      (is (= "fr" (:language (#'index/template-parameters false {})))))))
