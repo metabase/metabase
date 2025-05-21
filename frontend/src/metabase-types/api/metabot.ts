@@ -149,3 +149,7 @@ export type MetabotEntity = {
   collection_id: CollectionId;
   collection_name: string;
 };
+
+export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
+  model_id: MetabotEntity["id"];
+};
