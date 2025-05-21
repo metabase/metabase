@@ -1,7 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { useListActionsQuery } from "metabase/api";
 import type { EditableTableActionsVizOverride } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionFormInitialValues,
@@ -69,8 +68,6 @@ export const useTableActions = ({
           };
         }) || [];
 
-    console.log({ enabledRowActions });
-
     return {
       hasCreateAction,
       hasDeleteAction,
@@ -90,8 +87,6 @@ export const useTableActions = ({
       const rowData = datasetData.rows[rowIndex];
 
       const vizSettings = enabledActionsVizSettingsSet.get(action.id);
-
-      debugger;
 
       const remappedInitialActionValues = action.parameters?.reduce(
         (result, parameter) => {

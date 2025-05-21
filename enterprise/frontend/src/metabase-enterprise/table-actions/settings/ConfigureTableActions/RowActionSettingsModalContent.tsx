@@ -50,7 +50,6 @@ export function RowActionSettingsModalContent({
   const [actionName, setActionName] = useState<string | undefined>(
     rowActionSettings?.name || selectedAction?.name,
   );
-  console.log({ rowActionSettings, selectedAction, actionName });
 
   const hasParameters = !!selectedAction?.parameters?.length;
 

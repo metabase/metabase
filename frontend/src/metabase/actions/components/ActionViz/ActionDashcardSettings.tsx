@@ -7,6 +7,7 @@ import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -31,7 +32,6 @@ import {
   isParameterHidden,
   isParameterRequired,
 } from "./utils";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -57,6 +57,8 @@ export function ActionDashcardSettings({
   const { data: actions } = useGetActionsQuery();
 
   const setAction = (newAction: WritebackAction) => {
+    debugger;
+    console.log({ newAction });
     setActionForDashcard(dashcard, newAction);
   };
 

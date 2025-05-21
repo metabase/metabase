@@ -164,6 +164,7 @@ export const isActionCard = (card?: Card | VirtualCard) =>
   card?.display === "action";
 
 export const getFormTitle = (action: WritebackAction): string => {
+  console.log({ action });
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
 

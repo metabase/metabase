@@ -127,7 +127,6 @@ export const ConfigureEditableTableActions = ({
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
-      debugger;
       const newItem: EditableTableRowActionDisplaySettings = {
         id: action.id,
         enabled: true,

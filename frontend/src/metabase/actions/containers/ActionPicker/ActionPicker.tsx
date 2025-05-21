@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
+import CollapseSection from "metabase/components/CollapseSection";
 import Modal from "metabase/components/Modal";
-import CS from "metabase/css/core/index.css";
-import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { Divider, Stack, Text, Title } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -20,8 +20,6 @@ import {
   NewActionButton,
 } from "./ActionPicker.styled";
 import { sortAndGroupActions, sortAndGroupTableActions } from "./utils";
-import { Divider, Stack, Text, Title } from "metabase/ui";
-import CollapseSection from "metabase/components/CollapseSection";
 
 export function ActionPicker({
   models,
@@ -225,7 +223,18 @@ function TableActionPicker({
                   role="button"
                   isSelected={currentAction?.id === action.id}
                   aria-selected={currentAction?.id === action.id}
-                  onClick={() => onClick(action)}
+                  // onClick={() => onClick(action)}
+                  onClick={() =>
+                    onClick({
+                      ...action,
+                      // name: `${action.table_name} (${action.name})`,
+                      visualization_settings: {
+                        ...action.visualization_settings,
+                        // TODO: Ask if this looks better.
+                        name: `${action.table_name} (${action.name})`,
+                      },
+                    })
+                  }
                   data-testid={`table-action-item-${action.name}`}
                 >
                   <Text c="var(--mb-color-brand)">{action.name}</Text>
