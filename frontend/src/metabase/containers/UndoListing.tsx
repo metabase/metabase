@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   Fragment,
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useRef,
