@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
@@ -329,8 +329,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
-  [_driver]
-  (h2x/with-database-type-info :%now "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defn- add-to-1970 [expr unit-str]
   [:timestampadd
@@ -626,3 +626,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :h2 [_ ^SQLException e]
   (= (.getErrorCode e) 57014))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
+  [_ e]
+  (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))

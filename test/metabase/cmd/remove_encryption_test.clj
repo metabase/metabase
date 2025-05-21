@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.cmd :as cmd]
+   [metabase.cmd.core :as cmd]
    [metabase.cmd.remove-encryption :refer [remove-encryption!]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

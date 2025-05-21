@@ -5,7 +5,6 @@
    [metabase.activity-feed.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
-   [metabase.api.dataset]
    [metabase.api.docs]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
@@ -19,7 +18,7 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.collections.api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
@@ -35,6 +34,7 @@
    [metabase.public-sharing.api]
    [metabase.pulse.api]
    [metabase.queries.api]
+   [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -60,7 +60,6 @@
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
-         metabase.api.dataset/keep-me
          metabase.api.logger/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -78,6 +77,7 @@
          metabase.permissions.api/keep-me
          metabase.product-feedback.api/keep-me
          metabase.public-sharing.api/keep-me
+         metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
          metabase.settings.api/keep-me
@@ -142,7 +142,7 @@
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.dashboards.api)
    "/database"             (+auth 'metabase.warehouses.api)
-   "/dataset"              (+auth 'metabase.api.dataset)
+   "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes

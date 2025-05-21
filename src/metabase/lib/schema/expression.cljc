@@ -3,7 +3,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -69,7 +69,7 @@
     :else                (isa? x y)))
 
 (defn type-of?
-  "Whether the [[type-of]] `expr` isa? [[metabase.types]] `base-type`."
+  "Whether the [[type-of]] `expr` isa? [[metabase.types.core]] `base-type`."
   [expr base-type]
   (let [expr-type (type-of expr)]
     (assert ((some-fn keyword? set?) expr-type)

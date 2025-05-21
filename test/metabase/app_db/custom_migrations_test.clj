@@ -1067,9 +1067,7 @@
           ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
-          (with-redefs [database/set-new-database-permissions! (constantly nil)
-                        ;; The entity_id column doesn't exist on Databases until 54, but it will be set automatically.
-                        mi/add-entity-id                       identity]
+          (with-redefs [database/set-new-database-permissions! (constantly nil)]
             (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
               (let [default-db                {:name       "DB"
                                                :engine     "postgres"

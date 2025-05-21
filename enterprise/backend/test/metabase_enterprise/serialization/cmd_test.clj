@@ -9,7 +9,7 @@
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.cmd :as cmd]
+   [metabase.cmd.core :as cmd]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize.test-users :as test-users]

@@ -479,8 +479,8 @@
           (h2x/with-type-info (h2x/type-info hsql-form))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
-  [_driver]
-  (h2x/with-database-type-info :%now "timestamptz"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
@@ -1188,3 +1188,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

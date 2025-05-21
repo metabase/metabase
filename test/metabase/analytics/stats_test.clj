@@ -9,7 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.channel.email :as email]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
