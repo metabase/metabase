@@ -8,7 +8,7 @@ import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
-import { Collapse, Group, Icon } from "metabase/ui";
+import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
@@ -48,7 +48,7 @@ export const BrowseNavSection = ({
         align="center"
         gap="sm"
         onClick={handleToggle}
-        component="button"
+        component={UnstyledButton}
         c="text-medium"
         mb="sm"
         className={CS.cursorPointer}
