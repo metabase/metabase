@@ -17,7 +17,9 @@ module.exports = {
   name: "iframe_sdk_embed_v1",
   entry: SCRIPT_TAG_PATH,
   output: {
-    path: BUILD_PATH + "/app/dist",
+    // we must use a different directory than the main rspack (app/dist),
+    // otherwise the path conflicts and the output bundle will not appear.
+    path: BUILD_PATH + "/app",
     filename: "embed.v1.js",
     library: "metabase.embed",
     libraryTarget: "umd",

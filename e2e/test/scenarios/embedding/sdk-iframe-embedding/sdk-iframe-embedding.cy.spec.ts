@@ -15,12 +15,10 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 
   it("should be able to retrieve the script tag source -- experimental", () => {
-    cy.request("http://localhost:4000/app/dist/embed.v1.js").then(
-      (response) => {
-        expect(response.status).to.eq(200);
-        expect(response.body).to.be.a("string").and.not.be.empty;
-      },
-    );
+    cy.request("http://localhost:4000/app/embed.v1.js").then((response) => {
+      expect(response.status).to.eq(200);
+      expect(response.body).to.be.a("string").and.not.be.empty;
+    });
   });
 
   it("should load the iframe -- experimental", () => {
