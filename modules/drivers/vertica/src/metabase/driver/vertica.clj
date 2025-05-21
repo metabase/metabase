@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -331,3 +332,7 @@
 (defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42V01"))

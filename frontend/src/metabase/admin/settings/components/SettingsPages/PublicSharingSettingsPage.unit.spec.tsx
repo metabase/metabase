@@ -126,7 +126,7 @@ describe("PublicSharingSettingsPage", () => {
 
     // Should show success toast
     await waitFor(() => {
-      const toast = screen.getByLabelText("check icon");
+      const toast = screen.getByLabelText("check_filled icon");
       expect(toast).toBeInTheDocument();
     });
   });

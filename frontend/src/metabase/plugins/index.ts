@@ -663,10 +663,14 @@ export type GenerateSqlQueryButtonProps = {
 
 export type PluginAiSqlGeneration = {
   GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+  isEnabled: () => boolean;
+  getPlaceholderText: () => string;
 };
 
 export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
+  isEnabled: () => false,
+  getPlaceholderText: () => "",
 };
 
 export interface AIDashboardAnalysisSidebarProps {
