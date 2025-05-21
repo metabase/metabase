@@ -1,13 +1,21 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import { UpsellHosting } from "metabase/admin/upsells";
-import { useGetAdminSettingsDetailsQuery } from "metabase/api";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/api";
+import {
+  useSendTestEmailMutation,
+  useUpdateEmailSMTPSettingsMutation,
+} from "metabase/api/email";
+import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
@@ -19,10 +27,10 @@ import {
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import type {
+  EmailSMTPSettings,
   EnterpriseSettingKey,
   SettingDefinition,
   SettingDefinitionMap,
@@ -30,22 +38,11 @@ import type {
   Settings,
 } from "metabase-types/api";
 
-import {
-  clearEmailSettings,
-  sendTestEmail,
-  updateEmailSettings,
-} from "../../settings";
+import { clearEmailSettings } from "../../settings";
 import { SettingHeader } from "../SettingHeader";
 import { SetByEnvVar } from "../widgets/AdminSettingInput";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
-
-const SEND_TEST_BUTTON_STATES = {
-  default: t`Send test email`,
-  working: t`Sending...`,
-  success: t`Sent!`,
-};
-type ButtonStateType = keyof typeof SEND_TEST_BUTTON_STATES;
 
 const emailSettingKeys = [
   "email-smtp-host",
@@ -98,56 +95,55 @@ const getFormValueSchema = (
 };
 
 export const SMTPConnectionForm = () => {
-  const [sendingEmail, setSendingEmail] = useState<ButtonStateType>("default");
-  const [testEmailError, setTestEmailError] = useState<string | null>(null);
+  const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
+  const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
+  // const [deleteEmailSMTPSettings, deleteEmailSMTPSettingsResult] = useDeleteEmailSMTPSettingsMutation();
+  const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
-  const isHosted = useSelector(getIsHosted);
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
+  const isHosted = useSetting("is-hosted?");
+  const isEmailConfigured = useSetting("email-configured?");
   const dispatch = useDispatch();
 
   const initialValues = useMemo<FormValueProps>(
     () => ({
-      "email-smtp-host": settingsDetails?.["email-smtp-host"].value ?? null,
-      "email-smtp-port": settingsDetails?.["email-smtp-port"].value ?? null,
-      "email-smtp-security":
-        settingsDetails?.["email-smtp-security"].value ?? "none",
-      "email-smtp-username":
-        settingsDetails?.["email-smtp-username"].value ?? "",
-      "email-smtp-password":
-        settingsDetails?.["email-smtp-password"].value ?? "",
+      "email-smtp-host": settingValues?.["email-smtp-host"] ?? null,
+      "email-smtp-port": settingValues?.["email-smtp-port"] ?? null,
+      "email-smtp-security": settingValues?.["email-smtp-security"] ?? "none",
+      "email-smtp-username": settingValues?.["email-smtp-username"] ?? "",
+      "email-smtp-password": settingValues?.["email-smtp-password"] ?? "",
     }),
-    [settingsDetails],
+    [settingValues],
   );
   const handleClearEmailSettings = useCallback(async () => {
     await dispatch(clearEmailSettings());
   }, [dispatch]);
 
   const handleUpdateEmailSettings = useCallback(
-    async (formData: object) => {
-      await dispatch(updateEmailSettings(formData));
+    async (formData: EmailSMTPSettings) => {
+      await updateEmailSMTPSettings(formData);
 
       if (!isEmailConfigured) {
         dispatch(push("/admin/settings/email"));
       }
     },
-    [dispatch, isEmailConfigured],
+    [dispatch, isEmailConfigured, updateEmailSMTPSettings],
   );
 
-  const handleSendTestEmail = useCallback(async () => {
-    setSendingEmail("working");
-    setTestEmailError(null);
+  // const handleSendTestEmail = useCallback(async () => {
+  //   setSendingEmail("working");
+  //   setTestEmailError(null);
 
-    try {
-      await dispatch(sendTestEmail());
-      setSendingEmail("success");
+  //   try {
+  //     await dispatch(sendTestEmail());
+  //     setSendingEmail("success");
 
-      // show a confirmation for 3 seconds, then return to normal
-      setTimeout(() => setSendingEmail("default"), 3000);
-    } catch (error: any) {
-      setSendingEmail("default");
-      setTestEmailError(error?.data?.message);
-    }
-  }, [dispatch]);
+  //     // show a confirmation for 3 seconds, then return to normal
+  //     setTimeout(() => setSendingEmail("default"), 3000);
+  //   } catch (error: any) {
+  //     setSendingEmail("default");
+  //     setTestEmailError(error?.data?.message);
+  //   }
+  // }, [dispatch]);
 
   useEffect(() => {
     if (isHosted) {
@@ -292,14 +288,15 @@ export const SMTPConnectionForm = () => {
                   />
                 </SetByEnvVarWrapper>
               )}
-              {testEmailError && (
+
+              {(sendTestEmailResult.error as Errors.GenericErrorResponse) && (
                 <Text
                   role="alert"
-                  aria-label={testEmailError}
+                  // aria-label={ sendTestEmailResult.error}
                   color="error"
                   mb="1rem"
                 >
-                  {testEmailError}
+                  Hi
                 </Text>
               )}
               <Flex mt="1rem" gap="1.5rem">
@@ -309,8 +306,10 @@ export const SMTPConnectionForm = () => {
                   variant="filled"
                 />
                 {!dirty && isValid && !isSubmitting && (
-                  <Button onClick={handleSendTestEmail}>
-                    {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                  <Button onClick={() => sendTestEmail()}>
+                    {sendTestEmailResult.isLoading
+                      ? t`Sending...`
+                      : t`Send test email`}
                   </Button>
                 )}
                 <Button
