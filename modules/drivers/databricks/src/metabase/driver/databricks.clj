@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
@@ -395,3 +396,7 @@
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))
