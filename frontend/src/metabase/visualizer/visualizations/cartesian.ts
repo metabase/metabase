@@ -157,8 +157,12 @@ export function addMetricColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
+  // Viz settings are computed before doing any mutations,
+  // so if we're adding several columns in one go,
+  // we need to use state.settings to have an up-to-date list of values
   const metrics =
     state.settings["graph.metrics"] ?? settings["graph.metrics"] ?? [];
+
   const isInUse = metrics.includes(columnRef.name);
   if (isInUse) {
     return;
@@ -185,6 +189,9 @@ export function addDimensionColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
+  // Viz settings are computed before doing any mutations,
+  // so if we're adding several columns in one go,
+  // we need to use state.settings to have an up-to-date list of values
   const dimensions =
     state.settings["graph.dimensions"] ?? settings["graph.dimensions"] ?? [];
   const isInUse = dimensions.includes(columnRef.name);
