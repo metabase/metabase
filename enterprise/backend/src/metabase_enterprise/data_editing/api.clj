@@ -311,6 +311,65 @@
                           :parameters]))]
     {:actions (vec (concat model-actions table-actions))}))
 
+(defn- parse-action-id [s]
+  ;; id must be strictly negative or positive, we'll just let 0 fall through as a keyword.
+  (if (re-matches #"[+-]?[1-9][0-9]*" s)
+    (parse-long s)
+    (keyword s)))
+
+(defn- unpack [s]
+  (let [packed-id (parse-action-id s)]
+    (cond
+      (keyword? packed-id) {:primitive-action packed-id}
+      (pos-int? packed-id) {:model-action packed-id}
+      (neg-int? packed-id)
+      (let [[op param] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
+        (case op
+          (:table.row/create :table.row/update :table.row/delete)
+          {:primitive-action op, :input {:table-id param}}
+
+          :dashcard/card-action   {:dashcard-id param}
+          :dashcard/header-action {:dashcard-id ()}
+          :dashcard/row-action    {:dashcard-id ()}
+          (throw (ex-info (tru "Unsupported action") {:status-code 404, :op op, :param param})))))))
+
+(api.macros/defendpoint :post "/action/:action-id/execute"
+  " ** The Grand Unification ** "
+  [{:keys [action-id]}  :- [:map [:action-id :string]]
+   {}
+   {:keys [input]}      :- :map]
+  (let [;; determine the type of action:
+        ;; string:  primitive action
+        ;; pos-int: model action
+        ;; neg-int: depends on the encoding
+        ;;   a) partially-applied primitive action
+        ;;   b) dashboard button
+        ;;   c) row action
+        action-id    (parse-action-id action-id)
+        action-type  (cond
+                       (pos-int? action-id) :model-action
+                       (keyword? action-id) :primitive-action
+                       ;; table action or dashboard action or dashcard action
+                       (neg-int? act))
+        model-action (-> (actions/select-action :id action-id :archived false)
+                         (t2/hydrate :creator)
+                         api/read-check)
+        card-id      (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
+        table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
+        fields      (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+        field-names (set (map :name fields))
+        pk-fields   (filter #(= :type/PK (:semantic_type %)) fields)
+        [row]       (data-editing/query-db-rows table-id pk-fields [pk])
+        _           (api/check-404 row)
+        row-params  (->> (:parameters action)
+                         (keep (fn [{:keys [id slug]}]
+                                 (when (contains? field-names (or slug id))
+                                   [id (row (keyword (or slug id)))])))
+                         (into {}))
+        param-id    (u/index-by (some-fn :slug :id) :id (:parameters action))
+        provided    (update-keys params #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
+    (actions/execute-action! action (merge row-params provided))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
   (api.macros/ns-handler *ns* +auth))

@@ -1011,12 +1011,24 @@
                                                                         (pos-int? (:action_id dashcard))
                                                                         (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
                                                                         (neg-int? (:action_id dashcard))
-                                                                        (let [[op table-id] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
-                                                                          (-> dashcard
-                                                                              (assoc-in [:visualization_settings :table_action]
-                                                                                        {:kind (u/qualified-name op)
-                                                                                         :table_id table-id})
-                                                                              (dissoc :action_id)))
+                                                                        (let [[op param] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
+                                                                          (cond
+                                                                            (= "table.row" (namespace op))
+                                                                            (-> dashcard
+                                                                                (assoc-in [:visualization_settings :table_action]
+                                                                                          {:kind     (u/qualified-name op)
+                                                                                           :table_id param})
+                                                                                (dissoc :action_id))
+                                                                            :else
+                                                                            ;; FE should not be able to create these,
+                                                                            ;; and won't handle them either,
+                                                                            ;; but return the unpacking anyway for
+                                                                            ;; easy debugging.
+                                                                            (-> dashcard
+                                                                                (assoc-in [:visualization_settings :_action]
+                                                                                          {:type  (u/qualified-name op)
+                                                                                           :param param})
+                                                                                (dissoc :action_id))))
                                                                         :else
                                                                         dashcard))))
 
