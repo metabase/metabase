@@ -1,29 +1,16 @@
-import { type Node, lexify, parse } from ".";
+import { lexify, parse } from ".";
 
 describe("pratt/parser", () => {
-  interface AST {
-    token: string;
-    children: AST[];
-    pos: number;
+  function parseExpression(source: string) {
+    const tokens = lexify(source);
+    return parse(tokens, {
+      hooks: {
+        error(error) {
+          throw error;
+        },
+      },
+    });
   }
-  function cleanupAST(node: Node): AST {
-    return {
-      token: node.token?.text || "UNKNOWN",
-      children: node.children.map(cleanupAST),
-      pos: node.token?.pos || -1,
-    };
-  }
-
-  function parseExpression(source: string, throwOnError: boolean = true) {
-    return cleanupAST(
-      parse(lexify(source), {
-        throwOnError,
-      }).root,
-    );
-  }
-
-  const parseAggregation = parseExpression;
-  const parseFilter = parseExpression;
 
   describe("Handles crazy expressions", () => {
     it("Seed 66120", () => {
@@ -103,7 +90,7 @@ describe("pratt/parser", () => {
 
     /// ---- Other weird negations ----
     it("should accept a double negation with syntax error", () => {
-      expect(() => parseExpression("NOT NOT Or", false)).not.toThrow();
+      expect(() => parseExpression("NOT NOT [X]")).not.toThrow();
     });
   });
 
@@ -152,18 +139,6 @@ describe("pratt/parser", () => {
       expect(() => parseExpression("Case([X]>5,5,[X]>3,3,0)")).not.toThrow();
     });
 
-    it("should reject an unclosed single-quoted string", () => {
-      expect(() => parseExpression('"Answer')).toThrow();
-    });
-
-    it("should reject an unclosed double-quoted string", () => {
-      expect(() => parseExpression('"Answer')).toThrow();
-    });
-
-    it("should reject a mismatched quoted string", () => {
-      expect(() => parseExpression("\"Answer'")).toThrow();
-    });
-
     it("should handle a conditional with ISEMPTY", () => {
       expect(() =>
         parseExpression("case(isempty([Discount]),[P])"),
@@ -180,90 +155,100 @@ describe("pratt/parser", () => {
   });
 
   describe("(in aggregation mode)", () => {
-    it("should accept an aggregration with COUNT", () => {
-      expect(() => parseAggregation("Count()")).not.toThrow();
+    it("should accept an aggregation with COUNT", () => {
+      expect(() => parseExpression("Count()")).not.toThrow();
     });
 
-    it("should accept an aggregration with SUM", () => {
-      expect(() => parseAggregation("Sum([Price])")).not.toThrow();
+    it("should accept an aggregation with SUM", () => {
+      expect(() => parseExpression("Sum([Price])")).not.toThrow();
     });
 
-    it("should accept an aggregration with DISTINCT", () => {
-      expect(() => parseAggregation("Distinct([Supplier])")).not.toThrow();
+    it("should accept an aggregation with DISTINCT", () => {
+      expect(() => parseExpression("Distinct([Supplier])")).not.toThrow();
     });
 
-    it("should accept an aggregration with STANDARDDEVIATION", () => {
-      expect(() => parseAggregation("StandardDeviation([Debt])")).not.toThrow();
+    it("should accept an aggregation with STANDARDDEVIATION", () => {
+      expect(() => parseExpression("StandardDeviation([Debt])")).not.toThrow();
     });
 
-    it("should accept an aggregration with AVERAGE", () => {
-      expect(() => parseAggregation("Average([Height])")).not.toThrow();
+    it("should accept an aggregation with AVERAGE", () => {
+      expect(() => parseExpression("Average([Height])")).not.toThrow();
     });
 
-    it("should accept an aggregration with MAX", () => {
-      expect(() => parseAggregation("Max([Discount])")).not.toThrow();
+    it("should accept an aggregation with MAX", () => {
+      expect(() => parseExpression("Max([Discount])")).not.toThrow();
     });
 
-    it("should accept an aggregration with MIN", () => {
-      expect(() => parseAggregation("Min([Rating])")).not.toThrow();
+    it("should accept an aggregation with MIN", () => {
+      expect(() => parseExpression("Min([Rating])")).not.toThrow();
     });
 
-    it("should accept an aggregration with MEDIAN", () => {
-      expect(() => parseAggregation("Median([Total])")).not.toThrow();
+    it("should accept an aggregation with MEDIAN", () => {
+      expect(() => parseExpression("Median([Total])")).not.toThrow();
     });
 
-    it("should accept an aggregration with VAR", () => {
-      expect(() => parseAggregation("Variance([Tax])")).not.toThrow();
+    it("should accept an aggregation with VAR", () => {
+      expect(() => parseExpression("Variance([Tax])")).not.toThrow();
     });
 
-    it("should accept a conditional aggregration with COUNTIF", () => {
-      expect(() => parseAggregation("CountIf([Discount] > 0)")).not.toThrow();
+    it("should accept a conditional aggregation with COUNTIF", () => {
+      expect(() => parseExpression("CountIf([Discount] > 0)")).not.toThrow();
     });
 
-    it("should accept a conditional aggregration with COUNTIF containing an expression", () => {
-      expect(() => parseAggregation("CountIf(([A]+[B]) > 1)")).not.toThrow();
+    it("should accept a conditional aggregation with DistinctIf", () => {
       expect(() =>
-        parseAggregation("CountIf( 1.2 * [Price] > 37)"),
+        parseExpression("DistinctIf([Rating], [Discount] > 0)"),
+      ).not.toThrow();
+    });
+
+    it("should accept a conditional aggregation with COUNTIF containing an expression", () => {
+      expect(() => parseExpression("CountIf(([A]+[B]) > 1)")).not.toThrow();
+      expect(() =>
+        parseExpression("CountIf( 1.2 * [Price] > 37)"),
       ).not.toThrow();
     });
   });
 
   describe("(in filter mode)", () => {
     it("should accept a simple comparison", () => {
-      expect(() => parseFilter("[Total] > 12")).not.toThrow();
+      expect(() => parseExpression("[Total] > 12")).not.toThrow();
     });
 
     it("should accept another simple comparison", () => {
-      expect(() => parseFilter("10 < [DiscountPercent]")).not.toThrow();
+      expect(() => parseExpression("10 < [DiscountPercent]")).not.toThrow();
     });
 
     it("should accept a logical NOT", () => {
-      expect(() => parseFilter("NOT [Debt] > 5")).not.toThrow();
+      expect(() => parseExpression("NOT [Debt] > 5")).not.toThrow();
     });
 
     it("should accept a segment", () => {
-      expect(() => parseFilter("[SpecialDeal]")).not.toThrow();
+      expect(() => parseExpression("[SpecialDeal]")).not.toThrow();
     });
 
     it("should accept a logical NOT on segment", () => {
-      expect(() => parseFilter("NOT [Clearance]")).not.toThrow();
+      expect(() => parseExpression("NOT [Clearance]")).not.toThrow();
     });
 
     it("should accept multiple logical NOTs on segment", () => {
-      expect(() => parseFilter("NOT NOT [Clearance]")).not.toThrow();
+      expect(() => parseExpression("NOT NOT [Clearance]")).not.toThrow();
     });
 
     it("should accept a relational between a segment and a dimension", () => {
-      expect(() => parseFilter("([Shipping] < 2) AND [Sale]")).not.toThrow();
+      expect(() =>
+        parseExpression("([Shipping] < 2) AND [Sale]"),
+      ).not.toThrow();
     });
 
     it("should accept parenthesized logical operations", () => {
-      expect(() => parseFilter("([Deal] AND [HighRating])")).not.toThrow();
-      expect(() => parseFilter("([Price] < 100 OR [Refurb])")).not.toThrow();
+      expect(() => parseExpression("([Deal] AND [HighRating])")).not.toThrow();
+      expect(() =>
+        parseExpression("([Price] < 100 OR [Refurb])"),
+      ).not.toThrow();
     });
 
     it("should accept a function", () => {
-      expect(() => parseFilter("between([Subtotal], 1, 2)")).not.toThrow();
+      expect(() => parseExpression("between([Subtotal], 1, 2)")).not.toThrow();
     });
   });
 });

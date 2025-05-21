@@ -52,11 +52,14 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByText("Export as PDF").should("not.exist");
+        cy.findByRole("button", { name: "Download as PDF" }).should(
+          "not.exist",
+        );
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-        H.getDashboardCardMenu().should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download a static embedded dashboard as PDF", () => {
@@ -73,11 +76,13 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").click();
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
           dashboard_id: 0,
           dashboard_accessed_via: "static-embed",
@@ -99,12 +104,11 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
+        H.getDashboardCard().realHover();
         H.exportFromDashcard(".csv");
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "static-embed",
@@ -165,7 +169,7 @@ H.describeWithSnowplowEE(
         });
 
         it("should be able to download a static embedded dashcard as CSV", () => {
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             H.visitEmbeddedPage(
               {
                 resource: { dashboard: Number(dashboardId) },
@@ -181,12 +185,11 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          H.showDashboardCardActions();
-          H.getDashboardCardMenu().click();
+          H.getDashboardCard().realHover();
           H.exportFromDashcard(".csv");
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "dashcard",
             accessed_via: "static-embed",
@@ -225,7 +228,9 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download the question as PNG", () => {
@@ -243,7 +248,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -251,7 +256,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".png", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -274,7 +279,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
           cy.findByText(".csv").click();
@@ -283,7 +288,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -339,7 +344,7 @@ H.describeWithSnowplowEE(
 
         it("should be able to download a static embedded dashcard as CSV", () => {
           const value = 9999;
-          cy.get("@questionId").then(questionId => {
+          cy.get("@questionId").then((questionId) => {
             H.visitEmbeddedPage(
               {
                 resource: { question: Number(questionId) },
@@ -359,7 +364,7 @@ H.describeWithSnowplowEE(
 
           H.main().findByText(value).should("exist");
 
-          cy.findByTestId("download-button").click();
+          cy.findByRole("button", { name: "Download results" }).click();
 
           H.popover().within(() => {
             cy.findByText(".csv").click();
@@ -368,7 +373,7 @@ H.describeWithSnowplowEE(
 
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "question",
             accessed_via: "static-embed",

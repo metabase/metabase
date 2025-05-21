@@ -1,92 +1,118 @@
-import { useState } from "react";
-import { t } from "ttag";
+import { useEffect, useState } from "react";
+import { usePrevious } from "react-use";
+import { jt, t } from "ttag";
 
-import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput/SettingInput.styled";
-import { Radio, Stack, Text } from "metabase/ui";
-import type { HelpLinkSetting, SettingKey, Settings } from "metabase-types/api";
-
-interface Props {
-  setting: {
-    value?: HelpLinkSetting;
-    originalValue?: HelpLinkSetting;
-    default: HelpLinkSetting;
-  };
-  onChange: (value: string) => void;
-  onChangeSetting: <TKey extends SettingKey>(
-    key: TKey,
-    value: Settings[TKey],
-  ) => Promise<void>;
-  settingValues: Settings;
-}
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import {
+  BasicAdminSettingInput,
+  SetByEnvVar,
+} from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { Stack, TextInput } from "metabase/ui";
+import type { HelpLinkSetting } from "metabase-types/api";
 
 const supportedPrefixes = ["http://", "https://", "mailto:"];
 
-export const HelpLinkSettings = ({
-  setting,
-  onChangeSetting,
-  settingValues,
-}: Props) => {
-  const [helpLinkSetting, setHelpLinkSetting] = useState(
-    settingValues["help-link"] || "metabase",
-  );
+export const HelpLinkSettings = () => {
+  const [urlValue, setUrlValue] = useState("");
+  const {
+    value: helpLinkSetting,
+    updateSetting,
+    settingDetails: helpLinkDetails,
+  } = useAdminSetting("help-link");
+  const { value: customUrl, settingDetails: customLinkDetails } =
+    useAdminSetting("help-link-custom-destination");
+  const previousLinkSetting = usePrevious(helpLinkSetting);
 
   const [error, setError] = useState<string | null>(null);
 
-  const handleRadioChange = (value: string) => {
-    setHelpLinkSetting(value as HelpLinkSetting);
-    onChangeSetting("help-link", value as HelpLinkSetting);
+  const handleRadioChange = (newValue: HelpLinkSetting) => {
+    updateSetting({
+      key: "help-link",
+      value: newValue,
+      toast: newValue !== "custom",
+    });
   };
-  const customUrl = settingValues["help-link-custom-destination"];
 
-  const isTextInputVisible = helpLinkSetting === "custom";
+  const handleUrlChange = async (newValue: string) => {
+    if (newValue === customUrl) {
+      return;
+    }
 
-  const handleChange = async (value: string) => {
-    if (value === "") {
+    if (newValue === "") {
       setError(t`This field can't be left empty.`);
-    } else if (!supportedPrefixes.some(prefix => value.startsWith(prefix))) {
+    } else if (
+      !supportedPrefixes.some((prefix) => newValue.startsWith(prefix))
+    ) {
       setError(t`This needs to be an "http://", "https://" or "mailto:" URL.`);
     } else {
       setError("");
-      try {
-        await onChangeSetting("help-link-custom-destination", value);
-      } catch (e: any) {
-        setError(e?.data?.message || t`Something went wrong`);
+
+      const response = await updateSetting({
+        key: "help-link-custom-destination",
+        value: newValue,
+      });
+
+      if (response.error) {
+        const msg = getErrorMessage(
+          response.error,
+          t`Error saving help link setting`,
+        );
+        setError(msg);
       }
     }
   };
 
+  useEffect(() => {
+    setUrlValue(customUrl || "");
+  }, [customUrl]);
+
+  const isTextInputVisible = helpLinkSetting === "custom";
+
   return (
-    <Stack>
-      <Radio.Group value={helpLinkSetting} onChange={handleRadioChange}>
-        <Stack>
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-          <Radio label={t`Link to Metabase help`} value="metabase" />
-          <Radio label={t`Hide it`} value="hidden" />
-          <Radio label={t`Go to a custom destination...`} value="custom" />
-        </Stack>
-      </Radio.Group>
-      {isTextInputVisible && (
-        <Stack ml={28} gap={0}>
-          {error && (
-            <Text size="md" color="error">
-              {error}
-            </Text>
-          )}
-          <SettingInputBlurChange
-            size="large"
-            error={Boolean(error)}
-            style={{ marginTop: 4 }}
-            value={customUrl}
-            // this makes it autofocus only when the value wasn't originally a custom destination
-            // this prevents it to be focused on page load
-            autoFocus={setting.originalValue !== "custom"}
-            onChange={() => setError(null)}
-            aria-label={t`Help link custom destination`}
-            placeholder={t`Enter a URL it should go to`}
-            onBlurChange={e => handleChange(e.target.value)}
-          />
-        </Stack>
+    <Stack data-testid="help-link-setting">
+      <SettingHeader
+        id="help-link"
+        title={t`Help link`}
+        description={jt`Choose a target to the Help link in the Settings menu. It links to ${(
+          <ExternalLink
+            key="this-page"
+            href="https://www.metabase.com/help"
+          >{t`this page`}</ExternalLink>
+        )} by default.`}
+      />
+      {helpLinkDetails?.is_env_setting && helpLinkDetails?.env_name ? (
+        <SetByEnvVar varName={helpLinkDetails.env_name} />
+      ) : (
+        <BasicAdminSettingInput
+          name="help-link"
+          inputType="radio"
+          value={helpLinkSetting}
+          options={[
+            { label: t`Link to Metabase help`, value: "metabase" },
+            { label: t`Hide it`, value: "hidden" },
+            { label: t`Go to a custom destination...`, value: "custom" },
+          ]}
+          onChange={(newValue) =>
+            handleRadioChange(newValue as HelpLinkSetting)
+          }
+        />
       )}
+      {isTextInputVisible &&
+        (customLinkDetails?.is_env_setting && customLinkDetails?.env_name ? (
+          <SetByEnvVar varName={customLinkDetails.env_name} />
+        ) : (
+          <TextInput
+            value={urlValue}
+            placeholder={t`Enter a URL it should go to`}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onBlur={() => handleUrlChange(urlValue)}
+            // don't autofocus on page load
+            autoFocus={previousLinkSetting && helpLinkSetting === "custom"}
+            error={error}
+          />
+        ))}
     </Stack>
   );
 };

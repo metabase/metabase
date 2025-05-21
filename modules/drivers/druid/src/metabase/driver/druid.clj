@@ -7,13 +7,14 @@
    [metabase.driver.druid.execute :as druid.execute]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.driver.druid.sync :as druid.sync]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.util.json :as json]
-   [metabase.util.ssh :as ssh]))
+   [metabase.util.json :as json]))
 
 (driver/register! :druid)
 
 (doseq [[feature supported?] {:expression-aggregations        true
+                              :expression-literals            true
                               :schemas                        false
                               :set-timezone                   true
                               :temporal/requires-default-unit true}]

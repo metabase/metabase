@@ -34,11 +34,6 @@
           [nil, -1]))
       [query, i])))
 
-(mu/defn- query-database-supports? :- :boolean
-  [query   :- ::lib.schema/query
-   feature :- :keyword]
-  (contains? (-> query lib.metadata/database :features) feature))
-
 (mu/defn top-level-query :- ::lib.schema/query
   "Returns the \"top-level\" query for the given query.
 
@@ -47,7 +42,7 @@
 
   If the database does not support nested queries, this also returns the original query."
   [query :- ::lib.schema/query]
-  (or (when (query-database-supports? query :nested-queries)
+  (or (when (lib.metadata/database-supports? query :nested-queries)
         (first (pop-until-aggregation-or-breakout query)))
       query))
 
@@ -56,7 +51,7 @@
 
   If there are no such stages, or if the database does not supported nested queries, returns -1."
   [query :- ::lib.schema/query]
-  (or (when (query-database-supports? query :nested-queries)
+  (or (when (lib.metadata/database-supports? query :nested-queries)
         (second (pop-until-aggregation-or-breakout query)))
       -1))
 

@@ -15,7 +15,7 @@ import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
 import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
 
-import SettingHeader from "../../SettingHeader";
+import { SettingHeader } from "../../SettingHeader";
 import { SetByEnvVarWrapper } from "../../SettingsSetting";
 import { SwitchWithSetByEnvVar } from "../../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "../../widgets/SettingTextInput";
@@ -44,7 +44,7 @@ export function EmbeddingSdkSettings({
 
   const isHosted = useSetting("is-hosted?");
 
-  const upgradeUrl = useSelector(state =>
+  const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-sdk",
       utm_content: "embedding-sdk-admin",
@@ -67,7 +67,7 @@ export function EmbeddingSdkSettings({
           key: "embedding-app-origins-sdk",
           placeholder: "https://*.example.com",
           display_name: t`Cross-Origin Resource Sharing (CORS)`,
-          description: t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.`,
+          description: t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included. Changes will take effect within one minute.`,
         },
   );
 
@@ -108,7 +108,7 @@ export function EmbeddingSdkSettings({
             key="switch-metabase-binaries"
             href={switchMetabaseBinariesUrl}
           >
-            switch Metabase binaries
+            {t`switch Metabase binaries`}
           </ExternalLink>
         )}, ${(
           <ExternalLink key="upgrade-url" href={upgradeUrl}>
@@ -187,15 +187,9 @@ export function EmbeddingSdkSettings({
         <Box>
           <SettingHeader
             id="get-started"
-            setting={
-              !isEE
-                ? {
-                    display_name: t`Try Embedded analytics SDK`,
-                    description: t`Use the SDK with API keys for development.`,
-                  }
-                : {
-                    display_name: t`Get started`,
-                  }
+            title={isEE ? t`Get started` : t`Try Embedded analytics SDK`}
+            description={
+              isEE ? "" : t`Use the SDK with API keys for development.`
             }
           />
           <Button
@@ -207,7 +201,8 @@ export function EmbeddingSdkSettings({
         <Box>
           <SettingHeader
             id={sdkOriginsSetting.key}
-            setting={sdkOriginsSetting}
+            title={sdkOriginsSetting.display_name}
+            description={sdkOriginsSetting.description}
           />
           <SetByEnvVarWrapper setting={sdkOriginsSetting}>
             <SettingTextInput
@@ -228,10 +223,8 @@ export function EmbeddingSdkSettings({
           <Box>
             <SettingHeader
               id="version-pinning"
-              setting={{
-                display_name: t`Version pinning`,
-                description: t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`,
-              }}
+              title={t`Version pinning`}
+              description={t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
             />
             <Button
               size="compact-md"

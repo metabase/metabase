@@ -1,7 +1,8 @@
 import cx from "classnames";
 import { type ChangeEvent, useMemo } from "react";
 
-import { CodeBlock, type CodeLanguage } from "metabase/components/CodeBlock";
+import type { CodeLanguage } from "metabase/components/CodeEditor";
+import { CodeEditor } from "metabase/components/CodeEditor";
 import { CopyButton } from "metabase/components/CopyButton";
 import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
@@ -58,7 +59,7 @@ export const CodeSample = ({
                 dataTestId,
               }}
             >
-              {languageOptions.map(option => (
+              {languageOptions.map((option) => (
                 <Option key={option.id} value={option.id}>
                   {option.name}
                 </Option>
@@ -77,11 +78,12 @@ export const CodeSample = ({
           CS.overflowHidden,
         )}
       >
-        <CodeBlock
+        <CodeEditor
           className={CS.z1}
           language={language}
-          code={source}
           highlightRanges={highlightRanges}
+          readOnly
+          value={source}
         />
         {source && (
           <CopyButtonContainer>

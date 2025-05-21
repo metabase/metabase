@@ -33,7 +33,7 @@ describe("TypeFilterDisplay", () => {
 
   it.each(Object.keys(MODEL_TYPE_DISPLAY_NAMES))(
     "should display correct text for %s type selected",
-    type => {
+    (type) => {
       const searchModelType = type as EnabledSearchModel;
       setup([searchModelType]);
       const expectedText: string = MODEL_TYPE_DISPLAY_NAMES[searchModelType];

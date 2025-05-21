@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
-   [metabase.models.field-values :as field-values]
    [metabase.sync.core :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
@@ -105,25 +105,25 @@
                                      (t2/table-name :model/FieldValues)
                                      [;; expired sandbox fieldvalues
                                       {:field_id   field-id
-                                       :type       "sandbox"
+                                       :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
                                        ;; expired linked-filter fieldvalues
                                       {:field_id   field-id
-                                       :type       "linked-filter"
+                                       :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
                                        ;; valid sandbox fieldvalues
                                       {:field_id   field-id
-                                       :type       "sandbox"
+                                       :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
                                        ;; valid linked-filter fieldvalues
                                       {:field_id   field-id
-                                       :type       "linked-filter"
+                                       :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
@@ -165,7 +165,7 @@
 
     ;; Manually add an advanced field values to test whether or not it got deleted later
     (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
-                                    :type :sandbox
+                                    :type :advanced
                                     :hash_key "random-key"})
 
     (testing "We mark the field values as :has_more_values when it grows too big."
@@ -226,7 +226,7 @@
                (t2/select-one-fn :has_more_values :model/FieldValues :field_id (mt/id :blueberries_consumed :str)))))
       ;; Manually add an advanced field values to test whether or not it got deleted later
       (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
-                                      :type :sandbox
+                                      :type :advanced
                                       :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
         (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))

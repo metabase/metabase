@@ -30,6 +30,7 @@ import {
 } from "metabase/visualizations/visualizations/RowChart/utils/settings";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
+import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
@@ -50,6 +51,7 @@ export interface StaticRowChartProps {
   data: DatasetData;
   settings: VisualizationSettings;
   getColor: ColorGetter;
+  hasDevWatermark?: boolean;
 }
 
 const staticTextMeasurer: TextWidthMeasurer = (
@@ -62,7 +64,12 @@ const staticTextMeasurer: TextWidthMeasurer = (
     style.weight ? parseInt(style.weight.toString(), 10) : 400,
   );
 
-const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
+const StaticRowChart = ({
+  data,
+  settings,
+  getColor,
+  hasDevWatermark = false,
+}: StaticRowChartProps) => {
   const remappedColumnsData = extractRemappedColumns(
     data,
   ) as RemappingHydratedChartData;
@@ -92,7 +99,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const labelledSeries = getLabelledSeries(settings, series);
 
   const legend = calculateLegendRows({
-    items: series.map(series => ({
+    items: series.map((series) => ({
       key: series.seriesKey,
       name: series.seriesName,
       color: seriesColors[series.seriesKey],
@@ -144,6 +151,15 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
           labelledSeries={labelledSeries}
         />
       </Group>
+      {hasDevWatermark && (
+        <Watermark
+          x="0"
+          y="0"
+          height={fullChartHeight}
+          width={WIDTH}
+          preserveAspectRatio="xMinYMin slice"
+        />
+      )}
     </svg>
   );
 };

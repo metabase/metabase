@@ -36,7 +36,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
       cy.wait("@getCurrentUser").then(({ response }) => {
         const personalCollectionId = response?.body.personal_collection_id;
 
-        cy.wait("@createDashboard").then(interception => {
+        cy.wait("@createDashboard").then((interception) => {
           expect(interception.request.body.collection_id).to.equal(
             personalCollectionId,
           );
@@ -56,7 +56,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
       cy.wait("@getCurrentUser").then(({ response }) => {
         const personalCollectionId = response?.body.personal_collection_id;
 
-        cy.wait("@createDashboard").then(interception => {
+        cy.wait("@createDashboard").then((interception) => {
           expect(interception.request.body.collection_id).to.equal(
             personalCollectionId,
           );
@@ -81,7 +81,7 @@ describe("scenarios > embedding-sdk > create-dashboard modal", () => {
 
       fillAndSubmitForm();
 
-      cy.wait("@createDashboard").then(interception => {
+      cy.wait("@createDashboard").then((interception) => {
         expect(interception.request.body.collection_id).to.equal(null);
       });
     });

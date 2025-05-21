@@ -44,18 +44,21 @@ async function setup({
     );
   }
 
-  fetchMock.post("path:/api/native-query-snippet", async url => {
+  fetchMock.post("path:/api/native-query-snippet", async (url) => {
     return createMockNativeQuerySnippet(
       await fetchMock.lastCall(url)?.request?.json(),
     );
   });
 
   if (snippet.id) {
-    fetchMock.put(`path:/api/native-query-snippet/${snippet.id}`, async url => {
-      return createMockNativeQuerySnippet(
-        await fetchMock.lastCall(url)?.request?.json(),
-      );
-    });
+    fetchMock.put(
+      `path:/api/native-query-snippet/${snippet.id}`,
+      async (url) => {
+        return createMockNativeQuerySnippet(
+          await fetchMock.lastCall(url)?.request?.json(),
+        );
+      },
+    );
   }
 
   renderWithProviders(

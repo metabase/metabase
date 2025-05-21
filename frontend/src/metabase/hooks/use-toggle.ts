@@ -19,7 +19,7 @@ export function useToggle(initialValue = false): ToggleHookResult {
 
   const turnOff = useCallback(() => setValue(false), []);
 
-  const toggle = useCallback(() => setValue(current => !current), []);
+  const toggle = useCallback(() => setValue((current) => !current), []);
 
   return [value, { turnOn, turnOff, toggle }];
 }

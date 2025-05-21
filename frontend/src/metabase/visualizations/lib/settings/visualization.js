@@ -14,22 +14,28 @@ import {
 
 const COMMON_SETTINGS = {
   "card.title": {
-    title: t`Title`,
+    get title() {
+      return t`Title`;
+    },
     widget: "input",
-    getDefault: series => (series.length === 1 ? series[0].card.name : null),
+    getDefault: (series) => (series.length === 1 ? series[0].card.name : null),
     dashboard: true,
     useRawSeries: true,
   },
   "card.description": {
-    title: t`Description`,
+    get title() {
+      return t`Description`;
+    },
     widget: "input",
-    getDefault: series =>
+    getDefault: (series) =>
       series.length === 1 ? series[0].card.description : null,
     dashboard: true,
     useRawSeries: true,
   },
   "card.hide_empty": {
-    title: t`Hide this card if there are no results`,
+    get title() {
+      return t`Hide this card if there are no results`;
+    },
     widget: "toggle",
     inline: true,
     dashboard: true,
@@ -123,7 +129,7 @@ export function getSettingsWidgetsForSeries(
     onChangeSettings,
     { isDashboard, ...extra },
   ).filter(
-    widget =>
+    (widget) =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,
   );
 }

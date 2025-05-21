@@ -9,7 +9,7 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   Collection,
   DashboardQuestionCandidate,
@@ -32,7 +32,6 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
   dashboardQuestionCandidates?: DashboardQuestionCandidate[];
   moveToDashboard?: boolean;
-  collectionMenu?: boolean;
   numberOfCollectionItems?: number;
   numberOfStaleItems?: number;
 }
@@ -45,7 +44,6 @@ export const setup = ({
   hasEnterprisePlugins = false,
   dashboardQuestionCandidates = [],
   moveToDashboard = false,
-  collectionMenu = false,
   numberOfCollectionItems = 10,
   numberOfStaleItems = 0,
 }: SetupOpts) => {
@@ -56,14 +54,20 @@ export const setup = ({
   });
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
   setupUserKeyValueEndpoints({
-    namespace: "user_acknowledgement",
+    namespace: "indicator-menu",
     key: "collection-menu",
-    value: collectionMenu,
+    value: [],
   });
 
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "move-to-dashboard",
+    value: moveToDashboard,
+  });
+
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "clean-stale-items",
     value: moveToDashboard,
   });
 
@@ -97,4 +101,26 @@ export const setup = ({
   );
 
   return { onUpdateCollection };
+};
+
+export const assertIndicatorVisible = async () => {
+  await waitFor(async () =>
+    expect(
+      (await screen.findByTestId("menu-indicator-root")).querySelector(
+        "[class*=indicator]",
+      ),
+    ).toBeInTheDocument(),
+  );
+};
+
+export const assertIndicatorHidden = async () => {
+  await fetchMock.flush();
+  await waitFor(() =>
+    expect(screen.queryByTestId("thing-is-loading")).not.toBeInTheDocument(),
+  );
+  expect(
+    (await screen.findByTestId("menu-indicator-root")).querySelector(
+      "[class*=indicator]",
+    ),
+  ).not.toBeInTheDocument();
 };

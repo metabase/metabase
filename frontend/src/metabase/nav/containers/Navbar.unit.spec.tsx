@@ -1,4 +1,3 @@
-/* eslint-disable jest/expect-expect */
 import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -7,7 +6,9 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupGdriveGetFolderEndpoint,
   setupSearchEndpoints,
+  setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -59,7 +60,13 @@ async function setup({
     collection: createMockCollection(ROOT_COLLECTION),
     collectionItems: [],
   });
+  setupGdriveGetFolderEndpoint({ status: "active" });
   fetchMock.get("path:/api/bookmark", []);
+
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {},
+  });
 
   const storeInitialState = createMockState({
     app: createMockAppState({
@@ -110,7 +117,7 @@ describe("nav > containers > Navbar > Core App", () => {
     expect(screen.queryByTestId("main-navbar-root")).not.toBeInTheDocument();
   });
 
-  ["question", "model", "dashboard"].forEach(pathname => {
+  ["question", "model", "dashboard"].forEach((pathname) => {
     it(`should be hidden on initial load for a ${pathname}`, async () => {
       await setup({ pathname: `/${pathname}/1` });
       await expectNavbarClosed();
@@ -169,7 +176,7 @@ describe("nav > containers > Navbar > Core App", () => {
     const normallyVisibleRoutes = ["/"];
     const allRoutes = [...normallyHiddenRoutes, ...normallyVisibleRoutes];
 
-    allRoutes.forEach(route => {
+    allRoutes.forEach((route) => {
       it(`should be visible when embedded and on ${route} top_nav=false&side_nav=true`, async () => {
         await setup({
           pathname: route,
@@ -180,7 +187,7 @@ describe("nav > containers > Navbar > Core App", () => {
       });
     });
 
-    normallyVisibleRoutes.forEach(route => {
+    normallyVisibleRoutes.forEach((route) => {
       it(`should be visible when embedded and on ${route} top_nav=true&side_nav=true`, async () => {
         await setup({
           pathname: route,
@@ -191,7 +198,7 @@ describe("nav > containers > Navbar > Core App", () => {
       });
     });
 
-    normallyHiddenRoutes.forEach(route => {
+    normallyHiddenRoutes.forEach((route) => {
       it(`should not be visible when embedded and on ${route} top_nav=true&side_nav=true`, async () => {
         await setup({
           pathname: route,
@@ -202,7 +209,7 @@ describe("nav > containers > Navbar > Core App", () => {
       });
     });
 
-    normallyHiddenRoutes.forEach(route => {
+    normallyHiddenRoutes.forEach((route) => {
       it(`should not be visible when embedded and on ${route} top_nav=true&side_nav=true`, async () => {
         await setup({
           pathname: route,
@@ -215,7 +222,7 @@ describe("nav > containers > Navbar > Core App", () => {
 
     // the current state of App.tsx is such that this should never even happen because we don't even render the parent component
     // but this test will cover any future changes in the component tree
-    allRoutes.forEach(route => {
+    allRoutes.forEach((route) => {
       it(`should not be visible when embedded and on ${route} with side_nav=false`, async () => {
         await setup({
           pathname: route,

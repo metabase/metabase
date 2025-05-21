@@ -15,7 +15,9 @@ describe("reference predicates", () => {
         ["field", "column_name", {}],
       ];
 
-      validReferences.forEach(ref => expect(isFieldReference(ref)).toBe(true));
+      validReferences.forEach((ref) =>
+        expect(isFieldReference(ref)).toBe(true),
+      );
     });
 
     it("returns false for invalid field references", () => {
@@ -27,7 +29,7 @@ describe("reference predicates", () => {
         ["field", "column_name", null, { "source-field": true }],
       ];
 
-      invalidReferences.forEach(ref =>
+      invalidReferences.forEach((ref) =>
         expect(isFieldReference(ref)).toBe(false),
       );
     });
@@ -41,7 +43,7 @@ describe("reference predicates", () => {
         ["aggregation", "column_name", { "base-type": "number" }],
       ];
 
-      validReferences.forEach(ref =>
+      validReferences.forEach((ref) =>
         expect(isAggregationReference(ref)).toBe(true),
       );
     });
@@ -49,7 +51,7 @@ describe("reference predicates", () => {
     it("returns false for invalid aggregation references", () => {
       const invalidReferences = [null, 123, "aggregation", ["field", 123]];
 
-      invalidReferences.forEach(ref =>
+      invalidReferences.forEach((ref) =>
         expect(isAggregationReference(ref)).toBe(false),
       );
     });
@@ -63,7 +65,7 @@ describe("reference predicates", () => {
         ["expression", "column_name", { "base-type": "number" }],
       ];
 
-      validReferences.forEach(ref =>
+      validReferences.forEach((ref) =>
         expect(isExpressionReference(ref)).toBe(true),
       );
     });
@@ -77,7 +79,7 @@ describe("reference predicates", () => {
         ["field", 123],
       ];
 
-      invalidReferences.forEach(ref =>
+      invalidReferences.forEach((ref) =>
         expect(isExpressionReference(ref)).toBe(false),
       );
     });
@@ -87,7 +89,7 @@ describe("reference predicates", () => {
     it("returns true for valid template tag references", () => {
       const validReferences = [["template-tag", "tag name"]];
 
-      validReferences.forEach(ref =>
+      validReferences.forEach((ref) =>
         expect(isTemplateTagReference(ref)).toBe(true),
       );
     });
@@ -95,7 +97,7 @@ describe("reference predicates", () => {
     it("returns false for invalid template tag references", () => {
       const invalidReferences = [null, "tag", ["templateTag", 123]];
 
-      invalidReferences.forEach(ref =>
+      invalidReferences.forEach((ref) =>
         expect(isTemplateTagReference(ref)).toBe(false),
       );
     });

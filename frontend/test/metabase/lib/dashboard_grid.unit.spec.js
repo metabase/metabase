@@ -1,6 +1,6 @@
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
-const getPos = cards => getPositionForNewDashCard(cards, 2, 2, 6);
+const getPos = (cards) => getPositionForNewDashCard(cards, 2, 2, 6);
 
 describe("dashboard_grid", () => {
   describe("getPositionForNewDashCard", () => {

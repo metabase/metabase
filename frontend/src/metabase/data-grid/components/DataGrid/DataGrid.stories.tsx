@@ -1,13 +1,16 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
+import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { Checkbox, Flex } from "metabase/ui";
 
 import { DataGrid } from "./DataGrid";
+import classes from "./DataGrid.module.css";
 
 export default {
   title: "DataGrid/DataGrid",
@@ -21,7 +24,7 @@ export default {
     },
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
         <Story />
       </div>
@@ -36,10 +39,10 @@ const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
     id: rowIndex + 1,
     name: `Item ${rowIndex + 1}`,
     category: ["Electronics", "Clothing", "Books", "Food"][rowIndex % 4],
-    price: Math.round(Math.random() * 1000) / 10,
-    quantity: Math.round(Math.random() * 100),
+    price: (rowIndex % 10) + 100,
+    quantity: (rowIndex % 10) + 5,
     description: `This is a sample description for item ${rowIndex + 1}. ${"It can be longer to demonstrate text wrapping. ".repeat(
-      Math.floor(Math.random() * 18) + 1,
+      1 + (rowIndex % 17),
     )}`,
   };
 });
@@ -52,35 +55,35 @@ export const BasicGrid: Story = () => {
       {
         id: "id",
         name: "ID",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
       },
       {
         id: "name",
         name: "Name",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
       },
       {
         id: "category",
         name: "Category",
-        accessorFn: row => row.category,
+        accessorFn: (row) => row.category,
       },
       {
         id: "price",
         name: "Price",
-        accessorFn: row => row.price,
-        formatter: value => `$${value}`,
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
         align: "right",
       },
       {
         id: "quantity",
         name: "Quantity",
-        accessorFn: row => row.quantity,
+        accessorFn: (row) => row.quantity,
         align: "right",
       },
       {
         id: "description",
         name: "Description",
-        accessorFn: row => row.description,
+        accessorFn: (row) => row.description,
       },
     ],
     [],
@@ -92,6 +95,67 @@ export const BasicGrid: Story = () => {
   });
 
   return <DataGrid {...tableProps} />;
+};
+
+export const CustomStylesGrid: Story = () => {
+  const getHeaderTemplate = (name: string) => {
+    return function Header() {
+      return (
+        <strong style={{ padding: "0px 12px", fontWeight: "bold" }}>
+          {name}
+        </strong>
+      );
+    };
+  };
+
+  const columns: ColumnOptions<SampleDataType>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        name: "ID",
+        accessorFn: (row) => row.id,
+        header: getHeaderTemplate("ID"),
+      },
+      {
+        id: "name",
+        name: "Name",
+        accessorFn: (row) => row.name,
+        header: getHeaderTemplate("Name"),
+      },
+      {
+        id: "category",
+        name: "Category",
+        accessorFn: (row) => row.category,
+        header: getHeaderTemplate("Category"),
+      },
+    ],
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+  });
+
+  return (
+    <DataGrid
+      {...tableProps}
+      classNames={{ bodyCell: classes.__storybookStylesApiBodyCellExample }}
+      styles={{
+        root: { border: "1px solid #000" },
+        headerCell: {
+          backgroundColor: "#FAFAFB",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "auto",
+        },
+        tableGrid: { gridTemplateRows: "none" },
+        row: { height: "auto" },
+        headerContainer: { borderBottom: "2px solid #000", height: "auto" },
+      }}
+    />
+  );
 };
 
 export const CombinedFeatures: Story = () => {
@@ -118,7 +182,7 @@ export const CombinedFeatures: Story = () => {
       {
         id: "id",
         name: "ID",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
         align: "right",
         cellVariant: "pill",
         sortDirection: "desc",
@@ -127,14 +191,14 @@ export const CombinedFeatures: Story = () => {
         id: "name",
         name: "Name",
         sortDirection: "asc",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
       },
       {
         id: "category",
         name: "Category",
         align: "middle",
-        accessorFn: row => row.category,
-        getBackgroundColor: value =>
+        accessorFn: (row) => row.category,
+        getBackgroundColor: (value) =>
           value === "Electronics"
             ? "#e6f7ff"
             : value === "Clothing"
@@ -146,19 +210,19 @@ export const CombinedFeatures: Story = () => {
       {
         id: "price",
         name: "Price",
-        accessorFn: row => `$${row.price.toFixed(2)}`,
+        accessorFn: (row) => `$${row.price.toFixed(2)}`,
         align: "right",
       },
       {
         id: "quantity",
         name: "Quantity",
-        accessorFn: row => row.quantity,
+        accessorFn: (row) => row.quantity,
         align: "right",
       },
       {
         id: "description",
         name: "Description",
-        accessorFn: row => row.description,
+        accessorFn: (row) => row.description,
         wrap: true,
       },
     ],
@@ -179,8 +243,10 @@ export const CombinedFeatures: Story = () => {
     columnOrder,
     columnSizingMap: columnSizing,
     onColumnReorder: setColumnOrder,
-    onColumnResize: setColumnSizing,
+    onColumnResize: (columnName, width) =>
+      setColumnSizing((prev) => ({ ...prev, [columnName]: width })),
     rowId,
+    enableSelection: true,
   });
 
   const handleAddColumnClick = useCallback(() => {
@@ -217,4 +283,85 @@ export const CombinedFeatures: Story = () => {
       onAddColumnClick={handleAddColumnClick}
     />
   );
+};
+
+export const SelectableRows: Story = () => {
+  const [rowSelection, setRowSelection] = useState<Record<number, boolean>>({});
+
+  const columns: ColumnOptions<SampleDataType>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        name: "ID",
+        accessorFn: (row) => row.id,
+      },
+      {
+        id: "name",
+        name: "Name",
+        accessorFn: (row) => row.name,
+      },
+      {
+        id: "category",
+        name: "Category",
+        accessorFn: (row) => row.category,
+      },
+      {
+        id: "price",
+        name: "Price",
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
+        align: "right",
+      },
+      {
+        id: "quantity",
+        name: "Quantity",
+        accessorFn: (row) => row.quantity,
+        align: "right",
+      },
+      {
+        id: "description",
+        name: "Description",
+        accessorFn: (row) => row.description,
+      },
+    ],
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+    columnPinning: { left: ["row_selection"] },
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange: setRowSelection,
+    columnRowSelectOptions: {
+      id: "row_selection",
+      name: "Row Selection",
+      accessorFn: (row) => row.id,
+      header: ({ table }) => (
+        <Flex h="100%" align="center" justify="center">
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            variant="stacked"
+          />
+        </Flex>
+      ),
+      cell: ({ row }) => (
+        <BaseCell>
+          <Flex h="100%" w="100%" align="center" justify="center">
+            <Checkbox
+              checked={row.getIsSelected()}
+              disabled={!row.getCanSelect()}
+              indeterminate={row.getIsSomeSelected()}
+              onChange={row.getToggleSelectedHandler()}
+            />
+          </Flex>
+        </BaseCell>
+      ),
+    },
+  });
+
+  return <DataGrid {...tableProps} />;
 };

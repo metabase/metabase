@@ -8,6 +8,7 @@ interface Props {
   onClose?: () => void;
 }
 
+/** @deprecated use LeaveConfirmModal/LeaveConfirmModal.tsx instead */
 export const LeaveConfirmationModalContent = ({
   onAction,
   onCancel,

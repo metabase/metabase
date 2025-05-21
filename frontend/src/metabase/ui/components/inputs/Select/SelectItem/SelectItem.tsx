@@ -1,8 +1,6 @@
-import { type BoxProps, Group, type MantineSize, Text } from "@mantine/core";
+import { type BoxProps, Group, type MantineSize } from "@mantine/core";
 import cx from "classnames";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
-
-import { Icon, type IconName } from "metabase/ui";
 
 import SS from "../Select.module.css";
 
@@ -12,23 +10,17 @@ import { getItemFontSize, getItemLineHeight } from "./utils";
 export interface SelectItemProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "style">,
     BoxProps {
-  value: string;
-  label?: string | JSX.Element;
-  size?: MantineSize;
-  icon?: IconName;
-  selected?: boolean;
   disabled?: boolean;
+  size?: MantineSize;
+  selected?: boolean;
 }
 
 export const SelectItem = forwardRef(function SelectItem(
   {
     className,
-    value,
-    label = value,
+    disabled, // intentionally excluded from props spreading
     size = "md",
-    icon,
     selected,
-    disabled,
     ...props
   }: SelectItemProps,
   ref: Ref<HTMLDivElement>,
@@ -44,11 +36,6 @@ export const SelectItem = forwardRef(function SelectItem(
       flex={1}
       aria-selected={selected}
       {...props}
-    >
-      {icon && <Icon name={icon} />}
-      <Text c="inherit" lh="inherit">
-        {label}
-      </Text>
-    </Group>
+    />
   );
 });

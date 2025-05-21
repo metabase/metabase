@@ -6,6 +6,7 @@ import {
   deserializeDateParameterValue,
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
+  deserializeTemporalUnitParameterValue,
   normalizeNumberParameterValue,
   serializeDateParameterValue,
   serializeNumberParameterValue,
@@ -23,7 +24,7 @@ describe("string parameters", () => {
 
   it.each([null, undefined, "", [""]])(
     "should ignore invalid value %s",
-    value => {
+    (value) => {
       expect(deserializeStringParameterValue(value)).toEqual([]);
     },
   );
@@ -66,7 +67,7 @@ describe("number parameters", () => {
 
   it.each([null, undefined, "", [""], ["abc"], NaN, [NaN], [true, false]])(
     "should ignore invalid value %s",
-    value => {
+    (value) => {
       expect(deserializeNumberParameterValue(value)).toEqual([]);
     },
   );
@@ -86,7 +87,7 @@ describe("boolean parameters", () => {
 
   it.each([null, undefined, "", [""], ["abc"], 1, NaN, [NaN]])(
     "should ignore invalid value %s",
-    value => {
+    (value) => {
       expect(deserializeBooleanParameterValue(value)).toEqual([]);
     },
   );
@@ -398,7 +399,24 @@ describe("date parameters", () => {
     "exclude-quarters-abc",
     "2024-ab",
     "Q5-2020",
-  ])("should ignore invalid value %s", value => {
+  ])("should ignore invalid value %s", (value) => {
     expect(deserializeDateParameterValue(value)).toBeNull();
   });
+});
+
+describe("temporal unit parameters", () => {
+  it.each([
+    { value: "day", expectedValue: "day" },
+    { value: "year", expectedValue: "year" },
+    { value: "day-of-year", expectedValue: "day-of-year" },
+  ])("should deserialize $value", ({ value, expectedValue }) => {
+    expect(deserializeTemporalUnitParameterValue(value)).toEqual(expectedValue);
+  });
+
+  it.each([null, undefined, "", [""], ["abc"], ["year"], 1, NaN, [NaN]])(
+    "should ignore invalid value %s",
+    (value) => {
+      expect(deserializeTemporalUnitParameterValue(value)).toEqual(null);
+    },
+  );
 });

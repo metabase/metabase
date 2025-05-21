@@ -46,7 +46,7 @@ describe("snapshots", () => {
       snapshot("setup");
       addUsersAndGroups();
       createCollections();
-      withSampleDatabase(SAMPLE_DATABASE => {
+      withSampleDatabase((SAMPLE_DATABASE) => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
@@ -112,7 +112,7 @@ describe("snapshots", () => {
     });
 
     // update the Sample db connection string so it is valid in both CI and locally
-    cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
+    cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then((response) => {
       response.body.details.db =
         "./plugins/sample-database.db;USER=GUEST;PASSWORD=guest";
       cy.request("PUT", `/api/database/${SAMPLE_DB_ID}`, response.body);
@@ -143,14 +143,14 @@ describe("snapshots", () => {
     );
 
     // Create all users except admin, who was already created in one of the previous steps
-    Object.keys(_.omit(USERS, "admin")).forEach(user => {
+    Object.keys(_.omit(USERS, "admin")).forEach((user) => {
       cy.createUser(user);
     });
 
     // Make a call to `/api/user` because some things (personal collections) get created there
     cy.request("GET", "/api/user");
 
-    Object.keys(USERS).forEach(user => {
+    Object.keys(USERS).forEach((user) => {
       if (user === "admin") {
         // we already cached admin user credentials during setup
         return;
@@ -221,17 +221,18 @@ describe("snapshots", () => {
       }).then(({ body }) => callback && callback(body));
     }
 
-    postCollection("First collection", undefined, firstCollection => {
+    postCollection("First collection", undefined, (firstCollection) => {
       logSelectModel(firstCollection.id, "collection");
       postCollection(
         "Second collection",
         firstCollection.id,
-        secondCollection => {
+        (secondCollection) => {
           logSelectModel(secondCollection.id, "collection");
           postCollection(
             "Third collection",
             secondCollection.id,
-            thirdCollection => logSelectModel(thirdCollection.id, "collection"),
+            (thirdCollection) =>
+              logSelectModel(thirdCollection.id, "collection"),
           );
         },
       );
@@ -309,9 +310,11 @@ describe("snapshots", () => {
     FEEDBACK_ID,
     INVOICES_ID,
   }) {
-    [ACCOUNTS_ID, ANALYTIC_EVENTS_ID, FEEDBACK_ID, INVOICES_ID].forEach(id => {
-      cy.request("PUT", `/api/table/${id}`, { visibility_type: "hidden" });
-    });
+    [ACCOUNTS_ID, ANALYTIC_EVENTS_ID, FEEDBACK_ID, INVOICES_ID].forEach(
+      (id) => {
+        cy.request("PUT", `/api/table/${id}`, { visibility_type: "hidden" });
+      },
+    );
   }
 
   // TODO: It'd be nice to have one file per snapshot.
@@ -387,8 +390,8 @@ function getDefaultInstanceData() {
         `/api/collection/${collection.id}/items?models=dashboard`,
       ).then(({ body: { data: dashboards } }) => {
         for (const dashboard of dashboards) {
-          if (!instanceData.dashboards.find(d => d.id === dashboard.id)) {
-            cy.request(`/api/dashboard/${dashboard.id}`).then(response => {
+          if (!instanceData.dashboards.find((d) => d.id === dashboard.id)) {
+            cy.request(`/api/dashboard/${dashboard.id}`).then((response) => {
               instanceData.dashboards.push(response.body);
             });
           }

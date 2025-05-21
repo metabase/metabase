@@ -355,10 +355,10 @@
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
 (mu/defn uses-metric? :- :boolean
-  "Tests whether `a-query` uses metric with ID `metric-id`."
+  "Tests whether `a-query` uses metric with Card ID `card-id`."
   [a-query :- ::lib.schema/query
-   metric-id :- ::lib.schema.id/metric]
-  (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))
+   card-id :- ::lib.schema.id/card]
+  (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric card-id)))
 
 (def ^:private clause-types-order
   ;; When previewing some clause type `:x`, we drop the prefix of this list up to but excluding `:x`.
@@ -491,8 +491,8 @@
       (empty? stages)
       graph
 
-      (> stages-visited 50)
-      (throw (ex-info (i18n/tru "The chain of dependencies is too long to save card.") {}))
+      (> stages-visited 1000)
+      (throw (ex-info (i18n/tru "There are too many stages (>1000) to save card.") {}))
 
       :else
       (let [[stage & stages] stages]

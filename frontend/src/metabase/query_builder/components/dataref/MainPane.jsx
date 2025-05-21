@@ -21,7 +21,7 @@ const MainPane = ({ databases, onClose, onItemClick, onBack }) => (
       </p>
       <ul>
         {databases &&
-          databases.map(database => (
+          databases.map((database) => (
             <li key={database.id}>
               <NodeListItemLink
                 onClick={() => onItemClick("database", database)}

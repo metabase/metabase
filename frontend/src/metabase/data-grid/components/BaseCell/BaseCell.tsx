@@ -11,22 +11,37 @@ export type BaseCellProps = {
   align?: CellAlign;
   children?: React.ReactNode;
   className?: string;
+  isSelected?: boolean;
   backgroundColor?: string;
+  hasHover?: boolean;
 } & React.HTMLProps<HTMLDivElement>;
 
 export const BaseCell = memo(function BaseCell({
   align = "left",
+  isSelected,
   backgroundColor,
   className,
+  hasHover = true,
   children,
   ...rest
 }: BaseCellProps) {
-  const style = useMemo(() => {
+  const cellStyle = useMemo(() => {
+    if (isSelected) {
+      return {
+        "--cell-bg-color": `color-mix(in srgb, var(--mb-color-brand), white 90%)`,
+        "--cell-hover-bg-color": hasHover
+          ? `color-mix(in srgb, var(--mb-color-brand), white 80%)`
+          : undefined,
+      } as React.CSSProperties;
+    }
     if (!backgroundColor) {
-      return undefined;
+      return {
+        "--cell-hover-bg-color": hasHover
+          ? `color-mix(in srgb, var(--mb-color-brand), transparent 90%)`
+          : undefined,
+      } as React.CSSProperties;
     }
 
-    // For dark colors, create a lighter hover for light colors, create a darker hover
     const isDarkColor = isDark(backgroundColor);
     const hoverColor = isDarkColor
       ? `color-mix(in srgb, ${backgroundColor} 95%, white)`
@@ -34,12 +49,13 @@ export const BaseCell = memo(function BaseCell({
 
     return {
       "--cell-bg-color": backgroundColor,
-      "--cell-hover-bg-color": hoverColor,
+      "--cell-hover-bg-color": hasHover ? hoverColor : undefined,
     } as React.CSSProperties;
-  }, [backgroundColor]);
+  }, [backgroundColor, hasHover, isSelected]);
 
   return (
     <div
+      aria-selected={isSelected}
       className={cx(
         styles.root,
         {
@@ -49,7 +65,7 @@ export const BaseCell = memo(function BaseCell({
         },
         className,
       )}
-      style={style}
+      style={cellStyle}
       {...rest}
     >
       {children}

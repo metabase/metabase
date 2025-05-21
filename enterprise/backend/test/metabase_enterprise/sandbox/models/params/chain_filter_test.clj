@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.params.chain-filter :as chain-filter]
+   [metabase.parameters.chain-filter :as chain-filter]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (deftest chain-filter-sandboxed-field-values-test
@@ -17,7 +17,7 @@
           (is (= {:values          [["African"] ["American"]]
                   :has_more_values false}
                  (mt/$ids (chain-filter/chain-filter %categories.name nil))))
-          (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :sandbox))))
+          (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :advanced))))
 
         (testing "search"
           (is (= {:values          [["African"] ["American"]]
@@ -31,11 +31,11 @@
                       :has_more_values false}
                      (mt/$ids (chain-filter/chain-filter %categories.name
                                                          [{:field-id %categories.id :op := :value 3}])))))
-            (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :linked-filter))))
+            (is (= 2 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :advanced))))
 
           (testing "creates another linked-filter FieldValues if sandboxed"
             (is (= {:values          []
                     :has_more_values false}
                    (mt/$ids (chain-filter/chain-filter %categories.name
                                                        [{:field-id %categories.id :op := :value 3}]))))
-            (is (= 2 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :linked-filter)))))))))
+            (is (= 3 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :advanced)))))))))

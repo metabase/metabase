@@ -1,8 +1,14 @@
 import { QuestionEditor } from "embedding-sdk/components/private/QuestionEditor";
 
-import type { InteractiveQuestionProps } from "../InteractiveQuestion";
+import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
 
-/** @deprecated Use `InteractiveQuestion` with `isSaveEnabled={true}` instead. */
+/**
+ * @deprecated Use `InteractiveQuestion` with `isSaveEnabled={true}` instead.
+ *
+ * @function
+ * @category ModifyQuestion
+ * @param props
+ **/
 export const ModifyQuestion = ({
   questionId,
   plugins,
@@ -10,8 +16,8 @@ export const ModifyQuestion = ({
   onBeforeSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollection,
-}: InteractiveQuestionProps) => (
+  targetCollection,
+}: BaseInteractiveQuestionProps) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}
@@ -19,6 +25,6 @@ export const ModifyQuestion = ({
     onBeforeSave={onBeforeSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollection={saveToCollection}
+    targetCollection={targetCollection}
   />
 );

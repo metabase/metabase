@@ -4,6 +4,7 @@ import {
   type DragStartEvent,
   KeyboardSensor,
   MouseSensor,
+  PointerSensor,
   type SensorDescriptor,
   type SensorOptions,
   TouchSensor,
@@ -35,8 +36,15 @@ export const useColumnsReordering = <TData,>(
   const previousScrollTop = useRef<number>(0);
 
   const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { distance: 10 },
+    }),
     useSensor(KeyboardSensor),
   );
 
@@ -79,7 +87,7 @@ export const useColumnsReordering = <TData,>(
     (event: DragOverEvent) => {
       const { active, over } = event;
       if (active && over && active.id !== over.id && !over.disabled) {
-        table.setColumnOrder(columnOrder => {
+        table.setColumnOrder((columnOrder) => {
           const oldIndex = columnOrder.indexOf(active.id as string);
           const newIndex = columnOrder.indexOf(over.id as string);
           return arrayMove(columnOrder, oldIndex, newIndex);
@@ -100,7 +108,7 @@ export const useColumnsReordering = <TData,>(
     const newColumnOrder = table.getState().columnOrder;
     if (!_.isEqual(newColumnOrder, prevOrder.current)) {
       const dataColumns = newColumnOrder.filter(
-        columnName => columnName !== ROW_ID_COLUMN_ID,
+        (columnName) => columnName !== ROW_ID_COLUMN_ID,
       );
       onColumnReorder?.(dataColumns);
     }

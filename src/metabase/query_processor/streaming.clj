@@ -193,6 +193,13 @@
                    (= (:status result) :failed))
            (streaming-response/write-error! os result export-format)))))))
 
+(defn transforming-query-response
+  "Decorate the streaming rff to transform the top-level payload."
+  [rff f]
+  (fn [metadata]
+    (let [rf (rff metadata)]
+      (completing rf (comp f rf)))))
+
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
   protocols, so return or `respond` with it directly. `export-format` is one of `:api` (for normal JSON API
@@ -209,9 +216,3 @@
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
-
-(defn export-formats
-  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
-  with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
-  []
-  (set (keys (methods qp.si/stream-options))))

@@ -89,7 +89,8 @@ class DebouncedFrame extends Component {
         : this.props;
     return (
       <div
-        ref={r => {
+        data-testid="debounced-frame-root"
+        ref={(r) => {
           if (this.props.forwardedRef) {
             if (typeof this.props.forwardedRef === "function") {
               this.props.forwardedRef(r);

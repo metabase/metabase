@@ -9,9 +9,9 @@
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
-   [metabase.config :as config]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.sql :as driver.sql]
@@ -20,19 +20,21 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.models.secret :as secret]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
+   [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -109,6 +111,22 @@
     (when (not= just-drop :pg/just-drop)
       (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
                      {:transaction? false}))))
+
+(defn with-temp-database-fn
+  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
+  [db-name f]
+  (try
+    (drop-if-exists-and-create-db! db-name)
+    (f)
+    (finally
+      (drop-if-exists-and-create-db! db-name :pg/just-drop))))
+
+(defmacro with-temp-database!
+  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
+  [db-name & body]
+  `(with-temp-database-fn
+     ~db-name
+     (fn [] ~@body)))
 
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
@@ -1029,33 +1047,35 @@
     (do-with-enums-db!
      (fn [enums-db]
        (mt/with-db enums-db
-         (let [query {:database (mt/id)
-                      :type :native
-                      :native {:query "select * from birds"
-                               :parameters []}}]
+         (let [eid   (u/generate-nano-id)
+               query {:database (mt/id)
+                      :type     :native
+                      :info     {:card-entity-id eid}
+                      :native   {:query "select * from birds"
+                                 :parameters []}}]
            (testing "results_metadata columns are correctly typed"
-             (is (=? [{:name "name"}
+             (is (=? [{:name  "name"
+                       :ident (lib/native-ident "name" eid)}
                       {:name "status"
+                       :ident (lib/native-ident "status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird_status"}
                       {:name "other_status"
+                       :ident (lib/native-ident "other_status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "\"bird_schema\".\"bird_status\""}
                       {:name "type"
+                       :ident (lib/native-ident "type" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird type"}]
                      (-> (qp/process-query query) :data :results_metadata :columns)))
-             (doseq [card-type [:question :model]]
+             (doseq [card-type [:question #_:model]]
                (mt/with-temp
-                 [:model/Card
-                  {id :id}
-                  (assoc {:dataset_query query
-                          :result_metadata (-> (qp/process-query query) :data :results_metadata :columns)
-                          :type :model}
-                         :type card-type)]
+                 [:model/Card {id :id} (mt/card-with-metadata {:dataset_query query
+                                                               :type          card-type})]
                  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                        query (as-> (lib/query mp (lib.metadata/card mp id)) $
                                (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
@@ -1336,7 +1356,7 @@
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
       (drop-if-exists-and-create-db! "composite-pks-test")
-      (with-redefs [metadata-queries/nested-field-sample-limit 4]
+      (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
           (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
@@ -1586,6 +1606,22 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
+(deftest query-canceled?-test
+  (testing "Recognizes timeout exceptions from postgres"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [long-sleep-sql "select pg_sleep(5)"]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :postgres (mt/db) nil
+           (fn [conn]
+             (with-open [stmt (sql-jdbc.sync.common/prepare-statement :postgres conn long-sleep-sql [])]
+               (try (doto stmt
+                      (.setQueryTimeout 1)
+                      (.execute))
+                    (throw (ex-info "Query successfully executed. Should sleep for 5s with a timeout of 1s" {}))
+                    (catch Throwable e
+                      (is (driver/query-canceled? :postgres e))))))))))))
+
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
@@ -1682,3 +1718,33 @@
                                  (lib/breakout (lib/with-temporal-bucket field-md bin)))]
             (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
+
+(deftest ^:parallel datetime-diff-works-for-all-units
+  (mt/test-driver :postgres
+    (let [mp (mt/metadata-provider)]
+      (doseq [[field units] [[:birth_date [:year :quarter :month :week :day]]
+                             [:created_at [:year :quarter :month :week :day :hour :minute :second]]]
+              unit units]
+        (testing (str "field " (name field) " can be datetime-diffed for " (name unit))
+          (let [field-md (lib.metadata/field mp (mt/id :people field))
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                          (lib/expression "DIFF" (lib/expression-clause :datetime-diff
+                                                                        [field-md field-md unit]
+                                                                        nil))
+                          (lib/limit 1))]
+            (is (->> query qp/process-query mt/rows))))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :postgres
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

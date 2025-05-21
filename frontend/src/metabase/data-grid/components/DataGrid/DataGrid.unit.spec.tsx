@@ -3,6 +3,7 @@ import { type MouseEvent, useMemo } from "react";
 import {
   act,
   fireEvent,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   within,
@@ -34,8 +35,6 @@ const DEFAULT_COLUMN_ORDER = ["id", "name", "category", "price"];
 
 type SampleDataType = (typeof sampleData)[0];
 
-type ColumnSizingState = Record<string, number>;
-
 interface TestDataGridProps {
   onHeaderCellClick?: (
     event: MouseEvent<HTMLDivElement>,
@@ -47,7 +46,7 @@ interface TestDataGridProps {
     columnId: string,
   ) => void;
   onAddColumnClick?: () => void;
-  onColumnResize?: (columnSizing: ColumnSizingState) => void;
+  onColumnResize?: (columnName: string, width: number) => void;
   onColumnReorder?: (columnIds: string[]) => void;
   initialColumnSizing?: Record<string, number>;
   initialColumnOrder?: string[];
@@ -73,7 +72,7 @@ const TestDataGrid = ({
       {
         id: "id",
         name: "ID",
-        accessorFn: row => row.id,
+        accessorFn: (row) => row.id,
         align: "right",
         cellVariant: "pill",
         sortDirection: sortableColumns ? "desc" : undefined,
@@ -81,16 +80,16 @@ const TestDataGrid = ({
       {
         id: "name",
         name: "Name",
-        accessorFn: row => row.name,
+        accessorFn: (row) => row.name,
         sortDirection: sortableColumns ? "asc" : undefined,
         wrap: wrapableColumns.includes("name"),
       },
       {
         id: "category",
         name: "Category",
-        accessorFn: row => row.category,
+        accessorFn: (row) => row.category,
         wrap: wrapableColumns.includes("category"),
-        getBackgroundColor: value => {
+        getBackgroundColor: (value) => {
           switch (value) {
             case "Electronics":
               return "rgb(230, 247, 255)";
@@ -108,8 +107,8 @@ const TestDataGrid = ({
       {
         id: "price",
         name: "Price",
-        accessorFn: row => row.price,
-        formatter: value => `$${value}`,
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
         align: "right",
         wrap: wrapableColumns.includes("price"),
       },
@@ -148,38 +147,15 @@ const TestDataGrid = ({
 };
 
 describe("DataGrid", () => {
-  const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
-
   beforeAll(() => {
-    // Needed for virtual grid to work
-    Element.prototype.getBoundingClientRect = jest.fn(() => {
-      return {
-        width: 800,
-        height: 400,
-        top: 0,
-        left: 0,
-        bottom: 400,
-        right: 800,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      };
-    });
-  });
-
-  afterAll(() => {
-    Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    mockGetBoundingClientRect();
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
     jest.useFakeTimers();
   });
 
   afterEach(() => {
-    act(() => {
-      jest.runAllTimers();
-    });
     jest.useRealTimers();
   });
 
@@ -221,7 +197,7 @@ describe("DataGrid", () => {
     });
 
     const visibleCells = screen.getAllByTestId("cell-data");
-    const priceCell = Array.from(visibleCells).find(cell =>
+    const priceCell = Array.from(visibleCells).find((cell) =>
       cell.textContent?.startsWith("$"),
     );
 
@@ -270,10 +246,10 @@ describe("DataGrid", () => {
       .getByTestId("table-header")
       .querySelectorAll('[data-testid="header-cell"]');
 
-    const idHeader = Array.from(headerCells).find(header =>
+    const idHeader = Array.from(headerCells).find((header) =>
       header.textContent?.includes("ID"),
     );
-    const nameHeader = Array.from(headerCells).find(header =>
+    const nameHeader = Array.from(headerCells).find((header) =>
       header.textContent?.includes("Name"),
     );
 

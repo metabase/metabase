@@ -10,12 +10,12 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
-export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 9 * * ?";
+export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
 export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
   schedule_type: "daily",
   schedule_day: null,
   schedule_frame: null,
-  schedule_hour: 10,
+  schedule_hour: 8,
   schedule_minute: 0,
 };
 
@@ -23,12 +23,12 @@ const getDefaultChannelConfig = ({
   channelSpec,
   hookChannels,
   currentUserId,
-  isAdmin,
+  userCanAccessSettings,
 }: {
   channelSpec: ChannelApiResponse;
   hookChannels: NotificationChannel[];
   currentUserId: UserId;
-  isAdmin: boolean;
+  userCanAccessSettings: boolean;
 }): NotificationHandler[] => {
   if (channelSpec.channels.email?.configured) {
     const handlers: NotificationHandler[] = [
@@ -61,7 +61,7 @@ const getDefaultChannelConfig = ({
   if (
     channelSpec.channels.http?.configured &&
     hookChannels.length > 0 &&
-    isAdmin
+    userCanAccessSettings
   ) {
     const channel = hookChannels[0];
     const handlers: NotificationHandler[] = [
@@ -84,14 +84,14 @@ export const getDefaultQuestionAlertRequest = ({
   channelSpec,
   hookChannels,
   availableTriggerOptions,
-  isAdmin,
+  userCanAccessSettings,
 }: {
   cardId: CardId;
   currentUserId: UserId;
   channelSpec: ChannelApiResponse;
   hookChannels: NotificationChannel[];
   availableTriggerOptions: NotificationTriggerOption[];
-  isAdmin: boolean;
+  userCanAccessSettings: boolean;
 }): CreateAlertNotificationRequest => {
   const sendCondition = availableTriggerOptions[0].value;
 
@@ -106,13 +106,14 @@ export const getDefaultQuestionAlertRequest = ({
       channelSpec,
       hookChannels,
       currentUserId,
-      isAdmin,
+      userCanAccessSettings,
     }),
     subscriptions: [
       {
         type: "notification-subscription/cron",
         event_name: null,
         cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
+        ui_display_type: "cron/builder",
       },
     ],
   };

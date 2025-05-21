@@ -483,30 +483,30 @@
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
       (doseq [timezone [nil "America/Los_Angeles"]]
         (mt/with-report-timezone-id! timezone
-          (is (= true
-                 (-> (mt/run-mbql-query venues
-                       {:expressions {"1" [:now]}
-                        :fields [[:expression "1"]]
-                        :limit  1})
-                     mt/rows
-                     ffirst
-                     u.date/parse
-                     (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                     (close? (t/instant) (t/seconds 30))))))))))
+          (is (true?
+               (-> (mt/run-mbql-query venues
+                     {:expressions {"1" [:now]}
+                      :fields [[:expression "1"]]
+                      :limit  1})
+                   mt/rows
+                   ffirst
+                   u.date/parse
+                   (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
+                   (close? (t/instant) (t/seconds 30))))))))))
 
 (deftest ^:parallel now-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
-      (is (= true
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows
-                 ffirst
-                 u.date/parse
-                 (t/zoned-date-time (t/zone-id "UTC"))
-                 (close? (t/instant) (t/seconds 30))))))))
+      (is (true?
+           (-> (mt/run-mbql-query venues
+                 {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
+                  :fields [[:expression "1"]]
+                  :limit  1})
+               mt/rows
+               ffirst
+               u.date/parse
+               (t/zoned-date-time (t/zone-id "UTC"))
+               (close? (t/instant) (t/seconds 30))))))))
 
 (deftest ^:parallel now-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
@@ -971,6 +971,26 @@
          b                                        ; b_dt_tz
          (t/format :iso-offset-date-time a)       ; a_dt_tz_text
          (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
+
+(deftest single-time-zone-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff :test/timestamptz-type)
+    (mt/dataset diff-time-zones-cases
+      (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
+        (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                      (let [a-str "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
+                            b-str "2022-10-03T00:00:00Z"
+                            units [:second :minute :hour :day :week :month :quarter :year]]
+
+                        (->> (mt/run-mbql-query times
+                               {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
+                                :expressions (into {} (for [unit units]
+                                                        [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
+                                :fields (into [] (for [unit units]
+                                                   [:expression (name unit)]))})
+                             (mt/formatted-rows
+                              (repeat (count units) int))
+                             first
+                             (zipmap units)))))))))
 
 (defn run-datetime-diff-time-zone-tests!
   "Runs all the test cases for datetime-diff clauses with :type/DateTimeWithTZ types.

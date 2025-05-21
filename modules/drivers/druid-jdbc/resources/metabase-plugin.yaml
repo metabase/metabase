@@ -10,11 +10,12 @@ driver:
   connection-properties:
     - merge:
         - host
-        - default: http://localhost
+        - placeholder: http://localhost
+          required: true
     - merge:
         - port
         - display-name: Router node port
-          default: 8888
+          placeholder: 8888
     - ssh-tunnel
     - advanced-options-start
     - name: json-unfolding

@@ -8,7 +8,7 @@ import { parseDataUri, removeAllChildren } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import { getLogoUrl } from "metabase-enterprise/settings/selectors";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   url: getLogoUrl(state),
 });
 
@@ -124,7 +124,7 @@ class LogoIcon extends Component {
     style.height ||= "32px";
     return (
       <span
-        ref={c => (this._container = c)}
+        ref={(c) => (this._container = c)}
         className={cx(
           "Icon",
           CS.textCentered,

@@ -6,12 +6,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.core :as analytics]
+   [metabase.collections.models.collection :as collection]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.collection :as collection]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -25,6 +24,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -122,11 +122,11 @@
   (cleaned-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "card test card", :model "card", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "dataset test dataset", :model "dataset", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "metric test metric", :model "metric", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
@@ -398,7 +398,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :model "card" :entity_id true :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
                          :display "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
@@ -488,7 +488,7 @@
         (mt/with-full-data-perms-for-all-users!
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (mt/ordered-subset? (->> (default-search-results)
                                          (remove (comp #{"collection"} :model))
                                          (map #(cond-> %
@@ -526,7 +526,7 @@
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
-              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
               (perms/grant-collection-read-permissions! group collection)
               (is (mt/ordered-subset? (->> (default-results-with-collection)
                                            (concat (->> (default-search-results)
@@ -870,7 +870,7 @@
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
-               (search-request-data user :q "RoundTable" :models "table")))))))
+               (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable" :models "table"))))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
@@ -878,7 +878,7 @@
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Foo Visible")]
-               (search-request-data user :q "Foo")))))))
+               (map #(dissoc % :entity_id) (search-request-data user :q "Foo"))))))))
 
 (deftest table-test-3
   (testing "You should be able to search by their display name"
@@ -886,7 +886,7 @@
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                 (search-request-data user :q "Lancelot"))))))))
+                 (map #(dissoc % :entity_id) (search-request-data user :q "Lancelot")))))))))
 
 (deftest table-test-4
   (testing "You should be able to search by their description"
@@ -894,7 +894,7 @@
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                 (search-request-data user :q "Lancelot"))))))))
+                 (map #(dissoc % :entity_id) (search-request-data user :q "Lancelot")))))))))
 
 (deftest table-test-5
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
@@ -902,7 +902,7 @@
       (mt/with-temp [:model/Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
-                 (search-request-data user :q table-name :archived true))))))))
+                 (map #(dissoc % :entity_id) (search-request-data user :q table-name :archived true)))))))))
 
 (deftest table-test-6
   (testing "*archived* tables should not appear in search results"
@@ -910,7 +910,7 @@
       (mt/with-temp [:model/Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
-                 (search-request-data user :q table-name))))))))
+                 (map #(dissoc % :entity_id) (search-request-data user :q table-name)))))))))
 
 (deftest table-test-7
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
@@ -919,7 +919,16 @@
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (binding [*search-request-results-database-id* db-id]
-                 (search-request-data :rasta :q (:name table)))))))))
+                 (map #(dissoc % :entity_id) (search-request-data :rasta :q (:name table))))))))))
+
+(deftest table-test-8
+  (testing "you should be able to see a Table when the current user is a superuser"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    table {:db_id db-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= 1
+               (binding [*search-request-results-database-id* db-id]
+                 (count (map #(dissoc % :entity_id) (search-request-data :crowberto :q (:name table)))))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
@@ -934,7 +943,7 @@
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(default-table-search-row "RoundTable")]
                  (binding [*search-request-results-database-id* db-id]
-                   (search-request-data user :q "RoundTable")))))))))
+                   (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable"))))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
@@ -945,7 +954,7 @@
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
-                         (search-request-data :rasta :q "RoundTable")))))))))
+                         (map #(dissoc % :entity_id) (search-request-data :rasta :q "RoundTable"))))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
@@ -1748,6 +1757,29 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
+(deftest include-metadata
+  (testing "Include card result_metadata if include-metadata is set"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Card {reg-card-id :id} {:name            (named "regular card")
+                                                    :result_metadata [{:description "The state or province of the account’s billing address."
+                                                                       :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]}]
+        (testing "Can include `result_metadata` info"
+          (is (= [{:description "The state or province of the account’s billing address."
+                   :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                      :data
+                      (filter #(= reg-card-id (:id %)))
+                      first
+                      :result_metadata))))
+        (testing "result_metadata not included by default"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :result_metadata))))))))
+
 (deftest prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
@@ -1768,3 +1800,12 @@
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
+
+(deftest ^:parallel multiple-limits
+  (testing "Multiple `limit` query args should be handled correctly (#45345)"
+    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                          :data count)
+          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                           :data count)]
+      (is (>= total-count result-count))
+      (is (= 1 result-count)))))

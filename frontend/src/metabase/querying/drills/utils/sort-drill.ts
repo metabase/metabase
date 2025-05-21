@@ -12,14 +12,18 @@ const ACTIONS: Record<string, ClickActionBase> = {
     icon: "arrow_up",
     section: "sort",
     buttonType: "sort",
-    tooltip: t`Sort ascending`,
+    get tooltip() {
+      return t`Sort ascending`;
+    },
   },
   desc: {
     name: "sort.descending",
     icon: "arrow_down",
     section: "sort",
     buttonType: "sort",
-    tooltip: t`Sort descending`,
+    get tooltip() {
+      return t`Sort descending`;
+    },
   },
 };
 
@@ -30,7 +34,7 @@ export const sortDrill: Drill<Lib.SortDrillThruInfo> = ({
 }) => {
   const { directions } = drillInfo;
 
-  return directions.map(direction => ({
+  return directions.map((direction) => ({
     ...ACTIONS[direction],
     question: () => applyDrill(drill, direction),
   }));

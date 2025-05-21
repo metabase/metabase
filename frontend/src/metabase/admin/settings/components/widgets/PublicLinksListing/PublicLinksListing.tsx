@@ -1,7 +1,8 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
-import Confirm from "metabase/components/Confirm";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
@@ -21,13 +22,16 @@ export const PublicLinksListing = <
   "data-testid": dataTestId,
 }: {
   data?: T[];
-  isLoading: boolean;
+  isLoading?: boolean;
   revoke?: (item: T) => Promise<unknown>;
   getUrl: (item: T) => string;
   getPublicUrl?: (item: T) => string | null;
   noLinksMessage: string;
   "data-testid"?: string;
 }) => {
+  const [linkToRevoke, setLinkToRevoke] = useState<undefined | T>();
+  const handleCloseModal = () => setLinkToRevoke(undefined);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -46,7 +50,7 @@ export const PublicLinksListing = <
         </tr>
       </thead>
       <tbody>
-        {data.map(item => {
+        {data.map((item) => {
           const internalUrl = getUrl?.(item);
           const publicUrl = getPublicUrl?.(item);
 
@@ -73,23 +77,30 @@ export const PublicLinksListing = <
               )}
               {revoke && (
                 <td className={cx(CS.flex, CS.layoutCentered)}>
-                  <Confirm
-                    title={t`Disable this link?`}
-                    content={t`They won't work anymore, and can't be restored, but you can create new links.`}
-                    action={async () => {
-                      await revoke(item);
-                    }}
+                  <ActionIcon
+                    aria-label={t`Revoke link`}
+                    onClick={() => setLinkToRevoke(item)}
                   >
-                    <ActionIcon aria-label={t`Revoke link`}>
-                      <Icon name="close" />
-                    </ActionIcon>
-                  </Confirm>
+                    <Icon name="close" />
+                  </ActionIcon>
                 </td>
               )}
             </tr>
           );
         })}
       </tbody>
+      <ConfirmModal
+        opened={Boolean(linkToRevoke)}
+        title={t`Disable this link?`}
+        content={t`They won't work anymore, and can't be restored, but you can create new links.`}
+        onClose={handleCloseModal}
+        onConfirm={async () => {
+          if (revoke && linkToRevoke) {
+            await revoke(linkToRevoke);
+            handleCloseModal();
+          }
+        }}
+      />
     </table>
   );
 };

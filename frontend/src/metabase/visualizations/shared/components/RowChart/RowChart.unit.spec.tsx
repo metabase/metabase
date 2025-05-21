@@ -63,23 +63,23 @@ const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
   const { container } = render(<RowChart {...defaultProps} {...props} />);
   const bars = screen
     .getAllByRole("graphics-symbol")
-    .filter(el => el.getAttribute("aria-roledescription") === "bar");
+    .filter((el) => el.getAttribute("aria-roledescription") === "bar");
   const dataLabels = screen.queryAllByTestId("data-label");
   const goalLine = screen
     .queryAllByRole("graphics-symbol")
-    .find(el => el.getAttribute("aria-roledescription") === "goal line");
+    .find((el) => el.getAttribute("aria-roledescription") === "goal line");
 
   const xTicks = Array.from(
     container // eslint-disable-line testing-library/no-container
       .getElementsByClassName("visx-axis-bottom")[0] // eslint-disable-line testing-library/no-node-access
       ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
-  ).map(tspan => tspan.textContent);
+  ).map((tspan) => tspan.textContent);
 
   const yTicks = Array.from(
     container // eslint-disable-line testing-library/no-container
       .getElementsByClassName("visx-axis-left")[0] // eslint-disable-line testing-library/no-node-access
       ?.getElementsByTagName("tspan") || [], // eslint-disable-line testing-library/no-node-access
-  ).map(tspan => tspan.textContent);
+  ).map((tspan) => tspan.textContent);
 
   return {
     bars,
@@ -213,7 +213,7 @@ describe("RowChart", () => {
 
     it("should render data labels for specified series", () => {
       const { dataLabels } = setup({ labelledSeries: ["series 1"] });
-      expect(dataLabels.map(el => el.textContent)).toStrictEqual([
+      expect(dataLabels.map((el) => el.textContent)).toStrictEqual([
         "100",
         "200",
         "300",
@@ -225,7 +225,7 @@ describe("RowChart", () => {
         labelledSeries: ["series 1"],
         labelsFormatter: (value: NumberValue) => `_${value}_`,
       });
-      expect(dataLabels.map(el => el.textContent)).toStrictEqual([
+      expect(dataLabels.map((el) => el.textContent)).toStrictEqual([
         "_100_",
         "_200_",
         "_300_",
@@ -332,11 +332,11 @@ describe("RowChart", () => {
       const firstSeriesBars = bars.slice(0, 3);
       const secondSeriesBars = bars.slice(3);
 
-      firstSeriesBars.forEach(bar =>
+      firstSeriesBars.forEach((bar) =>
         expect(bar).toHaveAttribute("opacity", "0.4"),
       );
 
-      secondSeriesBars.forEach(bar =>
+      secondSeriesBars.forEach((bar) =>
         expect(bar).toHaveAttribute("opacity", "1"),
       );
     });
@@ -349,7 +349,7 @@ describe("RowChart", () => {
 
       const { bars } = setup({ hoveredData, series: [series1] });
 
-      expect(bars.map(bar => bar.getAttribute("opacity"))).toStrictEqual([
+      expect(bars.map((bar) => bar.getAttribute("opacity"))).toStrictEqual([
         "0.4",
         "1",
         "0.4",

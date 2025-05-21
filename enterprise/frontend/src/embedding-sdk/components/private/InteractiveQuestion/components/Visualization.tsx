@@ -4,21 +4,37 @@ import { t } from "ttag";
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import { FlexibleSizeComponent } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
+  QuestionNotFoundError,
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
+
+/**
+ * The main visualization component that renders the question results as a chart, table, or other visualization type.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 export const QuestionVisualization = ({
   height,
   width,
   className,
   style,
-}: FlexibleSizeProps) => {
+}: InteractiveQuestionQuestionVisualizationProps) => {
   const {
     question,
     queryResults,
@@ -28,17 +44,24 @@ export const QuestionVisualization = ({
     navigateToNewCard,
     onNavigateBack,
     updateQuestion,
+    variant,
+    originalId,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
-  const isQueryResultLoading = question && !queryResults;
+  const isQueryResultLoading =
+    question && shouldRunCardQuery(question) && !queryResults;
 
   if (isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
   if (!question) {
-    return <SdkError message={t`Question not found`} />;
+    if (originalId) {
+      return <QuestionNotFoundError id={originalId} />;
+    } else {
+      return <SdkError message={t`Question not found`} />;
+    }
   }
 
   const [result] = queryResults ?? [];
@@ -62,7 +85,9 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
-        navigateToNewCardInsideQB={navigateToNewCard}
+        navigateToNewCardInsideQB={
+          variant === "static" ? undefined : navigateToNewCard
+        }
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })

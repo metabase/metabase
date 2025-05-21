@@ -43,7 +43,7 @@ const getOrderBasedMapping = (
     unusedValues.delete(value);
   };
 
-  keys.forEach(key => {
+  keys.forEach((key) => {
     const value = existingMapping?.[key];
 
     if (value) {
@@ -51,7 +51,7 @@ const getOrderBasedMapping = (
     }
   });
 
-  keys.forEach(key => {
+  keys.forEach((key) => {
     if (!newMapping[key]) {
       const value = getPreferredValue(key);
 
@@ -61,9 +61,9 @@ const getOrderBasedMapping = (
     }
   });
 
-  keys.forEach(key => {
+  keys.forEach((key) => {
     if (!unusedValues.size) {
-      values.forEach(value => unusedValues.add(value));
+      values.forEach((value) => unusedValues.add(value));
     }
 
     if (!newMapping[key]) {
@@ -83,7 +83,7 @@ const getHashBasedMapping = (
 ) => {
   const newMapping: Record<string, string> = {};
   const sortedKeys = [...keys].sort();
-  const keyHashes = Object.fromEntries(keys.map(k => [k, getHashCode(k)]));
+  const keyHashes = Object.fromEntries(keys.map((k) => [k, getHashCode(k)]));
   const unsetKeys = new Set(keys);
   const usedValues = new Set<string>();
   const unusedValues = new Set(values);
@@ -95,7 +95,7 @@ const getHashBasedMapping = (
     unusedValues.delete(value);
   };
 
-  sortedKeys.forEach(key => {
+  sortedKeys.forEach((key) => {
     const value = existingMapping?.[key];
 
     if (value) {
@@ -103,7 +103,7 @@ const getHashBasedMapping = (
     }
   });
 
-  sortedKeys.forEach(key => {
+  sortedKeys.forEach((key) => {
     if (!newMapping[key]) {
       const value = getPreferredValue(key);
 
@@ -115,10 +115,10 @@ const getHashBasedMapping = (
 
   for (let attempt = 0; unsetKeys.size > 0; attempt++) {
     if (!unusedValues.size) {
-      values.forEach(value => unusedValues.add(value));
+      values.forEach((value) => unusedValues.add(value));
     }
 
-    sortedKeys.forEach(key => {
+    sortedKeys.forEach((key) => {
       if (!newMapping[key]) {
         const hash = keyHashes[key] + attempt;
         const value = values[hash % values.length];

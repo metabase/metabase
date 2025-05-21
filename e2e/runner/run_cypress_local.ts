@@ -145,7 +145,7 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
 
 init()
   .then(() => cleanup(SUCCESS_EXIT_CODE))
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     cleanup(FAILURE_EXIT_CODE);
   });

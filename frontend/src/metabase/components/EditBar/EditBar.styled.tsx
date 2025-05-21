@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
@@ -6,14 +7,16 @@ import { alpha, color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 
-export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
+export const Root = styled(FullWidthContainer, {
+  shouldForwardProp: isPropValid,
+})<{ admin: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: relative;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     alpha(color(props.admin ? "accent7" : "brand"), 0.85)};
 
   .${ButtonsS.Button} {
@@ -25,13 +28,13 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
   }
 
   .${ButtonsS.ButtonPrimary} {
-    color: ${props => color(props.admin ? "text-dark" : "brand")};
+    color: ${(props) => color(props.admin ? "text-dark" : "brand")};
     background-color: var(--mb-color-bg-white);
   }
 
   .${ButtonsS.Button}:hover {
     color: var(--mb-color-text-white);
-    background-color: ${props => color(props.admin ? "accent7" : "brand")};
+    background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
   }
 `;
 

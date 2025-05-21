@@ -15,46 +15,38 @@
     (testing unit
       (are [n expected] (= expected
                            (lib.temporal-bucket/describe-temporal-interval n unit))
-        -2 "Previous 2 Days"
+        -2 "Previous 2 days"
         -1 "Yesterday"
         0  "Today"
         1  "Tomorrow"
-        2  "Next 2 Days")))
+        2  "Next 2 days")))
   (testing :month
     (are [n expected] (= expected
                          (lib.temporal-bucket/describe-temporal-interval n :month))
-      -2 "Previous 2 Months"
-      -1 "Previous Month"
-      0  "This Month"
-      1  "Next Month"
-      2  "Next 2 Months"))
+      -2 "Previous 2 months"
+      -1 "Previous month"
+      0  "This month"
+      1  "Next month"
+      2  "Next 2 months"))
   (testing "unknown unit"
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-temporal-interval n :century))
-      -2 "Previous 2 Century"
-      -1 "Previous Century"
-      0  "This Century"
-      1  "Next Century"
-      2  "Next 2 Century")))
+    (are [n] (= "Unknown unit"
+                (lib.temporal-bucket/describe-temporal-interval n :century))
+      -2 -1 0 1 2)))
 
 (deftest ^:parallel describe-relative-datetime-test
   (doseq [unit [:day nil]]
     (testing unit
       (are [n expected] (= expected
                            (lib.temporal-bucket/describe-relative-datetime n unit))
-        -2 "2 days ago"
-        -1 "1 day ago"
-        0  "Now"
-        1  "1 day from now"
-        2  "2 days from now")))
+        -2 "starting 2 days ago"
+        -1 "starting 1 day ago"
+        0  "starting now"
+        1  "starting 1 day from now"
+        2  "starting 2 days from now")))
   (testing "unknown unit"
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-relative-datetime n :century))
-      -2 "2 century ago"
-      -1 "1 century ago"
-      0  "Now"
-      1  "1 century from now"
-      2  "2 century from now")))
+    (are [n] (= "Unknown unit"
+                (lib.temporal-bucket/describe-relative-datetime n :century))
+      -2 -1 0 1 2)))
 
 (deftest ^:parallel describe-temporal-unit-test
   (is (= ""

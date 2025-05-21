@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require
+   [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -64,7 +65,9 @@
   [maps :- [:sequential {:min 1} :map]]
   (some (fn [m]
           (when (isa? (:class m) SQLException)
-            (select-keys m [:error])))
+            ;; Some JDBC drivers (e.g. Databricks) return a stacktrace in the
+            ;; error message that we don't want to show the user
+            {:error (first (str/split (get m :error "") #"\n\tat " 2))}))
         maps))
 
 (mu/defn exception-response :- [:map [:status :keyword]]

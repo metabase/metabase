@@ -21,6 +21,7 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
+import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
 import type {
   ClickObject,
   VisualizationProps,
@@ -45,8 +46,8 @@ export const getTooltipModel = (
       ? getArrayFromMapValues(sliceTreeNode.children)
       : siblingNodes
   )
-    .filter(node => node.visible)
-    .map(slice => ({
+    .filter((node) => node.visible)
+    .map((slice) => ({
       name: slice.name,
       value: slice.rawValue,
       color: nodes.length === 1 ? slice.color : undefined,
@@ -56,7 +57,7 @@ export const getTooltipModel = (
     }));
   const rowsTotal = getTotalValue(rows);
 
-  const formattedRows: EChartsTooltipRow[] = rows.map(row => {
+  const formattedRows: EChartsTooltipRow[] = rows.map((row) => {
     const markerColorClass = row.color
       ? getMarkerColorClass(row.color)
       : undefined;
@@ -77,7 +78,7 @@ export const getTooltipModel = (
         ? sliceTreeNode.column?.display_name
         : nodes
             .slice(0, -1)
-            .map(node => node.name)
+            .map((node) => node.name)
             .join("  >  "),
     rows: formattedRows,
     footer:
@@ -151,8 +152,8 @@ function handleClick(
     value: sliceTreeNode.value,
     column: chartModel.colDescs.metricDesc.column,
     data,
-    dimensions: nodes.map(node => ({
-      value: node.key,
+    dimensions: nodes.map((node) => ({
+      value: getValueFromDimensionKey(node.key),
       column: checkNotNull(node.column),
     })),
     settings,

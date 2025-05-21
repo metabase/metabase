@@ -10,6 +10,7 @@ available-fonts: null
 available-locales: null
 available-timezones: null
 breakout-bins-num: null
+non-table-chart-generated: null
 custom-formatting: null
 custom-geojson: null
 custom-geojson-enabled: null
@@ -22,6 +23,7 @@ enable-pivoted-exports: null
 enable-sandboxes?: null
 enable-whitelabeling?: null
 enable-xrays: null
+gsheets: null
 hide-embed-branding?: null
 humanization-strategy: null
 landing-page: null
@@ -30,6 +32,7 @@ landing-page-illustration-custom: null
 loading-message: null
 login-page-illustration: null
 login-page-illustration-custom: null
+metabot-ai-service-token-ttl: nil
 native-query-autocomplete-match-style: null
 no-data-illustration: null
 no-data-illustration-custom: null

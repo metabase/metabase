@@ -1,12 +1,20 @@
 import type { StoryFn } from "@storybook/react";
 
-import { SdkVisualizationWrapper } from "__support__/storybook";
+import {
+  SdkVisualizationWrapper,
+  VisualizationWrapper,
+} from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { data } from "metabase/static-viz/components/PieChart/stories-data";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { Series } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { PieChart } from "./PieChart";
 
@@ -18,7 +26,7 @@ export default {
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PieChart);
 
-const Template: StoryFn = args => {
+const Template: StoryFn = (args) => {
   const { backgroundColor, ...props } = args;
 
   const theme: MetabaseTheme = {
@@ -81,3 +89,19 @@ export const EmbeddedDashcard = {
     loki: { skip: true },
   },
 };
+
+export const Watermark: StoryFn = () => (
+  <VisualizationWrapper
+    initialStore={createMockState({
+      settings: createMockSettingsState({
+        "token-features": createMockTokenFeatures({
+          "development-mode": true,
+        }),
+      }),
+    })}
+  >
+    <Box h={500}>
+      <Visualization rawSeries={data.defaultSettings as unknown as Series} />
+    </Box>
+  </VisualizationWrapper>
+);

@@ -56,10 +56,13 @@ describe("nav > what's new notification", () => {
 
 function mockVersions({ currentVersion, versions = [] }) {
   const [latest, ...older] = versions;
-  cy.intercept("GET", "/api/session/properties", req => {
-    req.reply(res => {
+  cy.intercept("GET", "/api/setting/version-info", (req) => {
+    req.reply(createMockVersionInfo({ latest, older }));
+  }).as("versionInfo");
+
+  cy.intercept("GET", "/api/session/properties", (req) => {
+    req.reply((res) => {
       res.body["version"] = { tag: currentVersion };
-      res.body["version-info"] = createMockVersionInfo({ latest, older });
     });
   }).as("sessionProperties");
 }
@@ -68,6 +71,7 @@ function loadHomepage() {
   cy.visit("/");
 
   cy.wait("@sessionProperties");
+  cy.wait("@versionInfo");
 
   // make sure page is loaded
   cy.findByText("loading").should("not.exist");

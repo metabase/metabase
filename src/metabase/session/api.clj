@@ -6,14 +6,14 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
-   [metabase.config :as config]
-   [metabase.events :as events]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :as user]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -44,7 +44,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -67,7 +67,7 @@
       (catch LDAPSDKException e
         (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
@@ -132,8 +132,8 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-uuid)}]
+                       (let [{session-key :key, :as session} (login username password (request/device-info request))
+                             response                        {:id (str session-key)}]
                          (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
@@ -144,11 +144,13 @@
 
 (api.macros/defendpoint :delete "/"
   "Logout."
-  ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
-  (api/check-exists? :model/Session metabase-session-id)
-  (t2/delete! :model/Session :id metabase-session-id)
-  (request/clear-session-cookie api/generic-204-no-content))
+  ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
+  [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
+  (api/check-404 (not-empty metabase-session-key))
+  (let [session-key-hashed (session/hash-session-key metabase-session-key)
+        rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
+    (api/check-404 (> rows-deleted 0))
+    (request/clear-session-cookie api/generic-204-no-content)))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
 ;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
@@ -165,8 +167,8 @@
   "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
   in which case disable reset for them as long as the Google SSO feature is enabled."
   [sso-source]
-  (if (and (= sso-source :google) (not (public-settings/sso-enabled?)))
-    (public-settings/google-auth-enabled?)
+  (if (and (= sso-source :google) (not (sso/sso-enabled?)))
+    (sso/google-auth-enabled)
     (some? sso-source)))
 
 (defn- forgot-password-impl
@@ -183,7 +185,7 @@
         ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
-              password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+              password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
@@ -255,9 +257,9 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (session/create-session! :password user (request/device-info request))
+          (let [{session-key :key, :as session} (session/create-session! :password user (request/device-info request))
                 response                        {:success    true
-                                                 :session_id (str session-uuid)}]
+                                                 :session_id (str session-key)}]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
@@ -286,8 +288,8 @@
   ;; Verify the token is valid with Google
   (letfn [(do-login []
             (let [user (sso/do-google-auth request)
-                  {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
-                  response {:id (str session-uuid)}
+                  {session-key :key, :as session} (session/create-session! :sso user (request/device-info request))
+                  response {:id (str session-key)}
                   user (t2/select-one [:model/User :id :is_active], :email (:email user))]
               (if (and user (:is_active user))
                 (request/set-session-cookies request
@@ -302,6 +304,15 @@
         (do-login)
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
+
+(api.macros/defendpoint :post "/password-check"
+  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+  {:valid true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

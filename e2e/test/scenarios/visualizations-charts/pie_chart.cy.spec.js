@@ -1,8 +1,17 @@
 const { H } = cy;
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const {
+  ACCOUNTS,
+  ACCOUNTS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  ORDERS_ID,
+  ORDERS,
+  PEOPLE,
+} = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -122,7 +131,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Gadget", "false"],
       ["Gizmo", "false"],
       ["Widget", "false"],
-    ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
+    ].map((args) => checkLegendItemAriaCurrent(args[0], args[1]));
   });
 
   it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
@@ -354,147 +363,188 @@ describe("scenarios > visualizations > pie chart", () => {
     );
   });
 
-  it("should handle hover and drill throughs correctly", () => {
+  [false, true].forEach((devMode) => {
+    it(`should handle hover and drill throughs correctly - development ${devMode}`, () => {
+      cy.intercept("/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["token-features"]["development-mode"] = devMode;
+        });
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: twoRingQuery,
+        display: "pie",
+        visualization_settings: {
+          "pie.slice_threshold": 0,
+        },
+      });
+
+      ensurePieChartRendered(
+        [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ],
+        ["Doohickey", "Gadget", "Gizmo", "Widget"],
+      );
+
+      H.echartsContainer().within(() => {
+        cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
+      });
+
+      H.assertEChartsTooltip({
+        header: "Created At: Day of week",
+        rows: [
+          {
+            color: "#51528D",
+            name: "Saturday",
+            value: "2,747",
+            secondaryValue: "14.64 %",
+          },
+          {
+            color: "#ED8535",
+            name: "Thursday",
+            value: "2,698",
+            secondaryValue: "14.38 %",
+          },
+          {
+            color: "#E75454",
+            name: "Tuesday",
+            value: "2,695",
+            secondaryValue: "14.37 %",
+          },
+          {
+            color: "#689636",
+            name: "Sunday",
+            value: "2,671",
+            secondaryValue: "14.24 %",
+          },
+          {
+            color: "#8A5EB0",
+            name: "Monday",
+            value: "2,664",
+            secondaryValue: "14.20 %",
+          },
+          {
+            color: "#69C8C8",
+            name: "Friday",
+            value: "2,662",
+            secondaryValue: "14.19 %",
+          },
+          {
+            color: "#F7C41F",
+            name: "Wednesday",
+            value: "2,623",
+            secondaryValue: "13.98 %",
+          },
+        ],
+      });
+
+      cy.get("@saturdaySlice").click({ force: true });
+
+      H.popover().within(() => {
+        cy.findByText("=").click();
+      });
+
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.findByText("Count is equal to 2747").should("be.visible");
+      });
+
+      cy.go("back");
+
+      ensurePieChartRendered(
+        [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ],
+        ["Doohickey", "Gadget", "Gizmo", "Widget"],
+      );
+
+      H.echartsContainer().within(() => {
+        cy.findAllByText("Doohickey")
+          .first()
+          .as("doohickeySlice")
+          .trigger("mousemove");
+      });
+
+      H.assertEChartsTooltip({
+        header: "Saturday",
+        rows: [
+          {
+            name: "Doohickey",
+            value: "606",
+            secondaryValue: "22.06 %",
+          },
+          {
+            name: "Gadget",
+            value: "740",
+            secondaryValue: "26.94 %",
+          },
+          {
+            name: "Gizmo",
+            value: "640",
+            secondaryValue: "23.30 %",
+          },
+          {
+            name: "Widget",
+            value: "761",
+            secondaryValue: "27.70 %",
+          },
+        ],
+      });
+
+      cy.get("@doohickeySlice").click({ force: true });
+
+      H.popover().within(() => {
+        cy.findByText("=").click();
+      });
+
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.findByText("Count is equal to 606").should("be.visible");
+      });
+    });
+  });
+
+  it("should apply correct filter when drilling through an 'empty' slice (VIZ-210)", () => {
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/table/${ACCOUNTS_ID}`, { visibility_type: null });
+    cy.signInAsNormalUser();
+
     H.visitQuestionAdhoc({
-      dataset_query: twoRingQuery,
       display: "pie",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          aggregation: [["count"]],
+          breakout: [["field", ACCOUNTS.SOURCE, { "base-type": "type/Text" }]],
+          "source-table": ACCOUNTS_ID,
+        },
+      },
       visualization_settings: {
-        "pie.slice_threshold": 0,
+        "pie.show_labels": true,
       },
     });
 
-    ensurePieChartRendered(
-      [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ],
-      ["Doohickey", "Gadget", "Gizmo", "Widget"],
-    );
+    H.echartsContainer().findByText("(empty)").click();
 
-    H.echartsContainer().within(() => {
-      cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
-    });
+    H.popover().findByText("See these Accounts").click();
+    cy.wait("@dataset");
 
-    H.assertEChartsTooltip({
-      header: "Created At: Day of week",
-      rows: [
-        {
-          color: "#51528D",
-          name: "Saturday",
-          value: "2,747",
-          secondaryValue: "14.64 %",
-        },
-        {
-          color: "#ED8535",
-          name: "Thursday",
-          value: "2,698",
-          secondaryValue: "14.38 %",
-        },
-        {
-          color: "#E75454",
-          name: "Tuesday",
-          value: "2,695",
-          secondaryValue: "14.37 %",
-        },
-        {
-          color: "#689636",
-          name: "Sunday",
-          value: "2,671",
-          secondaryValue: "14.24 %",
-        },
-        {
-          color: "#8A5EB0",
-          name: "Monday",
-          value: "2,664",
-          secondaryValue: "14.20 %",
-        },
-        {
-          color: "#69C8C8",
-          name: "Friday",
-          value: "2,662",
-          secondaryValue: "14.19 %",
-        },
-        {
-          color: "#F7C41F",
-          name: "Wednesday",
-          value: "2,623",
-          secondaryValue: "13.98 %",
-        },
-      ],
-    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Source is empty")
+      .should("be.visible");
 
-    cy.get("@saturdaySlice").click({ force: true });
-
-    H.popover().within(() => {
-      cy.findByText("=").click();
-    });
-
-    cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Count is equal to 2747").should("be.visible");
-    });
-
-    cy.go("back");
-
-    ensurePieChartRendered(
-      [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ],
-      ["Doohickey", "Gadget", "Gizmo", "Widget"],
-    );
-
-    H.echartsContainer().within(() => {
-      cy.findAllByText("Doohickey")
-        .first()
-        .as("doohickeySlice")
-        .trigger("mousemove");
-    });
-
-    H.assertEChartsTooltip({
-      header: "Saturday",
-      rows: [
-        {
-          name: "Doohickey",
-          value: "606",
-          secondaryValue: "22.06 %",
-        },
-        {
-          name: "Gadget",
-          value: "740",
-          secondaryValue: "26.94 %",
-        },
-        {
-          name: "Gizmo",
-          value: "640",
-          secondaryValue: "23.30 %",
-        },
-        {
-          name: "Widget",
-          value: "761",
-          secondaryValue: "27.70 %",
-        },
-      ],
-    });
-
-    cy.get("@doohickeySlice").click({ force: true });
-
-    H.popover().within(() => {
-      cy.findByText("=").click();
-    });
-
-    cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Count is equal to 606").should("be.visible");
-    });
+    H.assertQueryBuilderRowCount(835);
   });
 
   it("should handle click behavior correctly", () => {

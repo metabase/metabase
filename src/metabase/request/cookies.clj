@@ -2,10 +2,10 @@
   "Code and constants related to getting and setting cookies in Ring requests and responses."
   (:require
    [java-time.api :as t]
-   [metabase.config :as config]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
    [metabase.request.util :as request.util]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -202,7 +202,7 @@
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
   [request]
-  (if (public-settings/session-cookies)
+  (if (session.settings/session-cookies)
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
     ;; Otherwise check whether the user selected "remember me" during login
@@ -212,12 +212,12 @@
   "Add the appropriate cookies to the `response` for the Session."
   [request
    response
-   {session-uuid :id
+   {session-key :key
     session-type :type
     anti-csrf-token :anti_csrf_token
-    :as _session-instance} :- [:map [:id [:or
-                                          uuid?
-                                          [:re u/uuid-regex]]]]
+    :as _session-instance} :- [:map [:key [:or
+                                           uuid?
+                                           [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)
@@ -239,4 +239,4 @@
         (cond-> (= session-type :full-app-embed)
           (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))
         (set-session-timeout-cookie request session-type request-time)
-        (response/set-cookie (session-cookie-name session-type) (str session-uuid) cookie-options))))
+        (response/set-cookie (session-cookie-name session-type) (str session-key) cookie-options))))

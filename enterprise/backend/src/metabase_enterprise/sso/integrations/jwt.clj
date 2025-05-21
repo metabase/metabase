@@ -7,7 +7,7 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.embed.settings :as embed.settings]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -131,7 +131,7 @@
                :status-code 402}))
     (response/response
      {:status :ok
-      :id     (:id session)
+      :id     (:key session)
       :exp    (:exp jwt-data)
       :iat    (:iat jwt-data)})))
 

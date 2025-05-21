@@ -17,7 +17,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import Query from "metabase-lib/v1/queries/Query";
+import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -176,7 +176,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
-    if (datasetQuery instanceof Query) {
+    if (datasetQuery instanceof NativeQuery) {
       datasetQuery = datasetQuery.datasetQuery();
     }
 
@@ -205,7 +205,7 @@ export const apiCreateQuestion = (
     );
 
     const databases: Database[] = Databases.selectors.getList(getState());
-    if (databases && !databases.some(d => d.is_saved_questions)) {
+    if (databases && !databases.some((d) => d.is_saved_questions)) {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
@@ -303,7 +303,7 @@ export const SET_PARAMETER_VALUE_TO_DEFAULT =
   "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
 export const setParameterValueToDefault = createThunkAction(
   SET_PARAMETER_VALUE_TO_DEFAULT,
-  parameterId => (dispatch, getState) => {
+  (parameterId) => (dispatch, getState) => {
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameterId,
     );
@@ -330,8 +330,8 @@ function normalizeValue(value: string | string[]) {
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  revision => {
-    return async dispatch => {
+  (revision) => {
+    return async (dispatch) => {
       await dispatch(Revisions.objectActions.revert(revision));
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));

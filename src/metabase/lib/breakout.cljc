@@ -4,6 +4,7 @@
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -41,7 +42,8 @@
    (some->> (breakouts query stage-number)
             (mapv (fn [field-ref]
                     (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                        (assoc :lib/source :source/breakouts)))))))
+                        (assoc :lib/source :source/breakouts
+                               :ident      (lib.options/ident field-ref))))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
@@ -55,7 +57,7 @@
        (lib.util/add-summary-clause query stage-number :breakout expr)
        query))))
 
-(mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn breakoutable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get column metadata for all the columns that can be broken out by in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.

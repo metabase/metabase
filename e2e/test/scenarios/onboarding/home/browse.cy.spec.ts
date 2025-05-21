@@ -47,7 +47,7 @@ describe("browse > models", () => {
   });
 
   it("can browse to a model in a new tab by meta-clicking", () => {
-    cy.on("window:before:load", win => {
+    cy.on("window:before:load", (win) => {
       // prevent Cypress opening in a new window/tab and spy on this method
       cy.stub(win, "open").as("open");
     });
@@ -82,7 +82,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
     H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "browse_data_model_clicked",
       model_id: ORDERS_MODEL_ID,
     });
@@ -96,9 +96,38 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.findByRole("button", { name: /Summarize/ });
     cy.findByRole("link", { name: /Sample Database/ }).click();
     H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
+    });
+  });
+
+  it("tracks when a new model creation is initiated", () => {
+    cy.visit("/browse/models");
+    cy.findByTestId("browse-models-header")
+      .findByLabelText("Create a new model")
+      .should("be.visible")
+      .click();
+    cy.location("pathname").should("eq", "/model/new");
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "plus_button_clicked",
+      triggered_from: "model",
+    });
+  });
+
+  it("tracks when a new metric creation is initiated", () => {
+    cy.visit("/browse/metrics");
+    cy.findByTestId("browse-metrics-header")
+      .findByLabelText("Create a new metric")
+      .should("be.visible")
+      .click();
+    cy.findByTestId("entity-picker-modal").should("be.visible");
+
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "plus_button_clicked",
+      triggered_from: "metric",
     });
   });
 
@@ -140,7 +169,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("The Browse models page shows an error message if the search endpoint throws an error", () => {
     cy.visit("/");
-    cy.intercept("GET", "/api/search*", req => {
+    cy.intercept("GET", "/api/search*", (req) => {
       req.reply({ statusCode: 400 });
     });
     H.navigationSidebar().findByLabelText("Browse models").click();
@@ -151,7 +180,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("The Browse metrics page shows an error message if the search endpoint throws an error", () => {
     cy.visit("/");
-    cy.intercept("GET", "/api/search*", req => {
+    cy.intercept("GET", "/api/search*", (req) => {
       req.reply({ statusCode: 400 });
     });
     H.navigationSidebar().findByLabelText("Browse metrics").click();
@@ -351,7 +380,7 @@ describe("issue 37907", () => {
     cy.get("main").within(() => {
       cy.findByText("My ID column").should("be.visible");
       cy.findByText("The total billed amount. Updated.").should("be.visible");
-      cy.findByText("Discount amount.").should("be.visible");
+      cy.findByText("Discount amount.").scrollIntoView().should("be.visible");
     });
 
     H.visitQuestion(ORDERS_QUESTION_ID);

@@ -13,15 +13,14 @@
    [mb.hawk.hooks]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]
-   [metabase.models.field :as field]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.test.data.env :as tx.env]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -30,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -480,7 +480,8 @@
 (defmulti count-with-field-filter-query
   "Generate a native query that returns the count of a Table with `table-name` with a field filter against a Field with
   `field-name`."
-  {:arglists '([driver table-name field-name])}
+  {:arglists '([driver table-name field-name]
+               [driver table-name field-name sample-value])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

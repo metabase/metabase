@@ -5,15 +5,17 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver.h2 :as h2]
-   [metabase.http-client :as client]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
+   [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.models.setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -59,7 +61,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= true]]]
-                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                      (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-real-response :post 200 "session" body)]
@@ -147,7 +149,7 @@
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  request.settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -168,7 +170,7 @@
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  request.settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -191,20 +193,23 @@
 (deftest logout-test
   (reset-throttlers!)
   (testing "DELETE /api/session"
+    (testing "Test that logout 404s if there is no session key supplied"
+      (client/client :delete 404 "session"))
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test.users/clear-cached-session-tokens!)
-      (let [session-id       (client/authenticate (test.users/user->credentials :rasta))
-            login-history-id (t2/select-one-pk :model/LoginHistory :session_id session-id)]
+      (let [session-key        (client/authenticate (test.users/user->credentials :rasta))
+            session-key-hashed (session/hash-session-key session-key)
+            login-history-id (t2/select-one-pk :model/LoginHistory :session_id (t2/select-one-pk :model/Session :key_hashed session-key-hashed))]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
-        (client/client session-id :delete 204 "session")
+        (client/client session-key :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (t2/select-one :model/Session :id session-id)))
+               (t2/select-one :model/Session :key_hashed session-key-hashed)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (malli= [:map
                        [:id                 ms/PositiveInt]
@@ -237,8 +242,8 @@
                    (mt/user-http-request :rasta :post 204 "session/forgot_password"
                                          {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
-            (is (= true
-                   (reset-fields-set?))
+            (is (true?
+                 (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
             (is (mt/received-email-subject? :rasta #"Password Reset")))))
       (testing "We use `site-url` in the email"
@@ -475,7 +480,7 @@
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
@@ -517,6 +522,14 @@
       (is (= nil
              (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
                  keys #{:premium-embedding-token}))))))
+
+(deftest properties-skip-include-in-list?=false
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the version-info property"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:version-info}))))))
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
@@ -639,3 +652,21 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+(deftest ^:parallel password-check-test
+  (testing "POST /api/session/password-check"
+    (testing "Test for required params"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {}))))))
+
+(deftest ^:parallel password-check-test-2
+  (testing "POST /api/session/password-check"
+    (testing "Test complexity check"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {:password "blah"}))))))
+
+(deftest ^:parallel password-check-test-3
+  (testing "POST /api/session/password-check"
+    (testing "Should be a valid password"
+      (is (= {:valid true}
+             (mt/client :post 200 "session/password-check" {:password "something123"}))))))

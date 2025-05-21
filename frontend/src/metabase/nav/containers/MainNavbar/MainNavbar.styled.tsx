@@ -7,7 +7,7 @@ import {
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
-import { Box, type BoxProps, Icon } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
 import { ExpandToggleButton } from "./SidebarItems/SidebarItems.styled";
@@ -43,11 +43,11 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   overflow-y: auto;
 
   ${breakpointMinSmall} {
-    width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
+    width: ${(props) => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
   }
 
   ${breakpointMaxSmall} {
-    width: ${props => (props.isOpen ? "90vw" : 0)};
+    width: ${(props) => (props.isOpen ? "90vw" : 0)};
   }
 `;
 
@@ -71,12 +71,6 @@ export const TrashSidebarSection = styled(SidebarSection)`
   }
 ` as unknown as typeof Box;
 
-export const SidebarHeadingWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: ${space(1)};
-`;
-
 export const SidebarHeading = styled.h4`
   color: var(--mb-color-text-medium);
   font-weight: 700;
@@ -84,20 +78,6 @@ export const SidebarHeading = styled.h4`
   text-transform: uppercase;
   letter-spacing: 0.45px;
   padding-inline-start: ${space(2)};
-`;
-
-export const CollectionsMoreIconContainer = styled.button`
-  margin-inline-start: auto;
-  margin-inline-end: ${space(1)};
-  cursor: pointer;
-`;
-
-export const CollectionsMoreIcon = styled(Icon)`
-  color: var(--mb-color-text-medium);
-`;
-
-export const CollectionMenuList = styled.ul`
-  padding: 0.5rem;
 `;
 
 export const LoadingAndErrorContainer = styled.div`

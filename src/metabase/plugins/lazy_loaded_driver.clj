@@ -41,9 +41,7 @@
   referring to one of the default maps in `driver.common`, a entire custom map, or a list of maps to `merge:` (e.g.
   for overriding part, but not all, of a default option)."
   [{:keys [connection-properties]}]
-  (->> (map parse-connection-property connection-properties)
-       (map u/one-or-many)
-       (apply concat)))
+  (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
 
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
@@ -100,10 +98,12 @@
   (let [manifest (str (io/file "modules/drivers/" (name driver) "resources/metabase-plugin.yaml"))
         properties (some->
                     (slurp manifest)
-                    yaml/parse-string
+                    (yaml/parse-string)
                     :driver
+                    u/one-or-many
+                    first
                     (parse-connection-properties))]
     (.addMethod ^MultiFn driver/connection-properties driver (constantly properties))))
 
 (comment
-  (load-connection-properties :snowflake))
+  (load-connection-properties :databricks))

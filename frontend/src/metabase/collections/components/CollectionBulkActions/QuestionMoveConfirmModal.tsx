@@ -41,7 +41,7 @@ export const QuestionMoveConfirmModal = ({
   const { currentData: cardDashboards, isFetching: isLoading } =
     useGetMultipleCardsDashboardsQuery(
       {
-        card_ids: selectedItems.map(s => s.id),
+        card_ids: selectedItems.map((s) => s.id),
       },
       {
         refetchOnMountOrArgChange: true,
@@ -50,7 +50,7 @@ export const QuestionMoveConfirmModal = ({
 
   const cardsThatAppearInOtherDashboards = useMemo(
     () =>
-      cardDashboards?.filter(cd => {
+      cardDashboards?.filter((cd) => {
         if (cd.dashboards.length === 0) {
           return false;
         }
@@ -82,7 +82,9 @@ export const QuestionMoveConfirmModal = ({
     [hasNoCardsThatAppearInOtherDashboards, onConfirmRef],
   );
 
-  const hasError = cardDashboards?.some(cd => cd.dashboards.some(d => d.error));
+  const hasError = cardDashboards?.some((cd) =>
+    cd.dashboards.some((d) => d.error),
+  );
 
   const heading = useMemo(() => {
     if (isLoading) {
@@ -115,7 +117,7 @@ export const QuestionMoveConfirmModal = ({
           py="3rem"
         >
           <Loader size="lg" />
-          <Title>{t`Checking on some things...`}</Title>
+          <Title order={2}>{t`Checking on some things...`}</Title>
         </Flex>
       );
     } else {
@@ -133,14 +135,14 @@ export const QuestionMoveConfirmModal = ({
           <>
             <Text my="0.5rem">{t`Moving a question into a dashboard removes it from all other dashboards it appears in`}</Text>
             <List>
-              {cardsThatAppearInOtherDashboards.map(cd => {
+              {cardsThatAppearInOtherDashboards.map((cd) => {
                 const card = selectedItems.find(
-                  item => item.id === cd.card_id && item.model === "card",
+                  (item) => item.id === cd.card_id && item.model === "card",
                 );
 
                 const dashboardNames = cd.dashboards
-                  .filter(d => d.id !== destination.id)
-                  .map(d => d.name);
+                  .filter((d) => d.id !== destination.id)
+                  .map((d) => d.name);
 
                 return (
                   <List.Item key={`card-${cd.card_id}`}>

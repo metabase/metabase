@@ -82,7 +82,7 @@ function assertOnXYAxisLabels() {
 function assertOnXAxisTicks(values) {
   if (values) {
     H.echartsContainer().within(() => {
-      values.forEach(value => {
+      values.forEach((value) => {
         cy.findByText(value);
       });
     });

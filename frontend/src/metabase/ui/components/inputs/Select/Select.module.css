@@ -53,6 +53,14 @@
   [data-position="right"] {
     color: var(--mb-color-text-light);
   }
+
+  /*
+  metabase#56179
+  Firefox shows a caret in readonly text inputs when focused
+  */
+  &[readonly]:focus {
+    caret-color: transparent;
+  }
 }
 
 .SelectInputSection {
@@ -62,12 +70,6 @@
     color: inherit;
     width: 1rem !important;
     height: 1rem !important;
-
-    &[data-combobox-chevron] path {
-      d: path(
-        "M 1.3781 4.1906 a 0.7031 0.7031 90 0 1 0.9938 0 L 7.5 9.3187 l 5.1281 -5.1281 a 0.7031 0.7031 90 1 1 0.9938 0.9938 l -5.625 5.625 a 0.7031 0.7031 90 0 1 -0.9938 0 l -5.625 -5.625 a 0.7031 0.7031 90 0 1 0 -0.9938 z"
-      );
-    }
 
     &:not([data-combobox-chevron]) path {
       d: path(
@@ -124,7 +126,7 @@
       content: "";
       display: block;
       margin-top: calc(var(--mantine-spacing-sm) - 1px);
-      margin-bottom: var(--mantine-spacing-xs);
+      margin-bottom: var(--mantine-spacing-sm);
       margin-inline: var(--mantine-spacing-sm);
       border-top: 1px solid var(--mb-color-border);
     }
@@ -157,4 +159,8 @@
   &::first-letter {
     text-transform: capitalize;
   }
+}
+
+.SelectClearButton {
+  color: var(--mb-color-text-dark) !important;
 }

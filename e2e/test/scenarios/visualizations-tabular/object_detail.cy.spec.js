@@ -96,7 +96,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.log("Check object details for the first row");
     cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
-    cy.get("[data-show-detail-rowindex='0']").click();
+    cy.findAllByTestId("detail-shortcut").eq(1).should("be.hidden");
+    H.openObjectDetail(0);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading").should("contain", "Order").and("contain", 1);
       cy.findByText("37.65").should("be.visible");
@@ -105,7 +106,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.log("Check object details for the second row");
     cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
-    cy.get("[data-show-detail-rowindex='1']").click();
+    cy.findAllByTestId("detail-shortcut").eq(0).should("be.hidden");
+    H.openObjectDetail(1);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading").should("contain", "Order").and("contain", 2);
       cy.findByText("110.93").should("be.visible");
@@ -142,6 +144,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
+    // we might render the thing before it's actually clickable
+    cy.get("[data-testid=click-icon]", { timeout: 1000 }).should("be.visible");
+
     cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
 
     cy.findByTestId("qb-filters-panel")
@@ -170,20 +175,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     assertOrderDetailView({ id: FIRST_ORDER_ID });
   });
 
-  it("calculates a row after scrolling correctly (metabase#48323)", () => {
-    H.openOrdersTable();
-    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(0, 15000);
-    cy.icon("expand").first().click();
-    cy.findByRole("dialog")
-      .should("contain", "418")
-      .and("contain", "58")
-      .and("contain", "February 14, 2026, 10:12 AM");
-  });
-
   it("calculates a row after both vertical and horizontal scrolling correctly (metabase#51301)", () => {
     H.openPeopleTable();
-    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(2000, 15000);
-    cy.icon("expand").first().realHover().click();
+    H.tableInteractiveScrollContainer().scrollTo(2000, 14900);
+    H.openObjectDetail(417);
     cy.findByRole("dialog")
       .should("contain", "418")
       .and("contain", "31942-31950 Oak Ridge Parkway")
@@ -319,9 +314,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     H.openProductsTable({ limit: 5 });
 
-    cy.findByTestId("TableInteractive-root")
-      .findByTextEnsureVisible("Rustic Paper Wallet")
-      .click();
+    H.tableInteractive().findByTextEnsureVisible("Rustic Paper Wallet").click();
 
     cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
     cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
@@ -387,6 +380,62 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.get("@getActions").should("have.callCount", 0);
   });
+
+  it("should respect 'view_as' column settings (VIZ-199)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
+      settings: {
+        view_as: "link",
+        link_text: "Link to review {{ID}}",
+        link_url: "https://metabase.test?review={{ID}}",
+      },
+    });
+
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": REVIEWS_ID },
+      },
+      visualization_settings: {
+        column_settings: {
+          [JSON.stringify(["name", "RATING"])]: {
+            view_as: "link",
+            link_text: "Rating: {{RATING}}",
+            link_url: "https://metabase.test?rating={{RATING}}",
+          },
+        },
+      },
+    });
+
+    H.openObjectDetail(0);
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Link to review 1")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?review=1");
+
+      cy.findByText("Rating: 5")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?rating=5");
+    });
+
+    cy.findByTestId("view-next-object-detail").click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Link to review 2")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?review=2");
+
+      cy.findByText("Rating: 4")
+        .should("be.visible")
+        .should("have.attr", "href")
+        .and("eq", "https://metabase.test?rating=4");
+    });
+  });
 });
 
 function drillPK({ id }) {
@@ -433,7 +482,7 @@ function changeSorting(columnName, direction) {
   cy.wait("@dataset");
 }
 
-["postgres", "mysql"].forEach(dialect => {
+["postgres", "mysql"].forEach((dialect) => {
   describe(
     `Object Detail > composite keys (${dialect})`,
     { tags: ["@external"] },
@@ -448,11 +497,11 @@ function changeSorting(columnName, direction) {
       });
 
       it("can show object detail modal for items with composite keys", () => {
-        H.getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
-        cy.icon("expand").first().click();
+        H.openObjectDetail(0);
 
         cy.findByRole("dialog").within(() => {
           cy.findAllByText("Duck").should("have.length", 2);
@@ -465,13 +514,11 @@ function changeSorting(columnName, direction) {
         // this bug only manifests on tables without single integer primary keys
         // it is also reproducible on tables with string keys
 
-        H.getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
-        cy.get("#main-data-grid").findByText("Rabbit").trigger("mouseover");
-
-        cy.icon("expand").first().click();
+        H.openObjectDetail(5);
 
         cy.findByRole("dialog").within(() => {
           cy.findAllByText("Rabbit").should("have.length", 2);
@@ -501,11 +548,11 @@ function changeSorting(columnName, direction) {
       });
 
       it("can show object detail modal for items with no primary key", () => {
-        H.getTableId({ name: TEST_TABLE }).then(tableId => {
+        H.getTableId({ name: TEST_TABLE }).then((tableId) => {
           cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
         });
 
-        cy.icon("expand").first().click();
+        H.openObjectDetail(0);
 
         cy.findByRole("dialog").within(() => {
           cy.findAllByText("Duck").should("have.length", 2);

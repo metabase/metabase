@@ -7,14 +7,15 @@
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
   (:require
    [clojure.string :as str]
-   [metabase.models.params.shared :as shared.params]
-   [metabase.public-settings :as public-settings]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.parameters.shared :as shared.params]
+   [metabase.system.core :as system]
    [ring.util.codec :as codec]))
 
 (defn site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
   []
-  (or (public-settings/notification-link-base-url) (public-settings/site-url)))
+  (or (channel.settings/notification-link-base-url) (system/site-url)))
 
 (defn trash-url
   "Return an appropriate URL to view the trash page."

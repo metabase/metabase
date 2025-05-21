@@ -6,6 +6,10 @@ on:
       skip:
         type: boolean
         default: false
+      specs:
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
@@ -16,6 +20,7 @@ jobs:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
+      specs: ${{ inputs.specs }}
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
@@ -52,7 +57,7 @@ jobs:
     needs: [get-build-requirements]
     if: ${{ !cancelled() && !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     strategy:
       matrix:
         edition: [oss, ee]
@@ -74,7 +79,9 @@ jobs:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
       - name: Build uberjar with ./bin/build.sh
+        timeout-minutes: 10
         run: ./bin/build.sh
+        shell: bash
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
@@ -137,19 +144,21 @@ jobs:
   flaky-e2e-tests:
     name: Flaky e2e Tests
     uses: ./.github/workflows/e2e-test.yml
-    needs: build
+    needs:
+      - build
+      - e2e-matrix-builder
+    # skip flaky test run if only e2e specs changed as an optimization
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && needs.build.result == 'success' && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
     secrets: inherit
     with:
       name: Flaky
       tags: "@flaky"
-      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
 
   e2e-tests-result:
     needs:
-     - e2e-tests
-     - flaky-e2e-tests
+      - e2e-tests
+      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result

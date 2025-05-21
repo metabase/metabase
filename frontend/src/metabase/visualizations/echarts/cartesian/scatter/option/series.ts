@@ -26,7 +26,7 @@ function getBubbleDiameterScale(
     return MIN_BUBBLE_DIAMETER;
   }
   const areaRange = [MIN_BUBBLE_DIAMETER, MAX_BUBBLE_DIAMETER].map(
-    diameter => Math.PI * (diameter / 2) ** 2,
+    (diameter) => Math.PI * (diameter / 2) ** 2,
   );
   // Domain is [0, 1] since the `t` parameteter of the interpolate function below
   // is normalized to 0-1.
@@ -39,7 +39,7 @@ function getBubbleDiameterScale(
     // Then we plug the normalized value `t` into the `areaScale` to get the corrseponding area for that diameter.
     // We then take this area and convert it back to a diameter value
     // if area = π × (diameter ÷ 2)², then diameter = (2 × √area) ÷ π
-    .interpolate(() => t => (2 * Math.sqrt(areaScale(t))) / Math.PI)
+    .interpolate(() => (t) => (2 * Math.sqrt(areaScale(t))) / Math.PI)
     // Finally, D3 linearly maps that value into our defined min/max range.
     .range([MIN_BUBBLE_DIAMETER, MAX_BUBBLE_DIAMETER]);
 

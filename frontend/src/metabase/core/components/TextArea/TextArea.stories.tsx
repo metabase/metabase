@@ -7,7 +7,7 @@ export default {
   component: TextArea,
 };
 
-const Template: StoryFn<TextAreaProps> = args => {
+const Template: StoryFn<TextAreaProps> = (args) => {
   return <TextArea {...args} />;
 };
 

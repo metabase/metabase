@@ -6,7 +6,7 @@ import type { QueryBuilderMode } from "metabase-types/store";
 interface FilterHeaderProps {
   question: Question;
   expanded: boolean;
-  updateQuestion: (question: Question, opts: { run: boolean }) => void;
+  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
 }
 
 export function QuestionFiltersHeader({

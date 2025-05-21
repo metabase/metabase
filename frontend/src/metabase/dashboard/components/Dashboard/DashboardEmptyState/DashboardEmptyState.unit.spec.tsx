@@ -8,11 +8,13 @@ import {
 type SetupOptions = {
   isDashboardEmpty: boolean;
   isEditing: boolean;
+  canCreateQuestions?: boolean;
 };
 
 const setup = ({
   isDashboardEmpty = true,
   isEditing = false,
+  canCreateQuestions = true,
 }: SetupOptions) => {
   const addQuestion = jest.fn();
 
@@ -22,6 +24,7 @@ const setup = ({
       isDashboardEmpty={isDashboardEmpty}
       isEditing={isEditing}
       addQuestion={addQuestion}
+      canCreateQuestions={canCreateQuestions}
     />,
   );
 
@@ -77,7 +80,7 @@ describe("DashboardEmptyState", () => {
   // Editing mode is always the same for both an empty dashboard and an empty dashboard tab
   it.each(["dashboard", "dashboard tab"])(
     "renders %s empty state in editing mode",
-    context => {
+    (context) => {
       const { addQuestion } = setup({
         isDashboardEmpty: context === "dashboard",
         isEditing: true,
@@ -87,6 +90,27 @@ describe("DashboardEmptyState", () => {
       assertBodyText({
         title:
           "Create a new question or browse your collections for an existing one.",
+        description:
+          "Add link or text cards. You can arrange cards manually, or start with some default layouts by adding a section.",
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Add a chart" }));
+      expect(addQuestion).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["dashboard", "dashboard tab"])(
+    "renders %s empty state in editing mode without create questions permission",
+    (context) => {
+      const { addQuestion } = setup({
+        isDashboardEmpty: context === "dashboard",
+        isEditing: true,
+        canCreateQuestions: false,
+      });
+
+      expect(illustration()).toBeInTheDocument();
+      assertBodyText({
+        title: "Browse your collections to find and add existing questions.",
         description:
           "Add link or text cards. You can arrange cards manually, or start with some default layouts by adding a section.",
       });

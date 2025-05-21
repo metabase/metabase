@@ -41,30 +41,42 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
-      cy.addSQLiteDatabase();
 
-      cy.visit("/");
-      cy.wait("@getXrayCandidates");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Here are some explorations of");
-      cy.findAllByRole("link").contains("sqlite");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Number With Nulls").click();
+      const dbId = 2;
 
-      cy.wait("@getXrayDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays");
+      H.restore("withSqlite");
+
+      H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
+        // we first set the semantic type of the num field to Category,
+        // else no X-rays would be computed
+        cy.request("PUT", `/api/field/${NUM}`, {
+          semantic_type: "type/Category",
+          has_field_values: "none",
+        });
+
+        cy.visit("/");
+        cy.wait("@getXrayCandidates");
+
+        cy.findByText("Here are some explorations of");
+        cy.findAllByRole("link").contains("sqlite");
+
+        cy.findByText("Number With Nulls").click();
+
+        cy.wait("@getXrayDashboard");
+
+        cy.findByText("More X-rays");
+      });
     });
 
     it("homepage should not flicker when syncing databases and showing xrays", () => {
       cy.signInAsAdmin();
       cy.addSQLiteDatabase();
 
-      cy.intercept("/api/database", req => {
-        req.continue(res => {
+      cy.intercept("/api/database", (req) => {
+        req.continue((res) => {
           res.body.data[1].initial_sync_status = "incomplete";
 
-          return new Promise(resolve => {
+          return new Promise((resolve) => {
             setTimeout(() => {
               resolve();
               // Setting this to be arbitrarly long so that the repeat assertion
@@ -225,8 +237,8 @@ describe("scenarios > home > homepage", () => {
         {
           url: "/",
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.body = res.body.replace(
               'src="app/dist/app-main',
               'src="bad-link.js',
@@ -236,7 +248,7 @@ describe("scenarios > home > homepage", () => {
         },
       );
 
-      cy.on("window:before:load", win => {
+      cy.on("window:before:load", (win) => {
         cy.spy(win.console, "error").as("errorConsole");
       });
 
@@ -265,9 +277,9 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
-        cy.findByText("Enabled").should("exist");
+        cy.findByText("Disabled").should("be.visible");
+        cy.findByText("Disabled").click();
+        cy.findByText("Enabled").should("be.visible");
       });
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -284,12 +296,13 @@ describe("scenarios > home > custom homepage", () => {
       );
 
       cy.log(
-        "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
+        "disabling custom-homepage-setting should also remove custom-homepage-dashboard-setting",
       );
+      cy.visit("/admin/settings/general");
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Enabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Enabled").click();
         cy.findByText("Disabled").should("exist");
       });
 
@@ -297,7 +310,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("exist");
-        cy.findByRole("switch").click();
+        cy.findByText("Disabled").click();
         cy.findByText("Enabled").should("exist");
       });
 
@@ -410,8 +423,8 @@ describe("scenarios > home > custom homepage", () => {
           method: "GET",
           middleware: true,
         },
-        req => {
-          req.continue(res => {
+        (req) => {
+          req.continue((res) => {
             res.delay = 1000;
             res.send();
           });
@@ -442,8 +455,8 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText(
           /Your admin has set this dashboard as your homepage/,
         ).should("exist");
-        cy.findByText("Got it").click();
       });
+      cy.button("Got it").click();
 
       cy.log("let the dashboard load");
       H.dashboardHeader().findByText("Orders in a dashboard");
@@ -572,7 +585,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
   it("should send snowplow events through admin settings", () => {
     cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+    cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")
@@ -582,7 +595,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.undoToast().findByText("Changes saved").should("be.visible");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
@@ -597,14 +610,84 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
     H.modal().findByText("Save").click();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
   });
+
+  it("should track when 'New' button is clicked", () => {
+    cy.visit("/");
+
+    cy.log("From the app bar");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "app-bar",
+    });
+
+    cy.log("Track closing the button as well");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").should("not.exist");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "new_button_clicked",
+        triggered_from: "app-bar",
+      },
+      2,
+    );
+
+    cy.log("From the empty collection");
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+
+    cy.findByRole("dialog").should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "empty-collection",
+    });
+  });
+
+  /**
+   * Until we refactor the NewItem menu component and drop EntityMenu from it,
+   * the only menu item that can have onClick handler is a "dashboard".
+   */
+  it("should track when a 'New' button's menu item is clicked", () => {
+    cy.visit("/");
+
+    H.newButton().should("be.visible").click();
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "new_button_item_clicked",
+      triggered_from: "dashboard",
+    });
+
+    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
+    cy.findByTestId("new-dashboard-modal").should("not.exist");
+
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "new_button_item_clicked",
+        triggered_from: "dashboard",
+      },
+      2,
+    );
+  });
 });
 
-const pinItem = name => {
+const pinItem = (name) => {
   cy.findByText(name).closest("tr").icon("ellipsis").click();
 
   H.popover().icon("pin").click();

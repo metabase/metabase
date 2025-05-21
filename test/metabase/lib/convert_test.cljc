@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -9,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -394,7 +396,7 @@
     {:database 1
      :type     :query
      :query    {:source-table 224
-                :expressions {"a" 1}
+                :expressions {"a" [:value 1 {:base_type :type/Integer}]}
                 :expression-idents {"a" (u/generate-nano-id)}}}
 
     ;; card__<id> source table syntax.
@@ -423,6 +425,141 @@
                             [:share [:= [:expression "Additional Info Present"] "Yes"]]
                             {:name "Additional Information", :display-name "Additional Information"}]]
              :aggregation-idents {0 (u/generate-nano-id)}}}))
+
+(deftest ^:parallel round-trip-literal-expression-test
+  ;; Some cases of literal expressions are already covered in round-trip-test, above.
+  (are [query] (test-round-trip query)
+    [:value false {:base_type :type/Boolean}]
+
+    [:value true nil]
+
+    [:value false nil]
+
+    [:value "123" {:base_type :type/Text}]
+
+    [:value "" nil]
+
+    [:value "foo" nil]
+
+    [:value 12345 {:base_type :type/Integer}]
+
+    [:value -1 nil]
+
+    [:value 0 nil]
+
+    [:value 1 nil]
+
+    [:value 1e10 {:base_type :type/Float}]
+
+    [:value 1.23 nil]
+
+    {:database 123
+     :query {:middleware {:disable-remaps? true}
+             :source-card-id 1301
+             :source-query {:source-table 224
+                            :expressions {"a" [:value 1 nil]
+                                          "b" [:value false nil]}
+                            :expression-idents {"a" (u/generate-nano-id)
+                                                "b" (u/generate-nano-id)}}
+             :expressions {"c" [:value "cee" nil]
+                           "d" [:value 1.23 nil]}
+             :expression-idents {"c" (u/generate-nano-id)
+                                 "d" (u/generate-nano-id)}}
+     :type :query}
+
+    {:database 1
+     :type     :query
+     :query    {:source-table 224
+                :expressions {"a" [:value 1 nil]
+                              "b" [:value 0 nil]
+                              "c" [:value true nil]
+                              "d" [:value false nil]
+                              "e" [:value 2.71828 nil]
+                              "f" [:value "foo" nil]
+                              "g" [:value "" nil]}
+                :expression-idents {"a" (u/generate-nano-id)
+                                    "b" (u/generate-nano-id)
+                                    "c" (u/generate-nano-id)
+                                    "d" (u/generate-nano-id)
+                                    "e" (u/generate-nano-id)
+                                    "f" (u/generate-nano-id)
+                                    "g" (u/generate-nano-id)}}}
+
+    {:type :query
+     :database 5
+     :query {:source-table 5822
+             :expressions {"literal expression" [:value false nil]
+                           "coalesce"           [:coalesce
+                                                 [:expression "literal expression"]
+                                                 [:field 519196 nil]
+                                                 "None"]
+                           "case expression 1"  [:case
+                                                 [[[:= [:expression "literal expression"] false]
+                                                   "No"]]
+                                                 {:default "Yes"}]
+                           "case expression 2"  [:case
+                                                 [[[:expression "literal expression"]
+                                                   "No"]]
+                                                 {:default "Yes"}]}
+             :expression-idents {"literal expression" (u/generate-nano-id)
+                                 "coalesce"           (u/generate-nano-id)
+                                 "case expression 1"  (u/generate-nano-id)
+                                 "case expression 2"  (u/generate-nano-id)}
+             :filter [:= [:field 518086 nil] [:expression "literal expression"]]
+             :aggregation [[:aggregation-options
+                            [:share [:= [:expression "literal expression"] true]]
+                            {:name "Additional Information", :display-name "Additional Information"}]]
+             :aggregation-idents {0 (u/generate-nano-id)}}}))
+
+(deftest ^:parallel round-trip-literal-expression-test-2
+  (are [literal] (test-round-trip {:database 1
+                                   :type     :query
+                                   :query    {:source-table 224
+                                              :expressions {"a" [:value literal nil]}
+                                              :expression-idents {"a" (u/generate-nano-id)}}})
+    true
+    false
+    0
+    10
+    -10
+    10.15
+    "abc"
+    "2020-10-20"
+    "2020-10-20T10:20:00"
+    "2020-10-20T10:20:00Z"
+    "10:20:00"))
+
+(deftest ^:parallel round-trip-filter-expression-test
+  (are [expressions filter-expression]
+       (test-round-trip {:database 1
+                         :type     :query
+                         :query    (merge {:source-table 224
+                                           :filter       filter-expression}
+                                          (when (seq expressions)
+                                            {:expressions expressions
+                                             :expression-idents (update-vals expressions
+                                                                             (fn [_] (u/generate-nano-id)))}))})
+    {} [:value true nil]
+
+    {} [:value false nil]
+
+    {} [:value true {:base_type :type/Boolean}]
+
+    {} [:value false {:base_type :type/Boolean}]
+
+    {} [:field 1 {:base-type :type/Boolean}]
+
+    {"true"  [:value true nil]}
+    [:expression "true"]
+
+    {"false" [:value false nil]}
+    [:expression "false"]
+
+    {"eq"  [:= 1 2]}
+    [:expression "eq"]
+
+    {"and"  [:and [:field 1 nil] [:field 2 nil]]}
+    [:expression "and"]))
 
 (deftest ^:parallel round-trip-segments-test
   (test-round-trip {:database 282
@@ -985,7 +1122,7 @@
               (lib.convert/->legacy-MBQL query))))))
 
 (deftest ^:parallel convert-with-broken-expression-types-test
-  (testing "be flexible when converting from legacy, metadata type overrides are soometimes dropped (#41122)"
+  (testing "be flexible when converting from legacy, metadata type overrides are sometimes dropped (#41122)"
     (let [legacy {:database (meta/id)
                   :type     :query
                   :query    {:filter [:between [:+
@@ -1020,21 +1157,41 @@
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
 
 (deftest ^:parallel cumulative-count-test
-  (is (=? {:query {:aggregation [[:aggregation-options
-                                  [:cum-count [:field 48400 {:base-type :type/BigInteger}]]
-                                  {:name "count"}]]}}
-          (lib.convert/->legacy-MBQL
-           {:lib/type :mbql/query
-            :database 48001
-            :stages   [{:lib/type     :mbql.stage/mbql
-                        :source-table 48040
-                        :aggregation  [[:cum-count
-                                        {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "count"}
-                                        [:field
-                                         {:base-type      :type/BigInteger,
-                                          :effective-type :type/BigInteger,
-                                          :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
-                                         48400]]]}]}))))
+  (is (=? (m/dissoc-in (lib.tu.macros/mbql-query
+                         venues
+                         {:source-table $$venues
+                          :aggregation [[:aggregation-options
+                                         [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                                         {:name "count"}]]})
+                       [:query :aggregation-idents])
+          (m/dissoc-in (lib.convert/->legacy-MBQL
+                        (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                            (lib/aggregate (lib.options/update-options
+                                            (lib/cum-count (meta/field-metadata :venues :id))
+                                            assoc :name "count"))))
+                       [:query :aggregation-idents]))))
+
+(deftest ^:parallel cumulative-aggregations-in-expression-test
+  (is (=?  (m/dissoc-in (lib.tu.macros/mbql-query
+                          venues
+                          {:source-table $$venues
+                           :aggregation [[:aggregation-options
+                                          [:+
+                                           [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                                           [:aggregation-options [:cum-count] {:name "b"}]]
+                                          {:name "xixix"}]]})
+                        [:query :aggregation-idents])
+           (m/dissoc-in (lib.convert/->legacy-MBQL
+                         (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                             (lib/aggregate (lib.options/update-options
+                                             (lib/+ (lib.options/update-options
+                                                     (lib/cum-sum (meta/field-metadata :venues :id))
+                                                     assoc :name "a")
+                                                    (lib.options/update-options
+                                                     (lib/cum-count)
+                                                     assoc :name "b"))
+                                             assoc :name "xixix"))))
+                        [:query :aggregation-idents]))))
 
 (deftest ^:parallel blank-queries-test
   (testing "minimal legacy"
@@ -1060,3 +1217,21 @@
         (testing "round trip to pMBQL and back with small changes"
           (is (= query
                  (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))
+
+(deftest ^:parallel round-trip-expression-literal-test
+  (are [literal] (test-round-trip {:database 1
+                                   :type     :query
+                                   :query    {:source-table 224
+                                              :expressions {"a" [:value literal nil]}
+                                              :expression-idents {"a" (u/generate-nano-id)}}})
+    true
+    false
+    0
+    10
+    -10
+    10.15
+    "abc"
+    "2020-10-20"
+    "2020-10-20T10:20:00"
+    "2020-10-20T10:20:00Z"
+    "10:20:00"))

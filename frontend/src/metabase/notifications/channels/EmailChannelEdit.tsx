@@ -20,7 +20,7 @@ export const EmailChannelEdit = ({
   onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
   const mappedUsers: RecipientPickerValue[] = channel.recipients
-    .map(recipient => {
+    .map((recipient) => {
       if (recipient.type === "notification-recipient/user") {
         const user = users.find(({ id }) => id === recipient.user_id);
         if (user) {
@@ -41,7 +41,7 @@ export const EmailChannelEdit = ({
     .filter(isNotNull);
 
   const handleRecipientsChange = (recipients: RecipientPickerValue[]) => {
-    const mappedUsers: NotificationRecipient[] = recipients.map(recipient => {
+    const mappedUsers: NotificationRecipient[] = recipients.map((recipient) => {
       let result: NotificationRecipient;
       if ("id" in recipient) {
         result = {

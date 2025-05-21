@@ -197,7 +197,7 @@ describe("issue 12581", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
 
@@ -334,7 +334,7 @@ describe("issue 14302", () => {
   });
 });
 
-["nodata+nosql", "nosql"].forEach(test => {
+["nodata+nosql", "nosql"].forEach((test) => {
   describe("issue 15163", () => {
     const nativeFilter = {
       id: "dd7f3e66-b659-7d1c-87b3-ab627317581c",
@@ -424,7 +424,7 @@ describe("issue 14302", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New Title").click();
 
-      cy.wait("@cardQuery", { timeout: 5000 }).then(xhr => {
+      cy.wait("@cardQuery", { timeout: 5000 }).then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
@@ -610,7 +610,7 @@ describe("issue 16739", () => {
     cy.signInAsAdmin();
   });
 
-  ["normal", "nodata"].forEach(user => {
+  ["normal", "nodata"].forEach((user) => {
     //Very related to the metabase#15981, only this time the issue happens with the "Field Filter" without the value being set.
     it(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
       H.createNativeQuestion({
@@ -730,7 +730,7 @@ describe("issue 17019", () => {
     cy.findByTestId("public-link-popover-content")
       .findByTestId("public-link-input")
       .invoke("val")
-      .then(publicLink => {
+      .then((publicLink) => {
         cy.visit(publicLink);
       });
 
@@ -745,8 +745,8 @@ describe("issue 17019", () => {
 
 describe("issue 17490", () => {
   function mockDatabaseTables() {
-    cy.intercept("GET", "/api/database?include=tables", req => {
-      req.reply(res => {
+    cy.intercept("GET", "/api/database?include=tables", (req) => {
+      req.reply((res) => {
         const mockTables = new Array(7).fill({
           id: 42, // id is hard coded, but it doesn't matter for this repro
           db_id: 1,
@@ -755,7 +755,7 @@ describe("issue 17490", () => {
           schema: "PUBLIC",
         });
 
-        res.body.data = res.body.data.map(d => ({
+        res.body.data = res.body.data.map((d) => ({
           ...d,
           tables: [...d.tables, ...mockTables],
         }));
@@ -888,7 +888,7 @@ describe("issue 21246", () => {
         wrapId: true,
       });
 
-      cy.get("@questionId").then(id => {
+      cy.get("@questionId").then((id) => {
         cy.visit(`/question/${id}`);
         cy.wait("@dataset");
 
@@ -901,7 +901,7 @@ describe("issue 21246", () => {
     const fieldFilterValue = "filter=2024-02";
     const dateFilterValue = "datevariable=2024-02-19";
 
-    cy.get("@questionId").then(id => {
+    cy.get("@questionId").then((id) => {
       // Let's set filter values directly through URL, rather than through the UI
       // for the sake of speed and reliability
       cy.visit(`/question/${id}?${fieldFilterValue}`);

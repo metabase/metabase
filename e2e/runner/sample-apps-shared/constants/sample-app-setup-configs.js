@@ -1,4 +1,4 @@
-const BRANCH_NAME = "main";
+const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed as an ENV variable.
 
 const BASE_ENV = {
   PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",

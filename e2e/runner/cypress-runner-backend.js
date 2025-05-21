@@ -2,7 +2,6 @@
 
 const { spawn } = require("child_process");
 const fs = require("fs");
-
 const http = require("http");
 const os = require("os");
 const path = require("path");
@@ -114,10 +113,10 @@ const CypressBackend = {
       // This is needed until we can use NodeJS native `fetch`.
       function request(url) {
         return new Promise((resolve, reject) => {
-          const req = http.get(url, res => {
+          const req = http.get(url, (res) => {
             let body = "";
 
-            res.on("data", chunk => {
+            res.on("data", (chunk) => {
               body += chunk;
             });
 
@@ -126,7 +125,7 @@ const CypressBackend = {
             });
           });
 
-          req.on("error", e => {
+          req.on("error", (e) => {
             reject(e);
           });
         });

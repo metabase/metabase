@@ -102,7 +102,9 @@ What happens to related items when you delete a collection?
 
 | Related item                                   | In Trash | Permanently deleted | Restored |
 | ---------------------------------------------- | -------- | ------------------- | -------- |
-| All items and subcollections in the collection | In Trash | Permanently deleted | Restored |
+| All items and subcollections in the collection | In Trash | N/A                 | Restored |
+
+> You can't permanently delete collections
 
 ## Permanently deleting items
 
@@ -112,8 +114,10 @@ To permanently delete an item:
 
 1. Go to Trash;
 2. Find the item you'd like to delete;
-3. Click on the checkbox next to the collection to select it;
+3. Click on the checkbox next to the item to select it;
 4. Select "Permanently delete". If you click this button, you won't be able to recover the item. It'll be lost to the void.
+
+> You can't permanently delete collections
 
 ## Deleting and restoring events and timelines
 
@@ -121,11 +125,11 @@ Events and timelines can be archived and unarchived. See [Archiving Events and t
 
 You won't see archived Events and Timelines in Trash. To see archived events and timelines, you need to [access them from the collection's page](events-and-timelines.md#view-archived-events-and-timelines).
 
-## Deleting and restoring SQL snippets
+## Deleting and restoring Snippets
 
-SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../questions/native-editor/sql-snippets.md#archiving-snippets).
+Snippets can be archived and unarchived. See [Archiving Snippets](../questions/native-editor/snippets.md#archiving-snippets).
 
-You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
+You won't see archived Snippets in Trash. To see archived Snippets, you need to [access them from the Snippet menu](../questions/native-editor/snippets.md#snippet-menu).
 
 ## Deleting segments
 

@@ -23,7 +23,7 @@ export const addQuestionToDashboard = ({
           },
         ],
       })
-      .then(response => ({
+      .then((response) => ({
         ...response,
         body: response.body.dashcards.at(-1),
       })),

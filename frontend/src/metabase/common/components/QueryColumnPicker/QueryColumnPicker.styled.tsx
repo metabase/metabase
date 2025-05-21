@@ -6,5 +6,5 @@ import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 
 export const StyledAccordionList = styled(AccordionList)<{ color: ColorName }>`
-  color: ${props => color(props.color)};
+  color: ${(props) => color(props.color)};
 `;

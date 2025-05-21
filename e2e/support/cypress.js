@@ -9,6 +9,7 @@ import addContext from "mochawesome/addContext";
 import "./commands";
 
 const isCI = Cypress.env("CI");
+const isNetworkThrottlingEnabled = Cypress.env("ENABLE_NETWORK_THROTTLING");
 
 // remove default html output on test failure
 configure({
@@ -42,7 +43,7 @@ Cypress.on("test:before:run", () => {
 
 Cypress.on("test:after:run", (test, runnable) => {
   if (test.state === "failed") {
-    const titleToFileName = title => title.replace(/[>]/g, "");
+    const titleToFileName = (title) => title.replace(/[>]/g, "");
     let { parent } = runnable;
     let filename = "";
     // This while is to be able to support more than one level of parent in the screenshot name
@@ -54,7 +55,7 @@ Cypress.on("test:after:run", (test, runnable) => {
 
     if (isCI) {
       // cypress-terminal-report
-      Cypress.Mochawesome.context.forEach(ctx => {
+      Cypress.Mochawesome.context.forEach((ctx) => {
         addContext({ test }, ctx);
       });
     }
@@ -77,7 +78,7 @@ Cypress.on("test:after:run", (test, runnable) => {
 
 // required for cypress-terminal-report to be able to find logs after the test
 // is finished
-Cypress.Commands.add("addTestContext", context => {
+Cypress.Commands.add("addTestContext", (context) => {
   if (!Cypress.Mochawesome) {
     Cypress.Mochawesome = createMochawesomeObject();
   }
@@ -102,7 +103,7 @@ function createMochawesomeObject() {
  *
  * @see https://github.com/cypress-io/cypress/issues/2118
  */
-Cypress.on("window:load", window => {
+Cypress.on("window:load", (window) => {
   const addEventListener = window.addEventListener;
 
   window.addEventListener = function (event) {
@@ -169,5 +170,16 @@ beforeEach(function () {
     console.log(`test name: ${testName}\n\n"this test should be ran against OSS jar. Make sure you have MB_EDITION=oss set and go to e2e/support/cypress.js and temporarily remove the skipOn(true) to run the test"
     `);
     cy.skipOn(true);
+  }
+
+  // enable network throttling, primarily used for stress test at CI
+  if (isNetworkThrottlingEnabled) {
+    cy.intercept("GET", "**", (req) => {
+      req.reply((res) => {
+        res.setDelay(300);
+        res.setThrottle(1440); // 1.44Mb, same as slow 4g in chrome dev tools
+        res.send();
+      });
+    }).as("globalIntercept");
   }
 });

@@ -13,6 +13,6 @@ export const FullscreenAnalyticsDashboard = ({
     aria-label={t`Enter Fullscreen`}
     icon="expand"
     className={CS.cursorPointer}
-    onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+    onClick={(e) => onFullscreenChange(!isFullscreen, !e.altKey)}
   />
 );

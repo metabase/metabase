@@ -19,11 +19,11 @@ export const FileUploadStatus = () => {
   const resetUploads = () => dispatch(clearAllUploads());
 
   const groupedTables = _.groupBy(
-    uploads.filter(upload => upload.tableId),
+    uploads.filter((upload) => upload.tableId),
     "tableId",
   );
   const groupedCollections = _.groupBy(
-    uploads.filter(upload => upload.collectionId),
+    uploads.filter((upload) => upload.collectionId),
     "collectionId",
   );
 
@@ -32,7 +32,7 @@ export const FileUploadStatus = () => {
 
   return (
     <>
-      {tables.map(tableId => {
+      {tables.map((tableId) => {
         return (
           <FileUploadStatusContent
             key={`uploads-table-${tableId}`}
@@ -42,7 +42,7 @@ export const FileUploadStatus = () => {
           />
         );
       })}
-      {collections.map(collectionId => {
+      {collections.map((collectionId) => {
         return (
           <FileUploadStatusContent
             key={`uploads-collection-${collectionId}`}
@@ -68,7 +68,7 @@ const FileUploadStatusContent = ({
   resetUploads: () => void;
 }) => {
   const isActive = uploads.some(
-    upload => isUploadInProgress(upload) || isUploadAborted(upload),
+    (upload) => isUploadInProgress(upload) || isUploadAborted(upload),
   );
   const isVisible = useStatusVisibility(isActive);
 

@@ -1,9 +1,9 @@
 (ns metabase.query-processor.middleware.visualization-settings
   (:require
+   [metabase.appearance.core :as appearance]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]))
 
 (defn- normalize-field-settings
@@ -72,7 +72,7 @@
           updated-column-viz-settings  (if (= (:type query) :query)
                                          (update-card-viz-settings column-viz-settings field-ids)
                                          column-viz-settings)
-          global-settings              (update-vals (public-settings/custom-formatting)
+          global-settings              (update-vals (appearance/custom-formatting)
                                                     mb.viz/db->norm-column-settings-entries)
           updated-card-viz-settings    (-> normalized-card-viz-settings
                                            (assoc ::mb.viz/column-settings updated-column-viz-settings)

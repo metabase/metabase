@@ -30,6 +30,7 @@
 
 (doseq [[feature supported?] {:convert-timezone          true
                               :datetime-diff             true
+                              :expression-literals       true
                               :now                       true
                               :identifiers-with-spaces   true
                               :percentile-aggregations   false
@@ -196,6 +197,10 @@
   [_driver _unit x y]
   (h2x/->integer [:trunc (h2x/- (extract :epoch y) (extract :epoch x))]))
 
+(defmethod sql.qp/float-dbtype :vertica
+  [_]
+  "DOUBLE PRECISION")
+
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -253,6 +258,11 @@
 (defmethod sql.qp/->honeysql [:vertica java.time.ZonedDateTime]
   [driver t]
   (sql.qp/->honeysql driver (t/offset-date-time t)))
+
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/expression-literal-text-value]
+  [driver [_ value]]
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/cast "long varchar")))
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
@@ -317,3 +327,7 @@
         (let [t (u.date/parse s timezone)]
           (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
           t)))))
+
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

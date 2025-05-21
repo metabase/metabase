@@ -1,38 +1,42 @@
 (ns metabase.notification.core
   "Core functionality for notifications."
   (:require
-   [metabase.notification.payload.core :as notification.payload]
-   [metabase.notification.seed :as notification.seed]
-   [metabase.notification.send :as notification.send]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
+   [metabase.notification.card]
+   [metabase.notification.events.notification]
+   [metabase.notification.payload.core]
+   [metabase.notification.seed]
+   [metabase.notification.send]
+   [metabase.notification.task.send]
    [potemkin :as p]))
 
-;; ------------------------------------------------------------------------------------------------;;
-;;                                           Public APIs                                           ;;
-;; ------------------------------------------------------------------------------------------------;;
+(comment
+  metabase.notification.card/keep-me
+  metabase.notification.events.notification/keep-me
+  metabase.notification.payload.core/keep-me
+  metabase.notification.seed/keep-me
+  metabase.notification.send/keep-me
+  metabase.notification.task.send/keep-me)
 
 (p/import-vars
- [notification.payload
+ [metabase.notification.card
+  delete-card-notifications-and-notify!]
+ [metabase.notification.payload.core
   notification-payload]
- [notification.seed
-  seed-notification!])
+ [metabase.notification.seed
+  seed-notification!]
+ [metabase.notification.send
+  send-notification!]
+ [metabase.notification.task.send
+  update-send-notification-triggers-timezone!])
 
-(def ^:private Options
-  [:map
-   [:notification/sync? :boolean]])
+(defmacro with-skip-sending-notification
+  "Execute `body` with [[metabase.notification.events.notification/*skip-sending-notification?*]] bound to `skip?`."
+  [skip? & body]
+  `(binding [metabase.notification.events.notification/*skip-sending-notification?* ~skip?]
+     ~@body))
 
-(def ^:dynamic *default-options*
-  "The default options for sending a notification."
-  {:notification/sync? false})
-
-(mu/defn send-notification!
-  "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification & {:keys [] :as options} :- [:maybe Options]]
-  (let [options      (merge *default-options* options)
-        notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-    (log/debugf "Sending notification: %s %s" (:id notification) (if (:notification/sync? options) "synchronously" "asynchronously"))
-    (if (:notification/sync? options)
-      (notification.send/send-notification-sync! notification)
-      (notification.send/send-notification-async! notification))))
+(defmacro with-default-options
+  "Execute `body` with [[metabase.notification.send/*default-options*]] bound to `options`."
+  [options & body]
+  `(binding [metabase.notification.send/*default-options* ~options]
+     ~@body))

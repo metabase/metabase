@@ -42,7 +42,7 @@ export const refreshSession = createAsyncThunk(
   async (_, { dispatch }) => {
     await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings({})),
+      dispatch(refreshSiteSettings()),
     ]);
     await dispatch(refreshLocale()).unwrap();
   },

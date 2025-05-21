@@ -25,11 +25,11 @@ export const SettingsCommandPaletteActions = () => {
     dispatch(initializeSettings());
   });
 
-  const sections = useSelector<Record<string, AdminSection>>(state =>
+  const sections = useSelector<Record<string, AdminSection>>((state) =>
     getSections(state),
   );
 
-  const { search: query } = useKBar(state => ({ search: state.searchQuery }));
+  const { search: query } = useKBar((state) => ({ search: state.searchQuery }));
   const hasQuery = query.length > 0;
 
   const adminSettingsActions = useMemo(() => {
@@ -39,8 +39,8 @@ export const SettingsCommandPaletteActions = () => {
       const acc: Action[] = [
         ...memo,
         ...settings
-          .filter(s => s.display_name)
-          .map(s => ({
+          .filter((s) => s.display_name)
+          .map((s) => ({
             name: s.display_name || "",
             section: "admin",
             id: `admin-setting-${s.key}`,

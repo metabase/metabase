@@ -35,9 +35,9 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     beforeEach(cy.signInAsAdmin);
 
     it("should let you see all created alerts", () => {
-      cy.request("/api/notification").then(response => {
+      cy.request("/api/notification").then((response) => {
         const questionAlerts = response.body.filter(
-          notification => notification.payload_type === "notification/card",
+          (notification) => notification.payload_type === "notification/card",
         );
         expect(questionAlerts).to.have.length(3);
       });
@@ -55,13 +55,13 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
         .findByText(/Created by you/)
         .click();
 
-      H.modal().findByText("Daily").click();
-      H.popover().findByText("Weekly").click();
+      H.modal().findByTestId("select-frequency").click();
+      H.popover().findByText("weekly").click();
       H.modal().button("Save changes").click();
 
       // Check that changes stuck
       cy.wait("@updatedAlert").then(({ response: { body } }) => {
-        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 9 ? * 2");
+        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2 *");
       });
     });
   });
@@ -127,18 +127,18 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
         cy.findByText("Edit alert").should("be.visible");
         cy.button("Done").should("be.enabled");
 
-        cy.findByText("Daily").click();
+        cy.findByTestId("select-frequency").click();
       });
+      H.popover().findByText("weekly").click();
 
-      H.popover().findByText("Weekly").click();
       H.modal().button("Save changes").click();
 
       // Check that changes stuck
       cy.wait("@updatedAlert").then(({ response: { body } }) => {
-        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 9 ? * 2");
+        expect(body.subscriptions[0].cron_schedule).to.equal("0 0 8 ? * 2 *");
       });
 
-      H.modal().findByText("Check on Monday at 9:00 AM");
+      H.modal().findByText("Check on Monday at 8:00 AM");
     });
   });
 });

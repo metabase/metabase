@@ -1,7 +1,6 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -47,6 +46,11 @@
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
 
+(defmethod mi/can-read? :model/Channel
+  [_channel]
+  (or (mi/superuser?)
+      (perms/current-user-has-application-permissions? :setting)))
+
 (t2/define-before-update :model/Channel
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]
@@ -58,10 +62,6 @@
       ;; We rename deactivated channels so that new channels can reuse the name
       ;; Limit to 254 characters to avoid hitting character limit
       (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
-
-(defmethod audit-log/model-details :model/Channel
-  [channel _event-type]
-  (select-keys channel [:id :name :description :type :active]))
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 

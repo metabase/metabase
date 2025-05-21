@@ -354,7 +354,7 @@ describe("scenarios > organization > timelines > question", () => {
         // should display its checkbox with a "dash" icon
         cy.findByTestId("sidebar-content")
           .findByText("Releases")
-          .closest("[aria-label=Timeline card header]")
+          .closest("[aria-label='Timeline card header']")
           .within(() => {
             cy.icon("dash").should("be.visible");
 
@@ -375,7 +375,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         cy.findByTestId("sidebar-content")
           .findByText("TC1")
-          .closest("[aria-label=Timeline event card]")
+          .closest("[aria-label='Timeline event card']")
           .within(() => {
             cy.findByRole("checkbox").should("not.be.checked");
           });
@@ -384,7 +384,7 @@ describe("scenarios > organization > timelines > question", () => {
         // should make its events automatically visible
         cy.findByTestId("sidebar-content")
           .findByText("Timeline for collection")
-          .closest("[aria-label=Timeline card header]")
+          .closest("[aria-label='Timeline card header']")
           .within(() => cy.findByRole("checkbox").click());
 
         H.echartsIcon("warning").should("be.visible");
@@ -412,36 +412,40 @@ describe("scenarios > organization > timelines > question", () => {
       H.echartsIcon("star", true).should("be.visible");
     });
 
-    it("should open the sidebar when clicking an event icon", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: "Releases" },
-        events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
-        ],
-      });
+    it(
+      "should open the sidebar when clicking an event icon",
+      { tags: "@flaky" },
+      () => {
+        H.createTimelineWithEvents({
+          timeline: { name: "Releases" },
+          events: [
+            { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          ],
+        });
 
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+        H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").realClick();
+        H.echartsIcon("star").should("be.visible");
+        H.echartsIcon("star").click();
 
-      // event should be selected in sidebar
-      timelineEventCard("RC1").should("be.visible");
-      timelineEventCard("RC1").should(
-        "have.css",
-        "border-left",
-        "4px solid rgb(80, 158, 227)",
-      );
+        // event should be selected in sidebar
+        timelineEventCard("RC1").should("be.visible");
+        timelineEventCard("RC1").should(
+          "have.css",
+          "border-left",
+          "4px solid rgb(80, 158, 227)",
+        );
 
-      // after clicking the icon again, it should be deselected in sidebar
-      H.echartsIcon("star", true).click();
-      timelineEventCard("RC1").should("be.visible");
-      timelineEventCard("RC1").should(
-        "have.css",
-        "border-left",
-        "4px solid rgba(0, 0, 0, 0)",
-      );
-    });
+        // after clicking the icon again, it should be deselected in sidebar
+        H.echartsIcon("star", true).click();
+        timelineEventCard("RC1").should("be.visible");
+        timelineEventCard("RC1").should(
+          "have.css",
+          "border-left",
+          "4px solid rgba(0, 0, 0, 0)",
+        );
+      },
+    );
 
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
@@ -549,7 +553,7 @@ describe("scenarios > organization > timelines > question", () => {
 });
 
 function timelineEventCard(eventName) {
-  return cy.findByText(eventName).closest("[aria-label=Timeline event card]");
+  return cy.findByText(eventName).closest("[aria-label='Timeline event card']");
 }
 
 function toggleEventVisibility(eventName) {

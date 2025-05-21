@@ -145,10 +145,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "January 1, 2024",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
-      setValue: value => {
+      setValue: (value) => {
         addDateFilter(value);
       },
-      updateValue: value => {
+      updateValue: (value) => {
         updateDateFilter(value);
       },
     });
@@ -210,12 +210,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "Gizmo",
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
-      setValue: value => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+      setValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
-      updateValue: value => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+      updateValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -224,12 +224,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "Gizmo",
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
-      setValue: value => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+      setValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
-      updateValue: value => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+      updateValue: (value) => {
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });

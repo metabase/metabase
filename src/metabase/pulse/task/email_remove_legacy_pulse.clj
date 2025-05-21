@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.channel.email :as email]
    [metabase.channel.template.core :as channel.template]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
@@ -31,7 +31,7 @@
                                                                 :pulses      legacy-pulse
                                                                 :instanceURL (urls/site-url)})})))))
 
-(jobs/defjob ^{:doc "Send email to admins and warn about removal of Pulse in 49, This job will only run once."}
+(task/defjob ^{:doc "Send email to admins and warn about removal of Pulse in 49, This job will only run once."}
   EmailRemoveLegacyPulse [_ctx]
   (email-remove-legacy-pulse))
 

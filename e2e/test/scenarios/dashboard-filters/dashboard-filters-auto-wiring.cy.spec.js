@@ -34,7 +34,7 @@ describe("dashboard filters auto-wiring", () => {
 
   describe("parameter mapping", () => {
     it("should wire parameters to cards with matching fields", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -80,7 +80,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should not wire parameters to cards that already have a parameter, despite matching fields", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -141,7 +141,7 @@ describe("dashboard filters auto-wiring", () => {
               size_y: 4,
             },
           ],
-        }).then(dashboardId => {
+        }).then((dashboardId) => {
           H.visitDashboard(dashboardId);
         });
       });
@@ -156,7 +156,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should undo parameter wiring when 'Undo' is clicked", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -209,7 +209,7 @@ describe("dashboard filters auto-wiring", () => {
         },
       ];
 
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -238,7 +238,7 @@ describe("dashboard filters auto-wiring", () => {
 
     describe("multiple tabs", () => {
       it("should not wire parameters to cards in different tabs", () => {
-        createDashboardWithCards({ cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then((dashboardId) => {
           H.visitDashboardAndCreateTab({
             dashboardId,
             save: false,
@@ -275,7 +275,7 @@ describe("dashboard filters auto-wiring", () => {
 
   describe("add a card", () => {
     it("should wire parameters to cards that are added to the dashboard", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -319,7 +319,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should undo parameter wiring when 'Undo' is clicked", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -357,7 +357,7 @@ describe("dashboard filters auto-wiring", () => {
 
     describe("multiple tabs", () => {
       it("should not wire parameters to cards that are added to the dashboard in a different tab", () => {
-        createDashboardWithCards({ cards }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then((dashboardId) => {
           H.visitDashboard(dashboardId);
         });
 
@@ -416,7 +416,7 @@ describe("dashboard filters auto-wiring", () => {
 
   describe("replace a card", () => {
     it("should show auto-wire suggestion toast when a card is replaced", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -519,7 +519,7 @@ describe("dashboard filters auto-wiring", () => {
       H.dashboardParametersContainer().findByText("ID").click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("1,");
+        H.fieldValuesCombobox().type("1,");
         cy.button("Add filter").click();
       });
 
@@ -545,11 +545,11 @@ describe("dashboard filters auto-wiring", () => {
       H.selectDashboardFilter(H.getDashboardCard(0), "ID");
       H.saveDashboard();
 
-      cy.get("@ordersQuestionId").then(ordersQuestionId => {
+      cy.get("@ordersQuestionId").then((ordersQuestionId) => {
         addQuestionFromQueryBuilder({ questionId: ordersQuestionId });
       });
 
-      cy.get("@reviewsQuestionId").then(reviewsQuestionId => {
+      cy.get("@reviewsQuestionId").then((reviewsQuestionId) => {
         addQuestionFromQueryBuilder({
           questionId: reviewsQuestionId,
           saveDashboardAfterAdd: false,
@@ -569,7 +569,7 @@ describe("dashboard filters auto-wiring", () => {
       H.dashboardParametersContainer().findByText("ID").click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("1,");
+        H.fieldValuesCombobox().type("1,");
         cy.button("Add filter").click();
       });
 
@@ -591,7 +591,7 @@ describe("dashboard filters auto-wiring", () => {
 
   describe("dismiss toasts", () => {
     it("should dismiss auto-wire toasts on filter removal", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -614,7 +614,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should dismiss auto-wire toasts on card removal", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -639,7 +639,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should dismiss toasts on timeout", () => {
-      createDashboardWithCards({ cards }).then(dashboardId => {
+      createDashboardWithCards({ cards }).then((dashboardId) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -700,7 +700,7 @@ describe("dashboard filters auto-wiring", () => {
     const dashboardDetails = {
       parameters: [sourceParameter, categoryParameter],
     };
-    const getParameterMappings = card => [
+    const getParameterMappings = (card) => [
       {
         card_id: card.id,
         parameter_id: sourceParameter.id,
@@ -794,12 +794,12 @@ function removeFilterFromDashCard(dashcardIndex = 0) {
 }
 
 function getTableCell(columnName, rowIndex) {
-  cy.findAllByTestId("column-header").then($columnHeaders => {
+  cy.findAllByRole("columnheader").then(($columnHeaders) => {
     const columnHeaderIndex = $columnHeaders
       .toArray()
-      .findIndex($columnHeader => $columnHeader.textContent === columnName);
+      .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
     // eslint-disable-next-line no-unsafe-element-filtering
-    const row = cy.findAllByTestId("table-row").eq(rowIndex);
+    const row = cy.findAllByRole("row").eq(rowIndex);
     // eslint-disable-next-line no-unsafe-element-filtering
     row.findAllByTestId("cell-data").eq(columnHeaderIndex).as("cellData");
   });

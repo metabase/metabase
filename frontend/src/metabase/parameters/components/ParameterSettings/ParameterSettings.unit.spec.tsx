@@ -175,7 +175,7 @@ describe("ParameterSidebar", () => {
       "string/ends-with",
     ])(
       "should be able to toggle multiple values settings for `%s` operator",
-      async type => {
+      async (type) => {
         const { onChangeIsMultiSelect } = setup({
           parameter: createMockUiParameter({
             type,

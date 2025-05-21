@@ -49,7 +49,7 @@
                                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
                                      field-name :name :as field} new-field-metadatas
                                     :let [semantic-type (common/semantic-type field)
-                                          has-field-values (when (sync-util/can-be-category-or-list? base-type semantic-type)
+                                          has-field-values (when (sync-util/can-be-list? base-type semantic-type)
                                                              :auto-list)]]
                                 (do
                                   (when (and effective-type
@@ -222,6 +222,10 @@
    ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
    ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
    ;; `sync-active-instances!`
+   (log/tracef "Syncing field instances for %s DB: %s, Existing: %s"
+               (sync-util/name-for-logging table)
+               (pr-str (sort (map common/canonical-name db-metadata)))
+               (pr-str (sort (map common/canonical-name our-metadata))))
    (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
      (+ num-updates
         (retire-fields! table db-metadata our-metadata)

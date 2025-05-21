@@ -2,8 +2,8 @@
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -59,8 +59,8 @@
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
   1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
-  2. the value of `public-settings/download-row-limit` if this is for a download
-  3. the value of `public-settings/attachment-row-limit` if this is for a dashboard subscription
+  2. the value of [[download-row-limit]] if this is for a download
+  3. the value of [[attachment-row-limit]] if this is for a dashboard subscription
 
   If those three values are not set we fall back to [[metabase.query-processor.limit/absolute-max-results]],
   which is also the maximum row count allowed for xlsx downloads due to Excel sheet constraints."
@@ -68,7 +68,7 @@
   (when-not (disable-max-results? query)
     (let [context (-> query :info :context)
           download-context? #{:csv-download :json-download :xlsx-download}
-          attachment-context? #{:dashboard-subscription :pulse}
+          attachment-context? #{:dashboard-subscription :pulse :notification}
           download-limit (when (download-context? context) (download-row-limit))
           attachment-limit (when (attachment-context? context) (attachment-row-limit))
           res (u/safe-min (mbql.u/query->max-rows-limit query)

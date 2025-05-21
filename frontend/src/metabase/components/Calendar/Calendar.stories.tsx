@@ -7,7 +7,7 @@ export default {
   component: Calendar,
 };
 
-const Template: StoryFn<typeof Calendar> = args => {
+const Template: StoryFn<typeof Calendar> = (args) => {
   return <Calendar {...args} />;
 };
 

@@ -40,7 +40,7 @@ export const trackColumnCompareViaColumnHeader = (
 ) => {
   trackSchemaEvent("question", {
     event: "column_compare_via_column_header",
-    custom_expressions_used: expressions.flatMap(expression =>
+    custom_expressions_used: expressions.flatMap((expression) =>
       Lib.functionsUsedByExpression(query, stageIndex, expression),
     ),
     database_id: Lib.databaseID(query),
@@ -56,7 +56,7 @@ export const trackColumnCompareViaPlusModal = (
 ) => {
   trackSchemaEvent("question", {
     event: "column_compare_via_plus_modal",
-    custom_expressions_used: expressions.flatMap(expression =>
+    custom_expressions_used: expressions.flatMap((expression) =>
       Lib.functionsUsedByExpression(query, stageIndex, expression),
     ),
     database_id: Lib.databaseID(query),

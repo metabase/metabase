@@ -34,7 +34,13 @@ For more information on **roles** in BigQuery, see [Google Cloud Platform's docu
 
 > **You can only download the key once**. If you delete the key, you'll need to create another service account with the same roles.
 
-## Settings
+## Connection and sync
+
+After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
+
+Here you can [sync the database schema and rescan field values](../sync-scan.md), and edit connection details.
+
+## Edit connection details
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -85,32 +91,19 @@ We suggest you leave this off unless you're doing manual [timezone](../../config
 
 This can be useful for [auditing](../../usage-and-performance-tools/usage-analytics.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
 
+### Alternate hostname
+
+If you want to use a different hostname to connect to BigQuery. Format: `https://<hostname>:<port>`. If you're using a proxy service to connect to BigQuery (e.g. a privacy proxy that anonymizes PII), you should configure this field to the proxy hostname or IP. Remember to set the complete URI with protocol and port number.
+
 ### Re-run queries for simple explorations
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
 By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-### Choose when Metabase syncs and scans
+### Choose when syncs and scans happen
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md#syncing-and-scanning-databases).
-
-#### Database syncing
-
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
-
-- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
-- The time to run the sync, in the timezone of the server where your Metabase app is running.
-
-#### Scanning for filter values
-
-Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
-
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
-
-- **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
-- **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 
 ### Periodically refingerprint tables
 
@@ -163,6 +156,14 @@ FROM [my_dataset.my_table]
 ## Troubleshooting
 
 If you're having trouble with your BigQuery connection, you can check out this [troubleshooting guide](../../troubleshooting-guide/bigquery-drive.md) that covers BigQuery issues, [this one](../../troubleshooting-guide/db-connection.md) on data warehouse connections, or visit [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
+
+## Model features
+
+There aren't (yet) any model features available for BigQuery.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).
 
 ## Further reading
 

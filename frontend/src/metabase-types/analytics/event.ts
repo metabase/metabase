@@ -2,6 +2,7 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
+import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 
 type SimpleEventSchema = {
   event: string;
@@ -81,6 +82,36 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event_detail: "download-diagnostics" | "submit-report";
 }>;
 
+export type GsheetsConnectionClickedEvent = ValidateEvent<{
+  event: "sheets_connection_clicked";
+  triggered_from: "db-page" | "left-nav";
+}>;
+
+export type GsheetsImportClickedEvent = ValidateEvent<{
+  event: "sheets_import_by_url_clicked";
+  triggered_from: "sheets-url-popup";
+}>;
+
+export type KeyboardShortcutPerformEvent = ValidateEvent<{
+  event: "keyboard_shortcut_performed";
+  event_detail: KeyboardShortcutId;
+}>;
+
+export type NewEntityInitiatedEvent = ValidateEvent<{
+  event: "plus_button_clicked";
+  triggered_from: "model" | "metric" | "collection-header" | "collection-nav";
+}>;
+
+export type NewButtonClickedEvent = ValidateEvent<{
+  event: "new_button_clicked";
+  triggered_from: "app-bar" | "empty-collection";
+}>;
+
+export type NewButtonItemClickedEvent = ValidateEvent<{
+  event: "new_button_item_clicked";
+  triggered_from: "question" | "native-query" | "dashboard";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -91,4 +122,10 @@ export type SimpleEvent =
   | OnboardingChecklistItemCTAClickedEvent
   | MoveToTrashEvent
   | ErrorDiagnosticModalOpenedEvent
-  | ErrorDiagnosticModalSubmittedEvent;
+  | ErrorDiagnosticModalSubmittedEvent
+  | GsheetsConnectionClickedEvent
+  | GsheetsImportClickedEvent
+  | KeyboardShortcutPerformEvent
+  | NewEntityInitiatedEvent
+  | NewButtonClickedEvent
+  | NewButtonItemClickedEvent;

@@ -26,26 +26,4 @@ describe("metabase > scenarios > navbar > new menu", () => {
     cy.url("should.contain", "/question#");
     H.NativeEditor.get().should("be.visible");
   });
-
-  it("collection opens modal and redirects to a created collection after saving", () => {
-    H.popover().within(() => {
-      cy.findByText("Collection").click();
-    });
-
-    cy.findByTestId("new-collection-modal").then(modal => {
-      cy.findByTestId("collection-picker-button").findByText("Our analytics");
-
-      cy.findByPlaceholderText("My new fantastic collection").type(
-        "Test collection",
-      );
-      cy.findByLabelText("Description").type("Test collection description");
-
-      cy.findByText("Create").click();
-    });
-
-    cy.findByTestId("collection-name-heading").should(
-      "have.text",
-      "Test collection",
-    );
-  });
 });

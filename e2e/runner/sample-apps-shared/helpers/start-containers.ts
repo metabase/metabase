@@ -40,14 +40,4 @@ export async function startContainers({
   } catch {
     shell(dockerDownCommand, { cwd, env });
   }
-
-  if (!process.env.CI) {
-    ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach(signal => {
-      process.on(signal, () => {
-        console.log(`Parent received ${signal}, killing stopping app...`);
-
-        shell(dockerDownCommand, { cwd, env });
-      });
-    });
-  }
 }

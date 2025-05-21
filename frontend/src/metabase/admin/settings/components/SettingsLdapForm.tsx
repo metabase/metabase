@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
@@ -27,14 +27,14 @@ import type { SettingKey, Settings } from "metabase-types/api";
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
   message: "Check your parentheses",
-  test: value =>
+  test: (value) =>
     (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
 };
 
 const testPort: TestConfig<string | null | undefined> = {
   name: "test-port",
   message: "That's not a valid port number",
-  test: value => Boolean((value || "").trim().match(/^\d*$/)),
+  test: (value) => Boolean((value || "").trim().match(/^\d*$/)),
 };
 
 const LDAP_SCHEMA = Yup.object({
@@ -74,7 +74,7 @@ export const SettingsLdapFormView = ({
   }, [elements]);
 
   const fields = useMemo(() => {
-    return _.mapObject(settings, setting => ({
+    return _.mapObject(settings, (setting) => ({
       name: setting.key,
       label: setting.display_name,
       description: setting.description,
@@ -166,9 +166,12 @@ export const SettingsLdapFormView = ({
               <FormTextInput {...fields["ldap-port"]} />
               <FormRadioGroup {...fields["ldap-security"]}>
                 <Group mt={"xs"}>
-                  <Radio value="none" label="None" />
-                  <Radio value="ssl" label="SSL" />
-                  <Radio value="starttls" label="StartTLS" />
+                  <Radio value="none" label={t`None`} />
+                  <Radio
+                    value="ssl"
+                    label={c("short for 'Secure Sockets Layer'").t`SSL`}
+                  />
+                  <Radio value="starttls" label={t`StartTLS`} />
                 </Group>
               </FormRadioGroup>
               <FormTextInput {...fields["ldap-bind-dn"]} />
@@ -231,7 +234,7 @@ const getAttributeValues = (
   defaultableAttrs: Set<string>,
 ): LdapFormValues => {
   const attributeValues = Object.fromEntries(
-    ldapAttributes.map(key => [
+    ldapAttributes.map((key) => [
       key,
       defaultableAttrs.has(key)
         ? (values[key] ?? settings[key]?.default)

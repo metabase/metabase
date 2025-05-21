@@ -14,14 +14,14 @@ type Props = {
 };
 
 function SQLSnippetsDocLink() {
-  const href = useSelector(state =>
+  const href = useSelector((state) =>
     getDocsUrl(state, { page: "questions/native-editor/sql-snippets" }),
   );
   return <ExternalLink href={href}>{t`SQL snippets`}</ExternalLink>;
 }
 
 function ReferencingQuestionsDocLink() {
-  const href = useSelector(state =>
+  const href = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/native-editor/referencing-saved-questions-in-queries",
       anchor: "referencing-models-and-saved-questions",

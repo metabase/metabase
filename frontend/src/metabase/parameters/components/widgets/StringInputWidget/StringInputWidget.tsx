@@ -1,81 +1,94 @@
-import { useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { t } from "ttag";
-import { isEmpty, isString } from "underscore";
 
-import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
-import type { Parameter } from "metabase-types/api";
+import { deserializeStringParameterValue } from "metabase/querying/parameters/utils/parsing";
+import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
+import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
-import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, WidgetLabel } from "../Widget";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 type StringInputWidgetProps = {
-  value: string[] | undefined;
-  setValue: (value: string[] | undefined) => void;
   className?: string;
-  autoFocus?: boolean;
-  placeholder?: string;
-  arity?: 1 | "n";
-  label?: string;
   parameter?: Partial<Pick<Parameter, "required" | "default">>;
+  value: ParameterValueOrArray | null | undefined;
+  setValue: (value: string[] | undefined) => void;
+  label?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+  isMultiSelect?: boolean;
 };
 
 export function StringInputWidget({
-  value,
+  parameter = {},
+  value: initialValue,
   setValue,
   className,
   autoFocus,
-  arity = 1,
   placeholder = t`Enter some text`,
   label,
-  parameter = {},
+  isMultiSelect,
 }: StringInputWidgetProps) {
-  const arrayValue = normalize(value);
-  const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<string[]>(arrayValue);
-  const multi = arity === "n";
-  const isValid = unsavedArrayValue.every(isString);
+  const normalizedValue = deserializeStringParameterValue(initialValue);
+  const [unsavedValue, setUnsavedValue] = useState(normalizedValue);
+  const [unsavedInputValue, setUnsavedInputValue] = useState(
+    normalizedValue[0] ?? "",
+  );
+  const isEmpty = unsavedValue.length === 0;
+  const isRequired = parameter?.required;
 
-  const onClick = () => {
-    if (isEmpty(unsavedArrayValue)) {
-      setValue(undefined);
-    } else {
-      setValue(unsavedArrayValue);
+  const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const inputValue = event.target.value;
+    const trimmedInputValue = inputValue.trim();
+    setUnsavedInputValue(inputValue);
+    setUnsavedValue(trimmedInputValue.length > 0 ? [trimmedInputValue] : []);
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (isRequired && isEmpty) {
+      return;
     }
+
+    setValue(unsavedValue.length > 0 ? unsavedValue : undefined);
   };
 
   return (
-    <WidgetRoot className={className}>
+    <Box
+      component="form"
+      className={className}
+      w={WIDTH}
+      onSubmit={handleSubmit}
+    >
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      <TokenFieldWrapper>
-        <TokenField
-          value={unsavedArrayValue}
-          onChange={setUnsavedArrayValue}
-          placeholder={placeholder}
-          options={[]}
-          autoFocus={autoFocus}
-          multi={multi}
-          parseFreeformValue={parseStringValue}
-          updateOnInputChange
-        />
-      </TokenFieldWrapper>
+      <Box m="sm">
+        {isMultiSelect ? (
+          <MultiAutocomplete
+            value={unsavedValue}
+            placeholder={placeholder}
+            autoFocus={autoFocus}
+            comboboxProps={COMBOBOX_PROPS}
+            onChange={setUnsavedValue}
+          />
+        ) : (
+          <TextInput
+            value={unsavedInputValue}
+            placeholder={placeholder}
+            autoFocus={autoFocus}
+            onChange={handleFieldChange}
+          />
+        )}
+      </Box>
       <Footer>
         <UpdateFilterButton
-          value={value}
-          unsavedValue={unsavedArrayValue}
+          value={initialValue}
+          unsavedValue={unsavedValue}
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
-          isValid={isValid}
-          onClick={onClick}
+          isValid
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
-}
-
-function normalize(value: string[] | undefined): string[] {
-  if (Array.isArray(value)) {
-    return value.filter(x => x !== undefined);
-  } else {
-    return [];
-  }
 }

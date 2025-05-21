@@ -13,7 +13,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.number :as u.number]))
 
 (comment lib/keep-me)
 
@@ -288,6 +289,14 @@
   (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.23]]
+          (-> (lib.tu/venues-query)
+              (lib/expression "expr" 1.23)
+              (lib/expressions))))
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
+          (-> (lib.tu/venues-query)
+              (lib/expression "expr" false)
               (lib/expressions)))))
 
 (deftest ^:parallel expressionable-columns-test
@@ -472,21 +481,21 @@
       :filter      [:= [:field 1 {:base-type :type/Integer}] 3])))
 
 (deftest ^:parallel diagnose-expression-test-2
-  (testing "correct expression are accepted silently"
-    (testing "type errors are reported"
-      (binding [lib.schema.expression/*suppress-expression-type-check?* false]
-        (are [mode expr] (=? {:message #"Type error: .*"}
-                             (lib.expression/diagnose-expression
-                              (lib.tu/venues-query) 0 mode
-                              (lib.convert/->pMBQL expr)
-                              #?(:clj nil :cljs js/undefined)))
-          :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
-             ;; To make this test case work, the aggregation schema has to be
-             ;; tighter and not allow anything. That's a bigger piece of work,
-             ;; because it makes expressions and aggregations mutually recursive
-             ;; or requires a large amount of duplication.
-          #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-          :filter      [:sum [:field 1 {:base-type :type/Integer}]])))))
+  (testing "type errors are reported"
+    (are [mode expr] (=? {:message  "Types are incompatible."
+                          :friendly true}
+                         (lib.expression/diagnose-expression
+                          (lib.tu/venues-query) 0 mode
+                          (lib.convert/->pMBQL expr)
+                          #?(:clj nil :cljs js/undefined)))
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
+        ;; To make this test case work, the aggregation schema has to be
+        ;; tighter and not allow anything. That's a bigger piece of work,
+        ;; because it makes expressions and aggregations mutually recursive
+        ;; or requires a large amount of duplication.
+      #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
+      :filter      [:sum [:field 1 {:base-type :type/Integer}]]
+      :filter      [:value "not a boolean" {:base_type :type/Text}])))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
@@ -541,6 +550,49 @@
                                                          100)
                                                   nil))))))
 
+(deftest ^:parallel diagnose-expression-literals-without-feature-support-test
+  (testing "top-level literals are not allowed if the :expression-literals feature is not supported"
+    (let [restricted-provider (meta/updated-metadata-provider update :features disj :expression-literals)
+          query (lib/query restricted-provider (meta/table-metadata :orders))
+          expr  (lib.expression/value true)]
+      (doseq [mode [:expression :filter]]
+        (is (=? {:message  "Standalone constants are not supported."
+                 :friendly true}
+                (lib.expression/diagnose-expression query 0 mode expr nil)))))))
+
+(deftest ^:parallel diagnose-expression-literal-values-test
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        int-expr  [:value 1 nil]
+        str-expr  [:value "foo" nil]
+        bool-expr [:value true nil]
+        diagnose-expr (fn [mode expr]
+                        (lib.expression/diagnose-expression query 0 mode (lib.convert/->pMBQL expr) nil))]
+    (testing "valid literal expressions are accepted"
+      (are [mode expr] (nil? (diagnose-expr mode expr))
+        :expression  int-expr
+        :expression  str-expr
+        :expression  bool-expr
+        :filter      bool-expr))
+    (testing "invalid literal expressions are rejected when not suppressing type checks"
+      (are [mode expr] (=? {:message "Types are incompatible."} (diagnose-expr mode expr))
+        :filter str-expr
+        :filter int-expr))))
+
+(deftest ^:parallel diagnose-expression-nested-aggregation-test
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        diagnose-expr (fn [expr]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->pMBQL expr) nil))]
+    (testing "valid aggregation expressions are accepted"
+      (are [expr] (nil? (diagnose-expr expr))
+        [:avg [:field 1]]
+        [:offset {:lib/uuid (str (random-uuid))} [:sum [:field 42]] 1]))
+    (testing "invalid aggregation expressions are rejected"
+      (are [expr culprit] (= (str "Embedding " culprit " in aggregation functions is not supported")
+                             (:message (diagnose-expr expr)))
+        [:sum [:avg [:field 1]]]                                                  "Average"
+        [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
+        [:offset {:lib/uuid (str (random-uuid))} [:sum [:cum-sum [:field 42]]] 1] "CumulativeSum"))))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
@@ -589,3 +641,10 @@
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
     #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))
+
+(deftest ^:parallel value-test
+  (are [expected value] (=? expected (lib.expression/value value))
+    [:value {:base-type :type/Text} "abc"]       "abc"
+    [:value {:base-type :type/Integer} 123]      123
+    [:value {:base-type :type/Boolean} false]    false
+    [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))

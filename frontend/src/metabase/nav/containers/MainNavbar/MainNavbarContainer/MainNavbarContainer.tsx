@@ -106,7 +106,7 @@ function MainNavbarContainer({
       collections,
       currentUser.id,
     );
-    const displayableCollections = collections.filter(collection =>
+    const displayableCollections = collections.filter((collection) =>
       nonPersonalOrArchivedCollection(collection),
     );
 
@@ -187,7 +187,6 @@ function MainNavbarContainer({
         bookmarks={bookmarks}
         isAdmin={isAdmin}
         isOpen={isOpen}
-        currentUser={currentUser}
         collections={collectionTree}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}

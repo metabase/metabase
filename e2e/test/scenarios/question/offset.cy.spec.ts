@@ -263,7 +263,8 @@ describe("scenarios > question > offset", () => {
       H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
 
-        cy.findByPlaceholderText("Something nice and descriptive")
+        H.CustomExpressionEditor.nameInput()
+          .clear()
           .type("My expression")
           .blur();
 
@@ -523,7 +524,7 @@ describe("scenarios > question > offset", () => {
       cy.findAllByTestId("notebook-cell-item").findByText(name).click();
       H.CustomExpressionEditor.value().should("equal", formula);
 
-      cy.on("uncaught:exception", error => {
+      cy.on("uncaught:exception", (error) => {
         // this check is intended to catch possible normalization errors if BE or FE code changes
         // does not run by default
         expect(error.message.includes("Error normalizing")).to.be.false;

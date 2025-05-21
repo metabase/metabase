@@ -60,7 +60,6 @@ export interface ParameterSidebarProps {
     temporalUnits: TemporalUnit[],
   ) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
-  onShowAddParameterPopover: () => void;
   onClose: () => void;
 }
 
@@ -78,7 +77,6 @@ export const ParameterSidebar = ({
   onChangeRequired,
   onChangeTemporalUnits,
   onRemoveParameter,
-  onShowAddParameterPopover,
   onClose,
   hasMapping,
 }: ParameterSidebarProps): JSX.Element => {
@@ -87,7 +85,7 @@ export const ParameterSidebar = ({
   const [tab, setTab] = useState<"filters" | "settings">(tabs[0].value);
   const prevParameterId = usePrevious(parameterId);
 
-  const embeddedParameterVisibility = useSelector(state =>
+  const embeddedParameterVisibility = useSelector((state) =>
     getEmbeddedParameterVisibility(state, parameter.slug),
   );
 
@@ -163,7 +161,7 @@ export const ParameterSidebar = ({
 
   const isParameterSlugUsed = useCallback(
     (value: string) =>
-      otherParameters.some(parameter => parameter.slug === slugify(value)),
+      otherParameters.some((parameter) => parameter.slug === slugify(value)),
     [otherParameters],
   );
 
@@ -196,7 +194,7 @@ export const ParameterSidebar = ({
       <Tabs radius={0} value={tab} onChange={handleTabChange}>
         <Tabs.List grow>
           {tabs.length > 1 &&
-            tabs.map(tab => {
+            tabs.map((tab) => {
               return (
                 <Tabs.Tab
                   pl={0}
@@ -248,7 +246,6 @@ export const ParameterSidebar = ({
             parameter={parameter}
             otherParameters={otherParameters}
             onChangeFilteringParameters={handleFilteringParametersChange}
-            onShowAddParameterPopover={onShowAddParameterPopover}
           />
         </Tabs.Panel>
       </Tabs>

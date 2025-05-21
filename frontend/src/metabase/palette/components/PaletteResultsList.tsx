@@ -26,7 +26,7 @@ interface PaletteResultListProps {
   maxHeight?: number;
 }
 
-export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
+export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
   const activeRef = React.useRef<HTMLDivElement>(null);
   const parentRef = React.useRef<HTMLDivElement>(null);
 
@@ -36,7 +36,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
   itemsRef.current = props.items;
 
   const { query, search, currentRootActionId, activeIndex, options } = useKBar(
-    state => ({
+    (state) => ({
       search: state.searchQuery,
       currentRootActionId: state.currentRootActionId,
       activeIndex: state.activeIndex,
@@ -52,7 +52,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) {
         event.preventDefault();
         event.stopPropagation();
-        query.setActiveIndex(index => {
+        query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, -1);
         });
       } else if (
@@ -61,7 +61,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       ) {
         event.preventDefault();
         event.stopPropagation();
-        query.setActiveIndex(index => {
+        query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, 1);
         });
       } else if (event.key === "Enter") {
@@ -127,7 +127,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         return;
       }
       if (item.command) {
-        item.command.perform(item);
+        item.command.perform();
         if (!(e?.metaKey === true || e?.ctrlKey === true)) {
           query.toggle();
         }

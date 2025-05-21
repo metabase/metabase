@@ -6,12 +6,13 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.version.core :as version]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
@@ -58,6 +59,7 @@
    :snowplow/embed_share    "1-0-0"
    :snowplow/llm_usage      "1-0-0"
    :snowplow/serialization  "1-0-1"
+   :snowplow/simple_event   "1-0-0"
    :snowplow/cleanup        "1-0-0"})
 
 (def ^:private SnowplowSchema
@@ -89,6 +91,17 @@
                     (track-event! :snowplow/account {:event :new_instance_created} nil)))
                 (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
   :doc false)
+
+(defsetting non-table-chart-generated
+  (deferred-tru "Whether a non-table chart has already been generated. Required for analytics to track instance activation journey.")
+  :visibility :authenticated
+  :default    false
+  :type       :boolean
+  :export?    true
+  :setter     (fn [new-value]
+                ;; Only allow toggling from false -> true one time
+                (when (true? new-value)
+                  (setting/set-value-of-type! :boolean :non-table-chart-generated true))))
 
 (defn- tracker-config
   []
@@ -147,8 +160,8 @@
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version :snowplow/instance))
        {"id"                           (analytics.settings/analytics-uuid)
-        "version"                      {"tag" (:tag (public-settings/version))}
-        "token_features"               (m/map-keys name (public-settings/token-features))
+        "version"                      {"tag" (:tag (version/version))}
+        "token_features"               (m/map-keys name (premium-features/token-features))
         "created_at"                   (instance-creation)
         "application_database"         (app-db-type)
         "application_database_version" (app-db-version)}))

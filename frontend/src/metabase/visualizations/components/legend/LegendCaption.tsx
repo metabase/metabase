@@ -37,6 +37,7 @@ interface LegendCaptionProps {
   getHref?: () => string | undefined;
   icon?: IconProps | null;
   actionButtons?: React.ReactNode;
+  hasInfoTooltip?: boolean;
   onSelectTitle?: () => void;
   width?: number;
 }
@@ -48,6 +49,7 @@ export const LegendCaption = ({
   getHref,
   icon,
   actionButtons,
+  hasInfoTooltip = true,
   onSelectTitle,
   width,
 }: LegendCaptionProps) => {
@@ -90,7 +92,7 @@ export const LegendCaption = ({
         <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
       </LegendLabel>
       <LegendRightContent>
-        {description && !shouldHideDescription(width) && (
+        {hasInfoTooltip && description && !shouldHideDescription(width) && (
           <Tooltip
             label={
               <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
@@ -102,6 +104,7 @@ export const LegendCaption = ({
             <LegendDescriptionIcon
               name="info"
               className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+              mt="2px"
             />
           </Tooltip>
         )}

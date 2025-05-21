@@ -3,7 +3,7 @@ import { Component } from "react";
 /**
  * @deprecated HOCs are deprecated
  */
-export const withBackground = className => ComposedComponent => {
+export const withBackground = (className) => (ComposedComponent) => {
   return class extends Component {
     static displayName = "BackgroundApplicator";
 

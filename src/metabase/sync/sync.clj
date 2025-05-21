@@ -11,8 +11,6 @@
   (:require
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
-   [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.field-values :as sync.field-values]
@@ -20,7 +18,9 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table])
   (:import
    (java.time.temporal Temporal)))
 

@@ -15,8 +15,24 @@ export function setupFieldEndpoints(field: Field) {
   fetchMock.post(`path:/api/field/${field.id}/discard_values`, {});
 }
 
-export function setupFieldValuesEndpoints(fieldValues: GetFieldValuesResponse) {
+export function setupFieldValuesEndpoint(fieldValues: GetFieldValuesResponse) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
+}
+
+export function setupRemappedFieldValueEndpoint(
+  fieldId: FieldId,
+  remappedFieldId: FieldId,
+  value: string,
+  fieldValue: FieldValue,
+) {
+  fetchMock.get(
+    {
+      url: `path:/api/field/${fieldId}/remapping/${remappedFieldId}`,
+      query: { value },
+    },
+    fieldValue,
+    { overwriteRoutes: false },
+  );
 }
 
 export function setupUnauthorizedFieldEndpoint(field: Field) {
@@ -38,7 +54,7 @@ export function setupUnauthorizedFieldValuesEndpoints(
 export function setupFieldsValuesEndpoints(
   fieldsValues: GetFieldValuesResponse[],
 ) {
-  fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
+  fieldsValues.forEach((fieldValues) => setupFieldValuesEndpoint(fieldValues));
 }
 
 export function setupFieldSearchValuesEndpoint(

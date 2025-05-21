@@ -7,8 +7,8 @@ describe("issue 47058", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/card/*/query_metadata", req =>
-      req.continue(() => new Promise(resolve => setTimeout(resolve, 1000))),
+    cy.intercept("GET", "/api/card/*/query_metadata", (req) =>
+      req.continue(() => new Promise((resolve) => setTimeout(resolve, 1000))),
     ).as("metadata");
 
     H.createQuestion({
@@ -57,85 +57,54 @@ describe("issue 47058", () => {
   });
 });
 
-describe("issue 44171", () => {
-  const METRIC_A: H.StructuredQuestionDetails = {
-    name: "Metric 44171-A",
-    type: "metric",
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "temporal-unit": "month", "base-type": "type/DateTime" },
-        ],
-      ],
-    },
-  };
-
-  const METRIC_B: H.StructuredQuestionDetails = {
-    name: "Metric 44171-B",
-    type: "metric",
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "temporal-unit": "month", "base-type": "type/DateTime" },
-        ],
-      ],
-    },
-  };
-
+describe("issue 32037", () => {
   beforeEach(() => {
     H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(METRIC_A);
-    H.createQuestion(METRIC_B, { visitQuestion: true });
-    H.createDashboard(
-      {
-        name: "Dashboard 44171",
-        dashcards: [],
+    cy.signInAsNormalUser();
+    H.createQuestion({
+      name: "Metric 32037",
+      type: "metric",
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "temporal-unit": "month", "base-type": "type/DateTime" },
+          ],
+        ],
       },
-      { wrapId: true },
-    );
+    });
   });
 
-  it("should not save viz settings on metrics", () => {
-    cy.intercept("PUT", "/api/card/*").as("saveCard");
-
-    H.openQuestionActions();
-    H.popover().findByText("Edit metric definition").click();
-    H.getNotebookStep("summarize").button("Count").click();
+  it("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
+    cy.visit("/browse/metrics");
+    cy.findByLabelText("Metric 32037").click();
+    H.cartesianChartCircle().should("be.visible");
+    cy.location("pathname").as("metricPathname");
+    H.openQuestionActions("Edit metric definition");
+    cy.button("Save changes").should("be.disabled");
+    H.filter({ mode: "notebook" });
     H.popover().within(() => {
-      cy.findByText("Sum of ...").click();
       cy.findByText("Total").click();
+      cy.findByPlaceholderText("Min").type("0");
+      cy.findByPlaceholderText("Max").type("100");
+      cy.button("Add filter").click();
     });
-    cy.button("Save changes").click();
-    cy.get<number>("@dashboardId").then(id => {
-      H.visitDashboard(id);
+    cy.button("Save changes").should("be.enabled");
+    cy.go("back");
+
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
     });
 
-    cy.get("@saveCard")
-      .its("request.body")
-      .its("visualization_settings")
-      .should("not.exist");
-
-    H.editDashboard();
-    cy.findByTestId("dashboard-header")
-      .findByLabelText("Add questions")
-      .click();
-
-    H.sidebar().findByText("Metric 44171-A").click();
-
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Add series").click();
-    H.modal().findByText("Metric 44171-B").should("be.visible");
+    H.appBar().should("be.visible");
+    cy.button("Save changes").should("not.exist");
+    cy.get("@metricPathname").then((metricPathname) => {
+      cy.location("pathname").should("eq", metricPathname);
+    });
   });
 });

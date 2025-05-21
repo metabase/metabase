@@ -3,7 +3,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text } from "metabase/ui";
 
-import SettingHeader from "../SettingHeader";
+import { SettingHeader } from "../SettingHeader";
 import {
   EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
@@ -27,12 +27,7 @@ export function EmbeddingSettings({
     <Box p="0.5rem 1rem 0">
       <Stack gap="2.5rem">
         <Box data-testid="enable-embedding-setting">
-          <SettingHeader
-            id="enable-embedding"
-            setting={{
-              display_name: t`Embedding`,
-            }}
-          />
+          <SettingHeader id="enable-embedding" title={t`Embedding`} />
           <Stack gap={"md"} className={CS.textMeasure}>
             <Text lh={1.5}>
               {t`Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.`}

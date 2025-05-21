@@ -7,21 +7,25 @@
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -153,7 +157,7 @@
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
-        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type :type/Category}
+        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                  {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
@@ -184,10 +188,10 @@
             fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
-                 (metadata-queries/table-rows-sample table fields (constantly conj)))))
+                 (table-rows-sample/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
-                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-table! table fields)))))))))
+                 (:updated-fingerprints (#'sync.fingerprint/fingerprint-fields! table fields)))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :mysql
@@ -499,7 +503,7 @@
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
         (drop-if-exists-and-create-db! "composite_pks_test")
-        (with-redefs [metadata-queries/nested-field-sample-limit 4]
+        (with-redefs [table-rows-sample/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
                 spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
             (doseq [statement (concat ["CREATE TABLE `json_table` (`first_id` INT, `second_id` INT, `json_val` JSON, PRIMARY KEY(`first_id`, `second_id`));"]
@@ -541,14 +545,14 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) AS `json_bit → 1234`,"
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
                       "FROM"
                       "  `json`"
                       "GROUP BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL)"
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0)"
                       "ORDER BY"
-                      "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) ASC"]
+                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) ASC"]
                      (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -568,7 +572,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), DECIMAL) - 0.75) / 0.75)) * 0.75) + 0.75)"
+                  (is (= ["((FLOOR((((JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
@@ -815,3 +819,18 @@
             (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type)
                         (map #(get {"TIMESTAMP" "DATETIME"} % %)))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :mysql
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

@@ -1,9 +1,8 @@
 import cx from "classnames";
-import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
-import { Icon } from "metabase/ui";
+import { Icon, Transition, type TransitionProps } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import S from "./Formula.module.css";
@@ -17,6 +16,16 @@ type FormulaProps = FormulaEntityProps & {
   isExpanded: boolean;
   expandFormula: () => void;
   collapseFormula: () => void;
+};
+
+const TRANSITION: TransitionProps["transition"] = {
+  in: {
+    maxHeight: "150px",
+  },
+  out: {
+    maxHeight: "0px",
+  },
+  transitionProperty: "max-height",
 };
 
 export const Formula = ({
@@ -34,30 +43,16 @@ export const Formula = ({
       <Icon name="beaker" size={24} />
       <span className={S.formulaTitle}>{t`View the ${type} formula`}</span>
     </div>
-    <TransitionGroup>
-      {isExpanded && (
-        <CSSTransition
-          key="formulaDefinition"
-          classNames={{
-            enter: S.formulaDefinitionEnter,
-            enterActive: S.formulaDefinitionEnterActive,
-            exit: S.formulaDefinitionExit,
-            exitActive: S.formulaDefinitionExitActive,
-          }}
-          timeout={{
-            enter: 300,
-            exit: 300,
-          }}
-        >
-          <div className={S.formulaDefinition}>
-            <QueryDefinition
-              className={S.formulaDefinitionInner}
-              definition={entity.definition}
-              tableId={entity.table_id}
-            />
-          </div>
-        </CSSTransition>
+    <Transition mounted={isExpanded} duration={300} transition={TRANSITION}>
+      {(styles) => (
+        <div className={S.formulaDefinition} style={styles}>
+          <QueryDefinition
+            className={S.formulaDefinitionInner}
+            definition={entity.definition}
+            tableId={entity.table_id}
+          />
+        </div>
       )}
-    </TransitionGroup>
+    </Transition>
   </div>
 );

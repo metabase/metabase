@@ -37,7 +37,7 @@ import type { SelectedTabId } from "metabase-types/store";
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
-      const slugParam = _.find(before.parameters, param => {
+      const slugParam = _.find(before.parameters, (param) => {
         return param.slug === embedSlug;
       });
       if (slugParam) {
@@ -60,7 +60,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
     name: "",
     parameters: [],
     ...dashboard,
-    dashcards: dashboard.dashcards?.map(dashcard => ({
+    dashcards: dashboard.dashcards?.map((dashcard) => ({
       visualization_settings: {},
       parameter_mappings: [],
       ...dashcard,
@@ -104,7 +104,7 @@ export function isActionDashCard(
 }
 
 export function isVirtualDashCard(
-  dashcard: BaseDashboardCard,
+  dashcard: Pick<BaseDashboardCard, "visualization_settings">,
 ): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
@@ -147,7 +147,7 @@ export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   for (const dashcard of dashboard.dashcards) {
     const cards = [dashcard.card].concat((dashcard as any).series || []);
-    results.push(...cards.map(card => ({ card, dashcard })));
+    results.push(...cards.map((card) => ({ card, dashcard })));
   }
   return results;
 }
@@ -203,12 +203,12 @@ export function isDashcardLoading(
   }
 
   const cardData = Object.values(dashcardsData);
-  return cardData.length === 0 || cardData.some(data => data == null);
+  return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
 export function getDashcardResultsError(datasets: Dataset[]) {
   const isAccessRestricted = datasets.some(
-    s =>
+    (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
       (typeof s.error === "object" && s.error?.status === 403),
   );
@@ -220,9 +220,9 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     };
   }
 
-  if (datasets.some(dataset => dataset.error)) {
+  if (datasets.some((dataset) => dataset.error)) {
     const curatedErrorDataset = datasets.find(
-      dataset => dataset.error && dataset.error_is_curated,
+      (dataset) => dataset.error && dataset.error_is_curated,
     );
 
     return {
@@ -240,7 +240,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
 const isDashcardDataLoaded = (
   data?: Record<CardId, Dataset | null | undefined>,
 ): data is Record<CardId, Dataset> => {
-  return data != null && Object.values(data).every(result => result != null);
+  return data != null && Object.values(data).every((result) => result != null);
 };
 
 const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
@@ -251,7 +251,8 @@ const hasRows = (dashcardData: Record<CardId, Dataset | EmbedDataset>) => {
   return (
     queryResults.length > 0 &&
     queryResults.every(
-      queryResult => "data" in queryResult && queryResult.data.rows.length > 0,
+      (queryResult) =>
+        "data" in queryResult && queryResult.data.rows.length > 0,
     )
   );
 };
@@ -287,14 +288,14 @@ export const getVisibleCardIds = (
   return new Set(
     cards
       .filter(
-        card =>
+        (card) =>
           !shouldHideCard(
             card,
             dashcardsData[card.id],
             prevVisibleCardIds.has(card.id),
           ),
       )
-      .map(c => c.id),
+      .map((c) => c.id),
   );
 };
 
@@ -406,6 +407,6 @@ export function getMappedParametersIds(
 ): ParameterId[] {
   return dashcards.flatMap((dashcard: DashboardCard) => {
     const mappings = dashcard.parameter_mappings ?? [];
-    return mappings.map(parameter => parameter.parameter_id);
+    return mappings.map((parameter) => parameter.parameter_id);
   });
 }

@@ -11,6 +11,8 @@ import {
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
+  setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -27,8 +29,10 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
+  createMockDashboardTab,
   createMockDatabase,
   createMockDataset,
+  createMockParameter,
   createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
   createMockUser,
@@ -50,25 +54,54 @@ const dataset_query = createMockStructuredDatasetQuery({
   query: { "source-table": ORDERS_ID },
 });
 
+const dashboardTabs = [
+  createMockDashboardTab({ id: 1, name: "Foo Tab 1" }),
+  createMockDashboardTab({ id: 2, name: "Foo Tab 2" }),
+];
+
 const tableCard = createMockCard({
   id: 1,
   dataset_query,
   name: "Here is a card title",
 });
 
+const parameter = createMockParameter({
+  id: "1",
+  type: "string/contains",
+  slug: "title",
+  name: "Title",
+});
+
 const tableDashcard = createMockDashboardCard({
   id: 1,
   card_id: tableCard.id,
   card: tableCard,
+  dashboard_tab_id: dashboardTabs[0].id,
+  parameter_mappings: [
+    {
+      card_id: tableCard.id,
+      parameter_id: parameter.id,
+      target: [
+        "dimension",
+        ["field", parameter.slug, { "base-type": "type/Text" }],
+      ],
+    },
+  ],
 });
 
 const textDashcard = createMockTextDashboardCard({
   id: 2,
   text: "Some card text",
+  dashboard_tab_id: dashboardTabs[0].id,
 });
 
-const dashcards = [tableDashcard, textDashcard];
+const textDashcard2 = createMockTextDashboardCard({
+  id: 3,
+  text: "Some card text",
+  dashboard_tab_id: dashboardTabs[1].id,
+});
 
+const dashcards = [tableDashcard, textDashcard, textDashcard2];
 const setup = async ({
   props,
   providerProps,
@@ -82,6 +115,8 @@ const setup = async ({
   const dashboard = createMockDashboard({
     id: dashboardId,
     dashcards,
+    tabs: dashboardTabs,
+    parameters: [parameter],
   });
 
   setupDashboardEndpoints(dashboard);
@@ -114,6 +149,10 @@ const setup = async ({
 
   setupNotificationChannelsEndpoints({});
 
+  setupDatabasesEndpoints([createMockDatabase()]);
+
+  setupLastDownloadFormatEndpoints();
+
   const user = createMockUser();
 
   const state = setupSdkState({
@@ -123,7 +162,7 @@ const setup = async ({
       dashboards: {
         [dashboard.id]: {
           ...dashboard,
-          dashcards: dashcards.map(dc => dc.id),
+          dashcards: dashcards.map((dc) => dc.id),
         },
       },
       dashcards: indexBy(dashcards, "id"),

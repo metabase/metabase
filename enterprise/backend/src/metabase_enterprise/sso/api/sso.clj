@@ -8,15 +8,14 @@
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [saml20-clj.core :as saml]
-   [saml20-clj.encode-decode :as encode-decode]
    [stencil.core :as stencil]
    [toucan2.core :as t2]))
 
@@ -68,25 +67,28 @@
 (api.macros/defendpoint :post "/logout"
   "Logout."
   [_route-params _query-params _body {cookies :cookies, :as _request}]
-  (let [metabase-session-id (get-in cookies [request/metabase-session-cookie :value])]
-    (api/check-exists? :model/Session metabase-session-id)
-    (let [{:keys [email sso_source]}
-          (t2/query-one {:select [:u.email :u.sso_source]
-                         :from   [[:core_user :u]]
-                         :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                         :where  [:= :session.id metabase-session-id]})]
-      ;; If a user doesn't have SLO setup on their IdP,
-      ;; they will never hit "/handle_slo" so we must delete the session here:
-      (t2/delete! :model/Session :id metabase-session-id)
-      {:saml-logout-url
-       (when (and (sso-settings/saml-slo-enabled)
-                  (= sso_source "saml"))
-         (saml/logout-redirect-location
-          :idp-url (sso-settings/saml-identity-provider-uri)
-          :issuer (sso-settings/saml-application-name)
-          :user-email email
-          :relay-state (encode-decode/str->base64
-                        (str (urls/site-url) metabase-slo-redirect-url))))})))
+  (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
+        metabase-session-key-hashed (session/hash-session-key metabase-session-key)
+        {:keys [email sso_source]}
+        (t2/query-one {:select [:u.email :u.sso_source]
+                       :from   [[:core_user :u]]
+                       :join   [[:core_session :session] [:= :u.id :session.user_id]]
+                       :where  [:or [:= :key_hashed metabase-session-key-hashed] [:= :session.id metabase-session-key]]})]
+    ;; If a user doesn't have SLO setup on their IdP,
+    ;; they will never hit "/handle_slo" so we must delete the session here:
+    ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
+    (when-not (sso-settings/saml-slo-enabled)
+      (t2/delete! :model/Session {:where [:or [:= :key_hashed metabase-session-key-hashed] [:= :id metabase-session-key]]}))
+    {:saml-logout-url
+     (when (and (sso-settings/saml-slo-enabled)
+                (= sso_source "saml"))
+       (saml/logout-redirect-location
+        :credential (metabase-enterprise.sso.integrations.saml/sp-cert-keystore-details)
+        :idp-url (sso-settings/saml-identity-provider-slo-uri)
+        :issuer (sso-settings/saml-application-name)
+        :user-email email
+        :relay-state (u/encode-base64
+                      (str (urls/site-url) metabase-slo-redirect-url))))}))
 
 ;; POST /auth/sso/handle_slo
 (api.macros/defendpoint :post "/handle_slo"

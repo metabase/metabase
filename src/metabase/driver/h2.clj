@@ -3,27 +3,28 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.malli :as mu])
   (:import
-   (java.sql Clob ResultSet ResultSetMetaData)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -68,8 +69,10 @@
 (doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
                               :datetime-diff             true
+                              :expression-literals       true
                               :full-join                 false
-                              :index-info                true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                false
                               :now                       true
                               :percentile-aggregations   false
                               :regex                     true
@@ -95,8 +98,7 @@
     driver.common/cloud-ip-address-info
     driver.common/advanced-options-start
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defn- malicious-property-value
   "Checks an h2 connection string for connection properties that could be malicious. Markers of this include semi-colons
@@ -257,9 +259,10 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
+(defn- check-read-only-statements [{{:keys [query]} :native}]
   (when query
-    (let [query-classification (classify-query database query)]
+    (let [query-classification (classify-query (lib.metadata/database (qp.store/metadata-provider))
+                                               query)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))
@@ -326,8 +329,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
-  [_driver]
-  (h2x/with-database-type-info :%now "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defn- add-to-1970 [expr unit-str]
   [:timestampadd
@@ -396,6 +399,17 @@
 (defmethod sql.qp/->honeysql [:h2 :log]
   [driver [_ field]]
   [:log10 (sql.qp/->honeysql driver field)])
+
+(defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
+  [driver [_ value]]
+  ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
+  ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
+  ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
+  ;;
+  ;; https://linear.app/metabase/issue/QUE-726/
+  ;; https://github.com/h2database/h2database/issues/1383
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/cast :text)))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
@@ -609,3 +623,6 @@
   {:metabase.upload/int     #{:metabase.upload/float}
    :metabase.upload/boolean #{:metabase.upload/int
                               :metabase.upload/float}})
+
+(defmethod sql-jdbc/impl-query-canceled? :h2 [_ ^SQLException e]
+  (= (.getErrorCode e) 57014))

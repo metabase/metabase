@@ -48,7 +48,7 @@ export function ClickBehaviorSidebarContent({
     // drill-through menu
     return { type: "actionMenu" };
   }, [clickBehavior]);
-  const dashcardData = useSelector(state =>
+  const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
 

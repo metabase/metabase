@@ -20,9 +20,9 @@ import {
 } from "./tags";
 
 export const actionApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listActions: builder.query<WritebackAction[], ListActionsRequest>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: `/api/action`,
         params,
@@ -34,10 +34,10 @@ export const actionApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/action/${id}`,
       }),
-      providesTags: action => (action ? provideActionTags(action) : []),
+      providesTags: (action) => (action ? provideActionTags(action) : []),
     }),
     createAction: builder.mutation<WritebackAction, CreateActionRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/action",
         body,
@@ -46,7 +46,7 @@ export const actionApi = Api.injectEndpoints({
         action ? invalidateTags(error, [listTag("action")]) : [],
     }),
     updateAction: builder.mutation<WritebackAction, UpdateActionRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "PUT",
         url: `/api/action/${body.id}`,
         body: _.omit(body, "type"), // Changing action type is not supported
@@ -60,7 +60,7 @@ export const actionApi = Api.injectEndpoints({
           : [],
     }),
     deleteAction: builder.mutation<WritebackAction, WritebackActionId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/action/${id}`,
       }),
@@ -73,7 +73,7 @@ export const actionApi = Api.injectEndpoints({
         url: "/api/action/public",
       }),
       providesTags: (actions = []) => [
-        ...actions.map(action => idTag("public-action", action.id)),
+        ...actions.map((action) => idTag("public-action", action.id)),
         listTag("public-action"),
       ],
     }),

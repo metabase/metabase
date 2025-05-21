@@ -4,18 +4,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.table :as table]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
@@ -25,6 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.table :as table]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -407,7 +407,7 @@
         parsers     (mapv all-parsers field-idxs)
         page        (.list bq-table (u/varargs BigQuery$TableDataListOption))]
     (transduce
-     (comp (take metadata-queries/max-sample-rows)
+     (comp (take table-rows-sample/max-sample-rows)
            (map (partial extract-fingerprint field-idxs parsers)))
       ;; Instead of passing on fields, we could recalculate the
       ;; metadata from the schema, but that probably makes no
@@ -670,11 +670,17 @@
                               :percentile-aggregations  true
                               :metadata/key-constraints false
                               :identifiers-with-spaces  true
+                              :expressions/integer      true
+                              :expressions/float        true
+                              :expressions/date         true
+                              :expressions/text         true
+                              :split-part               true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone             true}]
+                              :set-timezone             true
+                              :expression-literals      true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

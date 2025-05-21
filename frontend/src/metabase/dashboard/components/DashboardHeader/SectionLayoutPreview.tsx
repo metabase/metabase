@@ -28,14 +28,14 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
   }, [layout]);
 
   const height = useMemo(() => {
-    const maxY = _.max(layoutItems.map(item => item.row + item.size_y));
+    const maxY = _.max(layoutItems.map((item) => item.row + item.size_y));
     return maxY * (CELL_HEIGHT + SPACING);
   }, [layoutItems]);
 
   return (
     <Flex align="center" justify="center">
       <Box pos="relative" w={WIDTH} mih={height}>
-        {layoutItems.map(item => (
+        {layoutItems.map((item) => (
           <PreviewCard
             key={item.id}
             layout={item}

@@ -83,7 +83,7 @@ export function PermissionsPageLayout({
   const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
     useToggle(_showSplitPermsModal);
 
-  const saveError = useSelector(state => state.admin.permissions.saveError);
+  const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
@@ -162,12 +162,11 @@ export function PermissionsPageLayout({
         onClose={() => true}
       >
         <Text mb="1rem">
-          To edit permissions, you need to start from the latest version. Please
-          refresh the page.
+          {t`To edit permissions, you need to start from the latest version. Please refresh the page.`}
         </Text>
         <Group justify="flex-end">
           <NewButton onClick={() => location.reload()} variant="filled">
-            Refresh the page
+            {t`Refresh the page`}
           </NewButton>
         </Group>
       </NewModal>

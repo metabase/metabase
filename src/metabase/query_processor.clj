@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.query-processor
   "Primary entrypoints to running Metabase (MBQL) queries.
 

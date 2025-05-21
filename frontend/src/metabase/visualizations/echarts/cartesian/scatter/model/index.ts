@@ -34,7 +34,7 @@ const getBubbleSizeDomain = (
   dataset: ChartDataset,
 ): Extent | null => {
   const bubbleSizeDataKeys = seriesModels
-    .map(seriesModel =>
+    .map((seriesModel) =>
       "bubbleSizeDataKey" in seriesModel &&
       seriesModel.bubbleSizeDataKey != null
         ? seriesModel.bubbleSizeDataKey
@@ -48,7 +48,7 @@ const getBubbleSizeDomain = (
 
   const bubbleSizeMaxValues = getObjectValues(
     getDatasetExtents(bubbleSizeDataKeys, dataset),
-  ).map(extent => extent[1]);
+  ).map((extent) => extent[1]);
   const bubbleSizeDomainMax = Math.max(...bubbleSizeMaxValues);
 
   return [0, bubbleSizeDomainMax];

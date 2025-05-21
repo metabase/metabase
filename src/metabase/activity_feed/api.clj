@@ -5,7 +5,7 @@
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -18,7 +18,7 @@
    (case model
      "card"      [:model/Card
                   :id :name :collection_id :description :display
-                  :dataset_query :type :archived
+                  :dataset_query :type :archived :card_schema :entity_id
                   :collection.authority_level [:collection.name :collection_name]
                   [:dashboard.name :dashboard_name] :dashboard_id]
      "dashboard" [:model/Dashboard

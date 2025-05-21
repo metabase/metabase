@@ -8,6 +8,7 @@ import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import { getPieColumns } from "metabase/visualizations/echarts/pie/model";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
+import { getHexColor } from "metabase/visualizations/lib/color";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import { unaggregatedDataWarningPie } from "metabase/visualizations/lib/warnings";
@@ -68,6 +69,10 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   return String(dimensionValue);
 }
 
+export function getValueFromDimensionKey(key: string) {
+  return key === NULL_DISPLAY_VALUE ? null : key;
+}
+
 export function getAggregatedRows(
   rows: RowValues[],
   dimensionIndex: number,
@@ -76,7 +81,7 @@ export function getAggregatedRows(
   dimensionColumn?: DatasetColumn,
 ) {
   const dimensionToMetricValues = new Map<string, number>();
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const dimensionValue = String(row[dimensionIndex]);
     const metricValue = getNumberOr(row[metricIndex], 0);
 
@@ -92,7 +97,7 @@ export function getAggregatedRows(
   const aggregatedRows: RowValues[] = [];
   const seenDimensionValues = new Set<string>();
 
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const dimensionValue = String(row[dimensionIndex]);
     if (seenDimensionValues.has(dimensionValue)) {
       return;
@@ -151,16 +156,16 @@ export function getColors(
   ] = rawSeries;
   const dimensionName = getPieDimensions(currentSettings)[0];
 
-  const dimensionIndex = cols.findIndex(col => col.name === dimensionName);
+  const dimensionIndex = cols.findIndex((col) => col.name === dimensionName);
   const metricIndex = cols.findIndex(
-    col => col.name === currentSettings["pie.metric"],
+    (col) => col.name === currentSettings["pie.metric"],
   );
   const sortedRows = getSortedRows(
     getAggregatedRows(rows, dimensionIndex, metricIndex),
     metricIndex,
   );
 
-  const dimensionValues = sortedRows.map(r => String(r[dimensionIndex]));
+  const dimensionValues = sortedRows.map((r) => String(r[dimensionIndex]));
 
   // Sometimes viz settings are malformed and "pie.colors" does not
   // contain a key for the current dimension value, so we need to compute
@@ -224,7 +229,7 @@ export function getPieRows(
     metricDesc.index,
   );
   const keyToCurrentDataRow = new Map<PieRow["key"], RowValues>(
-    currentDataRows.map(dataRow => [
+    currentDataRows.map((dataRow) => [
       getKeyFromDimensionValue(dataRow[dimensionDesc.index]),
       dataRow,
     ]),
@@ -235,10 +240,10 @@ export function getPieRows(
     ? []
     : (settings["pie.rows"] ?? []);
 
-  const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
+  const savedPieKeys = savedPieRows.map((pieRow) => pieRow.key);
 
   const keyToSavedPieRow = new Map<PieRow["key"], PieRow>(
-    savedPieRows.map(pieRow => [pieRow.key, pieRow]),
+    savedPieRows.map((pieRow) => [pieRow.key, pieRow]),
   );
   const removed = _.difference(savedPieKeys, currentDataKeys);
 
@@ -250,17 +255,13 @@ export function getPieRows(
       metricDesc.index,
     );
 
-    newPieRows = sortedCurrentDataRows.map(dataRow => {
+    newPieRows = sortedCurrentDataRows.map((dataRow) => {
       const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
       // Historically we have used the dimension value in the `pie.colors`
       // setting instead of the key computed above. For compatibility with
       // existing questions we will continue to use the dimension value.
-      //
-      // Additionally, some older questions have non-hex color values such as
-      // hsl strings so we need to convert everything to hsl for compatibilty
-      // with Batik in the backend static viz rendering pipeline.
-      const color = Color(colors[String(dimensionValue)]).hex();
+      const color = getHexColor(colors[String(dimensionValue)]);
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
@@ -291,7 +292,7 @@ export function getPieRows(
     const added = _.difference(currentDataKeys, savedPieKeys);
     const kept = _.intersection(savedPieKeys, currentDataKeys);
 
-    newPieRows = kept.map(keptKey => {
+    newPieRows = kept.map((keptKey) => {
       const savedPieRow = keyToSavedPieRow.get(keptKey);
       if (savedPieRow == null) {
         throw Error(`Did not find saved pie row for kept key ${keptKey}`);
@@ -303,7 +304,7 @@ export function getPieRows(
       };
     });
 
-    const addedRows = added.map(addedKey => {
+    const addedRows = added.map((addedKey) => {
       const dataRow = keyToCurrentDataRow.get(addedKey);
       if (dataRow == null) {
         throw Error(`Could not find data row for added key ${addedKey}`);
@@ -314,7 +315,7 @@ export function getPieRows(
     const sortedAddedRows = getSortedRows(addedRows, metricDesc.index);
 
     newPieRows.push(
-      ...sortedAddedRows.map(addedDataRow => {
+      ...sortedAddedRows.map((addedDataRow) => {
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const color = Color(colors[String(dimensionValue)]).hex();
@@ -335,7 +336,7 @@ export function getPieRows(
     );
   }
 
-  const removedPieRows = removed.map(removedKey => {
+  const removedPieRows = removed.map((removedKey) => {
     const savedPieRow = keyToSavedPieRow.get(removedKey);
     if (savedPieRow == null) {
       throw Error(`Did not find saved pie row for removed key ${removedKey}`);
@@ -362,7 +363,7 @@ export function getPieRows(
   }, 0);
 
   let otherCount = 0;
-  newPieRows.forEach(pieRow => {
+  newPieRows.forEach((pieRow) => {
     if (pieRow.hidden) {
       return;
     }
@@ -384,7 +385,7 @@ export function getPieRows(
 
   // If there's only one slice below minimum slice percentage, don't hide it
   if (otherCount <= 1) {
-    newPieRows.forEach(pieRow => {
+    newPieRows.forEach((pieRow) => {
       pieRow.isOther = false;
     });
   }

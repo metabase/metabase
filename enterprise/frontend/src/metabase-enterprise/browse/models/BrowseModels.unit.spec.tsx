@@ -1,5 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
@@ -14,11 +15,13 @@ import {
 import type { RecentCollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
 
 const setup = (modelCount: number, recentModelCount = 5) => {
+  const databases = [createMockDatabase()];
   const models = mockModels.slice(0, modelCount);
 
   // Add some instance analytics models to ensure they don't affect the page
@@ -26,11 +29,11 @@ const setup = (modelCount: number, recentModelCount = 5) => {
 
   const mockRecentModels = mockModels
     .slice(0, recentModelCount)
-    .map(model =>
+    .map((model) =>
       createMockRecentModel(model as unknown as RecentCollectionItem),
     );
   setupRecentViewsEndpoints(mockRecentModels);
-
+  setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
   setupSettingsEndpoints([]);
   setupEnterprisePlugins();

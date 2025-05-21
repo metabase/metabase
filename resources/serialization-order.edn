@@ -24,6 +24,7 @@
                                   :dataset_query
                                   :result_metadata
                                   :visualization_settings
+                                  :card_schema
                                   :serdes/meta]
  [:Card :dataset_query]          []
  [:Card :visualization_settings] []

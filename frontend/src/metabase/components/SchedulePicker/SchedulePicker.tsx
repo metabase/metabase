@@ -31,11 +31,19 @@ import {
   ScheduleDescriptionContainer,
 } from "./SchedulePicker.styled";
 
-const optionNameTranslations = {
-  hourly: t`Hourly`,
-  daily: t`Daily`,
-  weekly: t`Weekly`,
-  monthly: t`Monthly`,
+const optionNameTranslations: Partial<Record<ScheduleType, string>> = {
+  get hourly() {
+    return t`Hourly`;
+  },
+  get daily() {
+    return t`Daily`;
+  },
+  get weekly() {
+    return t`Weekly`;
+  },
+  get monthly() {
+    return t`Monthly`;
+  },
 };
 
 export type ScheduleProperty = keyof ScheduleSettings;
@@ -61,6 +69,9 @@ export interface SchedulePickerProps {
 
 const DEFAULT_DAY = "mon";
 
+/**
+ * @deprecated use "metabase/components/Schedule" instead
+ */
 class SchedulePicker extends Component<SchedulePickerProps> {
   handleChangeProperty(
     name: ScheduleProperty,
@@ -231,7 +242,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           />
           <SegmentedControl
             value={amPm}
-            onChange={value =>
+            onChange={(value) =>
               this.handleChangeProperty("schedule_hour", hour + value * 12)
             }
             options={AM_PM_OPTIONS}

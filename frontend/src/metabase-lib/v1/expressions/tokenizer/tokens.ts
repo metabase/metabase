@@ -1,6 +1,6 @@
 import { ExternalTokenizer } from "@lezer/lr";
 
-import { Reference } from "./lezer.terms";
+import { Field } from "./lezer.terms";
 
 function char(char: string): number {
   if (char.length !== 1) {
@@ -15,81 +15,113 @@ const CLOSE_BRACKET = char("]");
 const NEW_LINE = char("\n");
 const EOF = -1;
 
-const OPERATORS = new Set([
-  OPEN_BRACKET,
-  char(","),
-  char(" "),
-  char("("),
-  char(")"),
-]);
-
-function isOperator(char: number) {
-  return OPERATORS.has(char);
-}
+// The characters that will delimit a field name that
+// is not properly closed.
+//
+// For example, the underlined bit will be parsed as a field token:
+//
+//   [Field Name
+//   ------
+//
+const FIELD_PUNCTUATORS = new Set([char(","), char(" "), char("("), char(")")]);
 
 /**
  * Reference (or bracket idenfiers) like `[User Id]` are parsed differently
  * based on whether they are well-formed or not.
  *
+ * We allow malformed field tokens (ie. tokens without proper quoting) to be parsed as well.
+ * For example, the following will all be parsed as a field token:
+ *
+ * [Foo
+ * Foo]
+ * [Foo]
+ *
  * This is hard to express in the grammar, so we use this tokenizer to match them.
  */
-export const reference = new ExternalTokenizer(input => {
+export const field = new ExternalTokenizer((input) => {
   const current = input.next;
 
-  if (current !== OPEN_BRACKET) {
+  // We allow any character to potentially start a Field token, except field-delimiting
+  // punctuators.
+  if (FIELD_PUNCTUATORS.has(current)) {
     return;
   }
 
-  // The first operator we encountered after `[`
-  let firstOperator = -1;
+  // We keep track of whether the token we are looking at was opened by a bracket.
+  const wasOpenedByBracket = current === OPEN_BRACKET;
 
-  let prev = null;
+  // The first punctuator we encountered after the opening bracket.
+  // If we don't encounter a closing bracket before hitting a new line or EOF,
+  // this will delimit the field token.
+  let firstPunctuator = -1;
+
+  // Characters can be escaped with a backslash
+  let escaping = false;
 
   for (let idx = 0; ; idx++) {
-    prev = input.next;
     const current = input.advance();
 
-    if (current === OPEN_BRACKET) {
-      if (prev === BACKSLASH) {
-        // an escaped bracket (`\[`), do nothing
-        continue;
+    if (current === BACKSLASH && !escaping) {
+      // and unescaped backslash, next character will be escaped
+      escaping = true;
+      continue;
+    }
+
+    if (current === NEW_LINE || current === EOF) {
+      // We did not encounter a closing bracket before hitting a new line or EOF.
+      if (!wasOpenedByBracket) {
+        // The token we are looking at was not opened by a bracket.
+        // It is not a Field token.
+        return;
       }
+
+      // The token was opened by a bracket, so we find the first punctuator
+      // that might close it (since we didn't find the closing bracket).
+
+      if (firstPunctuator === -1) {
+        // No punctuators were encountered, so return all the text we've
+        // seen as the token.
+        input.acceptToken(Field);
+        return;
+      }
+
+      // Return the token up to the first punctuator.
+      input.acceptToken(Field, firstPunctuator - idx);
+      return;
+    }
+
+    if (escaping) {
+      // any character following a backlash is escaped
+      escaping = false;
+      continue;
+    }
+
+    if (current === OPEN_BRACKET) {
       // this is another opening bracket that will start a new token,
       // return the current one
-      if (prev) {
-        input.acceptToken(Reference);
+      if (wasOpenedByBracket) {
+        input.acceptToken(Field);
       }
       return;
     }
 
     if (current === CLOSE_BRACKET) {
-      if (prev === BACKSLASH) {
-        // an escaped bracket (`\]`), do nothing
-        continue;
-      }
-
       // we found the closing bracket, return the token
-      input.acceptToken(Reference, 1);
+      input.acceptToken(Field, 1);
       return;
     }
 
-    if (current === NEW_LINE || current === EOF) {
-      // We did not encounter a closing bracket, so
-      // find the first operator that was encountered and end the
-      // token there.
-
-      if (firstOperator === -1) {
-        // No operators were encountered, so return all the text we've
-        // seen as the token.
-        input.acceptToken(Reference);
+    if (FIELD_PUNCTUATORS.has(current) && firstPunctuator === -1) {
+      if (!wasOpenedByBracket) {
+        // The token we are looking at was not opened by a bracket
+        // and we did not encounter a closing bracket before hitting a punctuator.
+        // It is not a Field token.
         return;
       }
-      input.acceptToken(Reference, firstOperator - idx);
-      return;
-    }
 
-    if (isOperator(current) && firstOperator === -1) {
-      firstOperator = idx;
+      // We encountered a punctuator after an opening bracket. Store its location and
+      // keep looking for the closing bracket.
+      firstPunctuator = idx;
     }
   }
 });

@@ -1,3 +1,4 @@
+import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
   InteractiveQuestion,
@@ -140,7 +141,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -182,7 +183,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.wait("@getUser");
 
-      cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
+      cy.get("@defaultBrowserFontFamily").then((defaultBrowserFontFamily) => {
         cy.findByText("This is outside of the provider").should(
           "have.css",
           "font-family",
@@ -372,7 +373,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       { tag: "textarea", jsx: <textarea>textarea tag text</textarea> },
     ];
 
-    it(`no css rule should match ${elements.map(e => e.tag).join(", ")} outside of the provider`, () => {
+    it(`no css rule should match ${elements.map((e) => e.tag).join(", ")} outside of the provider`, () => {
       cy.mount(
         <div>
           {elements.map(({ jsx }) => jsx)}
@@ -389,11 +390,71 @@ describe("scenarios > embedding-sdk > styles", () => {
         expectElementToHaveNoAppliedCssRules(tag);
       }
     });
+
+    it("css variables should not leak outside of mb-wrapper", () => {
+      cy.mount(
+        <MantineProvider
+          theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
+        >
+          <Button color="brand">outside sdk provider</Button>
+
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
+          >
+            <Button color="brand">outside sdk wrapper</Button>
+
+            <InteractiveQuestion
+              questionId={ORDERS_QUESTION_ID}
+              isSaveEnabled
+            />
+          </MetabaseProvider>
+        </MantineProvider>,
+      );
+
+      cy.log(
+        "Customer's elements outside of the SDK provider should have their brand color intact",
+      );
+
+      cy.contains("button", "outside sdk provider").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 0, 255)",
+      );
+
+      cy.log(
+        "Customer's elements outside of the SDK components should have their brand color intact",
+      );
+
+      cy.contains("button", "outside sdk wrapper").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 0, 255)",
+      );
+
+      cy.log(
+        "SDK elements should have the brand color from the Metabase theme",
+      );
+
+      getSdkRoot().within(() => {
+        cy.get("button")
+          .contains("Filter")
+          .should("have.css", "color", "rgb(255, 0, 0)");
+
+        cy.findByTestId("notebook-button").click();
+
+        cy.findByRole("button", { name: "Visualize" }).should(
+          "have.css",
+          "background-color",
+          "rgb(255, 0, 0)",
+        );
+      });
+    });
   });
 });
 
 const expectElementToHaveNoAppliedCssRules = (selector: string) => {
-  cy.get(selector).then($el => {
+  cy.get(selector).then(($el) => {
     const rules = getCssRulesThatApplyToElement($el);
     if (rules.length > 0) {
       console.warn("rules matching", selector, rules);
@@ -406,12 +467,12 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   const element = $element[0];
   const rulesThatMatch: CSSStyleRule[] = Array.from(
     document.styleSheets,
-  ).flatMap(sheet => {
+  ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
-      rule => rule instanceof CSSStyleRule,
+      (rule) => rule instanceof CSSStyleRule,
     ) as CSSStyleRule[];
 
-    return cssRules.filter(rule => element.matches(rule.selectorText));
+    return cssRules.filter((rule) => element.matches(rule.selectorText));
   });
 
   return rulesThatMatch;
@@ -420,8 +481,22 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
 function wrapBrowserDefaultFont() {
   cy.mount(<p>paragraph with default browser font</p>);
 
-  cy.findByText("paragraph with default browser font").then($element => {
+  cy.findByText("paragraph with default browser font").then(($element) => {
     const fontFamily = $element.css("font-family");
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });
 }
+
+export const colorTuple = (value: string) =>
+  [
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+  ] as const;

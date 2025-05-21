@@ -39,7 +39,7 @@ export function getAvailableColumns(
   const isLatitude = Lib.isLatitude(column);
   const isLongitude = Lib.isLongitude(column);
   return Lib.filterableColumns(query, stageIndex).filter(
-    column =>
+    (column) =>
       (isLatitude && Lib.isLongitude(column)) ||
       (isLongitude && Lib.isLatitude(column)),
   );

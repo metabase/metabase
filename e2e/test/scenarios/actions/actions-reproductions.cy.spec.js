@@ -43,8 +43,8 @@ describe("metabase#31587", () => {
             .last()
             .should("have.text", "Click Me");
 
-          actionButtonContainer.then(actionButtonElem => {
-            dashCard.then(dashCardElem => {
+          actionButtonContainer.then((actionButtonElem) => {
+            dashCard.then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -71,8 +71,8 @@ describe("metabase#31587", () => {
             .last()
             .should("have.text", "Click Me");
 
-          actionButtonContainer.then(actionButtonElem => {
-            dashCard.then(dashCardElem => {
+          actionButtonContainer.then((actionButtonElem) => {
+            dashCard.then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -202,7 +202,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   });
 
   it("can submit query action linked with dashboard parameters (metabase#32974)", () => {
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({ ...QUERY_ACTION, model_id: modelId }).then(
         ({ body: { id: actionId } }) => {
           cy.wrap(actionId).as("actionId");
@@ -331,8 +331,7 @@ describe("issue 51020", () => {
       createTemporaryTable();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "foo" });
 
-      cy.visit("/");
-      H.newButton("Model").click();
+      cy.visit("/model/new");
       cy.findByTestId("new-model-options")
         .findByText("Use the notebook editor")
         .click();
@@ -421,7 +420,7 @@ describe("issue 32840", () => {
       },
     );
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({
         type: "implicit",
         kind: "row/update",
@@ -455,22 +454,6 @@ describe("issue 32840", () => {
   });
 });
 
-describe("issue 41831", () => {
-  beforeEach(() => {
-    H.restore("without-models");
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-    cy.visit("/");
-  });
-
-  it("new action button is hidden without models", () => {
-    cy.findByRole("button", { name: "New" }).click();
-    cy.findByRole("dialog").within(() => {
-      cy.findByText("Action").should("not.exist");
-    });
-  });
-});
-
 describe("issue 32750", () => {
   beforeEach(() => {
     H.restore();
@@ -480,12 +463,7 @@ describe("issue 32750", () => {
   });
 
   it("modal do not dissapear on viewport change", () => {
-    cy.findByRole("button", { name: "New" }).click();
-    cy.findByRole("dialog").within(() => {
-      cy.findByText("Action").click();
-    });
-
-    cy.findByTestId("action-creator").should("be.visible");
+    H.startNewAction();
     cy.viewport(320, 800);
     cy.findByTestId("action-creator").should("be.visible");
     cy.viewport(1440, 800);

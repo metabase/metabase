@@ -8,7 +8,9 @@ import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
-export const PolicyToken = styled(Button)<
+export const PolicyToken = styled((props: ButtonProps) => (
+  <Button {...props} radius={props.radius ?? "sm"} />
+))<
   { variant?: string; ref?: MutableRefObject<HTMLButtonElement> } & ButtonProps
 >`
   cursor: pointer;
@@ -31,7 +33,6 @@ export const PolicyToken = styled(Button)<
     flex: 1;
   }
 ` as unknown as typeof Button;
-PolicyToken.defaultProps = { radius: "sm" };
 
 export const StyledLauncher = styled.div<
   {

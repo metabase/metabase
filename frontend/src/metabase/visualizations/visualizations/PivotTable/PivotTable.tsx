@@ -8,8 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { findDOMNode } from "react-dom";
-import { useMount, usePrevious } from "react-use";
+import { usePrevious } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
 import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -91,7 +90,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
   ) {
     const [viewPortWidth, setViewPortWidth] = useState(width);
     const [shouldOverflow, setShouldOverflow] = useState(false);
-    const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
     const columnWidthSettings = settings["pivot_table.column_widths"];
 
     const theme = useMantineTheme();
@@ -108,7 +106,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const updateHeaderWidths = useCallback(
       (newHeaderWidths: Partial<HeaderWidthType>) => {
-        setHeaderWidths(prevHeaderWidths => ({
+        setHeaderWidths((prevHeaderWidths) => ({
           ...prevHeaderWidths,
           ...newHeaderWidths,
         }));
@@ -130,13 +128,14 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       ],
     );
 
-    const bodyRef = useRef(null);
-    const leftHeaderRef = useRef(null);
-    const topHeaderRef = useRef(null);
+    const gridRef = useRef<Grid>(null);
+    const gridContainerRef = useRef<HTMLDivElement>(null);
+    const leftHeaderRef = useRef<Collection>(null);
+    const topHeaderRef = useRef<Collection>(null);
 
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
-        const column = data.cols.filter(col => !isPivotGroupColumn(col))[
+        const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
           columnIndex
         ];
         return getTitleForColumn(column, settings);
@@ -145,7 +144,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     );
 
     function isColumnCollapsible(columnIndex: number) {
-      const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+      const columns = data.cols.filter((col) => !isPivotGroupColumn(col));
       if (typeof settings.column != "function") {
         throw new Error(
           `Invalid pivot table settings format, missing nested column settings: ${JSON.stringify(
@@ -166,7 +165,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       (
         topHeaderRef.current as Collection | null
       )?.recomputeCellSizesAndPositions?.();
-      (bodyRef.current as Grid | null)?.recomputeGridSize?.();
+      gridRef.current?.recomputeGridSize?.();
     }, [
       data,
       leftHeaderRef,
@@ -174,10 +173,6 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       leftHeaderWidths,
       valueHeaderWidths,
     ]);
-
-    useMount(() => {
-      setGridElement(bodyRef.current && findDOMNode(bodyRef.current));
-    });
 
     const pivoted = useMemo(() => {
       if (data == null || !data.cols.some(isPivotGroupColumn)) {
@@ -207,13 +202,14 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
     // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
     function scrollBarOffsetSize() {
-      if (!gridElement) {
+      if (!gridContainerRef.current) {
         return 0;
       }
       // get the size of the scrollbars
       const scrollBarSize = getScrollBarSize();
       const scrollsHorizontally =
-        gridElement.scrollWidth > parseInt(gridElement.style.width);
+        gridContainerRef.current.scrollWidth >
+        parseInt(gridContainerRef.current.style.width);
 
       if (scrollsHorizontally && scrollBarSize > 0) {
         return scrollBarSize;
@@ -237,7 +233,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (columnsChanged) {
         const newLeftHeaderWidths = getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
-          getColumnTitle: idx => getColumnTitle(idx),
+          getColumnTitle: (idx) => getColumnTitle(idx),
           leftHeaderItems: pivoted?.leftHeaderItems,
           font: { fontFamily, fontSize },
         });
@@ -349,6 +345,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       rowIndexes,
       columnIndexes,
       valueIndexes,
+      columnsWithoutPivotGroup,
     } = pivoted;
 
     const topHeaderRows =
@@ -362,9 +359,40 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (!clicked) {
         return undefined;
       }
+
+      // The CLJS code adds `colIdx` to the objects used for click handling instead of the entire column
+      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects
+      const { colIdx, ...updatedClicked } = clicked;
+      if (typeof colIdx === "number") {
+        updatedClicked.column = columnsWithoutPivotGroup[colIdx];
+        updatedClicked.data ??= [
+          {
+            value: updatedClicked.value,
+            col: columnsWithoutPivotGroup[colIdx] || null,
+          },
+        ];
+      } else if (updatedClicked.data) {
+        updatedClicked.data = updatedClicked.data.map(
+          ({ colIdx, ...item }) => ({
+            ...item,
+            col: colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+          }),
+        );
+      }
+
+      if (updatedClicked.dimensions) {
+        updatedClicked.dimensions = updatedClicked.dimensions.map(
+          ({ colIdx, ...item }) => ({
+            ...item,
+            column:
+              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+          }),
+        );
+      }
+
       return (e: React.MouseEvent) =>
         onVisualizationClick({
-          ...clicked,
+          ...updatedClicked,
           event: e.nativeEvent,
           settings,
         });
@@ -533,25 +561,28 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           key,
                           style,
                           isScrolling,
-                        }) => (
-                          <BodyCell
-                            key={key}
-                            style={style}
-                            showTooltip={!isScrolling}
-                            rowSection={getRowSection(columnIndex, rowIndex)}
-                            isNightMode={isNightMode}
-                            getCellClickHandler={getCellClickHandler}
-                            cellWidths={getCellWidthsForSection(
-                              valueHeaderWidths,
-                              valueIndexes,
-                              columnIndex,
-                            )}
-                          />
-                        )}
+                        }) => {
+                          return (
+                            <BodyCell
+                              key={key}
+                              style={style}
+                              showTooltip={!isScrolling}
+                              rowSection={getRowSection(columnIndex, rowIndex)}
+                              isNightMode={isNightMode}
+                              getCellClickHandler={getCellClickHandler}
+                              cellWidths={getCellWidthsForSection(
+                                valueHeaderWidths,
+                                valueIndexes,
+                                columnIndex,
+                              )}
+                            />
+                          );
+                        }}
                         onScroll={({ scrollLeft, scrollTop }) =>
                           onScroll({ scrollLeft, scrollTop } as OnScrollParams)
                         }
-                        ref={bodyRef}
+                        ref={gridRef}
+                        elementRef={gridContainerRef}
                         scrollTop={scrollTop}
                         scrollLeft={scrollLeft}
                       />
@@ -578,7 +609,7 @@ const PivotTable = ExplicitSize<
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(connect(mapStateToProps)(PivotTable), {
-  uiName: t`Pivot Table`,
+  getUiName: () => t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
   minSize: getMinSize("pivot"),

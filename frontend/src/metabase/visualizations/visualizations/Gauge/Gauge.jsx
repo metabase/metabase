@@ -16,7 +16,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";
@@ -53,13 +53,13 @@ const LABEL_OFFSET_PERCENT = 1.025;
 // total degrees of the arc (180 = semicircle, etc)
 const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 
-const radians = degrees => (degrees * Math.PI) / 180;
-const degrees = radians => (radians * 180) / Math.PI;
+const radians = (degrees) => (degrees * Math.PI) / 180;
+const degrees = (radians) => (radians * 180) / Math.PI;
 
-const segmentIsValid = s => !isNaN(s.min) && !isNaN(s.max);
+const segmentIsValid = (s) => !isNaN(s.min) && !isNaN(s.max);
 
 export default class Gauge extends Component {
-  static uiName = t`Gauge`;
+  static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
 
@@ -75,16 +75,19 @@ export default class Gauge extends Component {
       data: { cols, rows },
     },
   ]) {
-    if (!isNumeric(cols[0])) {
+    if (!isNumeric(cols[0]) || isDate(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
   }
 
-  state = {
-    mounted: false,
-  };
+  constructor(props) {
+    super(props);
 
-  _label;
+    /** @type {React.RefObject<SVGTextElement>} */
+    this.labelRef = React.createRef();
+
+    this.state = { mounted: false };
+  }
 
   static settings = {
     ...columnSettings({
@@ -96,7 +99,7 @@ export default class Gauge extends Component {
         ],
         settings,
       ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
+        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
     "gauge.range": {
@@ -104,8 +107,8 @@ export default class Gauge extends Component {
       getDefault(series, vizSettings) {
         const segments = vizSettings["gauge.segments"].filter(segmentIsValid);
         const values = [
-          ...segments.map(s => s.max),
-          ...segments.map(s => s.min),
+          ...segments.map((s) => s.max),
+          ...segments.map((s) => s.min),
         ];
         return values.length > 0
           ? [Math.min(...values), Math.max(...values)]
@@ -114,8 +117,12 @@ export default class Gauge extends Component {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      section: t`Display`,
-      title: t`Gauge ranges`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Gauge ranges`;
+      },
       getDefault(series) {
         let value = 100;
         try {
@@ -141,8 +148,7 @@ export default class Gauge extends Component {
   }
 
   _updateLabelSize() {
-    // TODO: extract this into a component that resizes SVG <text> element to fit bounds
-    const label = this._label && ReactDOM.findDOMNode(this._label);
+    const label = this.labelRef.current;
     if (label) {
       const { width: currentWidth } = label.getBBox();
       // maxWidth currently 95% of inner diameter, could be more intelligent based on text aspect ratio
@@ -227,13 +233,13 @@ export default class Gauge extends Component {
     // get unique min/max plus range endpoints
     const numberLabels = Array.from(
       new Set(
-        range.concat(...segments.map(segment => [segment.min, segment.max])),
+        range.concat(...segments.map((segment) => [segment.min, segment.max])),
       ),
     );
 
     const textLabels = segments
-      .filter(segment => segment.label)
-      .map(segment => ({
+      .filter((segment) => segment.label)
+      .map((segment) => ({
         label: segment.label,
         value: segment.min + (segment.max - segment.min) / 2,
       }));
@@ -323,7 +329,7 @@ export default class Gauge extends Component {
               {/* CENTER LABEL */}
               {/* NOTE: can't be a component because ref doesn't work? */}
               <text
-                ref={label => (this._label = label)}
+                ref={this.labelRef}
                 x={0}
                 y={0}
                 style={{
@@ -365,16 +371,16 @@ const GaugeArc = ({
   const isClickable = clicked && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
-  const value = range.map(v => formatValue(v, options)).join(" - ");
+  const value = range.map((v) => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
-  const handleClick = e => {
+  const handleClick = (e) => {
     if (onVisualizationClick && visualizationIsClickable(clicked)) {
       onVisualizationClick({ ...clicked, event: e.nativeEvent });
     }
   };
 
-  const handleMouseMove = e => {
+  const handleMouseMove = (e) => {
     if (onHoverChange) {
       onHoverChange({ ...hovered, event: e.nativeEvent });
     }

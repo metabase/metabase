@@ -21,7 +21,7 @@ describe("collection permissions", () => {
   describe("item management", () => {
     Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
       context(`${permission} access`, () => {
-        userGroup.forEach(user => {
+        userGroup.forEach((user) => {
           onlyOn(permission === "curate", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
@@ -156,10 +156,10 @@ describe("collection permissions", () => {
                   });
 
                   it("archiving sub-collection should redirect to its parent", () => {
-                    cy.request("GET", "/api/collection").then(xhr => {
+                    cy.request("GET", "/api/collection").then((xhr) => {
                       // We need to obtain the ID programatically
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-                        collection => collection.slug === "third_collection",
+                        (collection) => collection.slug === "third_collection",
                       );
 
                       cy.intercept(
@@ -208,9 +208,9 @@ describe("collection permissions", () => {
                   });
 
                   it("visiting already archived collection by its ID shouldn't let you edit it (metabase#12489)", () => {
-                    cy.request("GET", "/api/collection").then(xhr => {
+                    cy.request("GET", "/api/collection").then((xhr) => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-                        collection => collection.slug === "third_collection",
+                        (collection) => collection.slug === "third_collection",
                       );
                       // Archive it
                       cy.request(
@@ -254,9 +254,9 @@ describe("collection permissions", () => {
                   });
 
                   it("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
-                    cy.request("GET", "/api/collection").then(xhr => {
+                    cy.request("GET", "/api/collection").then((xhr) => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-                        collection => collection.slug === "third_collection",
+                        (collection) => collection.slug === "third_collection",
                       );
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                       H.openCollectionMenu();
@@ -337,7 +337,7 @@ describe("collection permissions", () => {
                 });
             });
 
-            ["/", "/collection/root"].forEach(route => {
+            ["/", "/collection/root"].forEach((route) => {
               it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
@@ -415,6 +415,31 @@ describe("collection permissions", () => {
       "Permissions for Usage analytics",
     );
     cy.findByTestId("permission-table");
+  });
+
+  it("should show the new collection button in a sidebar even to users without collection access", () => {
+    cy.intercept("POST", "/api/collection").as("createCollection");
+
+    cy.signIn("nocollection");
+    cy.visit("/");
+    H.navigationSidebar()
+      .findByLabelText("Create a new collection")
+      .should("be.visible")
+      .click();
+
+    cy.findByTestId("new-collection-modal").within(() => {
+      cy.findByLabelText("Name").type("Foo");
+      cy.log(
+        "The only possible location to save the new collection is this user's personal collection",
+      );
+      cy.findByTestId("collection-picker-button").should(
+        "contain",
+        "No Collection Tableton's Personal Collection",
+      );
+      cy.button("Create").click();
+      cy.wait("@createCollection");
+    });
+    cy.location("pathname").should("match", /^\/collection\/\d+-foo/);
   });
 });
 

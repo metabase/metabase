@@ -352,7 +352,7 @@ export function source(engine?: string | null): Source {
         dialect,
         keywords: {
           caseSensitive: false,
-          words: words.map(word => word.toUpperCase()),
+          words: words.map((word) => word.toUpperCase()),
         },
         indentation: sqlIndentation(),
       };

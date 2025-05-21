@@ -41,7 +41,7 @@ function patchNode(node: ElementContent) {
     node.properties.dy = "0.5em";
   }
 
-  node.children.forEach(child => patchNode(child));
+  node.children.forEach((child) => patchNode(child));
 }
 
 /**

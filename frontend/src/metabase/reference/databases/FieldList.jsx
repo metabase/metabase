@@ -31,7 +31,9 @@ import {
 } from "../selectors";
 
 const emptyStateData = {
-  message: t`Fields in this table will appear here as they're added`,
+  get message() {
+    return t`Fields in this table will appear here as they're added`;
+  },
   icon: "fields",
 };
 
@@ -73,7 +75,7 @@ const propTypes = {
   "data-testid": PropTypes.string,
 };
 
-const FieldList = props => {
+const FieldList = (props) => {
   const {
     style,
     entities,
@@ -96,16 +98,16 @@ const FieldList = props => {
     handleReset,
   } = useFormik({
     initialValues: {},
-    onSubmit: fields =>
+    onSubmit: (fields) =>
       onSubmit(entities, fields, { ...props, resetForm: handleReset }),
   });
 
-  const getFormField = name => ({
+  const getFormField = (name) => ({
     ...getFieldProps(name),
     ...getFieldMeta(name),
   });
 
-  const getNestedFormField = id => ({
+  const getNestedFormField = (id) => ({
     display_name: getFormField(`${id}.display_name`),
     description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
@@ -169,12 +171,13 @@ const FieldList = props => {
                     // respect the column sort order
                     .sort((a, b) => a.position - b.position)
                     .map(
-                      entity =>
+                      (entity) =>
                         entity &&
                         entity.id &&
                         entity.name && (
                           <li key={entity.id}>
                             <Field
+                              databaseId={table.db_id}
                               field={entity}
                               foreignKeys={foreignKeys}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}

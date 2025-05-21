@@ -183,9 +183,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
   });
 
   it("should show Models tab after creation the first model (metabase#24878)", () => {
-    cy.visit("/");
-
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText(/use the notebook/i)
       .click();
@@ -485,14 +483,14 @@ describe("issue 30165", () => {
 
     H.NativeEditor.focus().type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
     H.NativeEditor.focus().type(" LIMIT 10");
     H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
@@ -633,46 +631,50 @@ describe("issue 43216", () => {
     });
   });
 
-  it("should update source question metadata when it changes (metabase#43216)", () => {
-    cy.visit("/");
+  it(
+    "should update source question metadata when it changes (metabase#43216)",
+    { tags: "@flaky" },
+    () => {
+      cy.visit("/");
 
-    cy.log("Create target question");
-    H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText("Source question").click();
-    });
-    H.saveQuestion("Target question");
+      cy.log("Create target question");
+      H.newButton("Question").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        cy.findByText("Source question").click();
+      });
+      H.saveQuestion("Target question");
 
-    cy.log("Update source question");
-    H.commandPaletteButton().click();
-    H.commandPalette().findByText("Source question").click();
-    cy.findByTestId("native-query-editor-container")
-      .findByText("Open Editor")
-      .click();
-    H.NativeEditor.focus().type(" , 4 as D");
-    H.saveSavedQuestion();
+      cy.log("Update source question");
+      H.commandPaletteButton().click();
+      H.commandPalette().findByText("Source question").click();
+      cy.findByTestId("native-query-editor-container")
+        .findByText("Open Editor")
+        .click();
+      H.NativeEditor.focus().type(" , 4 as D");
+      H.saveSavedQuestion();
 
-    cy.log("Assert updated metadata in target question");
-    H.commandPaletteButton().click();
-    H.commandPalette().findByText("Target question").click();
-    cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
-    H.openNotebook();
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText("D").should("be.visible");
-  });
+      cy.log("Assert updated metadata in target question");
+      H.commandPaletteButton().click();
+      H.commandPalette().findByText("Target question").click();
+      cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
+      H.openNotebook();
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText("D").should("be.visible");
+    },
+  );
 });
 
 function updateQuestion() {
   H.queryBuilderHeader().findByText("Save").click();
-  cy.findByTestId("save-question-modal").within(modal => {
+  cy.findByTestId("save-question-modal").within((modal) => {
     cy.findByText("Save").click();
   });
 }
 
 function removeSourceColumns() {
   cy.findByTestId("fields-picker").click();
-  H.popover().findByText("Select none").click();
+  H.popover().findByText("Select all").click();
 }
 
 function createAdHocQuestion(questionName) {
@@ -690,7 +692,7 @@ function createAdHocQuestion(questionName) {
 
 function visualizeAndAssertColumns() {
   H.visualize();
-  cy.findByTestId("TableInteractive-root").within(() => {
+  H.tableInteractive().within(() => {
     cy.findByText("ID").should("exist");
     cy.findByText("Total").should("not.exist");
   });

@@ -9,6 +9,7 @@ export function setupBooleanQuery(questionName = "Boolean Query") {
       name: questionName,
       native: {
         query: BOOLEAN_QUERY,
+        "template-tags": {},
       },
       visualization_settings: {
         "table.pivot_column": "boolean",

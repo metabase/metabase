@@ -14,7 +14,6 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
-  mockScrollIntoView,
   renderWithProviders,
   screen,
   waitFor,
@@ -66,8 +65,6 @@ const uploadedModel2 = createMockCollectionItem({
   model: "dataset",
   based_on_upload: 124,
 });
-
-mockScrollIntoView();
 
 async function setupCollectionContent(overrides = {}) {
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
@@ -212,7 +209,7 @@ describe("FileUploadStatus", () => {
 
   it("Should show a start exploring link on completion", async () => {
     jest.useFakeTimers({ advanceTimers: true });
-    fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
+    fetchMock.post("path:/api/upload/csv", "3", { delay: 1000 });
 
     await setupCollectionContent();
 
@@ -234,13 +231,13 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
   it("Should allow new model creation when an appendable model exists", async () => {
     jest.useFakeTimers({ advanceTimers: true });
-    fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
+    fetchMock.post("path:/api/upload/csv", "3", { delay: 1000 });
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
@@ -268,7 +265,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -311,7 +308,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
   });
 
@@ -358,7 +355,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
     await screen.findByText("Data added to Fancy Table");
   });
@@ -405,7 +402,7 @@ describe("FileUploadStatus", () => {
     });
 
     expect(
-      await screen.findByRole("link", { name: "Start exploring" }),
+      await screen.findByRole("link", { name: /Start exploring/ }),
     ).toHaveAttribute("href", "/model/3");
     await screen.findByText("Data replaced in Fancy Table");
   });
@@ -413,7 +410,7 @@ describe("FileUploadStatus", () => {
   it("Should show an error message on error", async () => {
     jest.useFakeTimers({ advanceTimers: true });
     fetchMock.post(
-      "path:/api/card/from-csv",
+      "path:/api/upload/csv",
       {
         throws: {
           data: { message: "Something went wrong", cause: "It's dead Jim" },
@@ -456,7 +453,7 @@ describe("FileUploadStatus", () => {
   describe("loading state", () => {
     it("should rotate loading messages after 30 seconds", async () => {
       jest.useFakeTimers({ advanceTimers: true });
-      fetchMock.post("path:/api/card/from-csv", "3", { delay: 90 * 1000 });
+      fetchMock.post("path:/api/upload/csv", "3", { delay: 90 * 1000 });
 
       await setupCollectionContent();
 
@@ -492,7 +489,7 @@ describe("FileUploadStatus", () => {
       });
 
       expect(
-        await screen.findByRole("link", { name: "Start exploring" }),
+        await screen.findByRole("link", { name: /Start exploring/ }),
       ).toHaveAttribute("href", "/model/3");
     });
   });

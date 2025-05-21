@@ -84,7 +84,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     });
   });
 
-  ["Zero", "Nothing"].forEach(replacementValue => {
+  ["Zero", "Nothing"].forEach((replacementValue) => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
       H.openVizSettingsSidebar();
 
@@ -181,13 +181,12 @@ describe("issue 17524", () => {
       cy.get("polygon");
 
       H.filter();
-
-      H.filterField("ID", {
-        operator: "Greater than",
-        value: "1",
+      H.popover().findByText("ID").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("1");
+        cy.button("Apply filter").click();
       });
-      cy.findByTestId("apply-filters").click();
-
       cy.get("polygon");
     });
   });
@@ -289,7 +288,7 @@ describe("issue 18061", () => {
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
-      cy.window().then(w => (w.beforeReload = true));
+      cy.window().then((w) => (w.beforeReload = true));
 
       H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
       cy.findByTestId("qb-filters-panel")
@@ -384,7 +383,7 @@ describe("issue 18063", () => {
 
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].forEach(field =>
+    ["Latitude field", "Longitude field"].forEach((field) =>
       H.leftSidebar().within(() => {
         toggleFieldSelectElement(field);
       }),
@@ -539,13 +538,15 @@ describe("issue 21452", () => {
       .findByDisplayValue("Cumulative sum of Quantity")
       .clear()
       .type("Foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display type").click();
-    // Dismiss the popup and close settings
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    H.cartesianChartCircle().first().realHover();
+    H.popover().findByText("Display type").click();
+
+    cy.log("Dismiss the popup and close settings");
+    H.leftSidebar().button("Done").click();
+
+    // trigger("mousemove") is more reliable than realHover
+    // maybe related to https://github.com/dmtrKovalenko/cypress-real-events/issues/691
+    H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
       header: "2022",
@@ -604,15 +605,6 @@ describe("issue 21665", () => {
     native: { query: "select 2" },
     display: "scalar",
   };
-  function editQ2NativeQuery(query, questionId) {
-    cy.request("PUT", `/api/card/${questionId}`, {
-      dataset_query: {
-        type: "native",
-        native: { query },
-        database: 1,
-      },
-    });
-  }
 
   beforeEach(() => {
     H.restore();
@@ -647,19 +639,6 @@ describe("issue 21665", () => {
 
     H.saveDashboard();
     cy.wait("@getDashboard");
-  });
-
-  it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
-    cy.get("@questionId").then(questionId => {
-      editQ2NativeQuery("select order by --", questionId);
-    });
-
-    H.visitDashboard("@dashboardId");
-
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
-    cy.findByTestId("dashcard")
-      .findByText("There was a problem displaying this chart.")
-      .should("be.visible");
   });
 });
 
@@ -837,7 +816,7 @@ describe("issue 27279", () => {
     // need to add a single space on either side of the text as it is used as padding
     // in ECharts
     const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"].map(
-      str => ` ${str} `,
+      (str) => ` ${str} `,
     );
     compareValuesInOrder(
       H.echartsContainer()
@@ -927,7 +906,7 @@ describe("issue 27427", () => {
         method: "GET",
         url: `/api/pulse/preview_card/${id}`,
         failOnStatusCode: false,
-      }).then(response => {
+      }).then((response) => {
         callback(response);
       });
     });
@@ -996,7 +975,7 @@ describe("issue 32075", () => {
     addCountGreaterThan2Filter();
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1008,7 +987,7 @@ describe("issue 32075", () => {
     H.addSummaryGroupingField({ field: "Birth Date" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1020,7 +999,7 @@ describe("issue 32075", () => {
     H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
     H.visualize();
 
-    cy.findByTestId("TableInteractive-root").should("not.exist");
+    H.tableInteractive().should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
@@ -1205,9 +1184,9 @@ describe("issue 49160", () => {
       display: "pie",
     });
 
-    // Shows pie placeholder
-    H.echartsContainer().findByText("18,760").should("be.visible");
-    cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+    cy.log("Shows an empty state that can open the summarize sidebar");
+    cy.findByAltText("pie chart example illustration").should("be.visible");
+    cy.findByLabelText("Open summarize sidebar").click();
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");

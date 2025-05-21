@@ -86,15 +86,15 @@ Metabase's reference documentation.
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
-- [SQL snippets](./questions/native-editor/sql-snippets.md)
-- [SQL snippet folder permissions](./permissions/snippets.md)
+- [Snippets](./questions/native-editor/snippets.md)
+- [Snippet folder permissions](./permissions/snippets.md)
 
 #### Visualizing data
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
 - [Detail](./questions/visualizations/detail.md)
-- [Funnel charts](./questions/visualizations/detail.md)
+- [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)
 - [Line, bar, and area charts](./questions/visualizations/line-bar-and-area-charts.md)
 - [Maps](./questions/visualizations/map.md)
@@ -181,7 +181,7 @@ Metabase's reference documentation.
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [Data sandbox examples](./permissions/data-sandbox-examples.md)
-- [SQL snippets folder permissions](./permissions/snippets.md)
+- [Snippets folder permissions](./permissions/snippets.md)
 - [Notification permissions](./permissions/notifications.md)
 
 ### Embedding
@@ -252,7 +252,7 @@ Metabase's reference documentation.
 
 Share and connect with other Metabasers.
 
-### [Metabase Cloud](https://www.metabase.com/cloud/docs)
+### [Metabase Cloud](https://www.metabase.com/docs/latest/cloud/start)
 
 For docs specific to Metabase Cloud plans.
 
@@ -264,7 +264,7 @@ Practical advice from our community.
 
 News, updates, and ideas.
 
-### [Customers](https://www.metabase.com/case_studies)
+### [Customers](https://www.metabase.com/case-studies)
 
 Real companies, real data, real stories.
 

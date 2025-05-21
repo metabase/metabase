@@ -14,6 +14,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -197,11 +198,9 @@
           metric-card {:description "Orders with a subtotal of $100 or more."
                        :lib/type :metadata/card
                        :type :metric
-                       :dataset-query {:type     :query
-                                       :database (meta/id)
-                                       :query    {:source-table (meta/id :orders)
-                                                  :aggregation  [[:count]]
-                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
+                       :dataset-query (lib.tu.macros/mbql-query orders
+                                        {:aggregation  [[:count]]
+                                         :filter       [:>= $subtotal 100]})
                        :database-id (meta/id)
                        :name "Large orders"
                        :id metric-id}

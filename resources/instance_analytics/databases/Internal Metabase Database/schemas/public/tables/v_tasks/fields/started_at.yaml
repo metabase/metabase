@@ -20,9 +20,9 @@ json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 3
+position: 4
 custom_position: 0
-database_position: 3
+database_position: 4
 has_field_values: null
 settings: null
 caveats: null
@@ -39,4 +39,4 @@ serdes/meta:
   model: Field
 database_indexed: false
 database_partitioned: null
-entity_id: Q28GjRphKmWyDQZ7vch_l
+entity_id: fDxH2yqCHnftKx3IkW8ra

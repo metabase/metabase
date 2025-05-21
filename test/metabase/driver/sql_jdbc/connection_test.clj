@@ -4,12 +4,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
@@ -23,8 +25,6 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.ssh :as ssh]
-   [metabase.util.ssh-test :as ssh-test]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -372,6 +372,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
+        (is (true? (driver.u/can-connect-with-details? (tx/driver) tunnel-db-details)))
         (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))

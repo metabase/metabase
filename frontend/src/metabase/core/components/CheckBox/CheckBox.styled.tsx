@@ -24,11 +24,11 @@ export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   position: absolute;
   left: 0;
   right: 0;
-  width: ${props => `${props.size}px`};
+  width: ${(props) => `${props.size}px`};
   height: 100%;
   margin: 0;
   padding: 0;
-  cursor: ${props => (props.disabled ? "" : "pointer")};
+  cursor: ${(props) => (props.disabled ? "" : "pointer")};
   opacity: 0;
   z-index: 1;
 `;
@@ -36,9 +36,9 @@ export const CheckBoxInput = styled.input<CheckBoxInputProps>`
 export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   display: inline-flex;
   align-items: center;
-  cursor: ${props => (props.disabled ? "" : "pointer")};
+  cursor: ${(props) => (props.disabled ? "" : "pointer")};
   max-width: 100%;
-  opacity: ${props => (props.disabled ? "0.4" : "")};
+  opacity: ${(props) => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
     outline: 2px solid var(--mb-color-focus);
@@ -49,25 +49,28 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   }
 `;
 
-export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
+export const CheckBoxIcon = styled(Icon, {
+  shouldForwardProp: (propName: string) => propName !== "uncheckedColor",
+})<CheckBoxIconProps>`
   display: block;
   padding: ${DEFAULT_ICON_PADDING / 2}px;
-  color: ${props => color(props.checked ? "white" : props.uncheckedColor)};
-  width: ${props => `${props.size}px`};
-  height: ${props => `${props.size}px`};
+  color: ${(props) => color(props.checked ? "white" : props.uncheckedColor)};
+  width: ${(props) => `${props.size}px`};
+  height: ${(props) => `${props.size}px`};
 `;
 
 export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
   display: flex;
   justify-content: center;
   align-items: center;
-  min-width: ${props => `${props.size}px`};
-  width: ${props => `${props.size}px`};
-  height: ${props => `${props.size}px`};
+  min-width: ${(props) => `${props.size}px`};
+  width: ${(props) => `${props.size}px`};
+  height: ${(props) => `${props.size}px`};
   border: 0.125rem solid
-    ${props => color(props.checked ? props.checkedColor : props.uncheckedColor)};
+    ${(props) =>
+      color(props.checked ? props.checkedColor : props.uncheckedColor)};
   border-radius: 0.25rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.checked ? color(props.checkedColor) : "var(--mb-color-bg-white)"};
 `;
 

@@ -3,25 +3,22 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
 import { formatField, stripId } from "metabase/lib/formatting";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
   getFieldValues,
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
+  isAddress,
   isBoolean,
-  isCategory,
   isCoordinate,
   isCurrency,
   isDate,
   isDateWithoutTime,
   isDimension,
   isFK,
-  isLocation,
   isMetric,
   isNumber,
   isNumeric,
@@ -34,7 +31,6 @@ import {
   isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  DatasetColumn,
   FieldFingerprint,
   FieldFormattingSettings,
   FieldId,
@@ -42,8 +38,6 @@ import type {
   FieldValuesType,
   FieldVisibilityType,
 } from "metabase-types/api";
-
-import { FieldDimension } from "../Dimension";
 
 import Base from "./Base";
 import type Metadata from "./Metadata";
@@ -69,7 +63,7 @@ export default class Field extends Base {
   description: string | null;
   semantic_type: string | null;
   fingerprint?: FieldFingerprint;
-  base_type: string | null;
+  base_type: string;
   effective_type?: string | null;
   table?: Table;
   table_id?: Table["id"];
@@ -88,9 +82,6 @@ export default class Field extends Base {
   fk_target_field_id: FieldId | null;
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
-
-  // added when creating "virtual fields" that are associated with a given query
-  query?: StructuredQuery | NativeQuery;
 
   getPlainObject(): IField {
     return this._plainObject;
@@ -206,16 +197,12 @@ export default class Field extends Base {
     return isCoordinate(this);
   }
 
-  isLocation() {
-    return isLocation(this);
+  isAddress() {
+    return isAddress(this);
   }
 
   isSummable() {
     return isSummable(this);
-  }
-
-  isCategory() {
-    return isCategory(this);
   }
 
   isMetric() {
@@ -286,25 +273,6 @@ export default class Field extends Base {
     }
   }
 
-  // 1. `_fieldInstance` is passed in so that we can shortwire any subsequent calls to `field()` form the dimension instance
-  // 2. The distinction between "fields" and "dimensions" is fairly fuzzy, and this method is "wrong" in the sense that
-  // The `ref` of this Field instance MIGHT be something like ["aggregation", "count"] which means that we should
-  // instantiate an AggregationDimension, not a FieldDimension, but there are bugs with that route, and this seems to work for now...
-  dimension() {
-    const ref = this.reference();
-    const fieldDimension = new FieldDimension(
-      ref[1],
-      ref[2],
-      this.metadata,
-      this.query,
-      {
-        _fieldInstance: this,
-      },
-    );
-
-    return fieldDimension;
-  }
-
   // BREAKOUTS
 
   /**
@@ -338,11 +306,24 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
+  remappedField() {
+    return this.remappedInternalField() ?? this.remappedExternalField();
+  }
+
+  remappedInternalField() {
+    const dimensions = this.dimensions ?? [];
+    if (dimensions.length > 0 && dimensions[0].type === "internal") {
+      return this;
+    }
+
+    return null;
+  }
+
   /**
    * Returns the remapped field, if any
    * @return {?Field}
    */
-  remappedField() {
+  remappedExternalField() {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
@@ -398,19 +379,12 @@ export default class Field extends Base {
       return this.isSearchable() ? this : null;
     }
 
-    const remappedField = this.remappedField();
+    const remappedField = this.remappedExternalField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }
 
     return this.isSearchable() ? this : null;
-  }
-
-  column(extra = {}): DatasetColumn {
-    return this.dimension().column({
-      source: "fields",
-      ...extra,
-    });
   }
 
   clone(fieldMetadata?: FieldMetadata) {
@@ -423,15 +397,6 @@ export default class Field extends Base {
     newField._plainObject = { ...plainObject, ...fieldMetadata };
 
     return newField;
-  }
-
-  /**
-   * Returns a FKDimension for this field and the provided field
-   * @param {Field} foreignField
-   * @return {Dimension}
-   */
-  foreign(foreignField) {
-    return this.dimension().foreign(foreignField.dimension());
   }
 
   isVirtual() {

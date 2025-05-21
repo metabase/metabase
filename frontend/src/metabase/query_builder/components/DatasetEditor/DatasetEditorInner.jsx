@@ -158,7 +158,7 @@ function getSidebar(
     return (
       <TagEditorSidebar
         {...props}
-        query={question.legacyQuery()}
+        query={question.legacyNativeQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     );
@@ -181,7 +181,7 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
       : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
-const _DatasetEditorInner = props => {
+const _DatasetEditorInner = (props) => {
   const {
     question,
     visualizationSettings,
@@ -207,7 +207,7 @@ const _DatasetEditorInner = props => {
     onOpenModal,
   } = props;
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
@@ -238,7 +238,7 @@ const _DatasetEditorInner = props => {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: question.legacyQuery(),
+      query: question.legacyNativeQuery(),
       viewHeight: height,
     });
   }, [question, height]);
@@ -253,7 +253,7 @@ const _DatasetEditorInner = props => {
     if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex(field => field.name === focusedFieldName);
+    return fields.findIndex((field) => field.name === focusedFieldName);
   }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
@@ -275,7 +275,7 @@ const _DatasetEditorInner = props => {
   }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
-    changes => {
+    (changes) => {
       const mappedField = metadata.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
         mappedField && getWritableColumnProperties(mappedField);
@@ -285,14 +285,14 @@ const _DatasetEditorInner = props => {
   );
 
   const onFieldMetadataChange = useCallback(
-    values => {
+    (values) => {
       setMetadataDiff({ name: focusedFieldName, changes: values });
     },
     [focusedFieldName, setMetadataDiff],
   );
 
   const onMappedDatabaseColumnChange = useCallback(
-    value => {
+    (value) => {
       const changes = inheritMappedFieldProperties({ id: value });
       setMetadataDiff({ name: focusedFieldName, changes });
     },
@@ -312,7 +312,7 @@ const _DatasetEditorInner = props => {
   }, [result]);
 
   const onChangeEditorTab = useCallback(
-    tab => {
+    (tab) => {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
     },
@@ -369,7 +369,7 @@ const _DatasetEditorInner = props => {
   ]);
 
   const handleColumnSelect = useCallback(
-    column => {
+    (column) => {
       setFocusedFieldName(column.name);
     },
     [setFocusedFieldName],
@@ -385,6 +385,19 @@ const _DatasetEditorInner = props => {
       }
     },
     [setFocusedFieldName],
+  );
+
+  const handleHeaderColumnReorder = useCallback(
+    (dragColIndex) => {
+      const field = fields[dragColIndex];
+
+      if (!field) {
+        return;
+      }
+
+      setFocusedFieldName(field.name);
+    },
+    [fields],
   );
 
   // This value together with focusedFieldIndex is used to
@@ -405,7 +418,7 @@ const _DatasetEditorInner = props => {
   }, [focusedFieldIndex, previousFocusedFieldIndex]);
 
   const renderSelectableTableColumnHeader = useCallback(
-    (element, column, columnIndex) => {
+    (column, columnIndex) => {
       const isSelected = columnIndex === focusedFieldIndex;
       return (
         <Flex
@@ -414,6 +427,7 @@ const _DatasetEditorInner = props => {
           })}
           tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
           onFocus={() => handleColumnSelect(column)}
+          data-testid="model-column-header-content"
         >
           <Icon
             className={cx(DatasetEditorS.FieldTypeIcon, {
@@ -429,7 +443,7 @@ const _DatasetEditorInner = props => {
     [focusedFieldIndex, handleColumnSelect],
   );
 
-  const renderTableHeaderWrapper = useMemo(
+  const renderTableHeader = useMemo(
     () =>
       datasetEditorTab === "metadata"
         ? renderSelectableTableColumnHeader
@@ -440,7 +454,7 @@ const _DatasetEditorInner = props => {
   const canSaveChanges =
     isDirty &&
     (!isNative || !isResultDirty) &&
-    fields.every(field => field.display_name) &&
+    fields.every((field) => field.display_name) &&
     Lib.canSave(question.query(), question.type());
 
   const saveButtonTooltipLabel = useMemo(() => {
@@ -476,6 +490,7 @@ const _DatasetEditorInner = props => {
         center={
           <EditorTabs
             currentTab={datasetEditorTab}
+            disabledQuery={!isEditable}
             disabledMetadata={!resultsMetadata}
             onChange={onChangeEditorTab}
           />
@@ -543,11 +558,12 @@ const _DatasetEditorInner = props => {
                 className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
+                onHeaderColumnReorder={handleHeaderColumnReorder}
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
-                renderTableHeaderWrapper={renderTableHeaderWrapper}
+                renderTableHeader={renderTableHeader}
                 scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                 renderEmptyMessage={isEditingMetadata}
               />

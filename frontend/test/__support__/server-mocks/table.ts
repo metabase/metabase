@@ -13,7 +13,7 @@ export function setupTableEndpoints(
   fetchMock.post(`path:/api/table/${table.id}/rescan_values`, {});
   fetchMock.post(`path:/api/table/${table.id}/discard_values`, {});
   setupTableQueryMetadataEndpoint(table);
-  table.fields?.forEach(field => setupFieldEndpoints({ ...field, table }));
+  table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
 }
 
 export function setupTableQueryMetadataEndpoint(table: Table) {
@@ -22,7 +22,7 @@ export function setupTableQueryMetadataEndpoint(table: Table) {
 
 export function setupTablesEndpoints(tables: Table[]) {
   fetchMock.get("path:/api/table", tables);
-  tables.forEach(table => setupTableEndpoints(table));
+  tables.forEach((table) => setupTableEndpoints(table));
 }
 
 export function setupUploadManagementEndpoint(tables: Table[]) {
@@ -34,7 +34,7 @@ export function setupUploadManagementEndpoint(tables: Table[]) {
  * @param failureId - the id of the table that should fail to delete, any other id will succeed
  */
 export function setupDeleteUploadManagementDeleteEndpoint(failureId?: number) {
-  fetchMock.delete(`glob:*/api/ee/upload-management/tables/*`, url => {
+  fetchMock.delete(`glob:*/api/ee/upload-management/tables/*`, (url) => {
     return url.includes(`/${failureId}`)
       ? {
           throws: { data: { message: "It's dead Jim" } },

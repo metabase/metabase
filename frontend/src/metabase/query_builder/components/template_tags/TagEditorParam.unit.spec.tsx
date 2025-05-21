@@ -6,15 +6,10 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { TemplateTag } from "metabase-types/api";
+import type { Card, TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
@@ -36,16 +31,20 @@ import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {
   tag?: TemplateTag;
+  originalCard?: Card;
 }
 
-const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
-  mockScrollIntoView();
+const setup = ({
+  tag = createMockTemplateTag(),
+  originalCard,
+}: SetupOpts = {}) => {
   const database = createSampleDatabase();
   const state = createMockState({
     qb: createMockQueryBuilderState({
       card: createMockCard({
         dataset_query: createMockNativeDatasetQuery(),
       }),
+      originalCard,
     }),
     entities: createMockEntitiesState({
       databases: [database],
@@ -111,6 +110,29 @@ describe("TagEditorParam", () => {
         "widget-type": "string/starts-with",
       });
       const { setTemplateTag } = setup({ tag });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Field Filter"));
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(screen.getByText("Number"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        type: "number",
+        default: undefined,
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+    });
+
+    it("should not throw when the original question is an mbql query (metabase#50662)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/starts-with",
+      });
+      const originalCard = createMockCard();
+      const { setTemplateTag } = setup({ tag, originalCard });
 
       await userEvent.click(screen.getByTestId("variable-type-select"));
       await userEvent.click(screen.getByText("Field Filter"));

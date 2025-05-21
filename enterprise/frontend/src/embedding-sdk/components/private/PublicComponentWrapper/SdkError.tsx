@@ -1,8 +1,8 @@
-import { jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
-import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
+import type { SdkErrorComponentProps } from "embedding-sdk/types";
 import Alert from "metabase/core/components/Alert";
 import { color } from "metabase/lib/colors";
 import { Box, Center, Code } from "metabase/ui";
@@ -13,7 +13,7 @@ export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
   return (
-    <Center h="100%" w="100%" mx="auto">
+    <Center h="100%" w="100%" mx="auto" data-testid="sdk-error-container">
       <ErrorMessageComponent message={message} />
     </Center>
   );
@@ -38,34 +38,30 @@ const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
 interface ResourceNotFoundErrorProps {
   id: string | number;
 }
-export function QuestionNotFoundError({ id }: ResourceNotFoundErrorProps) {
-  return (
-    <SdkError
-      message={jt`Question ${(
-        <Code
-          bg="var(--mb-color-background-error-secondary)"
-          c="var(--mb-color-text-medium)"
-          key="question-id"
-        >
-          {id}
-        </Code>
-      )} not found. Make sure you pass the correct ID.`}
-    />
-  );
-}
 
-export function DashboardNotFoundError({ id }: ResourceNotFoundErrorProps) {
-  return (
-    <SdkError
-      message={jt`Dashboard ${(
-        <Code
-          bg="var(--mb-color-background-error-secondary)"
-          c="var(--mb-color-text-medium)"
-          key="dashboard-id"
-        >
-          {id}
-        </Code>
-      )} not found. Make sure you pass the correct ID.`}
-    />
-  );
-}
+const ResourceNotFoundError = ({
+  resource,
+  id,
+}: ResourceNotFoundErrorProps & { resource: string }) => (
+  <SdkError
+    message={jt`${resource} ${(
+      <Code
+        bg="var(--mb-color-background-error-secondary)"
+        c="var(--mb-color-text-medium)"
+        key="question-id"
+      >
+        {id}
+      </Code>
+    )} not found. Make sure you pass the correct ID.`}
+  />
+);
+
+export const QuestionNotFoundError = ({ id }: ResourceNotFoundErrorProps) => (
+  <ResourceNotFoundError resource={t`Question`} id={id} />
+);
+export const DashboardNotFoundError = ({ id }: ResourceNotFoundErrorProps) => (
+  <ResourceNotFoundError resource={t`Dashboard`} id={id} />
+);
+export const CollectionNotFoundError = ({ id }: ResourceNotFoundErrorProps) => (
+  <ResourceNotFoundError resource={t`Collection`} id={id} />
+);

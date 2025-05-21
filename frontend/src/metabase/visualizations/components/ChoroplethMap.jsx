@@ -49,7 +49,7 @@ export function getColorplethColorScale(
     [lightColor.string(), darkColor.string()],
   );
 
-  const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
+  const colors = d3.range(0, 1.25, 0.25).map((value) => scale(value));
 
   if (darkenLast) {
     colors[colors.length - 1] = Color(color)
@@ -69,7 +69,7 @@ function loadGeoJson(geoJsonPath, callback) {
     return;
   }
 
-  d3.json(geoJsonPath).then(json => {
+  d3.json(geoJsonPath).then((json) => {
     geoJsonCache.set(geoJsonPath, json);
     callback(json);
   });
@@ -97,39 +97,39 @@ const AVERAGE_LENGTH_CUTOFF = 5;
 
 function shouldUseCompactFormatting(groups, formatMetric) {
   const minValues = groups.map(([x]) => x);
-  const maxValues = groups.slice(0, -1).map(group => group[group.length - 1]);
+  const maxValues = groups.slice(0, -1).map((group) => group[group.length - 1]);
   const allValues = minValues.concat(maxValues);
-  const formattedValues = allValues.map(value => formatMetric(value, false));
+  const formattedValues = allValues.map((value) => formatMetric(value, false));
   const averageLength =
     formattedValues.reduce((sum, { length }) => sum + length, 0) /
     formattedValues.length;
   return averageLength > AVERAGE_LENGTH_CUTOFF;
 }
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   isSdk: getIsEmbeddingSdk(state),
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 
 const connector = connect(mapStateToProps, null);
 
-const ensureTrailingSlash = url => (url.endsWith("/") ? url : url + "/");
+const ensureTrailingSlash = (url) => (url.endsWith("/") ? url : url + "/");
 
 export function getMapUrl(details, props) {
-  if (details.builtin) {
-    if (props?.isSdk && props?.sdkMetabaseInstanceUrl) {
-      const baseUrl = new URL(
-        props.sdkMetabaseInstanceUrl,
-        window.location.origin,
-      ).href;
+  const mapUrl = details.builtin
+    ? details.url
+    : "api/geojson/" + props.settings["map.region"];
 
-      // if the second parameter ends with a slash, it will join them together
-      // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
-      return new URL(details.url, ensureTrailingSlash(baseUrl)).href;
-    }
-    return details.url;
+  if (!props?.isSdk || !props?.sdkMetabaseInstanceUrl) {
+    return mapUrl;
   }
-  return "api/geojson/" + props.settings["map.region"];
+
+  const baseUrl = new URL(props.sdkMetabaseInstanceUrl, window.location.origin)
+    .href;
+
+  // if the second parameter ends with a slash, it will join them together
+  // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
+  return new URL(mapUrl, ensureTrailingSlash(baseUrl)).href;
 }
 
 class ChoroplethMapInner extends Component {
@@ -181,7 +181,7 @@ class ChoroplethMapInner extends Component {
           geoJson: null,
           geoJsonPath: geoJsonPath,
         });
-        loadGeoJson(geoJsonPath, geoJson => {
+        loadGeoJson(geoJsonPath, (geoJson) => {
           this.setState({
             geoJson: geoJson,
             geoJsonPath: geoJsonPath,
@@ -247,26 +247,27 @@ class ChoroplethMapInner extends Component {
     ] = series;
     const dimensionIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.dimension"],
+      (col) => col.name === settings["map.dimension"],
     );
     const metricIndex = _.findIndex(
       cols,
-      col => col.name === settings["map.metric"],
+      (col) => col.name === settings["map.metric"],
     );
 
-    const getRowKey = row =>
+    const getRowKey = (row) =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
-    const getRowValue = row => row[metricIndex] || 0;
+    const getRowValue = (row) => row[metricIndex] || 0;
 
-    const getFeatureName = feature => String(feature.properties[nameProperty]);
+    const getFeatureName = (feature) =>
+      String(feature.properties[nameProperty]);
     const getFeatureKey = (feature, { lowerCase = true } = {}) => {
       const key = String(feature.properties[keyProperty]);
       return lowerCase ? key.toLowerCase() : key;
     };
 
-    const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
+    const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)];
 
-    const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
+    const rowByFeatureKey = new Map(rows.map((row) => [getRowKey(row), row]));
 
     const getFeatureClickObject = (row, feature) =>
       row == null
@@ -315,7 +316,7 @@ class ChoroplethMapInner extends Component {
 
     const onClickFeature =
       isClickable &&
-      (click => {
+      ((click) => {
         if (visualizationIsClickable(getFeatureClickObject(rows[0]))) {
           const featureKey = getFeatureKey(click.feature);
           const row = rowByFeatureKey.get(featureKey);
@@ -329,7 +330,7 @@ class ChoroplethMapInner extends Component {
       });
     const onHoverFeature =
       onHoverChange &&
-      (hover => {
+      ((hover) => {
         const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
         if (row && onHoverChange) {
           onHoverChange({
@@ -354,14 +355,14 @@ class ChoroplethMapInner extends Component {
     const heatMapColors = _heatMapColors.slice(-domain.length);
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
-    const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
+    const groupBoundaries = groups.slice(1).map((cluster) => cluster[0]);
 
     const colorScale = d3.scaleThreshold(groupBoundaries, heatMapColors);
 
     const columnSettings = settings.column(cols[metricIndex]);
     const legendTitles = getLegendTitles(groups, columnSettings);
 
-    const getColor = feature => {
+    const getColor = (feature) => {
       const value = getFeatureValue(feature);
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };

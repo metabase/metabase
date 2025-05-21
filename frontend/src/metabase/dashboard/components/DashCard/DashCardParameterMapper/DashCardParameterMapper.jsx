@@ -37,7 +37,7 @@ export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
       className={S.MapperSettingsContainer}
       data-testid="parameter-mapper-container"
     >
-      {[dashcard.card].concat(dashcard.series || []).map(card => (
+      {[dashcard.card].concat(dashcard.series || []).map((card) => (
         <DashCardCardParameterMapperConnected
           key={`${dashcard.id},${card.id}`}
           dashcard={dashcard}

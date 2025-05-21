@@ -91,7 +91,10 @@ export const ParameterValueWidget = ({
           className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="reset"
-          onClick={() => setParameterValueToDefault?.(parameter.id)}
+          onClick={() => {
+            close();
+            setParameterValueToDefault?.(parameter.id);
+          }}
         />
       );
     }
@@ -274,6 +277,8 @@ export const ParameterValueWidget = ({
                 <FormattedParameterValue
                   parameter={parameter}
                   value={value}
+                  cardId={question?.id()}
+                  dashboardId={dashboard?.id}
                   placeholder={placeholderText}
                   isPopoverOpen={isOpen}
                 />

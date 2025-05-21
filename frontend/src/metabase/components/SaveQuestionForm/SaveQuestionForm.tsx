@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
@@ -38,7 +38,7 @@ export const SaveQuestionForm = ({
     originalQuestion,
     showSaveType,
     values,
-    saveToCollection,
+    targetCollection,
     saveToDashboard,
   } = useSaveQuestionContext();
 
@@ -58,7 +58,7 @@ export const SaveQuestionForm = ({
       : ["collection"];
 
   const showPickerInput =
-    values.saveType === "create" && !saveToCollection && !saveToDashboard;
+    values.saveType === "create" && !targetCollection && !saveToDashboard;
 
   return (
     <Form>
@@ -125,8 +125,8 @@ export const SaveQuestionForm = ({
                 title={t`Where do you want to save this?`}
                 collectionPickerModalProps={{
                   models,
-                  recentFilter: items =>
-                    items.filter(item => {
+                  recentFilter: (items) =>
+                    items.filter((item) => {
                       // narrow type and make sure it's a dashboard or
                       // collection that the user can write to
                       return item.model !== "table" && item.can_write;
@@ -137,7 +137,8 @@ export const SaveQuestionForm = ({
 
             <FormDashboardTabSelect
               name="dashboard_tab_id"
-              label="Which tab should this go on?"
+              label={c("'this' refers to the question that's being saved")
+                .t`Which tab should this go on?`}
               dashboardId={values.dashboard_id}
               styles={{
                 label: {

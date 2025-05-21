@@ -9,6 +9,7 @@ import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -20,7 +21,6 @@ import {
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
 } from "metabase-lib/v1/parameters/utils/template-tag-options";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DimensionReference,
   FieldId,
@@ -60,7 +60,6 @@ interface Props {
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
-  databaseFields?: Field[];
   metadata: Metadata;
   originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
@@ -81,6 +80,12 @@ function mapStateToProps(state: State) {
 
 const mapDispatchToProps = { fetchField };
 
+const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
+  values_query_type: undefined,
+  values_source_type: undefined,
+  values_source_config: undefined,
+};
+
 class TagEditorParamInner extends Component<Props> {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
@@ -92,23 +97,37 @@ class TagEditorParamInner extends Component<Props> {
     }
   }
 
-  setType = (type: TemplateTagType) => {
-    const {
-      tag,
-      parameter,
-      setTemplateTag,
-      setParameterValue,
-      setTemplateTagConfig,
-      originalQuestion,
-    } = this.props;
+  getTemplateTagConfigAfterTypeChange = (
+    newType: TemplateTagType,
+  ): ParameterValuesConfig => {
+    const { tag, parameter, originalQuestion } = this.props;
+    if (!parameter || !originalQuestion) {
+      return EMPTY_VALUES_CONFIG;
+    }
 
-    const originalQuery = originalQuestion?.legacyQuery() as NativeQuery;
-    const originalTag = originalQuery
-      ?.variableTemplateTags()
-      .find((originalTag: TemplateTag) => originalTag.id === tag.id);
-    const originalParameter = originalQuestion
-      ?.parameters()
-      .find(originalParameter => originalParameter.id === parameter?.id);
+    const query = originalQuestion.query();
+    const queryInfo = Lib.queryDisplayInfo(query);
+    if (!queryInfo.isNative) {
+      return EMPTY_VALUES_CONFIG;
+    }
+
+    const originalTag = Lib.templateTags(query)[tag.name];
+    const parameters = originalQuestion.parameters();
+    const originalParameter = parameters.find(({ id }) => id === parameter.id);
+    if (!originalTag || originalTag.type !== newType || !originalParameter) {
+      return EMPTY_VALUES_CONFIG;
+    }
+
+    return {
+      values_source_type: originalParameter.values_source_type,
+      values_source_config: originalParameter.values_source_config,
+      values_query_type: originalParameter.values_query_type,
+    };
+  };
+
+  setType = (type: TemplateTagType) => {
+    const { tag, setTemplateTag, setParameterValue, setTemplateTagConfig } =
+      this.props;
 
     if (tag.type !== type) {
       setTemplateTag({
@@ -120,23 +139,7 @@ class TagEditorParamInner extends Component<Props> {
       });
 
       setParameterValue(tag.id, null);
-
-      if (!originalTag || originalTag.type !== type) {
-        // clear the values_source_config when changing the type
-        // as the values will most likely not work for the new type.
-        setTemplateTagConfig(tag, {
-          values_source_type: undefined,
-          values_source_config: undefined,
-          values_query_type: undefined,
-        });
-      } else {
-        // reset the original values_source_config when changing the type
-        setTemplateTagConfig(tag, {
-          values_source_type: originalParameter?.values_source_type,
-          values_source_config: originalParameter?.values_source_config,
-          values_query_type: originalParameter?.values_query_type,
-        });
-      }
+      setTemplateTagConfig(tag, this.getTemplateTagConfigAfterTypeChange(type));
     }
   };
 
@@ -246,7 +249,11 @@ class TagEditorParamInner extends Component<Props> {
 
     // old parameters with widget-type of `location/state` etc. need be remapped to string/= so that the
     // dropdown is correctly populated with a set option
-    return isOldWidgetType ? "string/=" : widgetType;
+    if (isOldWidgetType) {
+      return "string/=";
+    }
+
+    return widgetType;
   };
 
   render() {
@@ -313,7 +320,7 @@ class TagEditorParamInner extends Component<Props> {
         {(hasWidgetOptions || !isDimension) && (
           <FilterWidgetLabelInput
             tag={tag}
-            onChange={value =>
+            onChange={(value) =>
               this.setParameterAttribute("display-name", value)
             }
           />
@@ -335,7 +342,7 @@ class TagEditorParamInner extends Component<Props> {
             tag={tag}
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
-            onChangeDefaultValue={value => {
+            onChangeDefaultValue={(value) => {
               this.setParameterAttribute("default", value);
               this.props.setParameterValue(tag.id, value);
             }}

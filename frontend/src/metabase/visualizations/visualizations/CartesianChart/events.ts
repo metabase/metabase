@@ -20,10 +20,11 @@ import {
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
+  INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   isBreakoutSeries,
@@ -98,7 +99,7 @@ const findSeriesModelIndexById = (
     return -1;
   }
 
-  return chartModel.seriesModels.findIndex(seriesModel =>
+  return chartModel.seriesModels.findIndex((seriesModel) =>
     [seriesId, chartModel.seriesIdToDataKey?.[seriesId]].includes(
       seriesModel.dataKey,
     ),
@@ -109,7 +110,7 @@ const getSameCardDataKeys = (
   datum: Datum,
   seriesModel: SeriesModel,
 ): DataKey[] => {
-  return getObjectKeys(datum).filter(dataKey => {
+  return getObjectKeys(datum).filter((dataKey) => {
     if (dataKey === X_AXIS_DATA_KEY) {
       return false;
     }
@@ -127,7 +128,7 @@ export const getEventDimensions = (
 ) => {
   const sameCardDataKeys = getSameCardDataKeys(datum, seriesModel);
   const sameCardDatumColumns = sameCardDataKeys
-    .map(dataKey => chartModel.columnByDataKey[dataKey])
+    .map((dataKey) => chartModel.columnByDataKey[dataKey])
     .filter(isNotNull);
   const dimensionColumn =
     seriesModel.cardId != null
@@ -153,21 +154,19 @@ export const getEventDimensions = (
   }
 
   return dimensions.filter(
-    dimension => dimension.column.source !== "query-transform",
+    (dimension) => dimension.column.source !== "query-transform",
   );
 };
 
 const getEventColumnsData = (
   chartModel: BaseCartesianChartModel,
   seriesModel: SeriesModel,
-  dataIndex: number,
+  datum: Datum,
 ): DataPoint[] => {
-  const datum = chartModel.dataset[dataIndex];
-
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
   const dataPoints: DataPoint[] = getSameCardDataKeys(datum, seriesModel)
-    .map(dataKey => {
+    .map((dataKey) => {
       const value = datum[dataKey];
       const col = chartModel.columnByDataKey[dataKey];
       if (!col) {
@@ -205,42 +204,47 @@ const getEventColumnsData = (
   return dataPoints;
 };
 
+const getXAxisDataForComparison = (datum: Datum) => {
+  const rawValue = datum[X_AXIS_RAW_VALUE_DATA_KEY] ?? datum[X_AXIS_DATA_KEY];
+
+  if (rawValue == null) {
+    return null;
+  }
+
+  return parseTimestamp(rawValue);
+};
+
 const computeDiffWithPreviousPeriod = (
   chartModel: BaseCartesianChartModel,
   seriesModel: BaseSeriesModel,
-  dataIndex: number,
+  datum: Datum,
+  previousDatum: Datum | null,
 ): string | null => {
-  if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
+  const { xAxisModel } = chartModel;
+  if (!isTimeSeriesAxis(xAxisModel) || previousDatum == null) {
     return null;
   }
-
-  const datum = chartModel.dataset[dataIndex];
 
   const currentValue = datum[seriesModel.dataKey];
-  const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
-  const previousValue =
-    chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
+  const currentDate = getXAxisDataForComparison(datum);
+  const previousValue = previousDatum?.[seriesModel.dataKey];
 
-  if (previousValue == null || currentValue == null) {
+  if (previousValue == null || currentValue == null || currentDate == null) {
     return null;
   }
-  const previousDate = parseTimestamp(
-    chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
-  );
 
-  const unit = isQuarterInterval(chartModel.xAxisModel.interval)
+  const previousDate = getXAxisDataForComparison(previousDatum);
+  const unit = isQuarterInterval(xAxisModel.interval)
     ? "quarter"
-    : chartModel.xAxisModel.interval.unit;
-
+    : xAxisModel.interval.unit;
   const dateDifference = currentDate.diff(
     previousDate,
-    chartModel.xAxisModel.interval.unit,
+    xAxisModel.interval.unit,
     true,
   );
-
   let isOneIntervalAgo =
-    Math.abs(dateDifference - chartModel.xAxisModel.interval.count) <=
-    getDaylightSavingsChangeTolerance(chartModel.xAxisModel.interval.unit);
+    Math.abs(dateDifference - xAxisModel.interval.count) <=
+    getDaylightSavingsChangeTolerance(xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
   // specially, because there are fewer days in this period due to Feburary
@@ -290,9 +294,7 @@ function getDataIndex(
     return undefined;
   }
 
-  const originalDataIndex =
-    transformedDataset[echartsDataIndex][ORIGINAL_INDEX_DATA_KEY];
-  return originalDataIndex ?? echartsDataIndex;
+  return transformedDataset[echartsDataIndex][INDEX_KEY];
 }
 
 export const getSeriesHovered = (
@@ -320,17 +322,17 @@ const getAdditionalTooltipRowsData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   seriesModel: SeriesModel,
-  dataIndex: number,
+  datum: Datum,
 ): EChartsTooltipRow[] => {
   const additionalColumns = new Set(settings["graph.tooltip_columns"]);
-  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
+  const data = getEventColumnsData(chartModel, seriesModel, datum);
 
   return data
     .filter(
-      entry =>
+      (entry) =>
         entry.col != null && additionalColumns.has(getColumnKey(entry.col)),
     )
-    .map(data => {
+    .map((data) => {
       return {
         isSecondary: true,
         name: data.key,
@@ -346,6 +348,27 @@ const getAdditionalTooltipRowsData = (
     });
 };
 
+const getDatumByEChartsDataIndex = (
+  chartModel: BaseCartesianChartModel,
+  echartsDataIndex: number,
+) => {
+  const displayDatum = chartModel.transformedDataset[echartsDataIndex];
+  const rawDatumIndex = displayDatum[INDEX_KEY];
+  // A datum without an original dataset index is an interpolated point
+  // that was generated during processing and doesn't exist in the raw dataset
+  const isInterpolatedDatum = typeof rawDatumIndex !== "number";
+  if (isInterpolatedDatum) {
+    const datum = { ...displayDatum };
+
+    // For interpolated data points, replace the processed x-axis value with its raw value
+    // This ensures tooltips display the original, meaningful value rather than the transformed for presentation by ECharts
+    datum[X_AXIS_DATA_KEY] = datum[X_AXIS_RAW_VALUE_DATA_KEY];
+    return datum;
+  }
+
+  return chartModel.dataset[rawDatumIndex];
+};
+
 export const getTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -353,19 +376,21 @@ export const getTooltipModel = (
   display: CardDisplayType,
   seriesDataKey: DataKey,
 ): EChartsTooltipModel | null => {
-  const dataIndex = getDataIndex(
-    chartModel.transformedDataset,
-    echartsDataIndex,
-  );
-
-  if (dataIndex == null) {
-    return null;
-  }
-
-  const datum = chartModel.dataset[dataIndex];
+  const datum = getDatumByEChartsDataIndex(chartModel, echartsDataIndex);
+  const transformedDatum = chartModel.transformedDataset[echartsDataIndex];
+  const previousDatum =
+    echartsDataIndex > 0
+      ? getDatumByEChartsDataIndex(chartModel, echartsDataIndex - 1)
+      : null;
 
   if (seriesDataKey === OTHER_DATA_KEY) {
-    return getOtherSeriesTooltipModel(chartModel, settings, dataIndex, datum);
+    return getOtherSeriesTooltipModel(
+      chartModel,
+      settings,
+      datum,
+      previousDatum,
+      transformedDatum,
+    );
   }
 
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesDataKey);
@@ -375,7 +400,7 @@ export const getTooltipModel = (
     return null;
   }
 
-  const seriesStack = chartModel.stackModels.find(stackModel =>
+  const seriesStack = chartModel.stackModels.find((stackModel) =>
     stackModel.seriesKeys.includes(hoveredSeries.dataKey),
   );
 
@@ -384,7 +409,6 @@ export const getTooltipModel = (
       chartModel,
       datum,
       settings,
-      dataIndex,
       hoveredSeries,
       display,
     );
@@ -397,8 +421,8 @@ export const getTooltipModel = (
       settings,
       seriesStack,
       seriesDataKey,
-      dataIndex,
       datum,
+      transformedDatum,
       hoveredSeries,
     );
   }
@@ -406,7 +430,8 @@ export const getTooltipModel = (
     chartModel,
     settings,
     datum,
-    dataIndex,
+    transformedDatum,
+    previousDatum,
     hoveredSeries,
   );
 };
@@ -415,7 +440,6 @@ const getSingleSeriesTooltipModel = (
   chartModel: BaseCartesianChartModel,
   datum: Datum,
   settings: ComputedVisualizationSettings,
-  dataIndex: number,
   hoveredSeries: SeriesModel,
   display: CardDisplayType,
 ): EChartsTooltipModel | null => {
@@ -431,13 +455,13 @@ const getSingleSeriesTooltipModel = (
     chartModel,
     settings,
     hoveredSeries,
-    dataIndex,
+    datum,
   );
 
   const seriesToShow = chartModel.seriesModels.filter(
-    series => series === hoveredSeries || !isBreakoutSeries(series),
+    (series) => series === hoveredSeries || !isBreakoutSeries(series),
   );
-  const seriesTooltipRows = seriesToShow.map(series => {
+  const seriesTooltipRows = seriesToShow.map((series) => {
     const isFocused =
       hoveredSeries.dataKey === series.dataKey && seriesToShow.length > 1;
 
@@ -478,7 +502,7 @@ export const mergeSeriesRowsAndAdditionalColumnsRows = (
   if (isBreakoutSeries(hoveredSeries)) {
     // For breakout series we show additional columns right below the series values
     const additionalColumnsIndex =
-      seriesRows.findIndex(row => row.isFocused) + 1;
+      seriesRows.findIndex((row) => row.isFocused) + 1;
     rows.splice(additionalColumnsIndex, 0, ...additionalColumnsRows);
   } else {
     rows.push(...additionalColumnsRows);
@@ -491,7 +515,8 @@ const getSeriesComparisonTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   datum: Datum,
-  dataIndex: number,
+  transformedDatum: Datum,
+  previousDatum: Datum | null,
   hoveredSeries: SeriesModel,
 ): EChartsTooltipModel | null => {
   const header = String(
@@ -503,20 +528,25 @@ const getSeriesComparisonTooltipModel = (
   );
 
   const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
-    .filter(seriesModel => seriesModel.visible)
-    .map(seriesModel => {
+    .filter((seriesModel) => seriesModel.visible)
+    .map((seriesModel) => {
       const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
       const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
 
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
-          ? chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY]
+          ? transformedDatum[OTHER_DATA_KEY]
           : datum[seriesModel.dataKey];
 
       const prevValue =
         seriesModel.dataKey === OTHER_DATA_KEY
           ? null
-          : computeDiffWithPreviousPeriod(chartModel, seriesModel, dataIndex);
+          : computeDiffWithPreviousPeriod(
+              chartModel,
+              seriesModel,
+              datum,
+              previousDatum,
+            );
 
       return {
         isFocused,
@@ -538,7 +568,7 @@ const getSeriesComparisonTooltipModel = (
     chartModel,
     settings,
     hoveredSeries,
-    dataIndex,
+    datum,
   );
 
   const rows = mergeSeriesRowsAndAdditionalColumnsRows(
@@ -560,8 +590,9 @@ const getSeriesOnlyTooltipRowColor = (
   display: CardDisplayType,
 ) => {
   const value = datum[seriesModel.dataKey];
-  let color;
   if (display === "waterfall" && typeof value === "number") {
+    let color;
+
     if (datum[IS_WATERFALL_TOTAL_DATA_KEY]) {
       color = settings["waterfall.total_color"];
     } else {
@@ -570,8 +601,10 @@ const getSeriesOnlyTooltipRowColor = (
           ? settings["waterfall.increase_color"]
           : settings["waterfall.decrease_color"];
     }
+
+    return color ?? seriesModel.color;
   }
-  return color ?? seriesModel.color;
+  return seriesModel.color;
 };
 
 export const getStackedTooltipModel = (
@@ -579,21 +612,20 @@ export const getStackedTooltipModel = (
   settings: ComputedVisualizationSettings,
   seriesStack: StackModel,
   seriesDataKey: DataKey,
-  dataIndex: number,
   datum: Datum,
+  transformedDatum: Datum,
   hoveredSeries: SeriesModel,
 ): EChartsTooltipModel | null => {
   const stackSeriesRows = chartModel.seriesModels
     .filter(
-      seriesModel =>
+      (seriesModel) =>
         seriesModel.visible &&
         seriesStack?.seriesKeys.includes(seriesModel.dataKey),
     )
-    .map(seriesModel => {
-      const datum = chartModel.dataset[dataIndex];
+    .map((seriesModel) => {
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
-          ? chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY]
+          ? transformedDatum[OTHER_DATA_KEY]
           : datum[seriesModel.dataKey];
 
       return {
@@ -630,8 +662,8 @@ export const getStackedTooltipModel = (
   );
 
   const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
-    .filter(row => row.value != null)
-    .map(tooltipRow => {
+    .filter((row) => row.value != null)
+    .map((tooltipRow) => {
       return {
         isFocused: tooltipRow.isFocused,
         name: tooltipRow.name,
@@ -649,7 +681,7 @@ export const getStackedTooltipModel = (
     chartModel,
     settings,
     hoveredSeries,
-    dataIndex,
+    datum,
   );
 
   const rows = mergeSeriesRowsAndAdditionalColumnsRows(
@@ -676,20 +708,22 @@ export const getStackedTooltipModel = (
 export const getOtherSeriesTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
-  dataIndex: number,
   datum: Datum,
+  previousDatum: Datum | null,
+  transforedDatum: Datum,
 ) => {
   const { groupedSeriesModels = [] } = chartModel;
 
   const rows = groupedSeriesModels
-    .map(seriesModel => ({
+    .map((seriesModel) => ({
       name: seriesModel.name,
       column: seriesModel.column,
       value: datum[seriesModel.dataKey],
       prevValue: computeDiffWithPreviousPeriod(
         chartModel,
         seriesModel,
-        dataIndex,
+        datum,
+        previousDatum,
       ),
     }))
     .sort((a, b) => {
@@ -698,7 +732,7 @@ export const getOtherSeriesTooltipModel = (
       }
       return a.value === undefined ? 1 : -1;
     })
-    .map(row => ({
+    .map((row) => ({
       name: row.name,
       values: [
         formatValueForTooltip({
@@ -719,7 +753,7 @@ export const getOtherSeriesTooltipModel = (
       String(
         formatValueForTooltip({
           isAlreadyScaled: true,
-          value: chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY],
+          value: transforedDatum[OTHER_DATA_KEY],
           settings,
           column:
             chartModel.leftAxisModel?.column ??
@@ -746,7 +780,7 @@ export const getTimelineEventsForEvent = (
   event: EChartsSeriesMouseEvent,
 ) => {
   return timelineEventsModel.find(
-    timelineEvents => timelineEvents.date === event.value,
+    (timelineEvents) => timelineEvents.date === event.value,
   )?.events;
 };
 
@@ -757,7 +791,7 @@ export const hasSelectedTimelineEvents = (
   return (
     selectedTimelineEventIds != null &&
     selectedTimelineEventIds.length > 0 &&
-    timelineEvents.some(timelineEvent =>
+    timelineEvents.some((timelineEvent) =>
       selectedTimelineEventIds.includes(timelineEvent.id),
     )
   );
@@ -805,7 +839,7 @@ export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-): ClickObject | undefined => {
+): ClickObject | null => {
   const { seriesId, dataIndex: echartsDataIndex } = event;
   const dataIndex = getDataIndex(
     chartModel.transformedDataset,
@@ -819,12 +853,12 @@ export const getSeriesClickData = (
     dataIndex == null ||
     seriesModel?.dataKey === OTHER_DATA_KEY
   ) {
-    return;
+    return null;
   }
 
   const datum = chartModel.dataset[dataIndex];
 
-  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
+  const data = getEventColumnsData(chartModel, seriesModel, datum);
   const dimensions = getEventDimensions(
     chartModel,
     datum,
@@ -876,7 +910,7 @@ export const getBrushData = (
     const nextQuery = Lib.updateTemporalFilter(
       query,
       stageIndex,
-      column,
+      Lib.fromLegacyColumn(query, stageIndex, column),
       question.id(),
       new Date(start).toISOString(),
       new Date(end).toISOString(),
@@ -893,7 +927,7 @@ export const getBrushData = (
   const nextQuery = Lib.updateNumericFilter(
     query,
     stageIndex,
-    column,
+    Lib.fromLegacyColumn(query, stageIndex, column),
     question.id(),
     start,
     end,

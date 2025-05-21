@@ -97,7 +97,9 @@ export const getSegmentRevisions = createSelector(
 export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions) =>
-    Object.values(questions).filter(question => question.table_id === table.id),
+    Object.values(questions).filter(
+      (question) => question.table_id === table.id,
+    ),
 );
 
 const getDatabaseBySegment = createSelector(
@@ -132,7 +134,7 @@ export const getError = (state, props) => state.reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
-  tables =>
+  (tables) =>
     tables && Object.keys(tables).length > 0
       ? Object.values(tables).every(
           (table, index, tables) => table.schema_name === tables[0].schema,

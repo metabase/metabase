@@ -11,7 +11,6 @@ import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
-import AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type Variable from "metabase-lib/v1/variables/Variable";
 import type {
@@ -24,13 +23,12 @@ import type {
   TemplateTags,
 } from "metabase-types/api";
 
-import type Dimension from "../Dimension";
 import { TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
 
-type DimensionFilter = (dimension: Dimension) => boolean;
+type DimensionFilter = (dimension: TemplateTagDimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
@@ -67,9 +65,9 @@ export function updateCardTemplateTagNames(
   const tags = query
     .templateTags()
     // only tags for cards
-    .filter(tag => tag.type === "card")
+    .filter((tag) => tag.type === "card")
     // only tags for given cards
-    .filter(tag => cardById[tag["card-id"]]);
+    .filter((tag) => cardById[tag["card-id"]]);
   // reduce over each tag, updating query text with the new tag name
   return tags.reduce((query, tag) => {
     const card = cardById[tag["card-id"]];
@@ -82,15 +80,16 @@ export function updateCardTemplateTagNames(
 ///////////////////////////
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class NativeQuery extends AtomicQuery {
-  _nativeDatasetQuery: NativeDatasetQuery;
+export default class NativeQuery {
+  _question: Question;
+  _datasetQuery: DatasetQuery;
 
   constructor(
     question: Question,
     datasetQuery: DatasetQuery = NATIVE_QUERY_TEMPLATE,
   ) {
-    super(question, datasetQuery);
-    this._nativeDatasetQuery = datasetQuery as NativeDatasetQuery;
+    this._question = question;
+    this._datasetQuery = datasetQuery;
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
@@ -102,14 +101,33 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   private _setQuery(query: Lib.Query): NativeQuery {
-    return this.question().setQuery(query).legacyQuery();
+    return this.question().setQuery(query).legacyNativeQuery();
+  }
+
+  /**
+   * Returns a question updated with the current dataset query.
+   * Can only be applied to query that is a direct child of the question.
+   */
+  question = _.once((): Question => {
+    return this._question.setLegacyQuery(this);
+  });
+
+  /**
+   * Convenience method for accessing the global metadata
+   */
+  metadata() {
+    return this._question.metadata();
+  }
+
+  /**
+   * Returns the dataset_query object underlying this Query
+   */
+  datasetQuery(): DatasetQuery {
+    return this._datasetQuery;
   }
 
   /* Query superclass methods */
 
-  /**
-   * @deprecated use MLv2
-   */
   hasData() {
     return (
       this._databaseId() != null && (!this.requiresTable() || this.collection())
@@ -128,25 +146,18 @@ export default class NativeQuery extends AtomicQuery {
     return this._databaseId() == null || this.queryText().length === 0;
   }
 
-  /* AtomicQuery superclass methods */
   tables(): Table[] | null | undefined {
     const database = this._database();
     return (database && database.tables) || null;
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _databaseId(): DatabaseId | null | undefined {
     return Lib.databaseID(this._query());
   }
 
-  /**
-   * @deprecated Use MLv2
-   */
   _database(): Database | null | undefined {
     const databaseId = this._databaseId();
-    return databaseId != null ? this._metadata.database(databaseId) : null;
+    return databaseId != null ? this.metadata().database(databaseId) : null;
   }
 
   engine(): string | null | undefined {
@@ -157,7 +168,10 @@ export default class NativeQuery extends AtomicQuery {
 
   setDatabaseId(databaseId: DatabaseId): NativeQuery {
     if (databaseId !== this._databaseId()) {
-      const metadataProvider = Lib.metadataProvider(databaseId, this._metadata);
+      const metadataProvider = Lib.metadataProvider(
+        databaseId,
+        this.metadata(),
+      );
       const newQuery = Lib.withDifferentDatabase(
         this._query(),
         databaseId,
@@ -228,10 +242,10 @@ export default class NativeQuery extends AtomicQuery {
       updateIn(
         this._datasetQuery,
         ["native", "template-tags"],
-        templateTags => {
+        (templateTags) => {
           const entries = Array.from(Object.entries(templateTags));
 
-          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
+          const oldIndex = _.findIndex(entries, (entry) => entry[1].id === id);
 
           entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
           return _.object(entries);
@@ -261,7 +275,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   variableTemplateTags(): TemplateTag[] {
-    return this.templateTags().filter(t =>
+    return this.templateTags().filter((t) =>
       ["dimension", "text", "number", "date"].includes(t.type),
     );
   }
@@ -271,18 +285,18 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   hasSnippets() {
-    return this.templateTags().some(t => t.type === "snippet");
+    return this.templateTags().some((t) => t.type === "snippet");
   }
 
   referencedQuestionIds(): number[] {
     return this.templateTags()
-      .filter(tag => tag.type === "card")
-      .map(tag => tag["card-id"]);
+      .filter((tag) => tag.type === "card")
+      .map((tag) => tag["card-id"]);
   }
 
   private _validateTemplateTags() {
     return this.templateTags()
-      .map(tag => {
+      .map((tag) => {
         if (!tag["display-name"]) {
           return new ValidationError(t`Missing widget label: ${tag.name}`);
         }
@@ -319,11 +333,13 @@ export default class NativeQuery extends AtomicQuery {
     config: ParameterValuesConfig,
   ): NativeQuery {
     const newParameter = getTemplateTagParameter(tag, config);
-    return this.question().setParameter(tag.id, newParameter).legacyQuery();
+    return this.question()
+      .setParameter(tag.id, newParameter)
+      .legacyNativeQuery();
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
-    return this.question().setDatasetQuery(datasetQuery).legacyQuery();
+    return this.question().setDatasetQuery(datasetQuery).legacyNativeQuery();
   }
 
   dimensionOptions(
@@ -331,9 +347,9 @@ export default class NativeQuery extends AtomicQuery {
     operatorFilter = _.identity,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(tag => tag.type === "dimension" && operatorFilter(tag))
-      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
-      .filter(dimension => dimensionFilter(dimension));
+      .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
+      .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
+      .filter((dimension) => dimensionFilter(dimension));
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,
@@ -344,15 +360,15 @@ export default class NativeQuery extends AtomicQuery {
     variableFilter: VariableFilter = () => true,
   ): TemplateTagVariable[] {
     return this.templateTags()
-      .filter(tag => tag.type !== "dimension")
-      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter((tag) => tag.type !== "dimension")
+      .map((tag) => new TemplateTagVariable([tag.name], this.metadata(), this))
       .filter(variableFilter);
   }
 
   updateSnippetsWithIds(snippets): NativeQuery {
     const tagsBySnippetName = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
-      .groupBy(tag => tag["snippet-name"])
+      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] == null)
+      .groupBy((tag) => tag["snippet-name"])
       .value();
 
     if (Object.keys(tagsBySnippetName).length === 0) {
@@ -376,8 +392,8 @@ export default class NativeQuery extends AtomicQuery {
 
   updateSnippetNames(snippets): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet")
-      .groupBy(tag => tag["snippet-id"])
+      .filter((tag) => tag.type === "snippet")
+      .groupBy((tag) => tag["snippet-id"])
       .value();
 
     if (Object.keys(tagsBySnippetId).length === 0) {

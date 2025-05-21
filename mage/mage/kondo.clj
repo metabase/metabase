@@ -1,6 +1,5 @@
 (ns mage.kondo
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.shell :as shell]
    [mage.util :as u]))
@@ -28,9 +27,9 @@
 
 (defn- saved-deps-edn-hash
   []
-  (str/trim (try
-              (slurp saved-deps-edn-hash-filename)
-              (catch Exception _ nil))))
+  (try
+    (str/trim (slurp saved-deps-edn-hash-filename))
+    (catch Exception _ nil)))
 
 (defn- copy-configs-if-needed!
   "Copy Kondo configs for dependencies only if `deps.edn` has changed since last time we did it."
@@ -61,8 +60,8 @@
                             (list* "-M:kondo" "--lint" args))
         _ (u/debug "command: " command)]
     (println "Running Kondo on:" args)
-    (apply shell/sh* "clojure" command)
-    (System/exit 0)))
+    (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" command)]
+      (System/exit exit))))
 
 (defn kondo
   "Run Kondo against our project. With no args, runs Kondo against everything we normally lint. Otherwise args are
@@ -72,19 +71,9 @@
   [cli-args]
   (kondo* cli-args))
 
-(defn- updated-files
-  "Sequence of filenames that have changes in Git relative to `diff-target`."
-  [diff-target]
-  (->> (shell/sh {:quiet? true}
-                 "git" "diff" "--name-only" diff-target
-                 "--" "*.clj" "*.cljc" "*.cljs" ":!/.clj-kondo" ":!/dev")
-       ;; filter out any files that have been deleted/moved
-       (filter (fn [filename]
-                 (.exists (io/file (str u/project-root-directory "/" filename)))))))
-
 (defn- kondo-updated* [diff-target]
   (let [diff-target   (or diff-target "HEAD")
-        updated-files (updated-files diff-target)]
+        updated-files (u/updated-files diff-target)]
     (when (empty? updated-files)
       (println "No updated Clojure source files.")
       (System/exit 0))
@@ -92,7 +81,8 @@
     (println "Files:")
     (doseq [filename updated-files]
       (println "  " filename))
-    (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)))
+    (let [{:keys [exit], :or {exit -1}} (apply shell/sh* "clojure" "-M:kondo" "--lint" updated-files)]
+      (System/exit exit))))
 
 (defn kondo-updated
   "Run Kondo against files that have been changed relative to a Git ref (default `HEAD`).

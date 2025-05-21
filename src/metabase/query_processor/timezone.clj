@@ -2,7 +2,7 @@
   "Functions for fetching the timezone for the current query."
   (:require
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -76,7 +76,7 @@
 (defn results-timezone-id
   "The timezone that a query is actually ran in ­ report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
-  timezone ID ­ never returns `nil`."
+  timezone ID,­ never returns `nil`."
   (^String []
    (results-timezone-id driver/*driver* ::db-from-store))
 

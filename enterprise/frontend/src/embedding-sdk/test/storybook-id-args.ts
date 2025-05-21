@@ -1,5 +1,6 @@
 const QUESTION_ENTITY_ID = "_GiVL6zYmsnBb1oqLCp4u";
 const DASHBOARD_ENTITY_ID = "xBLdW9FsgRuB2HGhWiBa_";
+const COLLECTION_ENTITY_ID = "HyB3nRtqb7pBPhFG26evI";
 
 export const questionIds = generateIds(QUESTION_ENTITY_ID);
 export const questionIdArgType = {
@@ -39,6 +40,28 @@ export const dashboardIdArgType = {
       [dashboardIds.wrongEntityId]: "Wrong Entity ID",
       [dashboardIds.numberId]: "Number ID",
       [dashboardIds.wrongNumberId]: "Wrong Number ID",
+    },
+  },
+};
+
+export const collectionIds = generateIds(COLLECTION_ENTITY_ID);
+
+export const collectionIdArgType = {
+  options: [
+    collectionIds.entityId,
+    collectionIds.oneToManyEntityId,
+    collectionIds.wrongEntityId,
+    collectionIds.numberId,
+    collectionIds.wrongNumberId,
+  ],
+  control: {
+    type: "select",
+    labels: {
+      [collectionIds.entityId]: "Entity ID",
+      [collectionIds.oneToManyEntityId]: "One Too Many Entity ID",
+      [collectionIds.wrongEntityId]: "Wrong Entity ID",
+      [collectionIds.numberId]: "Number ID",
+      [collectionIds.wrongNumberId]: "Wrong Number ID",
     },
   },
 };

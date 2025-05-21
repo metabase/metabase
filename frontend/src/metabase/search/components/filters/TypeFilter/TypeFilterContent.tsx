@@ -26,7 +26,7 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
     );
 
     const availableModels = (metadata && metadata.available_models) ?? [];
-    const typeFilters = enabledSearchTypes.filter(type =>
+    const typeFilters = enabledSearchTypes.filter((type) =>
       availableModels.includes(type),
     );
 
@@ -40,10 +40,10 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
           data-testid="type-filter-checkbox-group"
           w="100%"
           value={selectedTypes}
-          onChange={value => setSelectedTypes(value as EnabledSearchModel[])}
+          onChange={(value) => setSelectedTypes(value as EnabledSearchModel[])}
         >
           <Stack gap="md" p="md" justify="center" align="flex-start">
-            {typeFilters.map(model => (
+            {typeFilters.map((model) => (
               <Checkbox
                 wrapperProps={{
                   "data-testid": "type-filter-checkbox",

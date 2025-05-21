@@ -60,14 +60,3 @@ In case you want to preview release notes generation, or re-generate them after 
 ```sh
 yarn generate-changelog v0.77.0 > changelog.log
 ```
-
-## Required checks copy
-
-When we cut a new release branch, we want to clone the current set of required checks from master. Over time, we add and remove test suites for master, but we want to keep each release branch consistent with the state of master at the time it was cut. To do this, we can run the following command after cutting a new release branch:
-
-```sh
-GITHUB_OWNER=metabase GITHUB_REPO=metabase GITHUB_TOKEN=your_github_token yarn copy-required-checks release-x.{version}.x
-```
-
-> [!important]
-> This will overwrite existing checks if they already exist

@@ -8,7 +8,7 @@ import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
 export const UpsellBetterSupport = ({ source }: { source: string }) => {
-  const plan = useSelector(state =>
+  const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
 

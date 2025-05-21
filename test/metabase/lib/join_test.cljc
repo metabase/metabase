@@ -9,11 +9,13 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -217,6 +219,9 @@
           metadata (lib/returned-columns query)]
       (is (=? [(merge (meta/field-metadata :categories :name)
                       {:display-name         "Name"
+                       :ident                (lib.metadata.ident/explicitly-joined-ident
+                                              #_col-ident  "RDOjlMfV-Fg8UwZMPWiq3"
+                                              #_join-ident "dJbULfDmVAyTENMCo7q1q")
                        :lib/source           :source/fields
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
@@ -422,6 +427,13 @@
           {:lib/type :option/join.strategy, :strategy :right-join}
           {:lib/type :option/join.strategy, :strategy :inner-join}]
          (lib/available-join-strategies (lib.tu/query-with-join)))))
+
+(deftest ^:parallel available-join-strategies-missing-features-test
+  (is (= [{:lib/type :option/join.strategy, :strategy :inner-join}]
+         (lib/available-join-strategies
+          (-> (lib.tu/query-with-join)
+              (assoc :lib/metadata
+                     (meta/updated-metadata-provider update :features disj :left-join :right-join)))))))
 
 (deftest ^:parallel join-strategy-display-name-test
   (let [query (lib.tu/query-with-join)]
@@ -1018,6 +1030,10 @@
           contact-f-organization-id 130
           account-card-id 1000
           contact-card-id 1100
+
+          account-f-ident              (lib/random-ident)
+          contact-f-organization-ident (lib/random-ident)
+
           metadata-provider (lib.tu/mock-metadata-provider
                              {:database meta/database
                               :tables   [{:id   account-tab-id
@@ -1028,50 +1044,56 @@
                                           :name "contact"}]
                               :fields   [{:id account-f-id
                                           :name "account__id"
+                                          :ident account-f-ident
                                           :table-id account-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-id
                                           :name "organization__id"
+                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-account-id
                                           :name "organization__account_id"
+                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id account-f-id}
                                          {:id contact-f-organization-id
                                           :name "contact__organization_id"
+                                          :ident contact-f-organization-ident
                                           :table-id contact-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id organization-f-id}]
-                              :cards [{:id account-card-id
-                                       :name "Account Model"
-                                       :type :model
-                                       :lib/type :metadata/card
-                                       :database-id (:id meta/database)
-                                       :result-metadata [{:id account-f-id
-                                                          :name "account__id"
-                                                          :table-id account-tab-id
-                                                          :base-type :type/Integer}]
-                                       :dataset-query {:lib/type :mbql.stage/mbql
-                                                       :database (:id meta/database)
-                                                       :source-table account-tab-id}}
-                                      {:id contact-card-id
-                                       :name "Contact Model"
-                                       :type :model
-                                       :lib/type :metadata/card
-                                       :database-id (:id meta/database)
-                                       :result-metadata [{:id contact-f-organization-id
-                                                          :name "contact__organization_id"
-                                                          :table-id contact-tab-id
-                                                          :base-type :type/Integer
-                                                          :semantic-type :type/FK
-                                                          :fk-target-field-id organization-f-id}]
-                                       :dataset-query {:lib/type :mbql.stage/mbql
-                                                       :database (:id meta/database)
-                                                       :source-table contact-tab-id}}]})
+                              :cards [(lib.tu/as-model
+                                       {:id account-card-id
+                                        :name "Account Model"
+                                        :lib/type :metadata/card
+                                        :database-id (:id meta/database)
+                                        :result-metadata [{:id account-f-id
+                                                           :name "account__id"
+                                                           :ident account-f-ident
+                                                           :table-id account-tab-id
+                                                           :base-type :type/Integer}]
+                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                                        :database (:id meta/database)
+                                                        :source-table account-tab-id}})
+                                      (lib.tu/as-model
+                                       {:id contact-card-id
+                                        :name "Contact Model"
+                                        :lib/type :metadata/card
+                                        :database-id (:id meta/database)
+                                        :result-metadata [{:id contact-f-organization-id
+                                                           :name "contact__organization_id"
+                                                           :ident contact-f-organization-ident
+                                                           :table-id contact-tab-id
+                                                           :base-type :type/Integer
+                                                           :semantic-type :type/FK
+                                                           :fk-target-field-id organization-f-id}]
+                                        :dataset-query {:lib/type :mbql.stage/mbql
+                                                        :database (:id meta/database)
+                                                        :source-table contact-tab-id}})]})
           account-card (lib.metadata/card metadata-provider account-card-id)
           contact-card (lib.metadata/card metadata-provider contact-card-id)
           query (lib/query metadata-provider account-card)]
@@ -1359,36 +1381,35 @@
       (is (=? [:field {:temporal-unit :month, :join-alias "P"} integer?]
               rhs))
       (doseq [lhs          [lhs nil]
-              rhs          [rhs nil]
-              ;; if we specify lhs/rhs, then we should be able to mark things selected correctly when passing in a
-              ;; Table (joinable) instead of an actual join
               [query join] (concat
                             [[query join]]
                             (when (and lhs rhs)
                               [[orders-query (meta/table-metadata :products)]]))]
-        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) (when lhs 'lhs) (when rhs 'rhs)))
-          (is (= [{:name "ID", :selected? false}
-                  {:name "USER_ID", :selected? false}
-                  {:name "PRODUCT_ID", :selected? false}
-                  {:name "SUBTOTAL", :selected? false}
-                  {:name "TAX", :selected? false}
-                  {:name "TOTAL", :selected? false}
-                  {:name "DISCOUNT", :selected? false}
-                  {:name "CREATED_AT", :selected? true}
-                  {:name "QUANTITY", :selected? false}]
-                 (mapv #(select-keys % [:name :selected?])
-                       (lib/join-condition-lhs-columns query join lhs rhs)))))
-        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) (when rhs 'rhs)))
-          (is (= [{:name "ID", :selected? false}
-                  {:name "EAN", :selected? false}
-                  {:name "TITLE", :selected? false}
-                  {:name "CATEGORY", :selected? false}
-                  {:name "VENDOR", :selected? false}
-                  {:name "PRICE", :selected? false}
-                  {:name "RATING", :selected? false}
-                  {:name "CREATED_AT", :selected? true}]
-                 (mapv #(select-keys % [:name :selected?])
-                       (lib/join-condition-rhs-columns query join lhs rhs))))))
+        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) 'rhs))
+          (is (= ["CREATED_AT"]
+                 (->> (lib/join-condition-rhs-columns query join lhs rhs)
+                      (filter :selected?)
+                      (mapv :name)))))
+        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) nil))
+          (is (= []
+                 (->> (lib/join-condition-rhs-columns query join lhs nil)
+                      (filter :selected?)
+                      (mapv :name))))))
+      (doseq [rhs          [rhs nil]
+              [query join] (concat
+                            [[query join]]
+                            (when (and lhs rhs)
+                              [[orders-query (meta/table-metadata :products)]]))]
+        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) 'lhs (when rhs 'rhs)))
+          (is (= ["CREATED_AT"]
+                 (->> (lib/join-condition-lhs-columns query join lhs rhs)
+                      (filter :selected?)
+                      (mapv :name)))))
+        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) nil (when rhs 'rhs)))
+          (is (= []
+                 (->> (lib/join-condition-lhs-columns query join nil rhs)
+                      (filter :selected?)
+                      (mapv :name))))))
       (testing "temporal bucket returns with column metadata"
         (let [[lhs-column] (filter :selected? (lib/join-condition-lhs-columns query 0 join lhs rhs))]
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket lhs-column))))
@@ -1516,3 +1537,41 @@
                    (lib/aggregate (lib/count))
                    (lib/join (meta/table-metadata :products))
                    has-fields?))))))
+
+(deftest ^:parallel join-clause-with-outdated-fields-test
+  (testing "update a model to return entirely new columns, but if an old join remembers the originals"
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/with-fields [(meta/field-metadata :orders :id)])
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                                       (lib/with-join-fields [(meta/field-metadata :products :id)
+                                                              (meta/field-metadata :products :title)
+                                                              (meta/field-metadata :products :category)
+                                                              (meta/field-metadata :products :vendor)]))))
+          bad-field  (fn [[_field opts id :as _field-ref]]
+                       [:field opts (* id 1000)])
+          bad-fields (fn [query indexes]
+                       (reduce (fn [query field-index]
+                                 (lib.util/update-query-stage
+                                  query 0 update-in [:joins 0 :fields field-index] bad-field))
+                               query
+                               indexes))]
+      (testing "the unknown :fields are dropped"
+        (is (=? [{:name "ID"}    ; Orders.ID
+                 {:name "TITLE"} ; And the two non-broken fields from Products.
+                 {:name "CATEGORY"}]
+                (-> base
+                    (bad-fields [0 3])
+                    lib/returned-columns))))
+      (testing "if all :fields are unknown, default to :all"
+        (is (=? [{:name "ID"}    ; Orders.ID
+                 {:name "ID"}    ; And all the fields of Products.
+                 {:name "EAN"}
+                 {:name "TITLE"}
+                 {:name "CATEGORY"}
+                 {:name "VENDOR"}
+                 {:name "PRICE"}
+                 {:name "RATING"}
+                 {:name "CREATED_AT"}]
+                (-> base
+                    (bad-fields [0 1 2 3])
+                    lib/returned-columns)))))))

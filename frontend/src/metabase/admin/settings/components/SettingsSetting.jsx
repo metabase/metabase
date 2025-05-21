@@ -9,7 +9,7 @@ import { Box } from "metabase/ui";
 
 import { settingToFormFieldId, useGetEnvVarDocsUrl } from "../utils";
 
-import SettingHeader from "./SettingHeader";
+import { SettingHeader } from "./SettingHeader";
 import {
   SettingContent,
   SettingEnvVarMessage,
@@ -36,7 +36,7 @@ const SETTING_WIDGET_MAP = {
   hidden: () => null,
 };
 
-export const SettingsSetting = props => {
+export const SettingsSetting = (props) => {
   const [fancyStyle, setFancyStyle] = useState({});
   const thisRef = useRef();
 
@@ -92,7 +92,13 @@ export const SettingsSetting = props => {
         ...fancyStyle,
       }}
     >
-      {!setting.noHeader && <SettingHeader id={settingId} setting={setting} />}
+      {!setting.noHeader && (
+        <SettingHeader
+          id={settingId}
+          title={setting.display_name}
+          description={setting.description}
+        />
+      )}
       <SettingContent>
         {setting.is_env_setting && !setting.forceRenderWidget ? (
           <SetByEnvVar setting={setting} />
@@ -110,6 +116,10 @@ export const SettingsSetting = props => {
   );
 };
 
+/**
+ * @deprecated
+ * use SetByEnvVar from metabase/admin/settings/components/widgets/AdminSettingInput instead
+ */
 export const SetByEnvVar = ({ setting }) => {
   const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
 
@@ -128,7 +138,11 @@ export const SetByEnvVarWrapper = ({ setting, children }) => {
   if (setting.is_env_setting) {
     return (
       <Box mb="lg">
-        <SettingHeader id={setting.key} setting={setting} />
+        <SettingHeader
+          id={setting.key}
+          title={setting.display_name}
+          description={setting.description}
+        />
         <SetByEnvVar setting={setting} />
       </Box>
     );

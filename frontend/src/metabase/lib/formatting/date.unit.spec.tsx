@@ -11,7 +11,7 @@ describe("formatDateTimeRangeWithUnit", () => {
       const specs = DATE_RANGE_FORMAT_SPECS[unit];
 
       it("should have a default spec", () => {
-        const defaultSpec = specs.find(spec => spec.same === null);
+        const defaultSpec = specs.find((spec) => spec.same === null);
         expect(defaultSpec).toBeDefined();
       });
 

@@ -93,7 +93,7 @@ export const Onboarding = () => {
     cardType: "question",
   });
 
-  const lastUsedDatabaseId = useSelector(state =>
+  const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
 
@@ -155,40 +155,40 @@ export const Onboarding = () => {
     utm_content: "getting-started",
   };
 
-  const docsLink = useSelector(state =>
+  const docsLink = useSelector((state) =>
     getDocsUrl(state, {
       utm: utmTags,
     }),
   );
 
-  const sqlParamsDocsLink = useSelector(state =>
+  const sqlParamsDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/native-editor/sql-parameters",
       utm: utmTags,
     }),
   );
-  const dashboardTabsDocsLink = useSelector(state =>
+  const dashboardTabsDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "dashboards/introduction",
       anchor: "dashboard-tabs",
       utm: utmTags,
     }),
   );
-  const goalLineAlertDocsLink = useSelector(state =>
+  const goalLineAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "goal-line-alerts",
       utm: utmTags,
     }),
   );
-  const progressBarAlertDocsLink = useSelector(state =>
+  const progressBarAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "progress-bar-alerts",
       utm: utmTags,
     }),
   );
-  const resultAlertDocsLink = useSelector(state =>
+  const resultAlertDocsLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "results-alerts",
@@ -229,7 +229,7 @@ export const Onboarding = () => {
           {isAdmin && (
             <Box mb={64}>
               <Title
-                order={2}
+                order={3}
                 mb="lg"
               >{t`Set up your ${applicationName}`}</Title>
               <Accordion.Item
@@ -316,7 +316,7 @@ export const Onboarding = () => {
           )}
 
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
+            <Title order={3} mb="lg">{t`Start visualizing your data`}</Title>
             <Accordion.Item
               value="x-ray"
               data-testid="x-ray-item"
@@ -493,7 +493,7 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Get email updates and alerts`}</Title>
+            <Title order={3} mb="lg">{t`Get email updates and alerts`}</Title>
             <Accordion.Item
               value="subscription"
               data-testid="subscription-item"
@@ -666,7 +666,7 @@ export const Onboarding = () => {
             {showMetabaseLinks && (
               <Box data-testid="learning-section" mb="xl">
                 <Title
-                  order={2}
+                  order={3}
                   mb={12}
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>

@@ -736,7 +736,7 @@ export function getDateFormatFromStyle(
     if (DATE_STYLE_TO_FORMAT[style][unit]) {
       format = replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
     }
-  } else {
+  } else if (style !== "") {
     console.warn("Unknown date style", style);
   }
 
@@ -803,7 +803,7 @@ export function normalizeDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  const [a, b] = [values[0], values[1] ?? values[0]].map(d =>
+  const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
     parseTimestamp(d, unit, options.local),
   );
   if (!a.isValid() || !b.isValid()) {
@@ -818,7 +818,7 @@ export function normalizeDateTimeRangeWithUnit(
   const start = a.clone().startOf(momentUnit);
   const end = b.clone().endOf(momentUnit);
   const shift = a.diff(start, "days");
-  [start, end].forEach(d => d.add(shift, "days"));
+  [start, end].forEach((d) => d.add(shift, "days"));
   return [start, end, shift];
 }
 
@@ -846,9 +846,9 @@ export function formatDateTimeRangeWithUnit(
   const condensed = options.compact || options.type === "tooltip";
 
   const specs = DATE_RANGE_FORMAT_SPECS[unit];
-  const defaultSpec = specs.find(spec => spec.same === null);
+  const defaultSpec = specs.find((spec) => spec.same === null);
   const matchSpec =
-    specs.find(spec => start.isSame(end, spec.same)) ?? defaultSpec;
+    specs.find((spec) => start.isSame(end, spec.same)) ?? defaultSpec;
   if (!matchSpec || !defaultSpec) {
     return String(start);
   }
@@ -966,7 +966,7 @@ export function formatRange(
   formatter: any,
   options: OptionsType = {},
 ) {
-  const [start, end] = range.map(value => formatter(value, options));
+  const [start, end] = range.map((value) => formatter(value, options));
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
     return (
       <span>

@@ -21,6 +21,13 @@
       (println "Running: " cmd)
       (try (u/sh cmd) (catch Exception _e nil)))))
 
+(defn updated
+  "Formats or checks all updated clojure files with cljfmt."
+  [parsed]
+  (let [target-branch (or (first (:arguments parsed)) "HEAD")]
+    (println (str "Checking for updated files against " (c/green target-branch)))
+    (files (assoc parsed :arguments (u/updated-files target-branch)))))
+
 (defn staged
   "Formats or checks all staged clojure files with cljfmt."
   [{{force-check? :force-check} :options}]
@@ -30,9 +37,8 @@
            (files {:options {:force-check force-check?} :arguments file-paths})
            (println (str "No staged clj, cljc, or cljs files to " (->mode force-check?) "."))))
        (catch Exception e
-         (println "Error:" (.getMessage e))
-         ;; Exit 0 because this is expected
-         (System/exit 0))))
+         (throw (ex-info (str (c/red "Problem formatting staged files. Are they readable?") "\ncause:\n" (ex-message e))
+                         {:mage/exit-code 1})))))
 
 (defn all
   "Formats or checks of the usual clojure files with cljfmt."

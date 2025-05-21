@@ -10,7 +10,7 @@ import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
 } from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import type {
   ChannelApiResponse,
@@ -19,9 +19,24 @@ import type {
 } from "metabase-types/api";
 
 const DEFAULT_CHANNELS_CONFIG = {
-  email: { name: t`Email`, type: "email" },
-  slack: { name: t`Slack`, type: "slack" },
-  http: { name: t`Http`, type: "http" },
+  email: {
+    get name() {
+      return t`Email`;
+    },
+    type: "email",
+  },
+  slack: {
+    get name() {
+      return t`Slack`;
+    },
+    type: "slack",
+  },
+  http: {
+    get name() {
+      return t`Http`;
+    },
+    type: "http",
+  },
 };
 
 interface NotificationChannelsPickerProps {
@@ -41,7 +56,7 @@ export const NotificationChannelsPicker = ({
   const { data: httpChannelsConfig = [] } = useListChannelsQuery();
   const { data: users } = useListUserRecipientsQuery();
   const user = useSelector(getUser);
-  const isAdmin = useSelector(getUserIsAdmin);
+  const userCanAccessSettings = useSelector(canAccessSettings);
 
   const usersListOptions: User[] = users?.data || (user ? [user] : []);
 
@@ -90,7 +105,7 @@ export const NotificationChannelsPicker = ({
     oldConfig: NotificationHandler,
     newConfig: NotificationHandler,
   ) => {
-    const updatedChannels = notificationHandlers.map(value =>
+    const updatedChannels = notificationHandlers.map((value) =>
       value === oldConfig ? newConfig : value,
     );
 
@@ -99,7 +114,7 @@ export const NotificationChannelsPicker = ({
 
   const onRemoveChannel = (channel: NotificationHandler) => {
     const updatedChannels = notificationHandlers.filter(
-      value => value !== channel,
+      (value) => value !== channel,
     );
 
     onChange(updatedChannels);
@@ -124,7 +139,7 @@ export const NotificationChannelsPicker = ({
             channel={emailHandler}
             users={usersListOptions}
             invalidRecipientText={getInvalidRecipientText}
-            onChange={newConfig => onChannelChange(emailHandler, newConfig)}
+            onChange={(newConfig) => onChannelChange(emailHandler, newConfig)}
           />
         </ChannelSettingsBlock>
       )}
@@ -138,14 +153,14 @@ export const NotificationChannelsPicker = ({
           <SlackChannelFieldNew
             channel={slackHandler}
             channelSpec={channels.slack}
-            onChange={newConfig => onChannelChange(slackHandler, newConfig)}
+            onChange={(newConfig) => onChannelChange(slackHandler, newConfig)}
           />
         </ChannelSettingsBlock>
       )}
 
-      {isAdmin &&
+      {userCanAccessSettings &&
         hookHandlers &&
-        hookHandlers.map(channel => (
+        hookHandlers.map((channel) => (
           <ChannelSettingsBlock
             key={`webhook-${channel.channel_id}`}
             title={
@@ -162,7 +177,7 @@ export const NotificationChannelsPicker = ({
         channelsSpec={channels}
         httpChannelsConfig={httpChannelsConfig}
         onAddChannel={addChannel}
-        isAdmin={isAdmin}
+        userCanAccessSettings={userCanAccessSettings}
       />
     </Stack>
   );

@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, screen } from "__support__/ui";
+import { getIcon, queryIcon, screen, within } from "__support__/ui";
 import type { CollectionType } from "metabase-types/api";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { setup } from "./setup";
 
@@ -17,6 +18,14 @@ describe("Instance Analytics Collection Header", () => {
     // doesn't cause the following test block to fail
     tokenFeatures: { audit_app: true, official_collections: true },
   };
+
+  it("should not offer to create new collection for instance analytics collections", () => {
+    setup(defaultOptions);
+    const headerMenu = screen.getByTestId("collection-menu");
+    expect(
+      within(headerMenu).queryByLabelText("Create a new collection"),
+    ).not.toBeInTheDocument();
+  });
 
   it("should show an audit icon for instance analytics collections", () => {
     setup(defaultOptions);
@@ -65,7 +74,7 @@ describe("instance analytics custom reports collection", () => {
     collection: {
       name: "Custom Reports",
       can_write: true,
-      entity_id: "okNLSZKdSxaoG58JSQY54",
+      entity_id: createMockEntityId("okNLSZKdSxaoG58JSQY54"),
     },
     hasEnterprisePlugins: true,
     // 😬 this test needs the official_collections feature flag so that it

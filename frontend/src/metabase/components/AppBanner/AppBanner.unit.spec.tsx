@@ -17,6 +17,7 @@ import { AppBanner } from "./AppBanner";
 interface SetupOpts {
   isAdmin: boolean;
   isHosted?: boolean;
+  isDevMode?: boolean;
   isReadOnly?: boolean;
   tokenStatus?: TokenStatus | null;
 }
@@ -28,6 +29,7 @@ function setup({
   isAdmin,
   isHosted = false,
   isReadOnly = false,
+  isDevMode = false,
   tokenStatus,
 }: SetupOpts) {
   setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
@@ -36,6 +38,7 @@ function setup({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "is-hosted?": isHosted,
+      "development-mode?": isDevMode,
       "read-only-mode": isReadOnly,
       "token-status": createMockTokenStatus(tokenStatus ?? {}),
     }),
@@ -49,17 +52,19 @@ function setup({
 }
 
 describe("AppBanner", () => {
-  it("should not render for non admins", () => {
-    setup({ isAdmin: false });
-
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
   describe("PaymentBanner", () => {
     const token = {
       valid: false,
       trial: false,
     };
+
+    it("should not render for non-admins", () => {
+      setup({
+        isAdmin: false,
+        tokenStatus: { ...token, status: "past-due" },
+      });
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
 
     it("should render past-due banner for admin user with tokenStatusStatus: past-due", () => {
       setup({
@@ -119,7 +124,7 @@ describe("AppBanner", () => {
 
     it.each(["past-due", "unpaid", "invalid"])(
       "should not render for hosted instances for %s token status (metabase#50335)",
-      status => {
+      (status) => {
         setup({
           isAdmin: true,
           isHosted: true,
@@ -132,6 +137,14 @@ describe("AppBanner", () => {
   });
 
   describe("ReadOnlyBanner", () => {
+    it("should not render for non-admins", () => {
+      setup({
+        isAdmin: false,
+        isReadOnly: true,
+      });
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
+
     it("should render if Metabase is in read-only mode", () => {
       setup({
         isAdmin: true,
@@ -146,12 +159,40 @@ describe("AppBanner", () => {
     });
   });
 
+  describe("DevModeBanner", () => {
+    it("should render for admins", () => {
+      setup({ isAdmin: true, isDevMode: true });
+      expect(
+        screen.getByText(
+          /This instance is in development mode. It is not allowed to be used for production purposes. All content is watermarked\./,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should render for non-admins", () => {
+      setup({ isAdmin: false, isDevMode: true });
+      expect(
+        screen.getByText(
+          /This instance is in development mode. It is not allowed to be used for production purposes. All content is watermarked\./,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("TrialBanner", () => {
     const token = {
       status: "Token is valid",
       valid: true,
       trial: true,
     };
+
+    it("should not render for non-admins", () => {
+      setup({
+        isAdmin: false,
+        tokenStatus: token,
+      });
+      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+    });
 
     it("should not render if there is no information about the token", () => {
       setup({

@@ -3,14 +3,16 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
+import Button, { type ButtonProps } from "metabase/core/components/Button";
 
-export const StyledButton = styled(Button)<{
+interface StyledButtonProps extends ButtonProps {
   isFullHeight?: boolean;
   focus?: boolean;
-}>`
+}
+
+export const StyledButton = styled(Button)<StyledButtonProps>`
   padding: 0;
-  height: ${({ isFullHeight }) => (isFullHeight ? "100%" : "auto")};
+  height: ${({ isFullHeight = true }) => (isFullHeight ? "100%" : "auto")};
 
   ${({ focus }) =>
     focus
@@ -31,7 +33,3 @@ export const StyledButtonContent = styled.div`
   justify-content: center;
   gap: 0.5rem;
 `;
-
-StyledButton.defaultProps = {
-  isFullHeight: true,
-};

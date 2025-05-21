@@ -116,7 +116,7 @@ function SharingDisplay({ question }: { question: Question }) {
             target={
               <Icon
                 name="link"
-                onClick={() => setIsPopoverOpen(prev => !prev)}
+                onClick={() => setIsPopoverOpen((prev) => !prev)}
                 className={cx(
                   Styles.cursorPointer,
                   Styles.textBrandHover,

@@ -49,7 +49,7 @@ export const advancedPermissionsSlice = createSlice({
   reducers: {
     updateImpersonation(state, { payload }: PayloadAction<Impersonation>) {
       const impersonationIndex = state.impersonations.findIndex(
-        impersonation =>
+        (impersonation) =>
           impersonation.db_id === payload.db_id &&
           impersonation.group_id === payload.group_id,
       );
@@ -61,7 +61,7 @@ export const advancedPermissionsSlice = createSlice({
       }
     },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
       .addCase(LOAD_DATA_PERMISSIONS, () => initialState)
       .addCase(SAVE_DATA_PERMISSIONS, () => initialState)
@@ -72,7 +72,7 @@ export const advancedPermissionsSlice = createSlice({
 
         if (payload?.permissionInfo?.permission === DataPermission.VIEW_DATA) {
           state.impersonations = state.impersonations.filter(
-            impersonation =>
+            (impersonation) =>
               impersonation.group_id !== payload.groupId &&
               impersonation.db_id !== payload.entityId.databaseId,
           );

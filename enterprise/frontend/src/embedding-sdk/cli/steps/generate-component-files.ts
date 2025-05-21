@@ -4,9 +4,9 @@ import { input } from "@inquirer/prompts";
 
 import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
+import { getComponentSnippets } from "../snippets/get-component-snippets";
 import type { CliStepMethod } from "../types/cli";
 import { checkIsInTypeScriptProject } from "../utils/check-typescript-project";
-import { getComponentSnippets } from "../utils/get-component-snippets";
 import {
   checkIfNextJsCustomAppOrRootLayoutExists,
   checkIfNextJsProjectUsesSrcDirectory,
@@ -16,7 +16,7 @@ import {
 import { printError, printSuccess } from "../utils/print";
 import { getGeneratedComponentsDefaultPath } from "../utils/snippets-helpers";
 
-export const generateReactComponentFiles: CliStepMethod = async state => {
+export const generateReactComponentFiles: CliStepMethod = async (state) => {
   const { instanceUrl, apiKey, dashboards = [], token } = state;
 
   if (!instanceUrl || !apiKey) {
@@ -60,9 +60,9 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     dashboards,
     isNextJs,
 
-    // Enable user switching only when a valid license is present,
-    // as JWT requires a valid license.
-    userSwitcherEnabled: !!token,
+    // Enable user switching only when a valid license is present
+    // as JWT requires a valid license, and does not use a sample database.
+    userSwitcherEnabled: !!token && !state.useSampleDatabase,
   });
 
   const isInTypeScriptProject = await checkIsInTypeScriptProject();
@@ -85,7 +85,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
-    .map(file => `export * from "./${file.fileName}"`)
+    .map((file) => `export * from "./${file.fileName}"`)
     .join("\n")
     .trim();
 

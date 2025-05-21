@@ -7,14 +7,14 @@ import {
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
 
-export const validateDatasetRows = series => {
+export const validateDatasetRows = (series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
   if (_.every(series, singleSeriesHasNoRows)) {
     throw new MinRowsError(1, 0);
   }
 };
 
-export const validateChartDataSettings = settings => {
+export const validateChartDataSettings = (settings) => {
   const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
   const metrics = (settings["graph.metrics"] || []).filter(isNotNull);
   if (dimensions.length < 1 || metrics.length < 1) {
@@ -25,7 +25,7 @@ export const validateChartDataSettings = settings => {
     );
   }
   const seriesOrder = (settings["graph.series_order"] || []).filter(
-    series => series.enabled,
+    (series) => series.enabled,
   );
   if (dimensions.length > 1 && seriesOrder.length === 0) {
     throw new ChartSettingsError(t`No breakouts are enabled`, {
@@ -34,7 +34,7 @@ export const validateChartDataSettings = settings => {
   }
 };
 
-export const validateStacking = settings => {
+export const validateStacking = (settings) => {
   if (
     settings["stackable.stack_type"] === "normalized" &&
     settings["graph.y_axis.scale"] === "log"

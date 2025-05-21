@@ -151,7 +151,7 @@ export function JoinComplete({
                 rhsTableName={rhsTableName}
                 isReadOnly={isReadOnly}
                 isRemovable={conditions.length > 1}
-                onChange={newCondition =>
+                onChange={(newCondition) =>
                   handleUpdateCondition(newCondition, index)
                 }
                 onRemove={() => handleRemoveCondition(index)}

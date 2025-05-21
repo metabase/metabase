@@ -1,11 +1,14 @@
 (ns metabase.notification.payload.impl.card-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.limit :as limit]
@@ -14,10 +17,12 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures
   :each
   (fn [thunk]
-    (binding [notification/*default-options* {:notification/sync? true}]
+    (binding [notification.send/*default-options* {:notification/sync? true}]
       (thunk))))
 
 (defn- construct-email
@@ -73,7 +78,6 @@
                                                            :type "plain_text"}
                                                     :type "header"}]}
                                          {:attachment-name "image.png"
-                                          :channel-id "FOO"
                                           :fallback "Card notification test card",
                                           :rendered-info {:attachments false
                                                           :content true
@@ -128,12 +132,85 @@
                                                    :type "plain_text"}
                                             :type "header"}]}
                                  {:attachment-name "image.png"
-                                  :channel-id "FOO"
                                   :fallback "Card notification test card"
                                   :rendered-info {:attachments false :content true}
                                   :title "Card notification test card"}]
                    :channel-id "#general"}
                   (notification.tu/slack-message->boolean message))))}))))
+
+(deftest card-with-rows-saved-to-disk-test
+  (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
+    (doseq [limit [1 10]]
+      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
+        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+                   "card has rows saved to disk"
+                   "card has rows saved in memory")
+          (notification.tu/with-notification-testing-setup!
+            (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
+                                                                 :details {:url         "https://metabase.com/testhttp"
+                                                                           :auth-method "none"}}]
+              (notification.tu/with-card-notification
+                [notification {:card     {:name notification.tu/default-card-name
+                                          :dataset_query (mt/mbql-query orders {:limit limit})}
+                               :handlers [@notification.tu/default-email-handler
+                                          notification.tu/default-slack-handler
+                                          {:channel_type :channel/http
+                                           :channel_id   http-channel-id}]}]
+                (notification.tu/test-send-notification!
+                 notification
+                 {:channel/email
+                  (fn [[email]]
+                    (is (= (construct-email
+                            {:message [{notification.tu/default-card-name true
+                                        "Manage your subscriptions"       true}
+                                      ;; icon
+                                       notification.tu/png-attachment
+                                       notification.tu/csv-attachment]})
+                           (mt/summarize-multipart-single-email
+                            email
+                            card-name-regex
+                            #"Manage your subscriptions"))))
+                  :channel/slack
+                  (fn [[message]]
+                    (is (=? {:attachments [{:blocks [{:text {:emoji true
+                                                             :text "🔔 Card notification test card"
+                                                             :type "plain_text"}
+                                                      :type "header"}]}
+                                           {:attachment-name "image.png"
+                                            :fallback "Card notification test card"
+                                            :rendered-info {:attachments false :content true}
+                                            :title "Card notification test card"}]
+                             :channel-id "#general"}
+                            (notification.tu/slack-message->boolean message))))
+                  :channel/http
+                  (fn [[req]]
+                    (is (=? {:body {:type               "alert"
+                                    :alert_id           (-> notification :payload :id)
+                                    :alert_creator_id   (-> notification :creator_id)
+                                    :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id notification))
+                                    :data               (mt/malli=? :map)
+                                    :sent_at            (mt/malli=? :any)}}
+                            req)))})))))))))
+
+(deftest cards-with-rows-saved-to-disk-will-cleanup-the-files
+  (let [f               (atom nil)
+        orig-execute-fn @#'notification.payload.execute/execute-card]
+    (with-redefs [notification.payload.execute/rows-to-disk-threadhold 1
+                  notification.payload.execute/execute-card
+                  (fn [& args]
+                    (let [result (apply orig-execute-fn args)]
+                      (reset! f (-> result :result :data :rows))
+                      result))]
+      (notification.tu/with-notification-testing-setup!
+        (notification.tu/with-card-notification
+          [notification {:card     {:name notification.tu/default-card-name
+                                    :dataset_query (mt/mbql-query orders {:limit 2})}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification/send-notification! notification)
+          (testing "sanity check that the file exists in the first place"
+            (is (notification.payload/is-cleanable? @f)))
+          (testing "the files are cleaned up"
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
@@ -209,22 +286,22 @@
         goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
     (testing "Progress bar"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6)))))))
     (testing "Timeseries"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
@@ -331,14 +408,15 @@
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
     [notification {:notification-card {:send_once true}}]
-    (testing "do not archive if the send fail for any reason"
-      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
-        (u/ignore-exceptions (notification/send-notification! notification))
-        (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+    (let [notification (t2/select-one :model/Notification (:id notification))]
+      (testing "do not archive if the send fail for any reason"
+        (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
+          (u/ignore-exceptions (notification/send-notification! notification))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
 
-    (testing "archive if the send is successful"
-      (notification/send-notification! notification)
-      (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))))
+      (testing "archive if the send is successful"
+        (notification/send-notification! notification)
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -380,10 +458,10 @@
                 (get-in (notification/notification-payload notification)
                         [:payload :card_part :result])))]
       (testing "rasta has no permissions and will get error"
-        (let [rasta-result (payload! :rasta)]
-          (is (= 0 (:row_count rasta-result)))
-          (is (re-find #"You do not have permissions to view Card \d+"
-                       (:error rasta-result)))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You don't have permissions"
+             (payload! :rasta))))
       (testing "crowberto can see the card"
         (is (pos-int? (:row_count (payload! :crowberto))))))))
 
@@ -414,10 +492,95 @@
   (testing "should not send for archived cards"
     (notification.tu/with-card-notification
       [notification {:card     {:archived true}
-
                      :handlers [@notification.tu/default-email-handler]}]
       (notification.tu/test-send-notification!
        notification
        {:channel/email
         (fn [emails]
           (is (empty? emails)))}))))
+
+(deftest notification-with-invalid-card-should-fail-test
+  (testing "If the card is failed to execute, the notification should fail (#54495)"
+    (notification.tu/with-card-notification
+      [notification {:card     {:dataset_query (mt/native-query {:query "select 1/0"})}
+                     :handlers [@notification.tu/default-email-handler]}]
+      (t2/delete! :model/TaskHistory)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Failed to execute card with error: Division by zero: " 1 ""
+           (#'notification.send/send-notification-sync! notification)))
+      (is (=? [{:status :failed
+                :task_details {:message (mt/malli=? [:fn #(str/includes? % "Division by zero")])}}]
+              (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
+                         {:order-by [[:started_at :asc]]}))))))
+
+(defn- email->attachment-line-count
+  [email]
+  (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+    (if attachment
+      (with-open [rdr (io/reader (:content attachment))]
+        (count (line-seq rdr)))
+      nil)))
+
+(deftest card-attachment-limit-test
+  (testing "#55522"
+    (testing "by default card attachment returns all rows"
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/mbql-query orders)}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (is (= 18761 (email->attachment-line-count (first emails)))))})))
+
+    (testing "respect attachment limit env if set"
+      (mt/with-temporary-setting-values [attachment-row-limit 10]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query orders)}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (= 11 (email->attachment-line-count (first emails)))))}))))
+
+    (testing "respect query limit if set"
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 10})}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (is (= 11 (email->attachment-line-count (first emails)))))})))
+
+    (testing "attachment limit env > query limit"
+      (mt/with-temporary-setting-values [attachment-row-limit 10]
+        (notification.tu/with-card-notification
+          [notification {:card     {:dataset_query (mt/mbql-query orders {:limit 20})}
+                         :handlers [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (= 11 (email->attachment-line-count (first emails)))))}))))))
+
+(deftest audit-alert-send-event-test
+  (testing "When we send an alert, we also log the event:"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:audit-app}
+       (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
+                                                                          :recipients [{:type :notification-recipient/user
+                                                                                        :user_id (mt/user->id :rasta)}
+                                                                                       {:type :notification-recipient/raw-value
+                                                                                        :details {:value "ngoc@metabase.com"}}]}]}]
+         (notification/send-notification! notification :notification/sync? true)
+         (is (=? {:topic    :alert-send
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "Pulse"
+                  :model_id (:id notification)
+                  :details  {:recipients [{:id (mt/user->id :rasta)}
+                                          "ngoc@metabase.com"]
+                             :filters    nil}}
+                 (mt/latest-audit-log-entry :alert-send (:id notification)))))))))

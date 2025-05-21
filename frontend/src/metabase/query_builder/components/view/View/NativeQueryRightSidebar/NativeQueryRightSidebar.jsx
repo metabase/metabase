@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
@@ -7,9 +8,11 @@ import { QuestionInfoSidebar } from "metabase/query_builder/components/view/side
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 
-export const NativeQueryRightSidebar = props => {
+export const NativeQueryRightSidebar = (props) => {
   const {
     question,
+    timelineEvents,
+    timelines,
     toggleTemplateTagsEditor,
     toggleDataReference,
     toggleSnippetSidebar,
@@ -27,6 +30,8 @@ export const NativeQueryRightSidebar = props => {
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
+    isShowingAIQuestionAnalysisSidebar,
+    onCloseAIQuestionAnalysisSidebar,
   } = props;
 
   return match({
@@ -36,11 +41,12 @@ export const NativeQueryRightSidebar = props => {
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
+    isShowingAIQuestionAnalysisSidebar,
   })
     .with({ isShowingTemplateTagsEditor: true }, () => (
       <TagEditorSidebar
         {...props}
-        query={question.legacyQuery()}
+        query={question.legacyNativeQuery()}
         onClose={toggleTemplateTagsEditor}
       />
     ))
@@ -70,6 +76,14 @@ export const NativeQueryRightSidebar = props => {
     ))
     .with({ isShowingQuestionSettingsSidebar: true }, () => (
       <QuestionSettingsSidebar question={question} />
+    ))
+    .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
+      <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
+        question={question}
+        visibleTimelineEvents={timelineEvents}
+        timelines={timelines}
+        onClose={onCloseAIQuestionAnalysisSidebar}
+      />
     ))
     .otherwise(() => null);
 };

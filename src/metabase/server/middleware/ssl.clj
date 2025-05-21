@@ -2,8 +2,9 @@
   "Middleware for redirecting users to HTTPS sessions"
   (:require
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.server.settings :as server.settings]
+   [metabase.system.core :as system]
    [ring.util.request :as req]
    [ring.util.response :as response]))
 
@@ -19,7 +20,7 @@
 
 (defn- https-url [url-string]
   (let [url (java.net.URL. url-string)
-        site-url (java.net.URL. (public-settings/site-url))]
+        site-url (java.net.URL. (system/site-url))]
     (str (java.net.URL. "https" (.getHost site-url) (.getPort site-url) (.getFile url)))))
 
 (defn- ssl-redirect-response
@@ -34,17 +35,17 @@
   [handler]
   (fn [request respond raise]
     (cond
-      (str/blank? (public-settings/site-url))
+      (str/blank? (system/site-url))
       (handler request respond raise)
 
-      (not (str/starts-with? (public-settings/site-url) "https:"))
+      (not (str/starts-with? (system/site-url) "https:"))
       (handler request respond raise)
 
       (no-redirect-https-uris (:uri request))
       (handler request respond raise)
 
       (and
-       (public-settings/redirect-all-requests-to-https)
+       (server.settings/redirect-all-requests-to-https)
        (not (request/https? request)))
       (respond (ssl-redirect-response request))
 

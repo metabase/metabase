@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeDiagnostics } from "metabase/redux/app";
 import { addUndo } from "metabase/redux/undo";
 import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
-import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 
@@ -70,7 +70,7 @@ export const ErrorDiagnosticModal = ({
     const { description, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      key => diagnosticSelections[key],
+      (key) => diagnosticSelections[key],
     );
     const selectedInfo = {
       ..._.pick(errorInfo, ...selectedKeys),
@@ -89,7 +89,7 @@ export const ErrorDiagnosticModal = ({
     const { description, ...diagnosticSelections } = values;
 
     const selectedKeys = Object.keys(diagnosticSelections).filter(
-      key => diagnosticSelections[key],
+      (key) => diagnosticSelections[key],
     );
     const selectedInfo = {
       ..._.pick(errorInfo, ...selectedKeys),
@@ -176,7 +176,7 @@ export const ErrorDiagnosticModal = ({
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);
 
-  if (getIsEmbedded()) {
+  if (getIsEmbeddingIframe()) {
     return null;
   }
 
@@ -269,8 +269,7 @@ export const ErrorExplanationModal = ({
         {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
       <Text my="md">
-        {c("indicates an email address to which to send diagnostic information")
-          .jt`If the error persists, you can download diagnostic information`}
+        {t`If the error persists, you can download diagnostic information`}
       </Text>
       <Flex justify="flex-end">
         <Button variant="filled" onClick={openDiagnosticModal}>

@@ -15,7 +15,7 @@ export default {
   component: GaugeContainer,
 };
 
-const Template: StoryFn<GaugeContainerProps> = args => {
+const Template: StoryFn<GaugeContainerProps> = (args) => {
   return <GaugeContainer {...args} />;
 };
 
@@ -32,4 +32,9 @@ export const WithFormatting = {
 export const TruncatedLabels = {
   render: Template,
   args: { ...TRUNCATED_LABELS, getColor: color },
+};
+
+export const Watermark = {
+  render: Template,
+  args: { ...DEFAULT, getColor: color, hasDevWatermark: true },
 };

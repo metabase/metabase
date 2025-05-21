@@ -8,13 +8,31 @@ describe("issue 26470", { tags: "@external" }, () => {
     cy.request("POST", "/api/persist/enable");
   });
 
-  it("Model Cache enable / disable button should update button text", () => {
-    cy.clock(Date.now());
+  it("Model Cache enable / disable toggle should reflect current state", () => {
+    cy.intercept(`/api/persist/database/${WRITABLE_DB_ID}/persist`).as(
+      "persist",
+    );
+    cy.intercept(`/api/persist/database/${WRITABLE_DB_ID}/unpersist`).as(
+      "unpersist",
+    );
+
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    cy.button("Turn model persistence on").click();
-    cy.button(/Done/).should("exist");
-    cy.tick(6000);
-    cy.button("Turn model persistence off").should("exist");
+
+    cy.findByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("not.be.checked")
+      .click({ force: true });
+    cy.wait("@persist").its("response.statusCode").should("eq", 204);
+
+    cy.findByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("be.checked")
+      .click({ force: true });
+    cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
+
+    cy.findByTestId("database-model-features-section")
+      .findByLabelText("Model persistence")
+      .should("not.be.checked");
   });
 });
 
@@ -43,13 +61,11 @@ describe("issue 21532", () => {
     cy.visit("/");
 
     cy.icon("gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Getting set up");
+    H.popover().findByText("Admin settings").click();
+    cy.findByTestId("admin-layout-content");
 
     cy.go("back");
-    cy.location().should(location => {
+    cy.location().should((location) => {
       expect(location.pathname).to.eq("/");
     });
   });
@@ -99,31 +115,35 @@ describe("issue 41765", { tags: "@external" }, () => {
     });
   }
 
-  it("re-syncing a database should invalidate the table cache (metabase#41765)", () => {
-    cy.visit("/");
+  it(
+    "re-syncing a database should invalidate the table cache (metabase#41765)",
+    { tags: "@flaky" },
+    () => {
+      cy.visit("/");
 
-    H.queryWritableDB(
-      `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
-      "postgres",
-    );
+      H.queryWritableDB(
+        `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
+        "postgres",
+      );
 
-    openWritableDatabaseQuestion();
+      openWritableDatabaseQuestion();
 
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
-    enterAdmin();
+      enterAdmin();
 
-    H.appBar().findByText("Databases").click();
-    cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
-    cy.button("Sync database schema now").click();
+      H.appBar().findByText("Databases").click();
+      cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
+      cy.button("Sync database schema").click();
 
-    exitAdmin();
-    openWritableDatabaseQuestion();
+      exitAdmin();
+      openWritableDatabaseQuestion();
 
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
-  });
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
+    },
+  );
 });
 
 describe("(metabase#45042)", () => {
@@ -184,7 +204,7 @@ describe("(metabase#46714)", () => {
   it("should allow users to apply relative date options in the segment date picker", () => {
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByRole("tab", { name: "Previous" }).click();
       cy.findByLabelText("Starting from…").click();
     });

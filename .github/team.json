@@ -5,15 +5,22 @@
       "label": ".Team/Querying",
       "members": [
         "ranquild",
-        "kamilmielnik",
         "romeovs",
         "bshepherdson",
         "metamben",
-        "lbrdnk",
         "appleby",
         "uladzimirdev",
         "wzimrin",
         "ericnormand"
+      ]
+    },
+    {
+      "name": "Semantic Layer",
+      "label": ".Team/SemanticLayer",
+      "members": [
+        "kamilmielnik",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
@@ -70,7 +77,8 @@
         "kulyk",
         "tsplude",
         "lorem--ipsum",
-        "noahmoss"
+        "noahmoss",
+        "bpander"
       ]
     },
     {
@@ -80,6 +88,18 @@
         "camsaul",
         "escherize"
       ]
+    },
+     {
+      "name": "Metabot",
+      "label": ".Team/Metabot",
+      "members": [
+        "somtom"
+      ]
+    },
+    {
+      "name": "Product Growth",
+      "label": ".Team/ProductGrowth",
+      "members": ["nemanjaglumac"]
     }
   ]
 }

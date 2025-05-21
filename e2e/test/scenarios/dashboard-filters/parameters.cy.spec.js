@@ -76,7 +76,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Continue typing a "d" and you see "Gadget"
     H.popover()
       .first()
-      .within(() => cy.findByPlaceholderText("Search").type("d"));
+      .within(() => cy.findByPlaceholderText("Search the list").type("d"));
     cy.wait("@dashboard");
 
     // eslint-disable-next-line no-unsafe-element-filtering
@@ -176,7 +176,7 @@ describe("scenarios > dashboard > parameters", () => {
         });
 
         H.visitDashboard(dashboard_id);
-        cy.findByTextEnsureVisible("Created At");
+        H.tableInteractiveHeader("Created At");
       },
     );
 
@@ -484,7 +484,7 @@ describe("scenarios > dashboard > parameters", () => {
       "eq",
       "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
-    cy.findAllByTestId("table-row").should("have.length", 1);
+    cy.findAllByRole("row").should("have.length", 1);
 
     // It should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)
     H.editDashboard();
@@ -497,13 +497,13 @@ describe("scenarios > dashboard > parameters", () => {
       "eq",
       "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
-    cy.findAllByTestId("table-row").should("have.length", 1);
+    cy.findAllByRole("row").should("have.length", 1);
   });
 
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.findByTextEnsureVisible("Created At");
+      H.tableInteractiveHeader("Created At");
 
       H.editDashboard();
       H.setFilter("ID");
@@ -598,7 +598,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when parameters are (dis)connected to dashcards", () => {
     beforeEach(() => {
-      createDashboardWithCards({ cards }).then(dashboardId =>
+      createDashboardWithCards({ cards }).then((dashboardId) =>
         H.visitDashboard(dashboardId),
       );
 
@@ -724,7 +724,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Antwan Fisher");
+        H.fieldValuesCombobox().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -735,7 +735,9 @@ describe("scenarios > dashboard > parameters", () => {
       cy.visit("/collection/root");
       cy.wait("@getPinnedItems");
 
-      cy.get("@dashboardId").then(dashboardId => H.visitDashboard(dashboardId));
+      cy.get("@dashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
 
       H.filterWidget()
         .findByRole("listitem")
@@ -753,7 +755,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget().click();
 
       H.dashboardParametersPopover().within(() => {
-        H.fieldValuesInput().type("Antwan Fisher");
+        H.fieldValuesCombobox().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -763,7 +765,9 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.log("reset filter values from url by visiting dashboard by id");
 
-      cy.get("@dashboardId").then(dashboardId => H.visitDashboard(dashboardId));
+      cy.get("@dashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
 
       H.filterWidget().icon("close").click();
 
@@ -773,7 +777,9 @@ describe("scenarios > dashboard > parameters", () => {
 
       cy.log("verify filter value is not specified after reload");
 
-      cy.get("@dashboardId").then(dashboardId => H.visitDashboard(dashboardId));
+      cy.get("@dashboardId").then((dashboardId) =>
+        H.visitDashboard(dashboardId),
+      );
 
       H.getDashboardCard()
         .findByText("761 Fish Hill Road")

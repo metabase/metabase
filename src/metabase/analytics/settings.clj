@@ -1,8 +1,8 @@
 (ns metabase.analytics.settings
   (:require
-   [metabase.config :as config]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))
 
@@ -29,6 +29,14 @@
   :base       setting/uuid-nonce-base
   :doc        false)
 
+(defsetting anon-tracking-enabled
+  (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
+                (setting/application-name-for-setting-descriptions appearance/application-name))
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :audit      :getter)
+
 (defsetting snowplow-available
   (deferred-tru
    (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
@@ -46,7 +54,7 @@
   :type       :boolean
   :setter     :none
   :getter     (fn [] (and (snowplow-available)
-                          (public-settings/anon-tracking-enabled)))
+                          (anon-tracking-enabled)))
   :visibility :public
   :doc        false)
 

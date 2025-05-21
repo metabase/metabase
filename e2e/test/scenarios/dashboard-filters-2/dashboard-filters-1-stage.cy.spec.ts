@@ -3,12 +3,6 @@ const { H } = cy;
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 /**
- * Empty section title element is rendered.
- * TODO: https://github.com/metabase/metabase/issues/47218
- */
-const NAMELESS_SECTION = "";
-
-/**
  * Abbreviations used for card aliases in this test suite:
  *  qbq = question-based question
  *  qbm = question-based model
@@ -384,11 +378,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count", "Sum of Total"]]],
+            [[null, ["Count", "Sum of Total"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count", "Sum of Total"]]],
+            [[null, ["Count", "Sum of Total"]]],
           );
         }
       });
@@ -451,21 +445,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Created At: Month", "User → Created At: Year"],
-              ],
-            ],
+            [[null, ["Created At: Month", "User → Created At: Year"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Created At: Month", "User → Created At: Year"],
-              ],
-            ],
+            [[null, ["Created At: Month", "User → Created At: Year"]]],
           );
         }
 
@@ -502,11 +486,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Product → Category"]]],
+            [[null, ["Product → Category"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Product → Category"]]],
+            [[null, ["Product → Category"]]],
           );
         }
 
@@ -610,21 +594,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Created At: Month", "User → Created At: Year"],
-              ],
-            ],
+            [[null, ["Created At: Month", "User → Created At: Year"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [
-              [
-                NAMELESS_SECTION,
-                ["Created At: Month", "User → Created At: Year"],
-              ],
-            ],
+            [[null, ["Created At: Month", "User → Created At: Year"]]],
           );
         }
 
@@ -661,11 +635,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Product → Category"]]],
+            [[null, ["Product → Category"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Product → Category"]]],
+            [[null, ["Product → Category"]]],
           );
         }
 
@@ -710,11 +684,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count", "Sum of Total"]]],
+            [[null, ["Count", "Sum of Total"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count", "Sum of Total"]]],
+            [[null, ["Count", "Sum of Total"]]],
           );
         }
       });

@@ -8,8 +8,9 @@ import {
 import Tables from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import { TableBreadcrumbs } from "metabase/metadata/components";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Icon, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -47,27 +48,43 @@ export function DataStep({
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    onChange(newQuery);
+    if (table) {
+      const newQuery = Lib.queryFromTableOrCardMetadata(
+        metadataProvider,
+        table,
+      );
+      onChange(newQuery);
+    }
   };
 
   return (
     <ClauseStep label={t`Data`}>
-      {isNew ? (
-        <Button
-          variant="subtle"
-          p={0}
-          c="text-dark"
-          rightSection={<Icon name="chevrondown" />}
-          onClick={() => setIsOpened(true)}
-        >
-          {tableInfo ? tableInfo.displayName : t`Select a table`}
-        </Button>
-      ) : (
-        <Text c="text-dark" fw="bold">
-          {tableInfo?.displayName}
-        </Text>
-      )}
+      <Box>
+        {tableId && (
+          <Flex maw={300} wrap="nowrap">
+            <Text c="text-medium" size="sm" w="100%">
+              <TableBreadcrumbs hideTableName tableId={tableId} />
+            </Text>
+          </Flex>
+        )}
+
+        {isNew ? (
+          <Button
+            variant="subtle"
+            p={0}
+            c="text-dark"
+            rightSection={<Icon name="chevrondown" />}
+            onClick={() => setIsOpened(true)}
+          >
+            {tableInfo ? tableInfo.displayName : t`Select a table`}
+          </Button>
+        ) : (
+          <Text c="text-dark" fw="bold">
+            {tableInfo?.displayName}
+          </Text>
+        )}
+      </Box>
+
       {isOpened && (
         <DataPickerModal
           title={t`Select a table`}

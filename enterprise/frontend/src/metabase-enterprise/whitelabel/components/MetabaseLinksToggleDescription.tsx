@@ -1,5 +1,4 @@
-import type { MouseEvent } from "react";
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
 import { Anchor, Popover, Stack, Text } from "metabase/ui";
@@ -11,28 +10,22 @@ export function MetabaseLinksToggleDescription() {
       key="popover"
       position="top-start"
       opened={opened}
-      onClose={() => setOpened(false)}
+      onChange={() => setOpened(!opened)}
     >
       <Popover.Target>
         <Anchor
-          /**
-           * This expands the vertical click area, so it's impossible to click above
-           * or below the element and accidentally toggle the switch.
-           */
-          display="inline-block"
-          style={{ userSelect: "none", cursor: "pointer" }}
+          style={{ cursor: "pointer" }}
           onClick={(event: MouseEvent) => {
             event.preventDefault();
-            setOpened(opened => !opened);
+            setOpened((opened) => !opened);
           }}
         >
           {t`Learn more`}
         </Anchor>
       </Popover.Target>
       <Popover.Dropdown>
-        <Stack p="md" gap="sm" maw={420}>
+        <Stack p="md" gap="sm" maw="26rem">
           <Text size="sm">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
             {t`This affects all links in the product experience (outside of the admin panel) that point to Metabase.com URLs.`}
           </Text>
           <Text size="sm">

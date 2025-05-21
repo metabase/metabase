@@ -27,7 +27,7 @@ export const PublicLinksDashboardListing = () => {
     <div className={cx(CS.bordered, CS.rounded, CS.full)}>
       <PublicLinksListing<GetPublicDashboard>
         revoke={revoke}
-        getUrl={dashboard => Urls.dashboard(dashboard)}
+        getUrl={(dashboard) => Urls.dashboard(dashboard)}
         getPublicUrl={({ public_uuid }: GetPublicDashboard) => {
           if (public_uuid) {
             return Urls.publicDashboard(public_uuid);
@@ -44,11 +44,12 @@ export const PublicLinksDashboardListing = () => {
 export const PublicLinksQuestionListing = () => {
   const query = useListPublicCardsQuery();
   const [revoke] = useDeleteCardPublicLinkMutation();
+
   return (
     <div className={cx(CS.bordered, CS.rounded, CS.full)}>
       <PublicLinksListing<GetPublicCard>
         revoke={revoke}
-        getUrl={question => Urls.question(question)}
+        getUrl={(question) => Urls.question(question)}
         getPublicUrl={({ public_uuid }) => {
           if (public_uuid) {
             return Urls.publicQuestion({ uuid: public_uuid });
@@ -71,7 +72,7 @@ export const PublicLinksActionListing = () => {
     <div className={cx(CS.bordered, CS.rounded, CS.full)}>
       <PublicLinksListing<GetPublicAction>
         revoke={revoke}
-        getUrl={action => Urls.action({ id: action.model_id }, action.id)}
+        getUrl={(action) => Urls.action({ id: action.model_id }, action.id)}
         getPublicUrl={({ public_uuid }) => {
           if (public_uuid) {
             return Urls.publicAction(siteUrl, public_uuid);

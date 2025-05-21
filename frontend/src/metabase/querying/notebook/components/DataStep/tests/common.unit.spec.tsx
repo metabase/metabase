@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, getIcon, screen, within } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
+import { checkNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -25,7 +26,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
   const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map(name => findColumn("ORDERS", name));
+  const columns = columnNames.map((name) => findColumn("ORDERS", name));
   return Lib.withFields(query, 0, columns);
 };
 
@@ -119,7 +120,9 @@ describe("DataStep", () => {
     const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
     const query = Lib.queryFromTableOrCardMetadata(
       metadataProvider,
-      Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+      checkNotNull(
+        Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+      ),
     );
     const step = createMockNotebookStep({ query });
     setup({ step });
@@ -142,7 +145,7 @@ describe("DataStep", () => {
       setup();
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expect(screen.getByLabelText("Select none")).toBeChecked();
+      expect(screen.getByLabelText("Select all")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeEnabled();
       expect(screen.getByLabelText("Tax")).toBeChecked();
@@ -216,7 +219,7 @@ describe("DataStep", () => {
       const { getNextQuery } = setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
-      await userEvent.click(screen.getByLabelText("Select none"));
+      await userEvent.click(screen.getByLabelText("Select all"));
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);

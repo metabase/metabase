@@ -3,8 +3,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.appearance.core :as appearance]
+   [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
@@ -12,6 +13,15 @@
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(defn export-filename-timestamp
+  "Generates the current timestamp as a string to use in export filenames."
+  []
+  (let [timezone (or (driver/report-timezone)
+                     (qp.timezone/system-timezone-id)
+                     "UTC")
+        zone-id (t/zone-id timezone)]
+    (u.date/format (t/zoned-date-time (t/instant) zone-id))))
 
 (defn in-result-time-zone
   "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
@@ -70,7 +80,7 @@
   "Merge format settings defined in the localization preferences into the format settings
   for a single column."
   [format-settings global-settings-key]
-  (let [global-settings (get (public-settings/custom-formatting) global-settings-key)
+  (let [global-settings (get (appearance/custom-formatting) global-settings-key)
         normalized      (mb.viz/db->norm-column-settings-entries global-settings)]
     (merge normalized format-settings)))
 
@@ -95,24 +105,16 @@
       "name"
       (get-in currency/currency [(keyword currency-code) :name_plural]))))
 
+;; Forward declaration for viz-settings-for-col since we need to use it before its definition
+(declare viz-settings-for-col)
+
 (defn column-titles
   "Generates the column titles that should be used in the export, taking into account viz settings."
-  [ordered-cols col-settings format-rows?]
+  [ordered-cols viz-settings format-rows?]
   (for [col ordered-cols]
-    (let [id-or-name      (or (and (:remapped_from col) (:fk_field_id col))
-                              (:id col)
-                              (:name col))
-          col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
-          format-settings (or (get col-settings' {::mb.viz/field-id id-or-name})
-                              (get col-settings' {::mb.viz/column-name id-or-name})
-                              (get col-settings' {::mb.viz/column-name (:name col)}))
+    (let [merged-settings (viz-settings-for-col col viz-settings)
           is-currency?    (or (isa? (:semantic_type col) :type/Currency)
-                              (= (::mb.viz/number-style format-settings) "currency"))
-          merged-settings (merge
-                           (:settings col)
-                           (if is-currency?
-                             (merge-global-settings format-settings :type/Currency)
-                             format-settings))
+                              (= (::mb.viz/number-style merged-settings) "currency"))
           column-title    (or (when format-rows? (not-empty (::mb.viz/column-title merged-settings)))
                               (:display_name col)
                               (:name col))]
@@ -173,30 +175,42 @@
     {}))
 
 (defn- ensure-global-viz-settings
-  "The ::mb.viz/global-column-settings comes from (public-settings/custom-formatting) and is provided by the query
+  "The ::mb.viz/global-column-settings comes from (appearance/custom-formatting) and is provided by the query
   processor in the `metabase.query-processor.middleware.visualization-settings` middleware _if_ `process-viz-settings?`
   is truthy. This function checks to see if those settings have been provided and adds them if they are not present."
   [{::mb.viz/keys [global-column-settings] :as viz-settings}]
   (cond-> viz-settings
     (nil? global-column-settings)
     (assoc ::mb.viz/global-column-settings
-           (update-vals (public-settings/custom-formatting)
+           (update-vals (appearance/custom-formatting)
                         mb.viz/db->norm-column-settings-entries))))
 
 (defn viz-settings-for-col
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."
   [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
   (let [{::mb.viz/keys [global-column-settings] :as viz-settings} (ensure-global-viz-settings viz-settings)
-        [_ field-id-or-name] field_ref
-        all-cols-settings (-> viz-settings
-                              ::mb.viz/column-settings
-                              ;; update the keys so that they will have only the :field-id or :column-name
-                              ;; and not have any metadata. Since we don't know the metadata, we can never
-                              ;; match a key with metadata, even if we do have the correct name or id
-                              (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (get all-cols-settings {::mb.viz/field-id field-id-or-name})
-                            (get all-cols-settings {::mb.viz/column-name column-name})
-                            (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
+        [ref-type field-id-or-name] field_ref
+        field-id-or-name (or (and (:remapped_from col) (:fk_field_id col))
+                             field-id-or-name
+                             (:id col)
+                             (:name col))
+        all-cols-settings           (-> viz-settings
+                                        ::mb.viz/column-settings
+                                        ;; update the keys so that they will have only the :field-id or :column-name
+                                        ;; and not have any metadata. Since we don't know the metadata, we can never
+                                        ;; match a key with metadata, even if we do have the correct name or id
+                                        (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+        ;; field_ref can be a few different things, i.e.:
+        ;;   [:field <col_id> _]
+        ;;   [:field <col_name> _]
+        ;;   [:aggregation <col_name> _]
+        ;; Only merge the column settings keyed by field-id when field_ref is of type :field
+        column-settings (merge (when (= ref-type :field)
+                                 (get all-cols-settings {::mb.viz/field-id field-id-or-name}))
+                               ;; For custom columns whose name colides with another column, field-id-or-name comes in non-disambiguated (e.g. CREATED_AT)
+                               ;; but column-name does (e.g. CREATED_AT_2) - so prefer column name keyed settings
+                               (or (get all-cols-settings {::mb.viz/column-name column-name})
+                                   (get all-cols-settings {::mb.viz/column-name field-id-or-name})))]
     (merge
      ;; The default global settings based on the type of the column
      (try

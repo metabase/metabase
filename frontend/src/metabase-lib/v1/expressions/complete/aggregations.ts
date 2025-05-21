@@ -1,16 +1,18 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
 
+import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { AGGREGATION_FUNCTIONS, MBQL_CLAUSES } from "../config";
-import { TOKEN } from "../tokenizer";
+import { getClauseDefinition } from "../clause";
+import { AGGREGATION_FUNCTIONS } from "../config";
+import { GROUP } from "../pratt";
+import { getDatabase } from "../utils";
 
 import {
   content,
   expressionClauseCompletion,
   fuzzyMatcher,
-  getDatabase,
   isFieldReference,
   isIdentifier,
   tokenAtPos,
@@ -18,26 +20,28 @@ import {
 
 export type Options = {
   query: Lib.Query;
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   metadata: Metadata;
   reportTimezone?: string;
 };
 
 export function suggestAggregations({
-  startRule,
+  expressionMode,
   query,
   metadata,
   reportTimezone,
 }: Options) {
-  if (startRule !== "aggregation") {
+  if (expressionMode !== "aggregation") {
     return null;
   }
 
   const database = getDatabase(query, metadata);
-  const aggregations = Array.from(AGGREGATION_FUNCTIONS)
-    .map(name => MBQL_CLAUSES[name])
-    .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
-    .map(agg =>
+  const aggregations = Object.keys(AGGREGATION_FUNCTIONS)
+    .map(getClauseDefinition)
+    .filter(isNotNull)
+    .filter((clause) => database?.hasFeature(clause.requiresFeature))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((agg) =>
       expressionClauseCompletion(agg, {
         type: "aggregation",
         database,
@@ -57,12 +61,9 @@ export function suggestAggregations({
 
     // do not expand template if the next token is a (
     const next = tokenAtPos(source, token.end + 1);
-    const options = matcher(content(source, token)).map(option => ({
+    const options = matcher(content(source, token)).map((option) => ({
       ...option,
-      apply:
-        next?.type === TOKEN.Operator && next.op === "("
-          ? undefined
-          : option.apply,
+      apply: next?.type === GROUP ? undefined : option.apply,
     }));
 
     return {

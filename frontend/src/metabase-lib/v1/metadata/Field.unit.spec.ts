@@ -282,22 +282,6 @@ describe("Field", () => {
     });
   });
 
-  describe("dimension", () => {
-    it("should return the field's dimension when the id is not an mbql field", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: FIELD_ID,
-            display_name: "field id",
-          }),
-        ],
-      });
-
-      const dimension = field.dimension();
-      expect(dimension.fieldIdOrName()).toBe(FIELD_ID);
-    });
-  });
-
   describe("getDefaultDateTimeUnit", () => {
     describe("when the field is of type `type/DateTime`", () => {
       it("should return 'day'", () => {
@@ -354,8 +338,8 @@ describe("Field", () => {
         ],
       });
 
-      expect(field.remappedField()).toBeDefined();
-      expect(field.remappedField()).toBe(field.metadata?.field(2));
+      expect(field.remappedExternalField()).toBeDefined();
+      expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
     it("should return the field's name_field", () => {
@@ -370,8 +354,8 @@ describe("Field", () => {
         ],
       });
 
-      expect(field.remappedField()).toBeDefined();
-      expect(field.remappedField()).toBe(field.metadata?.field(2));
+      expect(field.remappedExternalField()).toBeDefined();
+      expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
     it("should return null when the field has no name_field or no dimension with a 'human readable' field", () => {
@@ -383,7 +367,7 @@ describe("Field", () => {
         ],
       });
 
-      expect(field.remappedField()).toBe(null);
+      expect(field.remappedExternalField()).toBe(null);
     });
   });
 

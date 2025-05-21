@@ -13,7 +13,7 @@ export const TableRow = styled.tr<{ skeleton?: boolean }>`
   :focus {
     outline: 2px solid var(--mb-color-focus);
   }
-  ${props =>
+  ${(props) =>
     props.skeleton
       ? `
           :hover { background-color: unset ! important; }
@@ -43,11 +43,11 @@ export const Cell = styled.td<ResponsiveProps>`
 export const NameColumn = styled(TableColumn)`
   width: 220px;
 
-  @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
+  @container ${(props) => props.containerName} (max-width: ${breakpoints.md}) {
     width: 220px;
   }
 
-  @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
+  @container ${(props) => props.containerName} (max-width: ${breakpoints.sm}) {
     width: 160px;
   }
 `;

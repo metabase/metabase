@@ -17,6 +17,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -406,6 +407,14 @@
                        (for [option options]
                          (:selected (lib/display-info query2 option)))))))))))))
 
+(deftest ^:parallel available-binning-strategies-missing-feature-test
+  (let [provider (meta/updated-metadata-provider update :features disj :binning)
+        query    (lib/query provider (meta/table-metadata :orders))
+        subtotal (meta/field-metadata :orders :subtotal)]
+    (testing "no available binning strategies if database does not support :binning"
+      (is (= []
+             (lib/available-binning-strategies query subtotal))))))
+
 (deftest ^:parallel available-binning-strategies-expressions-test
   (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
     (let [query (-> (lib.tu/venues-query)
@@ -523,11 +532,9 @@
   (testing ":field refs with string names should work if the Field comes from a :join"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
-                             [{:database (meta/id)
-                               :type     :query
-                               :query    {:source-table (meta/id :checkins)
-                                          :aggregation  [[:count]]
-                                          :breakout     [[:field (meta/id :checkins :user-id) nil]]}}])
+                             [(lib.tu.macros/mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :breakout    [$user-id]})])
           cols  (->> (lib.metadata/card metadata-provider 1)
                      (lib/query metadata-provider)
                      lib/returned-columns
@@ -631,8 +638,9 @@
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
-                                 :result-metadata [{:id   4
-                                                    :name "Field 4"}]}]})
+                                 :result-metadata [{:id    4
+                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
+                                                    :name  "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
@@ -642,6 +650,7 @@
                :effective-type           :type/*
                :id                       4
                :name                     "Field 4"
+               :ident                    "ybTElkkGoYYBAyDRTIiUe"
                :fk-target-field-id       nil
                :lib/source               :source/card
                :lib/card-id              3
@@ -653,6 +662,61 @@
               :effective-type          :type/Text
               :id                      4
               :name                    "Field 4"
+              :ident                   "ybTElkkGoYYBAyDRTIiUe"
+              :fk-target-field-id      nil
+              :display-name            "Field 4"
+              :lib/card-id             3
+              :lib/source              :source/card
+              :lib/source-column-alias "Field 4"
+              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
+             (lib/metadata
+              query
+              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+
+(deftest ^:parallel base-type-in-field-ref-does-not-overwrite-everything-test
+  (testing "base-type of reference doesn't override a non-default effective-type in the column (#55171)"
+    (let [provider (lib.tu/mock-metadata-provider
+                    {:database {:id   1
+                                :name "My Database"}
+                     :tables   [{:id   2
+                                 :name "My Table"}]
+                     :cards    [{:id              3
+                                 :name            "Card 3"
+                                 :database-id     (meta/id)
+                                 :dataset-query   {:lib/type :mbql/query
+                                                   :database 1
+                                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                                               :source-table 2}]}
+                                 :result-metadata [{:id                4
+                                                    :base-type         :type/Text
+                                                    :effective-type    :type/Date
+                                                    :coercion-strategy :Coercion/ISO8601->Date
+                                                    :ident             "ybTElkkGoYYBAyDRTIiUe"
+                                                    :name              "Field 4"}]}]})
+          query    (lib/query provider {:lib/type :mbql/query
+                                        :database 1
+                                        :stages   [{:lib/type    :mbql.stage/mbql
+                                                    :source-card 3}]})]
+      (is (= [{:lib/type                 :metadata/column
+               :base-type                :type/Text
+               :effective-type           :type/Date
+               :coercion-strategy        :Coercion/ISO8601->Date
+               :id                       4
+               :name                     "Field 4"
+               :ident                    "ybTElkkGoYYBAyDRTIiUe"
+               :fk-target-field-id       nil
+               :lib/source               :source/card
+               :lib/card-id              3
+               :lib/source-column-alias  "Field 4"
+               :lib/desired-column-alias "Field 4"}]
+             (lib/returned-columns query)))
+      (is (= {:lib/type                :metadata/column
+              :base-type               :type/Text
+              :effective-type          :type/Date
+              :coercion-strategy       :Coercion/ISO8601->Date
+              :id                      4
+              :name                    "Field 4"
+              :ident                   "ybTElkkGoYYBAyDRTIiUe"
               :fk-target-field-id      nil
               :display-name            "Field 4"
               :lib/card-id             3
@@ -1594,11 +1658,13 @@
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (is (=? {:lib/type        :metadata/column
-               :lib/source-uuid string?
-               :name            "12345"
-               :display-name    "12345"}
-              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
+      (binding [lib.metadata.ident/*enforce-idents-present* false]
+        (is (=? {:lib/type        :metadata/column
+                 :lib/source-uuid string?
+                 :name            "12345"
+                 :display-name    "Unknown Field"}
+                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
@@ -1611,16 +1677,18 @@
                                        {:id               (meta/id :venues :name)
                                         :semantic-type    :type/Name}]})
           venues-id       (lib.metadata/field metadata-provider (meta/id :venues :id))]
-      (testing `lib.field/remapped-field
-        (is (nil? (#'lib.field/remapped-field metadata-provider venues-id))))
+      (testing `lib.metadata/remapped-field
+        (is (nil? (lib.metadata/remapped-field metadata-provider venues-id))))
       (testing `lib.field/search-field
         (is (=? {:id   (meta/id :venues :name)
                  :name "NAME"}
                 (#'lib.field/search-field metadata-provider venues-id))))
-      (is (= {:field-id         (meta/id :venues :id)
-              :search-field-id  (meta/id :venues :name)
-              :has-field-values :search}
-             (lib.field/field-values-search-info metadata-provider venues-id)))))
+      (is (=? {:field-id         (meta/id :venues :id)
+               :search-field-id  (meta/id :venues :name)
+               :search-field     {:id (meta/id :venues :name)
+                                  :display-name "Name"}
+               :has-field-values :search}
+              (lib.field/field-values-search-info metadata-provider venues-id)))))
   (testing "type/FK field remapped to a field in another table"
     (let [metadata-provider (-> meta/metadata-provider
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
@@ -1630,20 +1698,22 @@
           venues-name       (lib.metadata/field metadata-provider (meta/id :venues :name))]
       (testing `lib.types.isa/searchable?
         (is (lib.types.isa/searchable? venues-name)))
-      (testing `lib.field/remapped-field
-        (let [remapped-field (#'lib.field/remapped-field metadata-provider venues-name)]
+      (testing `lib.metadata/remapped-field
+        (let [remapped-field (lib.metadata/remapped-field metadata-provider venues-name)]
           (is (=? {:id   (meta/id :categories :name)
                    :name "NAME"}
-                  (#'lib.field/remapped-field metadata-provider venues-name)))
+                  (lib.metadata/remapped-field metadata-provider venues-name)))
           (is (lib.types.isa/searchable? remapped-field))))
       (testing `lib.field/search-field
         (is (=? {:id   (meta/id :categories :name)
                  :name "NAME"}
                 (#'lib.field/search-field metadata-provider venues-name))))
-      (is (= {:field-id         (meta/id :venues :name)
-              :search-field-id  (meta/id :categories :name)
-              :has-field-values :search}
-             (lib.field/field-values-search-info metadata-provider venues-name))))))
+      (is (=? {:field-id         (meta/id :venues :name)
+               :search-field-id  (meta/id :categories :name)
+               :search-field     {:id (meta/id :categories :name)
+                                  :display-name "Name"}
+               :has-field-values :search}
+              (lib.field/field-values-search-info metadata-provider venues-name))))))
 
 (deftest ^:parallel field-values-search-info-pks-test
   (testing "Don't return anything for PKs"
@@ -1653,6 +1723,7 @@
                                 (lib.tu/remap-metadata-provider (meta/id :venues :id) (meta/id :categories :name)))]
       (is (= {:field-id         (meta/id :venues :id)
               :search-field-id  nil
+              :search-field     nil
               :has-field-values :list}
              (lib.field/field-values-search-info
               metadata-provider
@@ -1660,13 +1731,19 @@
 
 (deftest ^:parallel field-values-search-info-native-test
   (testing "No field-id without custom metadata (#37100)"
-    (is (= {:field-id nil :search-field-id nil :has-field-values :none}
+    (is (= {:field-id nil
+            :search-field-id nil
+            :search-field nil
+            :has-field-values :none}
            (lib.field/field-values-search-info
             meta/metadata-provider
             (-> (lib.tu/native-query)
                 lib/visible-columns
                 first))))
-    (is (= {:field-id nil :search-field-id nil :has-field-values :none}
+    (is (= {:field-id nil
+            :search-field-id nil
+            :search-field nil
+            :has-field-values :none}
            (lib.field/field-values-search-info
             meta/metadata-provider
             (-> (lib.tu/query-with-stage-metadata-from-card
@@ -1674,7 +1751,10 @@
                  (:venues/native (lib.tu/mock-cards)))
                 lib/visible-columns
                 first))))
-    (is (= {:field-id nil :search-field-id nil :has-field-values :none}
+    (is (= {:field-id nil
+            :search-field-id nil
+            :search-field nil
+            :has-field-values :none}
            (lib.field/field-values-search-info
             meta/metadata-provider
             (-> (lib.tu/query-with-stage-metadata-from-card
@@ -1684,24 +1764,33 @@
                 lib/visible-columns
                 first)))))
   (testing "field-id with custom metadata (#37100)"
-    (is (= {:field-id 1 :search-field-id 1 :has-field-values :search}
-           (lib.field/field-values-search-info
-            meta/metadata-provider
-            (-> (update-in (lib.tu/native-query) [:stages 0 :lib/stage-metadata :columns] conj
-                           {:lib/type :metadata/column
-                            :id 1
-                            :name "search"
-                            :display-name "Search"
-                            :base-type :type/Text})
-                lib/visible-columns
-                last))))
-    (is (= {:field-id 1 :search-field-id nil :has-field-values :none}
+    (is (=? {:field-id 1
+             :search-field-id 1
+             :search-field {:id 1
+                            :display-name "Search"}
+             :has-field-values :search}
+            (lib.field/field-values-search-info
+             meta/metadata-provider
+             (-> (update-in (lib.tu/native-query) [:stages 0 :lib/stage-metadata :columns] conj
+                            {:lib/type :metadata/column
+                             :id 1
+                             :name "search"
+                             :ident "pu_Pfm-Oe2cnFTsRgmYM3"
+                             :display-name "Search"
+                             :base-type :type/Text})
+                 lib/visible-columns
+                 last))))
+    (is (= {:field-id 1
+            :search-field-id nil
+            :search-field nil
+            :has-field-values :none}
            (lib.field/field-values-search-info
             meta/metadata-provider
             (-> (update-in (lib.tu/native-query) [:stages 0 :lib/stage-metadata :columns] conj
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
+                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns

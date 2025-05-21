@@ -64,10 +64,6 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   question: {
     backgroundColor: "transparent",
-
-    toolbar: {
-      backgroundColor: "var(--mb-color-background-disabled)",
-    },
   },
 
   table: {
@@ -110,7 +106,6 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.em,
-      backgroundColor: "bg-white",
     },
   },
   pivotTable: {

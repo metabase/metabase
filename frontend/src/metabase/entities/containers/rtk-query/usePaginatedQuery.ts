@@ -17,12 +17,12 @@ export const usePaginatedQuery = (
   const offset = isPaginated ? pageSize * page : undefined;
 
   const handleNextPage = useCallback(() => {
-    setPage(page => page + 1);
+    setPage((page) => page + 1);
     setHasMorePages(null);
   }, []);
 
   const handlePreviousPage = useCallback(() => {
-    setPage(page => page - 1);
+    setPage((page) => page - 1);
     setHasMorePages(true);
   }, []);
 

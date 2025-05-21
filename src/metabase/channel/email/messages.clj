@@ -8,19 +8,19 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.app-db.query :as mdb.query]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
-   [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.util :as lib.util]
-   [metabase.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
@@ -28,10 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
-   [toucan2.core :as t2])
-  (:import
-   (java.time LocalTime)
-   (java.time.format DateTimeFormatter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,13 +36,13 @@
   "Return the user configured application name, or Metabase translated
   via trs if a name isn't configured."
   []
-  (or (public-settings/application-name)
+  (or (appearance/application-name)
       (trs "Metabase")))
 
 (defn logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
   []
-  (let [url (public-settings/application-logo-url)]
+  (let [url (appearance/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
 
@@ -75,14 +72,14 @@
 (defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
-  {:applicationName           (public-settings/application-name)
-   :applicationColor          (channel.render/primary-color)
-   :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (channel.render/primary-color))
-   :colorTextLight            channel.render/color-text-light
-   :colorTextMedium           channel.render/color-text-medium
-   :colorTextDark             channel.render/color-text-dark
-   :siteUrl                   (public-settings/site-url)})
+  {:applicationName    (appearance/application-name)
+   :applicationColor   (channel.render/primary-color)
+   :applicationLogoUrl (logo-url)
+   :buttonStyle        (button-style (channel.render/primary-color))
+   :colorTextLight     channel.render/color-text-light
+   :colorTextMedium    channel.render/color-text-medium
+   :colorTextDark      channel.render/color-text-dark
+   :siteUrl            (system/site-url)})
 
 ;;; ### Public Interface
 
@@ -92,9 +89,9 @@
   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
   `mailto` links (e.g., for the new user to email with any questions)."
   []
-  (concat (when-let [admin-email (public-settings/admin-email)]
+  (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
-          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, :type "personal" {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -115,7 +112,7 @@
                                                      :joinedUserEmail   (:email new-user)
                                                      :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                                      :adminEmail        (first recipients)
-                                                     :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
+                                                     :joinedUserEditUrl (str (system/site-url) "/admin/people")}))})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -132,8 +129,8 @@
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
-                              :adminEmail       (public-settings/admin-email)
-                              :adminEmailSet    (boolean (public-settings/admin-email))}))]
+                              :adminEmail       (system/admin-email)
+                              :adminEmailSet    (boolean (system/admin-email))}))]
     (email/send-message!
      {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
@@ -144,20 +141,21 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
-  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  (let [user-info    (or (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
+        username     (or (:first_name user-info) (:last_name user-info) (:email user-info))
         context      (merge (common-context)
-                            {:first-name (:first-name user-info)
+                            {:first-name username
                              :device     (:device_description login-history)
                              :location   (:location login-history)
                              :timestamp  timestamp})
         message-body (channel.template/render "metabase/channel/email/login_from_new_device.hbs"
                                               context)]
     (email/send-message!
-     {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+     {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) username)
       :recipients   [(:email user-info)]
       :message-type :html
       :message      message-body})))
@@ -260,7 +258,7 @@
                         :link       (cond-> "https://metabase.com/feedback/creator"
                                       encoded-info (str "?context=" encoded-info))}
                        (when-not (premium-features/is-hosted?)
-                         {:self-hosted (public-settings/site-url)}))
+                         {:self-hosted (system/site-url)}))
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html
@@ -275,7 +273,7 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+    (json/encode {:salt     (channel.settings/site-uuid-for-unsubscribing-url)
                   :email    email
                   :pulse-id pulse-id}))))
 
@@ -284,7 +282,7 @@
   [notification-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/encode {:salt            (public-settings/site-uuid-for-unsubscribing-url)
+    (json/encode {:salt            (channel.settings/site-uuid-for-unsubscribing-url)
                   :email           email
                   :notification-id notification-id}))))
 
@@ -297,85 +295,25 @@
       :below)
     :rows))
 
-(defn- first-card
-  "Alerts only have a single card, so the alerts API accepts a `:card` key, while pulses have `:cards`. Depending on
-  whether the data comes from the alert API or pulse tasks, the card could be under `:card` or `:cards`"
-  [alert]
-  (or (:card alert)
-      (first (:cards alert))))
-
-(defn common-alert-context
-  "Template context that is applicable to all alert templates, including alert management templates
-  (e.g. the subscribed/unsubscribed emails)"
-  ([alert]
-   (common-alert-context alert nil))
-  ([alert alert-condition-map]
-   (let [{card-id :id, card-name :name} (first-card alert)]
-     (merge (common-context)
-            {:emailType                 "alert"
-             :questionName              card-name
-             :questionURL               (urls/card-url card-id)
-             :sectionStyle              (channel.render/section-style)}
-            (when alert-condition-map
-              {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
-
-(defn- schedule-hour-text
-  [{hour :schedule_hour}]
-  (.format (LocalTime/of hour 0)
-           (DateTimeFormatter/ofPattern "h a")))
-
-(defn- schedule-day-text
-  [{day :schedule_day}]
-  (get {"sun" "Sunday"
-        "mon" "Monday"
-        "tue" "Tuesday"
-        "wed" "Wednesday"
-        "thu" "Thursday"
-        "fri" "Friday"
-        "sat" "Saturday"}
-       day))
-
-(defn- schedule-timezone
-  []
-  (or (driver/report-timezone) "UTC"))
-
-(defn notification-card-schedule-text
-  "Given cron notification subscription return a human-readable description of the schedule."
-  [{:keys [cron_schedule type] :as _subscription}]
-  (when (= :notification-subscription/cron type)
-    ;; TODO consider using https://github.com/grahamar/cron-parser
-    (let [schedule (u.cron/cron-string->schedule-map cron_schedule)]
-      (case (keyword (:schedule_type schedule))
-        :hourly
-        "Run hourly"
-
-        :daily
-        (format "Run daily at %s %s"
-                (schedule-hour-text schedule)
-                (schedule-timezone))
-
-        :weekly
-        (format "Run weekly on %s at %s %s"
-                (schedule-day-text schedule)
-                (schedule-hour-text schedule)
-                (schedule-timezone))))))
+(defn- send-email-sync!
+  ([recipients subject template-path template-context]
+   (send-email-sync! recipients subject template-path template-context false))
+  ([recipients subject template-path template-context bcc?]
+   (when (seq recipients)
+     (try
+       (email/send-email-retrying!
+        {:recipients   recipients
+         :message-type :html
+         :subject      subject
+         :message      (channel.template/render template-path template-context)
+         :bcc?         bcc?})
+       (catch Exception e
+         (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject))))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."
-  ([recipients subject template-path template-context]
-   (send-email! recipients subject template-path template-context false))
-  ([recipients subject template-path template-context bcc?]
-   (when (seq recipients)
-     (future
-       (try
-         (email/send-email-retrying!
-          {:recipients   recipients
-           :message-type :html
-           :subject      subject
-           :message      (channel.template/render template-path template-context)
-           :bcc?         bcc?})
-         (catch Exception e
-           (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject)))))))
+  [& args]
+  (future (apply send-email-sync! args)))
 
 (defn- template-path [template-name]
   (str "metabase/channel/email/" template-name ".hbs"))
@@ -389,9 +327,10 @@
 
 (defn- username
   [user]
-  (->> [(:first_name user) (:last_name user)]
-       (remove nil?)
-       (str/join " ")))
+  (or (:common_name user)
+      (->> [(:first_name user) (:last_name user)]
+           (remove nil?)
+           (str/join " "))))
 
 (defn send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"

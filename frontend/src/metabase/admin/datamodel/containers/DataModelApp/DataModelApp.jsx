@@ -20,12 +20,12 @@ const propTypes = {
   isAdmin: PropTypes.bool,
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   isAdmin: getUserIsAdmin(state),
 });
 
 const mapDispatchToProps = {
-  onChangeTab: tab => push(`/admin/datamodel/${tab}`),
+  onChangeTab: (tab) => push(`/admin/datamodel/${tab}`),
 };
 
 const TAB = {

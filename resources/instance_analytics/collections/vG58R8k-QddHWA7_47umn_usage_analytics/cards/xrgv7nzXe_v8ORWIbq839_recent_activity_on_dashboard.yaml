@@ -239,6 +239,7 @@ serdes/meta:
   label: recent_activity_on_dashboard
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 metabase_version: null
 source_card_id: -lNDM3tJmuL5ltGbX0oyT

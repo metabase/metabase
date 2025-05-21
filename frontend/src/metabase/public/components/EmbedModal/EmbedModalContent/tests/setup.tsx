@@ -40,7 +40,7 @@ export function setup(
       resourceType = "dashboard",
       resourceParameters = [],
       goToNextStep = jest.fn(),
-      getPublicUrl = jest.fn(_resource => "some URL"),
+      getPublicUrl = jest.fn((_resource) => "some URL"),
       onUpdateEmbeddingParams = jest.fn(),
       onUpdateEnableEmbedding = jest.fn(),
       onCreatePublicLink = jest.fn(),

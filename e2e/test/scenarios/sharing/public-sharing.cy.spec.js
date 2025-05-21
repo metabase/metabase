@@ -61,10 +61,11 @@ describe("scenarios > admin > settings > public sharing", () => {
 
   it("should be able to toggle public sharing", () => {
     cy.visit("/admin/settings/public-sharing");
-    cy.findByLabelText("Enable Public Sharing")
-      .should("be.checked")
-      .click()
-      .should("not.be.checked");
+    cy.findByTestId("enable-public-sharing-setting").within(() => {
+      cy.findByText("Enabled").should("be.visible");
+      cy.findByText("Enabled").click();
+      cy.findByText("Disabled").should("be.visible");
+    });
   });
 
   it("should see public dashboards", () => {
@@ -86,11 +87,11 @@ describe("scenarios > admin > settings > public sharing", () => {
         cy.wrap(dashboardId).as("dashboardId");
         cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
       })
-      .then(response => {
+      .then((response) => {
         cy.wrap(response.body.uuid).as("dashboardUuid");
       });
 
-    cy.get("@dashboardId").then(dashboardId =>
+    cy.get("@dashboardId").then((dashboardId) =>
       H.visitDashboardAndCreateTab({ dashboardId }),
     );
 
@@ -100,7 +101,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByText("Shared Dashboards").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedDashboardName).should("be.visible");
-    cy.get("@dashboardUuid").then(dashboardUuid => {
+    cy.get("@dashboardUuid").then((dashboardUuid) => {
       cy.findByText(
         `${location.origin}/public/dashboard/${dashboardUuid}`,
       ).click();
@@ -111,7 +112,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.get("@dashboardId").then(dashboardId => {
+    cy.get("@dashboardId").then((dashboardId) => {
       cy.findByText(expectedDashboardName).click();
       cy.log(
         "Sometimes the URL will be updated with the tab ID, so we need to account for that",
@@ -150,7 +151,7 @@ describe("scenarios > admin > settings > public sharing", () => {
         cy.wrap(questionId).as("questionId");
         cy.request("POST", `/api/card/${questionId}/public_link`, {});
       })
-      .then(response => {
+      .then((response) => {
         cy.wrap(response.body.uuid).as("questionUuid");
       });
 
@@ -160,7 +161,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByText("Shared Questions").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedQuestionName).should("be.visible");
-    cy.get("@questionUuid").then(questionUuid => {
+    cy.get("@questionUuid").then((questionUuid) => {
       cy.findByText(
         `${location.origin}/public/question/${questionUuid}`,
       ).click();
@@ -170,7 +171,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       cy.findByText(expectedQuestionName).click();
       cy.url().should(
         "eq",
@@ -205,7 +206,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.wrap(modelId).as("modelId");
     });
 
-    cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then((modelId) => {
       H.createAction({
         ...DEFAULT_ACTION_DETAILS,
         name: expectedActionName,
@@ -217,7 +218,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     });
 
     cy.get("@actionId")
-      .then(actionId => {
+      .then((actionId) => {
         cy.request("POST", `/api/action/${actionId}/public_link`, {});
       })
       .then(({ body }) => {
@@ -230,7 +231,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByText("Shared Action Forms").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedActionName).should("be.visible");
-    cy.get("@actionUuid").then(actionUuid => {
+    cy.get("@actionUuid").then((actionUuid) => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
       cy.findByRole("heading", { name: expectedActionName }).should(
         "be.visible",

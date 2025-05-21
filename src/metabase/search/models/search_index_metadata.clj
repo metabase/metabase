@@ -2,6 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,25 +17,43 @@
   {:engine mi/transform-keyword
    :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum #{:pending :active :retired}))})
 
+(def ^:private pending-table-cut-off
+  "Period after which a pending table will be discarded, as it is probably corrupted."
+  (t/days 1))
+
 (defn indexes
   "The current 'pending' and 'active' indexes for the given co-ordinates, where they exist."
   [engine version]
-  (t2/select-fn->fn :status :index_name :model/SearchIndexMetadata
+  (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
+    (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
                     :engine engine
                     :version version
-                    :status [:in [:active :pending]]))
+                    :lang_code (i18n/site-locale-string)
+                    :status [:in [:active :pending]])
+         (filter (fn [{:keys [status created_at]}]
+                   (or (not= status :pending)
+                       (t/before? pending-cut-off created_at))))
+         (u/index-by :status :index_name))))
 
 (defn create-pending!
   "Create a 'pending' entry, unless one already exists. Return whether it was created."
   [engine version index-name]
+  ;; Clear out any expired records
+  (t2/delete! :model/SearchIndexMetadata
+              {:where [:and
+                       [:= :lang_code (i18n/site-locale-string)]
+                       [:= :status "pending"]
+                       [:< :created_at (t/minus (t/offset-date-time) pending-table-cut-off)]]})
   (boolean
    (when-not (t2/exists? :model/SearchIndexMetadata
                          :engine engine
                          :version version
+                         :lang_code (i18n/site-locale-string)
                          :status :pending)
      (try
        (t2/insert! :model/SearchIndexMetadata {:engine     engine
                                                :version    version
+                                               :lang_code (i18n/site-locale-string)
                                                :status     :pending
                                                :index_name (name index-name)})
        true
@@ -44,17 +64,17 @@
 (defn delete-index!
   "Delete the given pending index, as long as its still pending."
   [engine version index-name]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :index_name (name index-name)))
+  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :index_name (name index-name)))
 
 (defn active-pending!
   "If there is 'pending' index, make it 'active'. Return the name of the active index, regardless."
   [engine version]
   (t2/with-transaction [_conn]
-    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :status :pending)
-      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :status :retired)
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :status :active} {:status :retired})
-      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :status :pending} {:status :active}))
-    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :status :active)))
+    (when (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :pending)
+      (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :retired)
+      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :active} {:status :retired})
+      (t2/update! :model/SearchIndexMetadata {:engine engine :version version :lang_code (i18n/site-locale-string) :status :pending} {:status :active}))
+    (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version version :lang_code (i18n/site-locale-string) :status :active)))
 
 (defn delete-obsolete!
   "Remove metadata corresponding to obsolete Metabase versions.
@@ -74,4 +94,4 @@
                                  ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
                                  [:and
                                   [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:< :updated_at (t/minus (t/zoned-date-time) (t/days 1))]]]})))
+                                  [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]})))

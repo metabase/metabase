@@ -21,7 +21,7 @@ export const CompletedStep = (): JSX.Element | null => {
   const [checkboxValue, setCheckboxValue] = useState(false);
   const email = useSelector(getUserEmail);
 
-  const isStepActive = useSelector(state =>
+  const isStepActive = useSelector((state) =>
     getIsStepActive(state, "completed"),
   );
   if (!isStepActive) {

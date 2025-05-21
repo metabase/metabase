@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
@@ -19,7 +20,7 @@ const SETTING_TYPES = [
       "time_style",
     ],
     column: {
-      semantic_type: TYPE.Temporal,
+      base_type: TYPE.Temporal,
     },
   },
   {
@@ -57,7 +58,7 @@ class FormattingWidget extends Component {
             <h3 className={CS.mb3}>{name}</h3>
             <ColumnSettings
               value={value[type]}
-              onChange={settings => onChange({ ...value, [type]: settings })}
+              onChange={(settings) => onChange({ ...value, [type]: settings })}
               column={column}
               allowlist={new Set(settings)}
             />

@@ -18,7 +18,7 @@ export const getSankeyChartOption = (
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
   const { data, formatters } = chartModel;
-  const nodes = data.nodes.map(node => {
+  const nodes = data.nodes.map((node) => {
     const formattedName = formatters.node(node);
 
     return {
@@ -30,7 +30,7 @@ export const getSankeyChartOption = (
       },
     };
   });
-  const links = data.links.map(link => ({
+  const links = data.links.map((link) => ({
     ...link,
     source: formatters.source(link.source),
     target: formatters.target(link.target),
@@ -62,12 +62,12 @@ export const getSankeyChartOption = (
     nodeAlign: settings["sankey.node_align"],
     edgeLabel: {
       show: settings["sankey.show_edge_labels"],
-      formatter: params =>
+      formatter: (params) =>
         typeof params.value === "number" ? valueFormatter(params.value) : "",
       color: renderingContext.getColor("text-dark"),
       fontSize: SANKEY_CHART_STYLE.edgeLabels.size,
       textBorderWidth: SANKEY_CHART_STYLE.edgeLabels.textBorderWidth,
-      textBorderColor: renderingContext.getColor("white"),
+      textBorderColor: renderingContext.getColor("bg-white"),
       fontFamily: renderingContext.fontFamily,
     },
     emphasis: {
@@ -88,8 +88,8 @@ export const getSankeyChartOption = (
       fontWeight: nodeLabelStyle.weight,
       fontFamily: nodeLabelStyle.family,
       textBorderWidth: SANKEY_CHART_STYLE.nodeLabels.textBorderWidth,
-      textBorderColor: renderingContext.getColor("white"),
-      formatter: param => {
+      textBorderColor: renderingContext.getColor("bg-white"),
+      formatter: (param) => {
         const shouldTruncate = layout.nodeIndicesWithTruncatedLabels?.has(
           param.dataIndex,
         );

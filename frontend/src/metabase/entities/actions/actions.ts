@@ -211,13 +211,13 @@ const Actions = createEntity({
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;
-        return updateIn(state, [id], action => {
+        return updateIn(state, [id], (action) => {
           return { ...action, public_uuid: uuid };
         });
       }
       case DELETE_PUBLIC_LINK: {
         const { id } = payload;
-        return updateIn(state, [id], action => {
+        return updateIn(state, [id], (action) => {
           return { ...action, public_uuid: null };
         });
       }

@@ -1,8 +1,10 @@
-import { t } from "ttag";
+import { match } from "ts-pattern";
+import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Checkbox, Chip, Group, Radio, Stack, Text } from "metabase/ui";
 
@@ -18,6 +20,47 @@ interface ExportSettingsWidgetProps {
   onToggleFormatting: () => void;
 }
 
+const useFormattingLabel = ({
+  isFormattingEnabled,
+}: {
+  isFormattingEnabled: boolean;
+}) => {
+  const applicationName = useSelector(getApplicationName);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+
+  return match({ isFormattingEnabled, isEmbeddingSdk })
+    .with(
+      { isEmbeddingSdk: true, isFormattingEnabled: true },
+      () =>
+        c(
+          "Refers to formatting for a piece of data, like long or short form dates, or currency",
+        ).t`E.g. September 6, 2024 or $187.50`,
+    )
+    .with(
+      { isEmbeddingSdk: true, isFormattingEnabled: false },
+      () =>
+        c(
+          "Refers to formatting for a piece of data, like long or short form dates, or currency",
+        ).t`E.g. 2024-09-06 or 187.50`,
+    )
+    .with(
+      { isEmbeddingSdk: false, isFormattingEnabled: true },
+      () =>
+        c(
+          // eslint-disable-next-line no-literal-metabase-strings -- used for translation context
+          "Refers to formatting for a piece of data, like long or short form dates, or currency. {0} is the name of the application, typically Metabase.",
+        ).t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`,
+    )
+    .with(
+      { isEmbeddingSdk: false, isFormattingEnabled: false },
+      () =>
+        c(
+          "Refers to formatting for a piece of data, like long or short form dates, or currency.",
+        ).t`E.g. 2024-09-06 or 187.50, like in the database`,
+    )
+    .exhaustive();
+};
+
 export const ExportSettingsWidget = ({
   formats,
   selectedFormat,
@@ -30,7 +73,9 @@ export const ExportSettingsWidget = ({
   onTogglePivoting,
 }: ExportSettingsWidgetProps) => {
   const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
-  const applicationName = useSelector(getApplicationName);
+
+  const formattingLabel = useFormattingLabel({ isFormattingEnabled });
+
   return (
     <Stack>
       <Chip.Group
@@ -42,7 +87,7 @@ export const ExportSettingsWidget = ({
         }}
       >
         <Group gap="xs" wrap="nowrap">
-          {formats.map(format => (
+          {formats.map((format) => (
             <Chip
               key={format}
               value={format}
@@ -68,9 +113,7 @@ export const ExportSettingsWidget = ({
             size="sm"
             color="text-medium"
           >
-            {isFormattingEnabled
-              ? t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`
-              : t`E.g. 2024-09-06 or 187.50, like in the database`}
+            {formattingLabel}
           </Text>
         </Stack>
       ) : null}

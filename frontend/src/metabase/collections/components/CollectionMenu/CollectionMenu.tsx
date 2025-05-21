@@ -1,4 +1,4 @@
-import type React from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,8 +7,9 @@ import {
   isRootPersonalCollection,
 } from "metabase/collections/utils";
 import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
+import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
+import { UserHasSeenAll } from "metabase/components/UserHasSeen/UserHasSeenAll";
 import { ForwardRefLink } from "metabase/core/components/Link";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
@@ -21,8 +22,8 @@ export interface CollectionMenuProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const mergeArrays = (arr: React.ReactNode[][]): React.ReactNode[] => {
-  const filteredArr = arr.filter(v => v.length > 0);
+const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
+  const filteredArr = arr.filter((v) => v.length > 0);
   return filteredArr.length === 0
     ? []
     : filteredArr.reduce((acc, val, index) =>
@@ -36,6 +37,8 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   const url = Urls.collection(collection);
@@ -47,14 +50,6 @@ export const CollectionMenu = ({
   const canWrite = collection.can_write;
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
-
-  const [hasSeenMenu, { ack: ackHasSeenMenu }] = useUserAcknowledgement(
-    "collection-menu",
-    true,
-  );
-
-  const [hasSeenMoveToDashboard, { ack: ackHasMoveToDashboard }] =
-    useUserAcknowledgement("move-to-dashboard", true);
 
   const moveItems = [];
   const cleanupItems = [];
@@ -92,21 +87,24 @@ export const CollectionMenu = ({
     );
   }
 
-  const { menuItems: cleanupMenuItems, showIndicator: showCleanupIndicator } =
+  const { menuItems: cleanupMenuItems } =
     PLUGIN_COLLECTIONS.useGetCleanUpMenuItems(collection);
 
   cleanupItems.push(...cleanupMenuItems);
 
   if (hasDqCandidates) {
     cleanupItems.push(
-      <Menu.Item
-        key="collection-move-to-dashboards"
-        leftSection={<Icon name="add_to_dash" />}
-        component={ForwardRefLink}
-        to={`${url}/move-questions-dashboard`}
-        rightSection={!hasSeenMoveToDashboard && <Badge>New</Badge>}
-        onClick={() => !hasSeenMoveToDashboard && ackHasMoveToDashboard()}
-      >{t`Move questions into their dashboards`}</Menu.Item>,
+      <UserHasSeen key="move-to-dashboard" id="move-to-dashboard">
+        {({ hasSeen, ack }) => (
+          <Menu.Item
+            leftSection={<Icon name="add_to_dash" />}
+            component={ForwardRefLink}
+            to={`${url}/move-questions-dashboard`}
+            onClick={ack}
+            rightSection={!hasSeen ? <Badge>{t`New`}</Badge> : null}
+          >{t`Move questions into their dashboards`}</Menu.Item>
+        )}
+      </UserHasSeen>,
     );
   }
 
@@ -127,34 +125,37 @@ export const CollectionMenu = ({
     return null;
   }
 
-  const showIndicator =
-    !hasSeenMenu &&
-    ((!hasSeenMoveToDashboard && hasDqCandidates) || showCleanupIndicator);
-
   return (
-    <Menu
-      position="bottom-end"
-      onChange={() => {
-        if (!hasSeenMenu && showIndicator) {
-          ackHasSeenMenu();
-        }
-      }}
-    >
-      <Menu.Target>
-        <Indicator
-          size={6}
-          disabled={!showIndicator}
-          label={<span data-testid="indicator" />}
+    <UserHasSeenAll id="collection-menu">
+      {({ hasSeenAll, handleUpdate }) => (
+        <Menu
+          position="bottom-end"
+          opened={menuOpen}
+          onChange={setMenuOpen}
+          keepMounted
+          onOpen={handleUpdate}
         >
-          <Tooltip label={t`Move, trash, and more...`} position="bottom">
-            <ActionIcon size={32} variant="viewHeader">
-              <Icon name="ellipsis" color="text-dark" />
-            </ActionIcon>
-          </Tooltip>
-        </Indicator>
-      </Menu.Target>
+          <Menu.Target>
+            <Tooltip
+              label={t`Move, trash, and more...`}
+              position="bottom"
+              disabled={menuOpen}
+            >
+              <Indicator
+                disabled={hasSeenAll}
+                size={6}
+                data-testid="menu-indicator-root"
+              >
+                <ActionIcon size={32} variant="viewHeader">
+                  <Icon name="ellipsis" color="text-dark" />
+                </ActionIcon>
+              </Indicator>
+            </Tooltip>
+          </Menu.Target>
 
-      <Menu.Dropdown>{items}</Menu.Dropdown>
-    </Menu>
+          <Menu.Dropdown>{items}</Menu.Dropdown>
+        </Menu>
+      )}
+    </UserHasSeenAll>
   );
 };

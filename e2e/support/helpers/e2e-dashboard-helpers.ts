@@ -331,6 +331,12 @@ export function openDashboardMenu(option?: string) {
   }
 }
 
+export function assertDashboardCardTitle(index: number, title: string) {
+  getDashboardCard(index)
+    .findByTestId("legend-caption-title")
+    .should("have.text", title);
+}
+
 export const dashboardHeader = () => {
   return cy.findByTestId("dashboard-header");
 };
@@ -352,7 +358,7 @@ export function dashboardParametersDoneButton() {
 }
 
 export function dashboardParametersPopover() {
-  return popover("parameter-value-dropdown");
+  return popover({ testId: "parameter-value-dropdown" } as any);
 }
 
 /**

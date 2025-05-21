@@ -72,7 +72,7 @@ function _PulsesListSidebar({
         </SidebarActions>
       </div>
       <div className={cx(CS.my2, CS.mx4)}>
-        {pulses.map(pulse => {
+        {pulses.map((pulse) => {
           const canEdit = canEditPulse(pulse, formInput);
 
           return (

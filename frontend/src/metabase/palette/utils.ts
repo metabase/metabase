@@ -18,12 +18,20 @@ export const processResults = (
   );
 
   const actions = processSection(t`Actions`, groupedResults["basic"]);
+  const metabotActions = processSection(t`Metabot`, groupedResults["metabot"]);
   const search = processSection(t`Search results`, groupedResults["search"]);
   const recent = processSection(t`Recent items`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  return [
+    ...metabotActions,
+    ...recent,
+    ...actions.slice(0, 6),
+    ...admin,
+    ...search,
+    ...docs,
+  ];
 };
 
 export const processSection = (
@@ -45,7 +53,9 @@ export const navigateActionIndex = (
   index: number,
   diff: number,
 ): number => {
-  if (actions.every(action => typeof action === "string" || action.disabled)) {
+  if (
+    actions.every((action) => typeof action === "string" || action.disabled)
+  ) {
     return index;
   } else {
     return findClosestActionIndex(actions, index, diff);
@@ -72,8 +82,9 @@ export const findClosestActionIndex = (
   return index + diff;
 };
 
-export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = items =>
-  items.filter(item => item.model !== "collection").slice(0, 5);
+export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = (
+  items,
+) => items.filter((item) => item.model !== "collection").slice(0, 5);
 
 export const getCommandPaletteIcon = (
   item: PaletteActionImpl,

@@ -106,17 +106,17 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   line-height: ${CELL_HEIGHT}px;
   min-width: 0;
   min-height: 0;
-  font-weight: ${props => (props.isBold ? "bold" : "normal")};
-  cursor: ${props => (props.onClick ? "pointer" : "default")};
+  font-weight: ${(props) => (props.isBold ? "bold" : "normal")};
+  cursor: ${(props) => (props.onClick ? "pointer" : "default")};
   color: ${getColor};
   box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
   border-bottom: 1px solid
-    ${props =>
+    ${(props) =>
       props.isBorderedHeader
         ? "var(--mb-color-bg-dark)"
         : "var(--mb-color-border)"};
   background-color: ${getCellBackgroundColor};
-  ${props =>
+  ${(props) =>
     props.hasTopBorder &&
     css`
       /* compensate the top border */
@@ -137,7 +137,7 @@ export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCells
   display: flex;
   align-items: flex-end;
   box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
-  background-color: ${props =>
+  background-color: ${(props) =>
     getCellBackgroundColor({
       isEmphasized: true,
       isNightMode: props.isNightMode,
@@ -155,17 +155,17 @@ interface PivotTableRootProps {
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
   overflow-y: hidden;
-  overflow-x: ${props => (props.shouldOverflow ? "auto" : "hidden")};
+  overflow-x: ${(props) => (props.shouldOverflow ? "auto" : "hidden")};
   font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
-  ${props =>
+  ${(props) =>
     props.isDashboard
       ? css`
           border-top: 1px solid var(--mb-color-border) (props);
         `
       : null}
 
-  ${props =>
+  ${(props) =>
     props.shouldHideScrollbars
       ? css`
           & {

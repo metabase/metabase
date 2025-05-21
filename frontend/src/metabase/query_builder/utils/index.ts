@@ -92,8 +92,7 @@ export const isNavigationAllowed = ({
     const isRunningModel = pathname === "/model" && hash.length > 0;
     const allowedPathnames = isNewQuestion
       ? ["/model/query", "/model/metadata"]
-      : validSlugs.flatMap(slug => [
-          `/model/${slug}`,
+      : validSlugs.flatMap((slug) => [
           `/model/${slug}/query`,
           `/model/${slug}/metadata`,
           `/model/${slug}/notebook`,
@@ -105,11 +104,9 @@ export const isNavigationAllowed = ({
   if (question.type() === "metric") {
     const isRunningMetric = pathname === "/metric" && hash.length > 0;
     const allowedPathnames = isNewQuestion
-      ? ["/metric/query", "/metric/metadata"]
-      : validSlugs.flatMap(slug => [
-          `/metric/${slug}`,
+      ? ["/metric/query"]
+      : validSlugs.flatMap((slug) => [
           `/metric/${slug}/query`,
-          `/metric/${slug}/metadata`,
           `/metric/${slug}/notebook`,
         ]);
 
@@ -118,7 +115,7 @@ export const isNavigationAllowed = ({
 
   if (isNative) {
     const allowedPathnames = [
-      ...validSlugs.map(slug => `/question/${slug}`),
+      ...validSlugs.map((slug) => `/question/${slug}`),
       "/question",
     ];
     const isRunningQuestion =
@@ -134,7 +131,7 @@ export const isNavigationAllowed = ({
   if (!isNewQuestion) {
     const isRunningQuestion =
       ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
-    const allowedPathnames = validSlugs.flatMap(slug => [
+    const allowedPathnames = validSlugs.flatMap((slug) => [
       `/question/${slug}`,
       `/question/${slug}/notebook`,
     ]);
@@ -146,11 +143,11 @@ export const isNavigationAllowed = ({
 };
 
 export const createRawSeries = (options: {
-  question: Question;
+  card: Card;
   queryResult: any;
   datasetQuery?: any;
 }): Series => {
-  const { question, queryResult, datasetQuery } = options;
+  const { card, queryResult, datasetQuery } = options;
 
   // we want to provide the visualization with a card containing the latest
   // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
@@ -160,7 +157,7 @@ export const createRawSeries = (options: {
       {
         ...queryResult,
         card: {
-          ...question.card(),
+          ...card,
           ...(datasetQuery && { dataset_query: datasetQuery }),
         },
       },

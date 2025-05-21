@@ -42,6 +42,7 @@ on:
           - SQLite
           - SQL Server 2017
           - SQL Server 2022
+          - Starburst
           - Vertica
 
 jobs:
@@ -661,6 +662,31 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-2022-ee'
+        test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
+
+  be-tests-starburst-ee:
+    if: inputs.driver == 'Starburst'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: starburst
+    services:
+      starburst:
+        image: trinodb/trino:latest
+        env:
+          CATALOG_MANAGEMENT: dynamic
+        ports:
+          - "8080:8080"
+    name: Starburst
+    steps:
+    - uses: actions/checkout@v4
+    - name: Make plugins directory
+      run: mkdir plugins
+    - name: Test Starburst driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-starburst-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-vertica-ee:
