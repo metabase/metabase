@@ -11003,6 +11003,57 @@ databaseChangeLog:
             path: instance_analytics_views/content/v2/h2-content.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v54.2025-05-13T21:46:53
+      author: nvoxland
+      comment: Add language to index metadata
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: search_index_metadata
+            columns:
+              - column:
+                  name: lang_code
+                  type: varchar(10)
+                  remarks: Language code the data in the index is in
+                  defaultValue: en
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v54.2025-05-13T21:46:54
+      author: nvoxland
+      comment: Preparing to replace index
+      preConditions:
+      changes:
+        - dropUniqueConstraint:
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+      rollback:
+        - addUniqueConstraint:
+            remarks: Unique entry for each status, from any given metabase instance's perspective.
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+            columnNames: engine, version, status
+
+  - changeSet:
+      id: v54.2025-05-13T21:46:55
+      author: nvoxland
+      comment: 'Protection against concurrent creation or promotion of indexes.'
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: search_index_metadata
+                indexName: idx_search_index_metadata_unique_status
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique entry for each status, from any given metabase instance's perspective.
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+            columnNames: engine, version, lang_code, status
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

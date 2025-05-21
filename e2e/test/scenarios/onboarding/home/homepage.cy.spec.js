@@ -594,7 +594,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.undoToast().findByText("Changes saved").should("be.visible");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
@@ -609,7 +609,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
     H.modal().findByText("Save").click();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });

@@ -1,4 +1,4 @@
-import { pickRowsToMeasure } from "./measure";
+import { getTruncatedColumnSizing, pickRowsToMeasure } from "./column-sizing";
 
 describe("pickRowsToMeasure", () => {
   const createData = (values: (string | null | undefined)[]) =>
@@ -63,5 +63,38 @@ describe("pickRowsToMeasure", () => {
     const result = pickRowsToMeasure(data, accessorFn, 5);
 
     expect(result).toEqual([1, 3, 4, 6, 7]);
+  });
+});
+
+describe("getTruncatedColumnSizing", () => {
+  it("should return an empty object for empty input", () => {
+    const result = getTruncatedColumnSizing({}, 200);
+    expect(result).toEqual({});
+  });
+
+  it("should truncate column widths to the specified maximum value", () => {
+    const columnSizingMap = {
+      col1: 150,
+      col2: 250,
+      col3: 300,
+    };
+    const result = getTruncatedColumnSizing(columnSizingMap, 200);
+
+    expect(result).toEqual({
+      col1: 150,
+      col2: 200,
+      col3: 200,
+    });
+  });
+
+  it("should not modify values that are already below the maximum", () => {
+    const columnSizingMap = {
+      col1: 100,
+      col2: 150,
+      col3: 200,
+    };
+    const result = getTruncatedColumnSizing(columnSizingMap, 200);
+
+    expect(result).toEqual(columnSizingMap);
   });
 });
