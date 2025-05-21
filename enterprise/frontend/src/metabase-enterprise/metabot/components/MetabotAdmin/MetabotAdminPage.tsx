@@ -161,7 +161,7 @@ function MetabotConfigurationPane({
           onClose={close}
           options={{
             showRootCollection: true,
-            showPersonalCollections: true,
+            showPersonalCollections: false,
           }}
         />
       )}
