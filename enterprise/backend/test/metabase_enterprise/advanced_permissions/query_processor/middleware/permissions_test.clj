@@ -5,7 +5,6 @@
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
     :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
-   [metabase.api.dataset :as api.dataset]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
