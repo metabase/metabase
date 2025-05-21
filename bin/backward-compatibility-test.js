@@ -39,10 +39,10 @@ const getTestFiles = () => {
 
 // those are temporarily ignored because they contain a test that fails
 const SKIPPED_FILES = [
-  "e2e/test/scenarios/question/native-query-drill.cy.spec.ts",
-  "e2e/test/scenarios/question/multiple-column-breakouts.cy.spec.ts",
-  "e2e/test/scenarios/question/notebook-data-source.cy.spec.ts",
-  "e2e/test/scenarios/question/notebook-link-to-data-source.cy.spec.ts",
+  // "e2e/test/scenarios/question/native-query-drill.cy.spec.ts",
+  // "e2e/test/scenarios/question/multiple-column-breakouts.cy.spec.ts",
+  // "e2e/test/scenarios/question/notebook-data-source.cy.spec.ts",
+  // "e2e/test/scenarios/question/notebook-link-to-data-source.cy.spec.ts",
 ];
 
 console.log(`Using frontend from ${FE_GIT_REF}`);
@@ -96,7 +96,10 @@ function build() {
 
   console.log("Building frontend...");
   executeCommand("yarn install", FE_FOLDER);
-  executeCommand("yarn build", FE_FOLDER, { MB_EDITION: "ee" });
+  executeCommand("yarn build", FE_FOLDER, {
+    MB_EDITION: "ee",
+    NODE_ENV: "production",
+  });
 
   printStep("Copying frontend build to backend...");
   const feResourcesClientPath = path.join(
