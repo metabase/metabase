@@ -54,6 +54,9 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
 
     cy.visit(testPageUrl);
 
+    // ensure that the test page is loaded
+    cy.title().should("include", "Metabase Embed Test");
+
     return cy
       .get("iframe")
       .should("be.visible")
