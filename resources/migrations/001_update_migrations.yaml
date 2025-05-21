@@ -11593,9 +11593,16 @@ databaseChangeLog:
                       WHERE entity_id IS NOT NULL AND REGEXP_LIKE(entity_id, '^[-0-9]*$');
       changes:
         - sql:
+            dbms: postgresql,h2
             sql: >-
               UPDATE report_card
               SET entity_id = LPAD(CAST(id AS TEXT), 21, '-')
+              WHERE entity_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE report_card
+              SET entity_id = LPAD(id, 21, '-')
               WHERE entity_id IS NULL;
       rollback: # nothing to do
 
