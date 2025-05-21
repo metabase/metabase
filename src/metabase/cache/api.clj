@@ -3,7 +3,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.cache.models.cache-config :as cache-config]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru trun]]

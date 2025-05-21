@@ -6,12 +6,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.core :as analytics]
+   [metabase.collections.models.collection :as collection]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.collection :as collection]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -25,6 +24,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -488,7 +488,7 @@
         (mt/with-full-data-perms-for-all-users!
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (mt/ordered-subset? (->> (default-search-results)
                                          (remove (comp #{"collection"} :model))
                                          (map #(cond-> %
@@ -526,7 +526,7 @@
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
-              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
               (perms/grant-collection-read-permissions! group collection)
               (is (mt/ordered-subset? (->> (default-results-with-collection)
                                            (concat (->> (default-search-results)
@@ -1800,3 +1800,12 @@
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
+
+(deftest ^:parallel multiple-limits
+  (testing "Multiple `limit` query args should be handled correctly (#45345)"
+    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                          :data count)
+          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                           :data count)]
+      (is (>= total-count result-count))
+      (is (= 1 result-count)))))

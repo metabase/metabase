@@ -6,7 +6,7 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

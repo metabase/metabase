@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
@@ -262,6 +263,13 @@ export const getPlaceholderText = (engine?: string | null): string => {
   const MongoPlaceholder = `[ { "$project": { "_id": "$_id" } } ]`;
 
   const engineType = getEngineNativeType(engine);
+
+  if (PLUGIN_AI_SQL_GENERATION.isEnabled()) {
+    if (engineType === "sql") {
+      return PLUGIN_AI_SQL_GENERATION.getPlaceholderText();
+    }
+  }
+
   switch (true) {
     case engineType === "sql":
       return SQLPlaceholder;

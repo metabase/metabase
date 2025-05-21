@@ -181,18 +181,9 @@
 
 (defmulti hash-fields
   "Returns a seq of functions which will be transformed into a seq of values for hash calculation by calling each
-   function on an entity map.  If you update a method of this function, you will likely need to update has-required-fields as well."
+   function on an entity map."
   {:arglists '([model-or-instance])}
   mi/dispatch-on-model)
-
-(defmulti hash-required-fields
-  "Returns a seq of keywords corresponding to the fields required by hash-fields."
-  {:arglists '([model-or-instance])}
-  mi/dispatch-on-model)
-
-(defmethod hash-required-fields :default
-  [_entity]
-  nil)
 
 (defn- increment-hash-values
   "Potenially adds a new value to the list of input seq based on increment.  Used to 'increment' a hash value to avoid duplicates."
@@ -218,160 +209,16 @@
        (increment-hash-values increment)
        raw-hash)))
 
-(defn calculate-entity-id
-  "Given an entity, calculates the `:entity_id` based on the [[identity-hash]]."
-  [entity increment]
-  (u/generate-nano-id (identity-hash entity increment)))
-
-(defonce ^{:doc "The cache of calculated entity_ids"} entity-id-cache (atom {}))
-
-(def ^:dynamic *skip-entity-id-calc*
-  "Flag to skip calculating missing entity-ids when querying"
-  false)
-(def ^:dynamic *max-retries*
-  "The number of times we will retry hashing in an attempt to find a unique hash"
-  1000)
-(def ^:dynamic *retry-batch-size*
-  "The number of entity ids we will try per iteration of retries"
-  50)
-
-(defn- deduplicated-entity-id
-  ([model cache entity]
-   (deduplicated-entity-id model entity 0 (->> cache model vals (into #{} (map deref)))))
-  ([model entity start cached-entity-ids]
-   (or (t2/select-one-fn :entity_id :model/Field :id (:id entity))
-       (loop [retry start]
-         (if (> retry *max-retries*)
-           (throw (ex-info "Failed to find unique entity-id for entity"
-                           {:model model
-                            :entity entity
-                            :retry retry}))
-           (let [end-retry-count (+ retry *retry-batch-size*)
-                 entity-ids (for [i (range retry end-retry-count)]
-                              (calculate-entity-id entity i))
-                 used-entity-ids (t2/select-fn-set :entity_id model :entity_id [:in entity-ids])
-                 next-entity-id (some #(and (not (contains? used-entity-ids %))
-                                            (not (contains? cached-entity-ids %))
-                                            %)
-                                      entity-ids)]
-             (or next-entity-id (recur end-retry-count))))))))
-
-(defn- cached-entity-id [entity]
-  (when-not *skip-entity-id-calc*
-    (binding [*skip-entity-id-calc* true]
-      (let [id (:id entity)
-            {:keys [model required-fields]} (hash-required-fields entity)]
-        (cond
-          (nil? model) (calculate-entity-id entity 0)
-
-          (some? id)
-          (let [cached (swap! entity-id-cache
-                              (fn [cache]
-                                (cond-> cache
-                                  (-> cache model (get id) not)
-                                  (assoc-in [model id]
-                                            (delay
-                                              (deduplicated-entity-id
-                                               model
-                                               cache
-                                               (if (every? (partial contains? entity)
-                                                           required-fields)
-                                                 entity
-                                                 (t2/select-one model :id id))))))))]
-            (-> cached model (get id) deref))
-
-          :else
-          (throw (ex-info "Entity is missing an id, so we cannot calculate an entity-id"
-                          {:entity entity
-                           :id id
-                           :model model})))))))
-
 (defn backfill-entity-id
   "Given an entity with a (possibly empty) `:entity_id` field:
   - Return the `:entity_id` if it's set.
   - Compute the backfill `:entity_id` based on the [[identity-hash]]."
   ([entity]
+   (backfill-entity-id entity 0))
+  ([entity increment]
    (or (:entity_id entity)
        (:entity-id entity)
-       (cached-entity-id entity))))
-
-(defn- deduplicated-table-entity-ids
-  [fields entity-ids initial-seen]
-  (loop [[{id :id :as field} & more-fields] fields
-         [eid & more-eids] entity-ids
-         seen initial-seen
-         results {}]
-    (if (and field eid)
-      (let [final-eid (if (contains? seen eid)
-                        (deduplicated-entity-id :model/Field field 1 seen)
-                        eid)]
-        (recur more-fields
-               more-eids
-               (conj seen final-eid)
-               (assoc results id final-eid)))
-      results)))
-
-(defn cache-table!
-  "Calculates and caches entity-ids for all fields from a given table."
-  [table-id]
-  (when-let [fields (seq (t2/select :model/Field :table_id table-id :entity_id nil))]
-    (let [initial-entity-ids (map #(calculate-entity-id % 0) fields)]
-      (swap! entity-id-cache
-             (fn [cache]
-               (let [results
-                     (delay (let [used-entity-ids (t2/select-fn-set :entity_id :model/Field
-                                                                    :entity_id [:in initial-entity-ids])
-
-                                  seen (into (or used-entity-ids #{})
-                                             (map deref)
-                                             (vals (:model/Field cache)))]
-                              (deduplicated-table-entity-ids fields initial-entity-ids seen)))]
-                 (update cache :model/Field
-                         (fn [initial-field-eids]
-                           (reduce (fn [field-eids {id :id}]
-                                     (if (contains? field-eids id)
-                                       field-eids
-                                       (assoc field-eids id (delay (-> results force (get id))))))
-                                   initial-field-eids
-                                   fields)))))))))
-
-(defn add-entity-id
-  "Given an entity with a (possibly empty) `:entity_id` field, add an entity-id (using cached-entity-id) if it is
-  missing.  You should generally use add-field-entity-id instead of this for fields."
-  [entity]
-  ;; By all rights, this should be a noop.  However, without this apparently-useless call, the t2/hydrate calls in the
-  ;; hydrated-hash function will perform magic and add the hydrated fields to the final value returned from select.
-  ;; If a model/Field has a hydrated :table field that is returned to the user, that model/Table needs to have
-  ;; its own entity id.  On the other hand, calling keys seems to disable that magic, and that means that we don't
-  ;; need to calculate extra entity ids for no reason.
-  #_:clj-kondo/ignore
-  (keys entity)
-  (let [out (if-let [new-id (and (contains? entity :entity_id)
-                                 (nil? (:entity_id entity))
-                                 (cached-entity-id entity))]
-              (assoc entity :entity_id new-id)
-              entity)]
-    out))
-
-(defn add-field-entity-id
-  "Adds an entity-id to a field.  This is specialized for fields and caches the entity ids for an entire table's worth
-  of fields at once."
-  [{:keys [id entity_id table_id] :as field}]
-  ;; this should be a noop, but see the comment in add-entity-id
-  #_:clj-kondo/ignore
-  (keys field)
-  (if-let [new-id (and (contains? field :entity_id)
-                       (nil? entity_id)
-                       (not *skip-entity-id-calc*)
-                       (binding [*skip-entity-id-calc* true]
-                         (let [path [:model/Field id]]
-                           (when-not (get-in @entity-id-cache path)
-                             (if table_id
-                               (cache-table! table_id)
-                               (throw (Exception. (str "Field with id " id " has no table_id")))))
-                           (-> @entity-id-cache (get-in path) force))))]
-    (assoc field :entity_id new-id)
-    field))
+       (u/generate-nano-id (identity-hash entity increment)))))
 
 (defn identity-hash?
   "Returns true if s is a valid identity hash string."
@@ -1136,7 +983,7 @@
   (when email
     (or (*import-fk-keyed* email 'User :email)
         ;; Need to break a circular dependency here.
-        (:id ((resolve 'metabase.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
+        (:id ((resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
 ;;; ## Tables
 
@@ -1518,7 +1365,7 @@
 
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
 
-  It's here instead of [[metabase.models.dashboard-card]] to avoid cyclic deps."
+  It's here instead of [[metabase.dashboards.models.dashboard-card]] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :model/Collection

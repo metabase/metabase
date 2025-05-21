@@ -632,7 +632,7 @@
 (deftest ^:parallel metadata-join-alias-test
   (mt/dataset test-data
     ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
-    ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].
+    ;;   See [[metabase.parameters.custom-values-test/with-mbql-card-test]].
     (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
       ;; Used metadata are simplified (invalid) for testing purposes. To the best of my knowledge only `:field_ref`
       ;;   could contain field with `:source-field` option that should be updated.
@@ -685,7 +685,7 @@
 
 (deftest ^:parallel metadata-join-alias-test-2
   ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
-  ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].
+  ;;   See [[metabase.parameters.custom-values-test/with-mbql-card-test]].
   (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
     (testing "#26631 Case 2: Join query with implicit join into a query with a table as source"
       (is (query= (lib.tu.macros/mbql-query products

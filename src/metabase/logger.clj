@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.logger
   "Configures the logger system for Metabase. Sets up an in-memory logger in a ring buffer for showing in the UI. Other
   logging options are set in [[metabase.core.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the
@@ -10,8 +11,8 @@
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [flatland.ordered.map :as ordered-map]
-   [metabase.config :as config]
-   [metabase.plugins.classloader :as classloader])
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config])
   (:import
    (java.lang AutoCloseable)
    (org.apache.commons.lang3.exception ExceptionUtils)

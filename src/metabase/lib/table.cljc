@@ -37,7 +37,7 @@
           field-metadatas))
 
 (defn- sort-default-fields
-  "Sort default Fields for a source Table. See [[metabase.models.table/field-order-rule]]."
+  "Sort default Fields for a source Table. See [[metabase.warehouse-schema.models.table/field-order-rule]]."
   [field-metadatas]
   (sort-by (fn [{field-name :name, :keys [position], :as _field-metadata}]
              [(or position 0) (u/lower-case-en (or field-name ""))])

@@ -3,6 +3,7 @@ const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   ACCOUNTS_COUNT_BY_COUNTRY,
+  COUNTRY_CODES,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
 } from "e2e/support/test-visualizer-data";
 
@@ -90,7 +91,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
       // cartesian (starting point) -> funnel -> scatter
       H.selectVisualization("funnel");
-      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
+      H.assertWellItems({
+        horizontal: ["Country", ...COUNTRY_CODES],
+        vertical: ["Count"],
+      });
       H.selectVisualization("scatter");
       H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
 
@@ -102,7 +106,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.selectVisualization("pie");
       H.assertWellItems({ pieDimensions: ["Country"], pieMetric: ["Count"] });
       H.selectVisualization("funnel");
-      H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
+      H.assertWellItems({
+        horizontal: ["Country", ...COUNTRY_CODES],
+        vertical: ["Count"],
+      });
       H.selectVisualization("scatter");
       H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
     });

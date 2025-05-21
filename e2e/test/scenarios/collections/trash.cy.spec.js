@@ -131,7 +131,7 @@ describe("scenarios > collections > trash", () => {
       cy.log("should be able to move to trash from collection view");
       toggleEllipsisMenuFor(/Collection A/);
       H.popover().findByText("Move to trash").click();
-      H.expectGoodSnowplowEvent((event) =>
+      H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -147,7 +147,7 @@ describe("scenarios > collections > trash", () => {
 
       toggleEllipsisMenuFor("Dashboard A");
       H.popover().findByText("Move to trash").click();
-      H.expectGoodSnowplowEvent((event) =>
+      H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -163,7 +163,7 @@ describe("scenarios > collections > trash", () => {
 
       toggleEllipsisMenuFor("Question A");
       H.popover().findByText("Move to trash").click();
-      H.expectGoodSnowplowEvent((event) =>
+      H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -207,7 +207,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByText("Move this collection to trash?");
         cy.findByText("Move to trash").click();
       });
-      H.expectGoodSnowplowEvent((event) =>
+      H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -233,7 +233,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByText("Move this dashboard to trash?");
         cy.findByText("Move to trash").click();
       });
-      H.expectGoodSnowplowEvent((event) =>
+      H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",
@@ -263,7 +263,7 @@ describe("scenarios > collections > trash", () => {
         cy.findByText("Move this question to trash?");
         cy.findByText("Move to trash").click();
       });
-      H.expectGoodSnowplowEvent((event) =>
+      H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: "moved-to-trash",

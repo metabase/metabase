@@ -2,8 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -46,9 +46,9 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                    [(t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                    (constantly conj))
+           (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                     [(t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                     (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
                 (take 5))))))

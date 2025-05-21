@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.appearance.settings :as appearance.settings]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
@@ -257,7 +257,7 @@
     (ldap.test/with-ldap-server!
       (testing "an error is thrown when a new user is fetched and user provisioning is not enabled"
         (with-redefs [sso-settings/ldap-user-provisioning-enabled? (constantly false)
-                      public-settings/site-name (constantly "test")]
+                      appearance.settings/site-name (constantly "test")]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Sorry, but you'll need a test account to view this page. Please contact your administrator."

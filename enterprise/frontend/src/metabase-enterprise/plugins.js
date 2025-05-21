@@ -38,3 +38,4 @@ import "./user_provisioning";
 import "./clean_up";
 import "./troubleshooting";
 import "./metabot";
+import "./tenants";

@@ -37,6 +37,7 @@
   with-limit-and-offset]
  [metabase.request.session
   as-admin
+  do-as-admin
   do-with-current-user
   with-current-user]
  [metabase.request.util

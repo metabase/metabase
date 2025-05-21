@@ -7,7 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))

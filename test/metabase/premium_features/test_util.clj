@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test.util.thread-local :as tu.thread-local]))
 

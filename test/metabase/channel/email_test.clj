@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.email :as email]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]

@@ -22,8 +22,8 @@
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
    [metabase.lib.ident :as lib.ident]
-   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -87,7 +87,7 @@
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))
         model?       (and (mi/instance-of? :model/Card source)
-                          (card/model? source))]
+                          (queries/model? source))]
     (assoc ground-metric-with-dimensions
            :dataset_query {:database database
                            :type     :query

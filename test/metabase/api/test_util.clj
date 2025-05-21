@@ -51,6 +51,3 @@
     (is (nil? (mt/user-http-request :crowberto :delete 204 (str "card/" card-id)))))
 
   (after-delete))
-
-(defn all-have-entity-ids? [metadata-entities]
-  (every? :entity_id metadata-entities))

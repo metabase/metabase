@@ -30,7 +30,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "upsell_viewed",
         promoted_feature: "cloud",
       });

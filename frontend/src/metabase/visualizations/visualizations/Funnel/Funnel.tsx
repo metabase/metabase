@@ -198,6 +198,7 @@ export function Funnel(props: VisualizationProps) {
     getHref,
     isDashboard,
     isEditing,
+    titleMenuItems,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -234,6 +235,7 @@ export function Funnel(props: VisualizationProps) {
           actionButtons={actionButtons}
           hasInfoTooltip={!isDashboard || !isEditing}
           onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
+          titleMenuItems={titleMenuItems}
         />
       )}
       <FunnelNormal

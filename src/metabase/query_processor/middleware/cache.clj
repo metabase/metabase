@@ -11,7 +11,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core :as cache]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.lib.query :as lib.query]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]

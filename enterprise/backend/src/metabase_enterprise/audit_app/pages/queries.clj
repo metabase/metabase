@@ -3,8 +3,8 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase.audit-app.core :as audit]
-   [metabase.db :as mdb]))
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]))
 
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table

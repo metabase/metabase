@@ -27,7 +27,7 @@
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]

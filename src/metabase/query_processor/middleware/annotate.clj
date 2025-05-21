@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -250,8 +250,6 @@
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
-    ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-    :expression_name expression-name
     :ident           (get-in inner-query [:expression-idents expression-name])
     :field_ref       (fe-friendly-expression-ref clause)}
    (when temporal-unit

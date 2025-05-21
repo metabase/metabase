@@ -3,7 +3,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon } from "metabase/ui";
 
-import DataSelectorS from "./DataSelector.module.css";
+import DataSelectorS from "./DataSelector/DataSelector.module.css";
 
 export function RawDataBackButton() {
   return (

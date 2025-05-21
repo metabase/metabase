@@ -2,8 +2,8 @@
   "Namespace for anything related to the Audit subsystem (aka Metabase Analytics) which needs to be accessible in the
   OSS product. EE-only code is located in `metabase-enterprise.audit-app.audit`."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.settings :as audit.settings]
-   [metabase.db :as mdb]
    [toucan2.core :as t2]))
 
 ;; NOTE: Constants like `audit-db-id` and the entity IDs of audit collections are placed in OSS code because audit

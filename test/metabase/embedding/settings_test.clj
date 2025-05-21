@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.embedding.settings :as embed.settings]
    [metabase.premium-features.token-check :as token-check]

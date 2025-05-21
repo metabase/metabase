@@ -40,7 +40,9 @@ export function FilterHeaderButton({
 
   const handleQueryChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
     const newQuestion = question.setQuery(newQuery);
-    dispatch(updateQuestion(newQuestion, { run: opts.run }));
+    dispatch(
+      updateQuestion(newQuestion, { run: opts.run, shouldUpdateUrl: true }),
+    );
   };
 
   useRegisterShortcut([

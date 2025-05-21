@@ -174,6 +174,12 @@ export interface VisualizationProps {
   onUpdateWarnings?: any;
 
   dispatch: Dispatch;
+
+  /**
+   * Items that will be shown in a menu when the title is clicked.
+   * Used for visualizer cards to jump to underlying questions
+   */
+  titleMenuItems?: React.ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
@@ -213,6 +219,12 @@ export type VisualizationPassThroughProps = {
   showAllLegendItems?: boolean;
 
   onHeaderColumnReorder?: (columnName: string) => void;
+
+  /**
+   * Items that will be shown in a menu when the title is clicked.
+   * Used for visualizer cards to jump to underlying questions
+   */
+  titleMenuItems?: React.ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;

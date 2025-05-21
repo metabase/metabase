@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 type CardProps = {
   className?: string;
@@ -15,11 +15,13 @@ type CardProps = {
 
 const Card = styled.div<CardProps>`
   background-color: ${(props) =>
-    props.dark ? color("text-dark") : color("bg-white")};
+    props.dark
+      ? "var(--mb-color-background-inverse)"
+      : "var(--mb-color-background)"};
   border: 1px solid
-    ${(props) => (props.dark ? "transparent" : "var(--mb-color-bg-medium)")};
+    ${(props) => (props.dark ? "transparent" : "var(--mb-color-border)")};
   ${(props) => props.dark && `color: white`};
-  border-radius: 6px;
+  border-radius: var(--mantine-radius-md);
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   line-height: 24px;
   ${({ hoverable, theme }) =>

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.engine :as js.engine]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.test :as mt]))
 
 (def ^:private red "#ff0000")

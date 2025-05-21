@@ -4,9 +4,10 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -19,7 +20,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -208,8 +209,8 @@
    :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
-  [_]
-  :%getdate)
+  [_driver]
+  :%getdate) ; TODO -- this should include type info
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
@@ -465,7 +466,7 @@
        (json/encode {:dashboard_id        dashboard-id
                      :chart_id            card-id
                      :optional_user_id    executed-by
-                     :optional_account_id (public-settings/site-uuid)
+                     :optional_account_id (system/site-uuid)
                      :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))
@@ -567,3 +568,7 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_varbyte expr (h2x/literal "UTF8")]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

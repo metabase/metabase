@@ -25,7 +25,7 @@
                    (metabot-v3.tools.generate-insights/generate-insights {:for {:table_id id}}))
         42
         "42"))
-    (let [results-url "/auto/dashboard/table/card__42"]
+    (let [results-url "/auto/dashboard/model/42"]
       (is (= {:output results-url
               :reactions [{:type :metabot.reaction/redirect :url results-url}]}
              (metabot-v3.tools.generate-insights/generate-insights {:for {:table_id "card__42"}}))))

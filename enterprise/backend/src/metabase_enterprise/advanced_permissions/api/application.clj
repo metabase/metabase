@@ -6,7 +6,7 @@
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.application-permissions-revision :as a-perm-revision]
+   [metabase.permissions.models.application-permissions-revision :as a-perm-revision]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)

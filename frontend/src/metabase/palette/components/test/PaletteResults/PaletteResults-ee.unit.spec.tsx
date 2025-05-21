@@ -1,8 +1,14 @@
+import fetchMock from "fetch-mock";
+
 import { screen, within } from "__support__/ui";
 
 import { type CommonSetupProps, commonSetup } from "./setup";
 
 const setup = (props: CommonSetupProps = {}) => {
+  fetchMock.get("path:/api/ee/metabot-v3/v2/prompt-suggestions", {
+    prompts: [],
+  });
+
   commonSetup({ ...props, isEE: true });
 };
 

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [environ.core :as env]
-   [metabase.config :as config]))
+   [metabase.config.core :as config]))
 
 (deftest config-parsing
   (testing "takes value of non-empty env var"
@@ -21,10 +21,10 @@
   (testing "Make sure [[config/build-type-case]] works correctly for Clojure."
     (is (= :dev
            (config/build-type-case
-             :dev     :dev
-             :release :release)))
+            :dev     :dev
+            :release :release)))
     (is (= :clj/dev
            (config/build-type-case
-             :clj/dev  :clj/dev
-             :cljs/dev :cljs/dev
-             :release  :release)))))
+            :clj/dev  :clj/dev
+            :cljs/dev :cljs/dev
+            :release  :release)))))

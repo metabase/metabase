@@ -70,6 +70,6 @@ export function aggregationColumn(
   query: Query,
   stageIndex: number,
   aggregation: AggregationClause,
-): ColumnMetadata {
+): ColumnMetadata | null {
   return ML.aggregation_column(query, stageIndex, aggregation);
 }

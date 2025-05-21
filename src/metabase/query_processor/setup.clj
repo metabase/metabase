@@ -75,7 +75,7 @@
     {:database -1337, :type :query, :query {:source-table \"card__1\"}}
 
   Once the *actual* Database ID is resolved, we will create a
-  real [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
+  real [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
   initialized with an actual Database ID)."
   []
   (if (qp.store/initialized?)

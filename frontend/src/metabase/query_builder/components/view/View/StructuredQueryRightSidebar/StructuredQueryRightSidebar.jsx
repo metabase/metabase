@@ -25,6 +25,7 @@ export const StructuredQueryRightSidebar = ({
   selectTimelineEvents,
   selectedTimelineEventIds,
   showTimelineEvents,
+  timelineEvents,
   timelines,
   updateQuestion,
   visibleTimelineEventIds,
@@ -45,6 +46,7 @@ export const StructuredQueryRightSidebar = ({
       () => (
         <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
           question={question}
+          visibleTimelineEvents={timelineEvents}
           timelines={timelines}
           onClose={onCloseAIQuestionAnalysisSidebar}
         />

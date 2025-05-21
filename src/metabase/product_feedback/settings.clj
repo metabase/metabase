@@ -1,6 +1,6 @@
 (ns metabase.product-feedback.settings
   (:require
-   [metabase.config :as config]))
+   [metabase.config.core :as config]))
 
 (def ^String product-feedback-url
   "Product feedback url. When not prod, reads `MB_PRODUCT_FEEDBACK_URL` from the environment to prevent development

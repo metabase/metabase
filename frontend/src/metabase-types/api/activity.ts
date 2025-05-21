@@ -83,7 +83,8 @@ export interface RecentItemsResponse {
 export type RecentContexts = "selections" | "views";
 
 export interface RecentsRequest {
-  context: RecentContexts[];
+  context?: RecentContexts[];
+  include_metadata?: boolean;
 }
 
 export interface RecentsResponse {

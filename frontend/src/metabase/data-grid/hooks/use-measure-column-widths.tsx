@@ -3,11 +3,11 @@ import {
   type Table as ReactTable,
   flexRender,
 } from "@tanstack/react-table";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import type { Root } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
-import { pickRowsToMeasure } from "metabase/data-grid/utils/measure";
+import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -20,33 +20,33 @@ import { DataGridThemeProvider } from "./use-table-theme";
 const HEADER_SPACING = 16;
 const BODY_SPACING = 2;
 
-const getTruncatedColumnSizing = (
-  columnSizingMap: ColumnSizingState,
-  truncateWidth: number,
-): ColumnSizingState =>
-  Object.fromEntries(
-    Object.entries(columnSizingMap).map(([key, value]) => [
-      key,
-      Math.min(value, truncateWidth),
-    ]),
-  );
-
+/**
+ * Hook for measuring optimal column widths for a data grid
+ *
+ * Works by rendering a hidden copy of table headers and a selection of cell content,
+ * measuring their rendered width, and determining appropriate column widths that
+ * accommodate both headers and content.
+ *
+ * @param table ReactTable instance
+ * @param columnsOptions Column configuration options
+ * @param theme DataGrid theme settings
+ * @param measurementRenderWrapper Optional wrapper for the measurement render
+ * @returns Function that triggers width measurement and returns promised column sizing
+ */
 export const useMeasureColumnWidths = <TData, TValue>(
   table: ReactTable<TData>,
   columnsOptions: ColumnOptions<TData, TValue>[],
-  truncateLongCellWidth: number,
   theme: DataGridTheme | undefined,
-  setMeasuredColumnSizing: (columnSizingMap: ColumnSizingState) => void,
-  controlledColumnSizingMap?: ColumnSizingState,
   measurementRenderWrapper?: (
     children: React.ReactElement,
   ) => React.ReactElement,
 ) => {
   const measureColumnWidths = useCallback(
     (
-      preserveColumnSizingMap?: ColumnSizingState, // Preserve column widths, for example from saved settings
-      truncatePreserved?: boolean, // Allow truncation of preserved column widths
+      onMeasured: (columnSizingState: ColumnSizingState) => void,
+      skipColumnIds: string[] = [],
     ) => {
+      // Create hidden container for measurement rendering
       const measureRoot = document.createElement("div");
       let measureRootTree: Root | undefined = undefined;
       measureRoot.style.position = "absolute";
@@ -58,11 +58,14 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
       document.body.appendChild(measureRoot);
 
+      const skipColumnIdsSet = new Set(skipColumnIds);
+
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
         if (div === null) {
           return;
         }
 
+        // Extract width measurements from rendered elements
         const elementsMeasures = Array.from(
           div.querySelectorAll("[data-measure-id]"),
         )
@@ -74,15 +77,12 @@ export const useMeasureColumnWidths = <TData, TValue>(
               return null;
             }
 
-            if (preserveColumnSizingMap?.[columnId] != null) {
-              return null;
-            }
-
             const width = (element as HTMLElement).offsetWidth;
             return { columnId, width, type };
           })
           .filter(isNotNull);
 
+        // Calculate column widths based on measurements
         const measuredColumnSizingMap =
           elementsMeasures.reduce<ColumnSizingState>(
             (acc, { columnId, width, type }) => {
@@ -90,6 +90,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
                 acc[columnId] = 0;
               }
 
+              // Add appropriate spacing based on element type
               if (type === "header") {
                 const headerWidth = width + HEADER_SPACING;
                 acc[columnId] = Math.max(acc[columnId], headerWidth);
@@ -103,23 +104,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
             {},
           );
 
-        setMeasuredColumnSizing(measuredColumnSizingMap);
-        const columnSizingMap = truncatePreserved
-          ? getTruncatedColumnSizing(
-              { ...measuredColumnSizingMap, ...preserveColumnSizingMap },
-              truncateLongCellWidth,
-            )
-          : {
-              ...getTruncatedColumnSizing(
-                measuredColumnSizingMap,
-                truncateLongCellWidth,
-              ),
-              ...preserveColumnSizingMap,
-            };
+        onMeasured(measuredColumnSizingMap);
 
-        table.setColumnSizing(columnSizingMap);
-
-        // Asynchronously unmount the root after the current render has completed to avoid the race condition and an error thrown by React.
+        // Asynchronously unmount the root after the current render has completed to avoid race conditions.
         setTimeout(() => {
           measureRootTree?.unmount();
           document.body.removeChild(measureRoot);
@@ -129,11 +116,13 @@ export const useMeasureColumnWidths = <TData, TValue>(
       const rows = table.getRowModel().rows;
       const rowsData = rows.map((row) => row.original);
 
+      // Render hidden elements for measurement
       const measureContent = (
         <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
           {table
             .getHeaderGroups()
             .flatMap((headerGroup) => headerGroup.headers)
+            .filter((header) => !skipColumnIdsSet.has(header.column.id))
             .map((header) => {
               const headerCell = flexRender(
                 header.column.columnDef.header,
@@ -161,7 +150,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
                   (rowIndex) => {
                     const cell = rows[rowIndex]
                       .getVisibleCells()
-                      .find((cell) => cell.column.id === columnOptions.id);
+                      .find(
+                        (cell) =>
+                          cell.column.id === columnOptions.id &&
+                          !skipColumnIdsSet.has(cell.column.id),
+                      );
 
                     if (!cell) {
                       return null;
@@ -183,6 +176,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         </div>
       );
 
+      // Wrap measurement content with necessary providers
       const wrappedContent = (
         <EmotionCacheProvider>
           <ThemeProvider>
@@ -199,20 +193,8 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
       measureRootTree = renderRoot(content, measureRoot);
     },
-    [
-      table,
-      columnsOptions,
-      theme,
-      measurementRenderWrapper,
-      setMeasuredColumnSizing,
-      truncateLongCellWidth,
-    ],
+    [table, columnsOptions, theme, measurementRenderWrapper],
   );
-
-  useEffect(() => {
-    measureColumnWidths(controlledColumnSizingMap, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return measureColumnWidths;
 };

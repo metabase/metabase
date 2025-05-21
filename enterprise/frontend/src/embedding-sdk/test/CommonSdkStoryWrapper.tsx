@@ -1,5 +1,5 @@
 import type { StoryFn } from "@storybook/react";
-import * as jose from "jose";
+import { SignJWT } from "jose";
 import { useMemo } from "react";
 
 import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
@@ -24,7 +24,7 @@ export const getStorybookSdkAuthConfigForUser = (
   authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
-      const signedUserData = await new jose.SignJWT({
+      const signedUserData = await new SignJWT({
         email: USERS[user].email,
         exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
       })

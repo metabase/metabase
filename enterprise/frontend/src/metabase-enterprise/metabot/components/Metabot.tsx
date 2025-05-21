@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -9,12 +9,14 @@ import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
 
-export const Metabot = () => {
+export interface MetabotProps {
+  hide?: boolean;
+}
+
+export const Metabot = ({ hide }: MetabotProps) => {
   const currentUser = useSelector(getCurrentUser);
 
   const { visible, setVisible } = useMetabotAgent();
-
-  const onClose = useCallback(() => setVisible(false), [setVisible]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -29,13 +31,22 @@ export const Metabot = () => {
     });
   }, [visible, setVisible, currentUser]);
 
-  if (!visible) {
+  useEffect(
+    function closeViaPropChange() {
+      if (hide) {
+        setVisible(false);
+      }
+    },
+    [hide, setVisible],
+  );
+
+  if (!visible || hide) {
     return null;
   }
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      <MetabotChat onClose={onClose} />
+      <MetabotChat />
     </ErrorBoundary>
   );
 };

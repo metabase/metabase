@@ -1,7 +1,7 @@
 (ns metabase.version.settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.version.settings :as version.settings]))
 

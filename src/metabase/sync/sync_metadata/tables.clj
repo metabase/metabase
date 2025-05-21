@@ -105,8 +105,8 @@
                                 sync-stage :- [:enum ::reactivate ::create ::update]]
   (let [is-crufty? (if (= sync-stage ::update)
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.api.table/update-table!*]] to track occasions where the table was updated by an
-                     ;; admin, and respect their choices during an update.
+                     ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
+                     ;; updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
                      ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.

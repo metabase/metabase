@@ -75,6 +75,7 @@
   --mb-color-warning: #f9cf48;
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
+  --mb-color-text-secondary-inverse: #b7bcbf;
   --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-text-selected: var(--mb-base-color-white);
   --mb-color-text-hover: var(--mb-base-color-brand-40);

@@ -4,7 +4,7 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
-   [metabase.models.card.metadata :as card.metadata]
+   [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

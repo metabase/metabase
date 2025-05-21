@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])

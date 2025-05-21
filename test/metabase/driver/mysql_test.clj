@@ -7,8 +7,8 @@
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
@@ -157,7 +157,7 @@
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
-        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type :type/Category}
+        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                  {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
@@ -188,7 +188,7 @@
             fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
-                 (metadata-queries/table-rows-sample table fields (constantly conj)))))
+                 (table-rows-sample/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
                  (:updated-fingerprints (#'sync.fingerprint/fingerprint-fields! table fields)))))))))
@@ -503,7 +503,7 @@
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
         (drop-if-exists-and-create-db! "composite_pks_test")
-        (with-redefs [metadata-queries/nested-field-sample-limit 4]
+        (with-redefs [table-rows-sample/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
                 spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
             (doseq [statement (concat ["CREATE TABLE `json_table` (`first_id` INT, `second_id` INT, `json_val` JSON, PRIMARY KEY(`first_id`, `second_id`));"]

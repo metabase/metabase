@@ -108,17 +108,17 @@
   jar-download
   {:doc        "Given a version, downloads a metabase jar"
    :examples   [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
-                ["./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/path/to/my/metabase/jars"]
-                ["./bin/mage jar-download 1.45.2 ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars"]
+                ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
+                ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
                 ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
    :requires   [[mage.jar-download :as jar-download]]
+   :options    [["-r" "--run" "run the new jar after downloading it"]
+                ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]]
+   :usage-fn  (fn [_] "note: If you get an error about 'Invalid or corrupt jarfile', run this command again with the -d option.")
    :arg-schema [:or
                 [:tuple [:string {:desc "version"}]]
-                [:tuple
-                 [:string {:desc "version"}]
-                 [:string {:desc "path"}]]]
-   :task       (task!
-                (jar-download/jar-download *command-line-args*))}
+                [:tuple [:string {:desc "version"}] [:string {:desc "path"}]]]
+   :task       (task! (jar-download/jar-download parsed))}
 
   setup-stats-repl
   {:doc "Connect to the stats repl"
@@ -147,9 +147,9 @@
               [mage.be-dev :refer [nrepl-eval]]]
    :examples [["./bin/mage -repl '(+ 1 1)'"
                "Eval a form in the backend dev server in the user namespace"]
-              ["./bin/mage -repl --namespace metabase.db.connection @application-db-counter"
-               "Eval a form in the backend dev server in the 'metabase.db.connection' namespace"]
-              ["mage -repl --port 59498 --namespace metabase.db.connection '(read-string \"::hello\")'"
+              ["./bin/mage -repl --namespace metabase.app-db.connection @application-db-counter"
+               "Eval a form in the backend dev server in the 'metabase.app-db.connection' namespace"]
+              ["mage -repl --port 59498 --namespace metabase.app-db.connection '(read-string \"::hello\")'"
                "Evaluate a keyword inside a namespace"]]
    :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]

@@ -19,6 +19,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -30,7 +31,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -341,7 +341,7 @@
                   {:$dateTrunc {:date column
                                 :unit (name unit)
                                 :timezone (qp.timezone/results-timezone-id)
-                                :startOfWeek (name (public-settings/start-of-week))}}
+                                :startOfWeek (name (lib-be/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column
@@ -666,6 +666,18 @@
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
                     {:database-version (:version (get-mongo-version))}))))
+
+(defmethod ->rvalue :text [[_ expr]]
+  {"$toString" (->rvalue expr)})
+
+(defmethod ->rvalue :date [[_ expr]]
+  (let [rvalue (->rvalue expr)]
+    (with-rvalue-temporal-bucketing
+      {"$cond" [{"$eq" [{"$type" rvalue} "string"]}
+                {"$toDate" rvalue}
+
+                rvalue]}
+      :day)))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)

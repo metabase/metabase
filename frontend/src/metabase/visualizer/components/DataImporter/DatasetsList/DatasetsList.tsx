@@ -94,6 +94,7 @@ export function DatasetsList({
           limit: 10,
           models: ["card"],
           include_dashboard_questions: true,
+          include_metadata: true,
         }
       : skipToken,
     {
@@ -101,11 +102,14 @@ export function DatasetsList({
     },
   );
 
-  const { data: allRecents = [] } = useListRecentsQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: allRecents = [] } = useListRecentsQuery(
+    { include_metadata: true },
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
-  const items: VisualizerCardDataSource[] = useMemo(() => {
+  const items = useMemo(() => {
     if (
       search.length === 0 ||
       !Array.isArray(result.data) ||
@@ -123,6 +127,8 @@ export function DatasetsList({
           return {
             ...createDataSource("card", entityId, card.name),
             cardId: card.id,
+            display: card.display,
+            result_metadata: card.result_metadata,
           };
         })
         .filter(isNotNull);
@@ -134,6 +140,8 @@ export function DatasetsList({
           ? {
               ...createDataSource("card", item.entity_id, item.name),
               cardId: Number(item.id),
+              display: item.display,
+              result_metadata: item.result_metadata,
             }
           : null,
       )

@@ -21,11 +21,11 @@
   Note: this assumes we're building a sentence with parts from left to right,
   It might not works correctly with right-to-left language.
   Also not all language uses command and \"and\" to represting 'listing'."
-  ([parts]
+  (^String [parts]
    (build-sentence parts :stop? true))
-  ([parts & {:keys [stop?]
-             :or   {stop? true}
-             :as options}]
+  (^String [parts & {:keys [stop?]
+                     :or   {stop? true}
+                     :as options}]
    (when (seq parts)
      (cond
        (= (count parts) 1) (str (first parts) (when stop? \.))
@@ -58,29 +58,29 @@
 
 (defn elide
   "Elides the string to the specified length, adding '...' if it exceeds that length."
-  [s max-length]
+  ^String [^String s max-length]
   (if (> (count s) max-length)
     (str (subs s 0 (- max-length 3)) "...")
     s))
 
 (defn- remove-chars
   "Removes individual chars until it fits in the required bytes"
-  [s max-bytes]
+  ^String [^String s max-bytes]
   (if (nil? s)
     s
     (loop [index (count s)]
-      (let [truncated (subs s 0 index)
-            bytes (.getBytes ^String truncated "UTF-8")]
+      (let [^String truncated (subs s 0 index)
+            bytes (.getBytes truncated "UTF-8")]
         (if (<= (count bytes) max-bytes)
           truncated
           (recur (dec index)))))))
 
 (defn limit-bytes
   "Limits the string to the given number of bytes, ensuring it's still a valid UTF-8 string"
-  [s max-bytes]
+  ^String [^String s max-bytes]
   (if (nil? s)
     s
-    (let [bytes (.getBytes ^String s "UTF-8")]
+    (let [bytes (.getBytes s "UTF-8")]
       (if (<= (count bytes) max-bytes)
         s
         ;; first do big first-pass at truncating, then truncate the rest of the way to preserve a valid string

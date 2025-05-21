@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -143,7 +143,7 @@
 (deftest ^:parallel ratios-test
   (testing (str "test behavior for Ratios (#9246). In Honey SQL 1, we converted this to a double in the query itself. "
                 "As far as I know, there is no way to do that in Honey SQL 2. So instead we convert it to a double
-                in [[metabase.db.jdbc-protocols]]. "
+                in [[metabase.app-db.jdbc-protocols]]. "
                 "division operation. The double itself should get converted to a numeric literal")
     (is (= [{:one_tenth (case (mdb.connection/db-type)
                           (:h2 :postgres) 0.1

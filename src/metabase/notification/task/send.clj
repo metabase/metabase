@@ -182,7 +182,12 @@
 (task/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."
+    Run once on startup.
+
+    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
+    This job is needed to create triggers for all existing notification subscriptions after the migration.
+    The fact that it runs on every startup is because we have no way to have it run only once.
+    Ideally this should be a migration."
     DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]

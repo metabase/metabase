@@ -3,9 +3,9 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase.api-keys.models.api-key :as api-key]
-   [metabase.http-client :as client]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
 
 (deftest api-key-creation-test

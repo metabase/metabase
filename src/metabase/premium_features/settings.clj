@@ -1,7 +1,7 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 

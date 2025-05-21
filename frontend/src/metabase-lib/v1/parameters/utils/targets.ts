@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -101,15 +102,6 @@ function getParameterTargetFieldFromFieldRef(
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
-
-  if (columns.length === 0) {
-    // query and metadata are not available: 1) no data permissions 2) embedding
-    // there is no way to find the correct field so pick the first one matching by name
-    return fields.find(
-      (field) => typeof field.id === "number" && field.name === fieldIdOrName,
-    );
-  }
-
   const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
 
   for (const stageIndex of stageIndexes) {
@@ -206,9 +198,9 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
 }
 
 function getTemporalColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.breakouts(query, stageIndex).map((breakout) => {
-    return Lib.breakoutColumn(query, stageIndex, breakout);
-  });
+  const columns = Lib.breakouts(query, stageIndex)
+    .map((breakout) => Lib.breakoutColumn(query, stageIndex, breakout))
+    .filter(isNotNull);
   const [group] = Lib.groupColumns(columns);
 
   return columns.map((column) => ({

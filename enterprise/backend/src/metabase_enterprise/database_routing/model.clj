@@ -2,10 +2,10 @@
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
    [metabase.api.common :as api]
-   [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

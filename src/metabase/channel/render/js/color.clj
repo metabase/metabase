@@ -4,12 +4,10 @@
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.js.engine :as js.engine]
-   [metabase.formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu])
-  (:import
-   (metabase.formatter NumericWrapper TextWrapper)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,10 +55,10 @@
   for more info."
   ^String [color-selector cell-value column-name row-index]
   (let [cell-value (cond
-                     (instance? NumericWrapper cell-value)
+                     (formatter/NumericWrapper? cell-value)
                      (:num-value cell-value)
 
-                     (instance? TextWrapper cell-value)
+                     (formatter/TextWrapper? cell-value)
                      (:original-value cell-value)
 
                      :else

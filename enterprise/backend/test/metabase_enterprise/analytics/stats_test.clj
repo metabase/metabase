@@ -4,7 +4,7 @@
    [metabase-enterprise.analytics.stats :as ee-stats]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

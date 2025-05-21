@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 export function setupPasswordCheckEndpoint() {
-  fetchMock.post("path:/api/util/password_check", 204);
+  fetchMock.post("path:/api/session/password-check", 204);
 }
 
 type ResponseInfo = {

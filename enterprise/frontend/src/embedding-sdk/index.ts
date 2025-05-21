@@ -8,7 +8,7 @@ import "./lib/polyfill/use-sync-external-store";
 
 import "metabase/lib/dayjs";
 
-import "ee-plugins";
+import "sdk-ee-plugins";
 
 // we need to manually import them here to make sure they are included in the bundle
 // as they're dynamically loaded in the main codebase

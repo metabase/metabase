@@ -2,9 +2,9 @@
   "Tests for /api/segment endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.http-client :as client]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

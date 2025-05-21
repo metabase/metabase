@@ -4,8 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private test-snippet-fields [:content :creator_id :description :name])
 

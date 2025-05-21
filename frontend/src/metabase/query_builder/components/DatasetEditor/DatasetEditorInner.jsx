@@ -207,7 +207,7 @@ const _DatasetEditorInner = (props) => {
     onOpenModal,
   } = props;
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
@@ -490,6 +490,7 @@ const _DatasetEditorInner = (props) => {
         center={
           <EditorTabs
             currentTab={datasetEditorTab}
+            disabledQuery={!isEditable}
             disabledMetadata={!resultsMetadata}
             onChange={onChangeEditorTab}
           />

@@ -22,6 +22,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
+    cy.intercept("GET", "/api/setting/version-info", {});
 
     cy.signInAsNormalUser();
 
@@ -213,6 +214,29 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.findDashCardAction(dashCard(), "Edit visualization").click();
     H.modal().button("Save").should("be.disabled");
+  });
+
+  it("should allow clicking on the title", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // Click on both series of the first chart
+    // Series 1
+    H.showUnderlyingQuestion(0, ORDERS_COUNT_BY_CREATED_AT.name);
+    cy.url().should("contain", "80-orders-by-created-at-month");
+    cy.findByLabelText("Back to Test Dashboard").click();
+    cy.url().should("contain", "10-test-dashboard");
+
+    // Series 2
+    H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
+    cy.url().should("contain", "82-products-by-created-at-month");
+    cy.findByLabelText("Back to Test Dashboard").click();
+    cy.url().should("contain", "10-test-dashboard");
+
+    // Click on the fifth chart (a funnel)
+    H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
+    cy.url().should("contain", "88-step-column");
+    cy.findByLabelText("Back to Test Dashboard").click();
+    cy.url().should("contain", "10-test-dashboard");
   });
 
   it("should rename a dashboard card", () => {
@@ -440,6 +464,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.switchToAddMoreData();
     H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+    H.assertWellItemsCount({ vertical: 2 });
     H.saveDashcardVisualizerModal();
     H.saveDashboard();
 
@@ -486,6 +511,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.modal().within(() => {
         H.switchToAddMoreData();
         H.addDataset("Products by Created At (Month)");
+        H.assertWellItems({
+          vertical: ["Count", "Count (Products by Created At (Month))"],
+        });
       });
       H.saveDashcardVisualizerModal("create");
       H.saveDashboard();
@@ -500,11 +528,56 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
         expect(Object.keys(visualizerSettings)).to.have.length(3);
         expect(visualizerSettings).to.eql({
-          "card.title": "Orders by Created At (Month)",
           "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
           "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+          "card.title": "Orders by Created At (Month)",
         });
       });
+    });
+  });
+
+  describe("public sharing and embedding", () => {
+    function ensureVisualizerCardsAreRendered() {
+      // Checks a cartesian chart has an axis name
+      H.getDashboardCard(0).within(() => {
+        H.echartsContainer().findByText("Count").should("be.visible");
+      });
+
+      // Checks a funnel has a step name
+      H.getDashboardCard(5)
+        .findByText("Checkout Page")
+        .scrollIntoView()
+        .should("be.visible");
+    }
+
+    it("visualizer cards should work in public dashboards", () => {
+      cy.signInAsAdmin();
+      createDashboardWithVisualizerDashcards();
+      cy.log("Visit public dashboard");
+      cy.get("@dashboardId")
+        .then((dashboardId) => {
+          H.createPublicDashboardLink(dashboardId);
+        })
+        .then(({ body: { uuid } }: any) => {
+          cy.visit(`/public/dashboard/${uuid}`);
+        });
+
+      ensureVisualizerCardsAreRendered();
+    });
+
+    it("visualizer cards should work in embedded dashboards", () => {
+      cy.signInAsAdmin();
+      createDashboardWithVisualizerDashcards({ enable_embedding: true });
+      cy.log("Visit public dashboard");
+
+      cy.get("@dashboardId").then((dashboard: any) => {
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboard },
+          params: {},
+        });
+      });
+
+      ensureVisualizerCardsAreRendered();
     });
   });
 });

@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -42,7 +43,7 @@ function createQueryWithBreakout({
   return {
     query,
     breakout,
-    column: Lib.breakoutColumn(query, stageIndex, breakout),
+    column: checkNotNull(Lib.breakoutColumn(query, stageIndex, breakout)),
   };
 }
 

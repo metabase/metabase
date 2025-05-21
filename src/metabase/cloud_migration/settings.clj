@@ -1,7 +1,7 @@
 (ns metabase.cloud-migration.settings
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 

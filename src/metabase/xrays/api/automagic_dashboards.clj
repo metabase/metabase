@@ -3,9 +3,9 @@
    [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.models.query :as query]
-   [metabase.models.query.permissions :as query-perms]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.queries.core :as queries]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -110,9 +110,16 @@
   [_entity-type card-id-str]
   (api/read-check (t2/select-one :model/Card :id (ensure-int card-id-str))))
 
+(mu/defn adhoc-query-instance :- (ms/InstanceOf :model/Query)
+  "Wrap query map into a Query object (mostly to facilitate type dispatch)."
+  [query :- :map]
+  (mi/instance :model/Query
+               (merge (queries/query->database-and-table-ids query)
+                      {:dataset_query (mi/maybe-normalize-query :out query)})))
+
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]
-  (adhoc-query-read-check (query/adhoc-query (decode-base64-json encoded-query))))
+  (adhoc-query-read-check (adhoc-query-instance (decode-base64-json encoded-query))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
@@ -162,7 +169,7 @@
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
                                            [:entity Entity]]]
-  (api.query-metadata/batch-fetch-dashboard-metadata
+  (queries/batch-fetch-dashboard-metadata
    [(get-automagic-dashboard entity entity-id-or-query nil)]))
 
 (defn linked-entities

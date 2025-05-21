@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
   (:require
@@ -7,7 +8,7 @@
    [clojure.string :as str]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.bootstrap]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]

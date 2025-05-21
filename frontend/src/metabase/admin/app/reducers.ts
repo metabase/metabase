@@ -2,7 +2,6 @@ import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { combineReducers } from "metabase/lib/redux";
-import Settings from "metabase/lib/settings";
 import { isNotNull } from "metabase/lib/types";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
@@ -10,8 +9,6 @@ import {
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
-
-import { disableNotice } from "./actions";
 
 export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
@@ -82,14 +79,6 @@ const paths = createReducer(getAdminPaths(), (builder) => {
   });
 });
 
-const isNoticeEnabled = createReducer(
-  Settings.deprecationNoticeEnabled(),
-  (builder) => {
-    builder.addCase(disableNotice.fulfilled, () => false);
-  },
-);
-
 export const appReducer = combineReducers({
-  isNoticeEnabled,
   paths,
 });

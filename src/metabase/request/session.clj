@@ -3,9 +3,9 @@
    [metabase.api.common
     :as api
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
-   [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
@@ -57,17 +57,22 @@
     (t2/select-one [:model/User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
                    :id current-user-id)))
 
+(defn do-as-admin
+  "Execute `thunk` with admin perms."
+  [thunk]
+  (do-with-current-user
+   (merge
+    (with-current-user-fetch-user-for-id api/*current-user-id*)
+    {:is-superuser? true
+     :permissions-set #{"/"}
+     :user-locale i18n/*user-locale*})
+   thunk))
+
 (defmacro as-admin
   "Execude code in body as an admin user."
   {:style/indent 0}
   [& body]
-  `(do-with-current-user
-    (merge
-     (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
-     {:is-superuser? true
-      :permissions-set #{"/"}
-      :user-locale i18n/*user-locale*})
-    (fn [] ~@body)))
+  `(do-as-admin (^:once fn* [] ~@body)))
 
 (defmacro with-current-user
   "Execute code in body with `current-user-id` bound as the current user. (This is not used in the middleware

@@ -1,7 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.query :as mdb.query]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]

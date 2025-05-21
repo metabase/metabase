@@ -54,7 +54,7 @@ export function getTemplateTagParameter(
   };
 }
 
-// NOTE: this should mirror `template-tag-parameters` in src/metabase/models/card.clj
+// NOTE: this should mirror `template-tag-parameters` in src/metabase/queries/models/card.clj
 // If this function moves you should update the comment that links to this one
 export function getTemplateTagParameters(
   tags: TemplateTag[],

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.impl :as audit.impl]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]

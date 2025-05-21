@@ -44,6 +44,7 @@ export function applyParameters(
   parameters,
   parameterValues = {},
   parameterMappings = [],
+  { sparse = false } = {},
 ) {
   const datasetQuery = copy(card.dataset_query);
   datasetQuery.parameters = [];
@@ -88,6 +89,12 @@ export function applyParameters(
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
       datasetQuery.parameters.push(queryParameter);
+    }
+
+    if (sparse) {
+      // These items will be backfilled by the API
+      delete queryParameter.type;
+      delete queryParameter.target;
     }
   }
 

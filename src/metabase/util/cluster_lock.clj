@@ -1,8 +1,8 @@
 (ns metabase.util.cluster-lock
   "Utility for taking a cluster wide lock using the application database"
   (:require
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]

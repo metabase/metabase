@@ -7,6 +7,7 @@ import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Dashboards from "metabase/entities/dashboards";
@@ -238,6 +239,16 @@ export const MoveQuestionModal = ({
     );
   }
 
+  const recentAndSearchFilter = (item: CollectionPickerItem) => {
+    const dashboardId = question.dashboardId();
+
+    if (dashboardId) {
+      return item.model === "dashboard" && item.id === dashboardId;
+    } else {
+      return item.model === "collection" && item.id === question.collectionId();
+    }
+  };
+
   return (
     <MoveModal
       title={t`Where do you want to save this?`}
@@ -245,6 +256,7 @@ export const MoveQuestionModal = ({
       onClose={onClose}
       onMove={handleChooseMoveLocation}
       canMoveToDashboard={question.type() === "question"}
+      recentAndSearchFilter={recentAndSearchFilter}
     />
   );
 };

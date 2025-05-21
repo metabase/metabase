@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]

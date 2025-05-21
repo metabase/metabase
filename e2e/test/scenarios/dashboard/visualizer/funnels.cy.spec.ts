@@ -187,8 +187,7 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
 
     H.modal().within(() => {
-      cy.findByText(LANDING_PAGE_VIEWS.name).realHover();
-      cy.findAllByLabelText("Remove").eq(0).click();
+      H.removeDataSource(LANDING_PAGE_VIEWS.name);
       cy.findByText("Funnel").click();
       H.switchToAddMoreData();
       H.selectDataset(LANDING_PAGE_VIEWS.name);
@@ -274,9 +273,6 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.clickVisualizeAnotherWay(LANDING_PAGE_VIEWS.name);
 
     H.modal().within(() => {
-      cy.findByText(LANDING_PAGE_VIEWS.name).realHover();
-      cy.findAllByLabelText("Remove").eq(0).click();
-      cy.findByText("Funnel").click();
       H.switchToAddMoreData();
       H.selectDataset(LANDING_PAGE_VIEWS.name);
       H.addDataset(CHECKOUT_PAGE_VIEWS.name);

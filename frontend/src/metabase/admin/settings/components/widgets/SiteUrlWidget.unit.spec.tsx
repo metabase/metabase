@@ -83,7 +83,9 @@ describe("siteUrlWidget", () => {
     await fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
-    expect(await screen.findByLabelText("check icon")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("check_filled icon"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 

@@ -50,6 +50,7 @@ export const MetabotChatEmbedding = ({
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
+    setMessage("");
     const metabotRequestPromise = metabot.submitInput(
       trimmedInput,
       EMBEDDING_METABOT_ID,
@@ -106,11 +107,11 @@ export const MetabotChatEmbedding = ({
   }, [dispatch]);
 
   useEffect(() => {
-    const normalizedMessages = metabot.userMessages.filter(
+    const normalizedMessages = metabot.lastAgentMessages.filter(
       (message) => message !== METABOT_RESULTS_MESSAGE,
     );
     onMessages(normalizedMessages);
-  }, [metabot.userMessages, onMessages]);
+  }, [metabot.lastAgentMessages, onMessages]);
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">
@@ -137,6 +138,7 @@ export const MetabotChatEmbedding = ({
           )}
         </Flex>
         <Textarea
+          id="metabot-chat-input"
           data-testid="metabot-chat-input"
           w="100%"
           autosize

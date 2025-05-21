@@ -5,15 +5,15 @@
    [clojure.test :refer :all]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.http-client :as client]
-   [metabase.models.database :as database]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))

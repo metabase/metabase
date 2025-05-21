@@ -12,3 +12,8 @@ export function setupEnterpriseTest() {
 export function setupEnterprisePlugins() {
   require("metabase-enterprise/plugins");
 }
+
+// function is used for optimization, so we don't need to import all plugins
+export function setupEnterpriseOnlyPlugin(pluginName) {
+  require(`metabase-enterprise/${pluginName}`);
+}

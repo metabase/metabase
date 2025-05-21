@@ -8,22 +8,22 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
-   [metabase.api.card-test :as api.card-test]
-   [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.config :as config]
-   [metabase.http-client :as client]
-   [metabase.models.field-values :as field-values]
-   [metabase.models.params.chain-filter-test :as chain-filter-test]
+   [metabase.config.core :as config]
+   [metabase.dashboards.api-test :as api.dashboard-test]
+   [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api :as api.public]
+   [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -104,7 +104,7 @@
                                                                                                 :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
                                                                      kvs))))
 
-;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
+;; TODO -- we can probably use [[metabase.dashboards.api-test/with-chain-filter-fixtures]] for mocking this stuff
 ;; instead since it does mostly the same stuff anyway
 (defmacro with-temp-public-dashboard-and-card
   {:style/indent 1}
@@ -490,6 +490,7 @@
                          :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
                                     :template-tags {:date {:name         "date"
                                                            :display-name "Date"
+                                                           :id           "_DATE_"
                                                            :type         "dimension"
                                                            :dimension    [:field (mt/id :checkins :date) nil]
                                                            :widget-type  "date/quarter-year"}}}}))
@@ -533,11 +534,12 @@
                  keys
                  set))))))
 
-(deftest query-execution-context test
+(deftest query-execution-context-test
   (testing "Make sure we record the correct context for each export format (#45147)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [query (merge (mt/mbql-query venues)
-                         ;; Add these constraints for the API query so that the query hash matches in `with-query-execution!`
+                         ;; Add these constraints for the API query so that the query hash matches in
+                         ;; `with-query-execution!`
                          {:constraints {:max-results 10000, :max-results-bare-rows 2000}})]
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
           (testing "Default :api response format"
@@ -951,13 +953,18 @@
     :query    {:source-table (mt/id table-kw)
                :filter       [:= [:field (mt/id table-kw field-kw) nil] "Krua Siri"]}}})
 
+(def parameter-id "12345678")
+
 (defn do-with-sharing-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp [:model/Dashboard     dashboard (shared-obj)
+    (mt/with-temp [:model/Dashboard     dashboard (assoc (shared-obj)
+                                                         :parameters [{:id   parameter-id
+                                                                       :type :number}])
                    :model/Card          card      (mbql-card-referencing table-kw field-kw)
                    :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
                                                    :card_id            (u/the-id card)
                                                    :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :parameter_id parameter-id
                                                                          :target  [:dimension
                                                                                    [:field
                                                                                     (mt/id table-kw field-kw) nil]]}]}]
@@ -1147,18 +1154,18 @@
                                        :card_id            (:id card)
                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                              :target       [:dimension (mt/$ids *categories.name)]}]}]
-      (is (=? {:param_fields {(mt/id :categories :name)
-                              {:semantic_type "type/Name",
-                               :table_id (mt/id :categories)
-                               :name "NAME",
-                               :has_field_values "list",
-                               :fk_target_field_id nil,
-                               :dimensions (),
-                               :id (mt/id :categories :name)
-                               :target nil,
-                               :display_name "Name",
-                               :name_field nil,
-                               :base_type "type/Text"}}}
+      (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
+                              [{:semantic_type "type/Name",
+                                :table_id (mt/id :categories)
+                                :name "NAME",
+                                :has_field_values "list",
+                                :fk_target_field_id nil,
+                                :dimensions (),
+                                :id (mt/id :categories :name)
+                                :target nil,
+                                :display_name "Name",
+                                :name_field nil,
+                                :base_type "type/Text"}]}}
               (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
       (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
               (client/client :get 200 (format "public/dashboard/%s/params/%s/values" (:public_uuid dash) "_CATEGORY_NAME_")))))))

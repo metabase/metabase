@@ -64,7 +64,7 @@
     ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
     ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
     ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
-    [:metabase.models.query.permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]
+    [:metabase.permissions.models.query.permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]
     ;;
     ;; TODO -- parameters??
     ]
@@ -324,8 +324,8 @@
     (m/filter-keys (fn [k]
                      (and (not (contains? keys-to-remove k))
                           (or (simple-keyword? k)
-                              ;; remove all random namespaced keys like `:metabase.models.query.permissions/perms`.
-                              ;; Keep `:lib` keys like `:lib/type`
+                              ;; remove all random namespaced keys like
+                              ;; `:metabase.permissions.models.query.permissions/perms`. Keep `:lib` keys like `:lib/type`
                               (= (namespace k) "lib"))))
                    query)))
 

@@ -12,7 +12,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.plugins :as plugins]
+   [metabase.plugins.core :as plugins]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]

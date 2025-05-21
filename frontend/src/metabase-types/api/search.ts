@@ -4,6 +4,7 @@ import type { CardId } from "./card";
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { Field } from "./field";
 import type { ModerationReviewStatus } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
@@ -105,6 +106,7 @@ export interface SearchResult<
   can_write: boolean | null;
   based_on_upload?: TableId | null;
   "last-edit-info"?: LastEditInfo;
+  result_metadata?: Field[];
 }
 
 export type SearchContext =
@@ -129,6 +131,7 @@ export type SearchRequest = {
   verified?: boolean | null;
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;
+  include_metadata?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;

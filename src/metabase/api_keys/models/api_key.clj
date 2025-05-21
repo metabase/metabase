@@ -2,7 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [crypto.random :as crypto-random]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]

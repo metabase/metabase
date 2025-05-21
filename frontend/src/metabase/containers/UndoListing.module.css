@@ -8,6 +8,11 @@
   }
 }
 
+.toast {
+  position: absolute;
+  bottom: 0;
+}
+
 .progress {
   animation: animated-progress linear;
   transform-origin: left;

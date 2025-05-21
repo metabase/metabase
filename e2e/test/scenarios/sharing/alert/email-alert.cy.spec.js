@@ -140,6 +140,43 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.log("Check that /api/card has still only been called once");
     cy.get("@saveCard.all").should("have.length", 1);
   });
+
+  describe("branding", () => {
+    const questionName = "Fourty Two";
+
+    it("should include branding for OSS instances", { tags: "@OSS" }, () => {
+      sendTestAlertForQuestion(questionName);
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("contain", "Metabase")
+        .and(
+          "have.attr",
+          "href",
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert",
+        );
+    });
+
+    it("should include branding for Starter instances", () => {
+      H.setTokenFeatures("none");
+      sendTestAlertForQuestion(questionName);
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("contain", "Metabase")
+        .and(
+          "have.attr",
+          "href",
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert",
+        );
+    });
+
+    it("should not include branding on Pro/Enterprise instances", () => {
+      H.setTokenFeatures("all");
+      sendTestAlertForQuestion(questionName);
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("not.exist");
+    });
+  });
 });
 
 function openAlertForQuestion(id) {
@@ -158,4 +195,18 @@ function saveAlert() {
 
   H.openSharingMenu("Create an alert");
   H.modal().button("Done").click();
+}
+
+function sendTestAlertForQuestion(name) {
+  H.createNativeQuestion(
+    {
+      name,
+      native: { query: "select 42" },
+    },
+    { visitQuestion: true },
+  );
+
+  H.openSharingMenu("Create an alert");
+  H.sendAlertAndVisitIt();
+  cy.findAllByRole("link").filter(`:contains(${name})`).should("be.visible");
 }

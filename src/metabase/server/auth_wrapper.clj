@@ -1,7 +1,7 @@
 (ns metabase.server.auth-wrapper
   (:require
    [metabase.api.util.handlers :as handlers]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [ring.util.response :as response]))
 
 (let [bad-req (response/bad-request {:message "The auth/sso endpoint only exists in enterprise builds"

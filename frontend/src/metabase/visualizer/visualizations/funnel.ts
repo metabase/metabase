@@ -21,6 +21,7 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
   VisualizerDataSource,
+  VisualizerDataSourceId,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -115,6 +116,45 @@ export function canCombineCardWithFunnel({ data }: Dataset) {
   );
 }
 
+// Normally, findColumnSlotForFunnel returns a viz setting key that fits a given column
+// There's no viz setting for scalar funnels, as we're adding a row value to the dataset,
+// instead of adding a column, so we need to use a special name for that
+const SCALAR_FUNNEL_SLOT = "scalar_funnel";
+
+export function findColumnSlotForFunnel(
+  {
+    display,
+    columns,
+    settings,
+  }: Pick<
+    VisualizerVizDefinitionWithColumns,
+    "display" | "columns" | "settings"
+  >,
+  datasets: Record<VisualizerDataSourceId, Dataset>,
+  dataSourceColumns: DatasetColumn[],
+  column: DatasetColumn,
+) {
+  const isEmpty = columns.length === 0;
+
+  if (
+    (isEmpty || isScalarFunnel({ display, settings })) &&
+    dataSourceColumns.length === 1 &&
+    isNumeric(dataSourceColumns[0])
+  ) {
+    return SCALAR_FUNNEL_SLOT;
+  } else {
+    const ownMetric = settings["funnel.metric"];
+    if (!ownMetric && isMetric(column)) {
+      return "funnel.metric";
+    }
+
+    const ownDimension = settings["funnel.dimension"];
+    if (!ownDimension && isDimension(column) && !isMetric(column)) {
+      return "funnel.dimension";
+    }
+  }
+}
+
 export function addScalarToFunnel(
   state: VisualizerVizDefinitionWithColumns,
   dataSource: VisualizerDataSource,
@@ -154,31 +194,34 @@ export function addColumnToFunnel(
   state:
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
+  datasets: Record<string, Dataset>,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
 ) {
-  const isEmpty = state.columns.length === 0;
+  const slot = findColumnSlotForFunnel(
+    state,
+    datasets,
+    dataset.data.cols,
+    column,
+  );
 
-  if ((isEmpty || isScalarFunnel(state)) && canCombineCardWithFunnel(dataset)) {
+  if (!slot) {
+    return;
+  }
+
+  if (slot === "scalar_funnel") {
     addScalarToFunnel(state, dataSource, dataset.data.cols[0]);
     return;
   }
 
-  if (!isScalarFunnel(state)) {
-    state.columns.push(column);
-    state.columnValuesMapping[column.name] = [columnRef];
-
-    const metric = state.settings["funnel.metric"];
-    if (!metric && isMetric(column)) {
-      state.settings["funnel.metric"] = column.name;
-    }
-
-    const dimension = state.settings["funnel.dimension"];
-    if (!dimension && isDimension(column) && !isMetric(column)) {
-      state.settings["funnel.dimension"] = column.name;
-    }
+  state.columns.push(column);
+  state.columnValuesMapping[column.name] = [columnRef];
+  if (slot === "funnel.metric") {
+    state.settings["funnel.metric"] = column.name;
+  } else if (slot === "funnel.dimension") {
+    state.settings["funnel.dimension"] = column.name;
   }
 }
 

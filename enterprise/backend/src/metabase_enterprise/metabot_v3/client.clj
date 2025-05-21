@@ -10,7 +10,7 @@
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
@@ -115,7 +115,7 @@
                                                "Content-Type"              "application/json;charset=UTF-8"
                                                "x-metabase-instance-token" (premium-features/premium-embedding-token)
                                                "x-metabase-session-token"  session-id
-                                               "x-metabase-url"            (public-settings/site-url)}
+                                               "x-metabase-url"            (system/site-url)}
                             :body             (->json-bytes body)
                             :throw-exceptions false}
                      *debug* (assoc :debug true))

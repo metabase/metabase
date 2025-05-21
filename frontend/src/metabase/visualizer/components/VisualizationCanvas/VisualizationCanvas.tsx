@@ -73,7 +73,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
     return (
       <Center h="100%" w="100%" mx="auto" className={className}>
         {isLoading ? (
-          <Loader size="lg" />
+          <Loader data-testid="visualization-canvas-loader" size="lg" />
         ) : (
           <Text>{t`Visualization will appear here`}</Text>
         )}

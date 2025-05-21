@@ -25,7 +25,7 @@ export function setupEntityIdEndpoint(
   entityIdMappings: EntityIdMappingParameter,
 ) {
   fetchMock.post(
-    "path:/api/util/entity_id",
+    "path:/api/eid-translation/translate",
     async (_url: string, options: RequestInit) => {
       const body = JSON.parse((await options.body) as string) as {
         entity_ids: TranslateEntityIdRequest;

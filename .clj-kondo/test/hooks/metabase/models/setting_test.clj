@@ -12,7 +12,7 @@
                     :type       :integer
                     :default    0
                     :getter     (fn []
-                                  (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                                  (if-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
                                     0
                                     (cached-active-users-count))))
                  pr-str
@@ -21,7 +21,7 @@
                   _ {:default 0
                      :type :integer
                      :getter (fn []
-                               (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                               (if-not ((requiring-resolve 'metabase.app-db.core/db-is-set-up?))
                                  0
                                  (cached-active-users-count)))
                      :visibility :admin}]

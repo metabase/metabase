@@ -73,7 +73,6 @@ export const ArchivedBulkActions = ({
     Promise.all(actions).finally(() => clearSelected());
     dispatch(
       addUndo({
-        icon: "check",
         message: ngettext(
           msgid`${selected.length} item has been permanently deleted.`,
           `${selected.length} items have been permanently deleted.`,

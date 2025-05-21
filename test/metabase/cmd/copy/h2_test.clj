@@ -1,8 +1,8 @@
 (ns metabase.cmd.copy.h2-test
   (:require
    [clojure.test :refer :all]
-   [metabase.cmd.copy.h2 :as copy.h2]
-   [metabase.db.data-source :as mdb.data-source]))
+   [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.cmd.copy.h2 :as copy.h2]))
 
 (deftest ^:parallel h2-data-source-test
   (testing "works without file: schema"

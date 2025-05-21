@@ -11,7 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
-   [metabase.models.query :as query]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]

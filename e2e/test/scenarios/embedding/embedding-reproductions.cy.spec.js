@@ -907,6 +907,11 @@ describe("dashboard preview", () => {
       cy.button("Add filter").click();
     });
 
+    // Wait for the iframe to load
+    H.getIframeBody().within(() => {
+      cy.button(filter.name).should("not.exist");
+    });
+
     H.getIframeBody().within(() => {
       cy.log("Assert filter 1");
       cy.button(filter.name).click();

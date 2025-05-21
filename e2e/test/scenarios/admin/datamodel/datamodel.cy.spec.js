@@ -271,7 +271,10 @@ describe("scenarios > admin > datamodel > field", () => {
             .click();
           H.popover().findByText("Custom mapping").click();
 
-          cy.findByDisplayValue("null").clear().type(remappedNullValue);
+          cy.findAllByPlaceholderText("Enter value")
+            .filter("[value='null']")
+            .clear()
+            .type(remappedNullValue);
           cy.button("Save").click();
           cy.button("Saved!").should("be.visible");
 

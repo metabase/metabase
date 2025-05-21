@@ -59,7 +59,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   }
 
   // Note:
-  // - "string" parameters can be mapped to numeric and boolean columns
+  // - "string" parameters can be mapped to anything (string, number, boolean)
   // - "category" and "id" parameters can be mapped to anything
   // We cannot properly deserialize their values by checking the parameter type only
   switch (type) {
@@ -69,6 +69,8 @@ export function parseParameterValue(value: any, parameter: Parameter) {
       return normalizeStringParameterValue(coercedValue);
     case "date":
       return normalizeDateParameterValue(coercedValue);
+    case "boolean":
+      return normalizeBooleanParameterValue(coercedValue);
     case "temporal-unit":
       return normalizeTemporalUnitParameterValue(coercedValue);
   }

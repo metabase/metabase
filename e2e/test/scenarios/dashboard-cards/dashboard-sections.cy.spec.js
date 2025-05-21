@@ -36,7 +36,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
     H.getDashboardCards().should("have.length", 1);
     addSection("KPIs w/ large chart below");
     H.getDashboardCards().should("have.length", 7);
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_section_added",
       section_layout: "kpi_chart_below",
     });
@@ -48,7 +48,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
     H.getDashboardCards().should("have.length", 0);
     addSection("KPI grid");
     H.getDashboardCards().should("have.length", 5);
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_section_added",
       section_layout: "kpi_grid",
     });

@@ -205,7 +205,6 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Float
   display_name: Days since last view
-  expression_name: Days since last view
   field_ref:
   - expression
   - Days since last view

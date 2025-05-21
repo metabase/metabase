@@ -6,7 +6,7 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { Icon, Menu, Stack, Text, Title } from "metabase/ui";
+import { Icon, Menu, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 export function DashboardSubscriptionMenuItem({
@@ -37,13 +37,8 @@ export function DashboardSubscriptionMenuItem({
         leftSection={<Icon name="subscription" />}
         disabled
       >
-        <Stack gap="xs">
-          <Title order={4} c="inherit">{t`Can't send subscriptions`}</Title>
-          <Text
-            size="sm"
-            color="inherit"
-          >{t`Ask your admin to set up email`}</Text>
-        </Stack>
+        <Text size="md" c="inherit">{t`Can't send subscriptions`}</Text>
+        <Text size="sm" c="inherit">{t`Ask your admin to set up email`}</Text>
       </Menu.Item>
     );
   }

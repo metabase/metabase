@@ -1,7 +1,7 @@
 (ns metabase.permissions.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.api-test-util :as perm-test-util]
    [metabase.permissions.core :as perms]

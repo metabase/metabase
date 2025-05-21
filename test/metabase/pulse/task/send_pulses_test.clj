@@ -329,14 +329,9 @@
       (task/init! ::task.send-pulses/SendPulses)
       (mt/with-temp
         [:model/Pulse        {pulse-id :id} {:alert_condition "goal"}
-         :model/PulseChannel {_pc-id :id}   (merge
+         :model/PulseChannel {pc-id :id}    (merge
                                              {:pulse_id     pulse-id
                                               :channel_type :slack
                                               :details      {:channel "#random"}}
                                              daily-at-1am)]
-        (let [pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)]
-          (testing "sanity check that it has triggers to begin with"
-            (is (not-empty pulse-triggers)))
-          (testing "init send pulse triggers skip alerts"
-            (#'task.send-pulses/init-dashboard-subscription-triggers!)
-            (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
+        (is (not (contains? (set (map :id (#'task.send-pulses/active-dashsub-pcs))) pc-id)))))))

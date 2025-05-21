@@ -14,6 +14,7 @@ import {
   extractReferencedColumns,
 } from "./column";
 import { createDataSource } from "./data-source";
+import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
 import { getColumnVizSettings } from "./viz-settings";
 
 type ColumnInfo = {
@@ -114,9 +115,29 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
     },
   );
 
-  const settingsFromAllCards = rawSeries.map((series, seriesIndex) =>
-    mapColumnVizSettings(series.card, allColumnInfos[seriesIndex]),
-  );
+  const columnsToRefs: Record<string, string> = {};
+  allColumnInfos.flat().forEach(({ columnRef }) => {
+    columnsToRefs[columnRef.originalName] = columnRef.name;
+  });
+
+  // Hack because settings use the original column display names for
+  // cards series except the first one ಠ_ಠ
+  rawSeries.forEach((series) => {
+    const metricName =
+      series.card.visualization_settings?.["graph.metrics"]?.[0];
+    if (metricName) {
+      const displayName = series.data.cols.find(
+        (c) => c.name === metricName,
+      )?.display_name;
+      if (displayName) {
+        columnsToRefs[series.card.name] = displayName;
+      }
+    }
+  });
+
+  const settingsFromAllCards = rawSeries.map((series, seriesIndex) => {
+    return mapColumnVizSettings(series.card, allColumnInfos[seriesIndex]);
+  });
 
   const mergedSettings = settingsFromAllCards.reduce<
     Record<string, string | string[]>
@@ -133,7 +154,10 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   }, {});
 
   state.settings = {
-    ...mainCard.visualization_settings,
+    ...updateVizSettingsWithRefs(
+      mainCard.visualization_settings,
+      columnsToRefs,
+    ),
     ...mergedSettings,
     "card.title": mainCard.name,
   };

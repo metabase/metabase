@@ -7,7 +7,7 @@
    [metabase.channel.api.slack :as api.slack]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]))
 
 (deftest update-slack-settings-test

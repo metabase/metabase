@@ -2,7 +2,7 @@
   "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
   (:require
    [clojure.java.io :as io]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.util :as u])
   (:import
    (org.mindrot.jbcrypt BCrypt)))

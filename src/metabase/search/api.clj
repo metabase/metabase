@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]

@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.request.core :as request]
    [metabase.server.instance :as server]

@@ -76,12 +76,14 @@
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache]
    [metabase.settings.models.setting.multi-setting]
+   [metabase.settings.settings]
    [potemkin :as p]))
 
 (comment
   metabase.settings.models.setting/keep-me
   metabase.settings.models.setting.cache/keep-me
-  metabase.settings.models.setting.multi-setting/keep-me)
+  metabase.settings.models.setting.multi-setting/keep-me
+  metabase.settings.settings/keep-me)
 
 (p/import-vars
  [metabase.settings.models.setting
@@ -115,7 +117,9 @@
   restore-cache!]
  [metabase.settings.models.setting.multi-setting
   define-multi-setting
-  define-multi-setting-impl])
+  define-multi-setting-impl]
+ [metabase.settings.settings
+  application-name-for-setting-descriptions])
 
 (defn database-local-values
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of

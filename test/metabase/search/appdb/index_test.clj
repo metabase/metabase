@@ -1,8 +1,8 @@
 (ns metabase.search.appdb.index-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -12,12 +12,15 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- index-hits [term]
   (count (search.index/search term)))

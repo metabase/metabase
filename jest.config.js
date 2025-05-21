@@ -11,6 +11,7 @@ const esmPackages = [
   "hast.*",
   "html-void-elements",
   "is-absolute-url",
+  "jose",
   "property-information",
   "rehype-external-links",
   "screenfull",
@@ -46,7 +47,7 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
-    "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,

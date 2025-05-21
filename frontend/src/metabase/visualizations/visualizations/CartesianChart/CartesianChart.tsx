@@ -58,6 +58,7 @@ function _CartesianChart(props: VisualizationProps) {
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
+    titleMenuItems,
   } = props;
 
   const settings = useMemo(
@@ -156,6 +157,7 @@ function _CartesianChart(props: VisualizationProps) {
             canSelectTitle ? () => onOpenQuestion(card.id) : undefined
           }
           width={outerWidth}
+          titleMenuItems={titleMenuItems}
         />
       )}
       <CartesianChartLegendLayout

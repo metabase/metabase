@@ -13,7 +13,7 @@
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]

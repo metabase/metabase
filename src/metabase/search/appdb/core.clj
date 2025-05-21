@@ -4,8 +4,9 @@
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
@@ -17,8 +18,10 @@
    [metabase.search.settings :as search.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
@@ -78,7 +81,12 @@
                       [:!= :search_index.model [:inline "table"]]
                       [:and
                        [:= :search_index.model [:inline "table"]]
-                       (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]]))
+                       [:exists {:select [1]
+                                 :from   [[:metabase_table :mt_toplevel]]
+                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id (case (mdb/db-type)
+                                                                                                   :mysql :signed
+                                                                                                   :integer)]]
+                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -115,6 +123,7 @@
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
                        :version            @#'search.index/*index-version-id*
+                       :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
@@ -182,3 +191,11 @@
     (search.index/maybe-create-pending!))
   (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
     (search.index/activate-table!)))
+
+(derive :event/setting-update ::settings-changed-event)
+
+(methodical/defmethod events/publish-event! ::settings-changed-event
+  [_topic event]
+  (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
+    (log/info "Reindexing appdb index because the site locale changed.")
+    (search.engine/reindex! :search.engine/appdb {})))

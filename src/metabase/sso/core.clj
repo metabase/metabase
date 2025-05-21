@@ -21,7 +21,8 @@
   google-auth-client-id
   google-auth-enabled
   ldap-enabled
-  send-new-sso-user-admin-email?])
+  send-new-sso-user-admin-email?
+  sso-enabled?])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap/find-user find-ldap-user)

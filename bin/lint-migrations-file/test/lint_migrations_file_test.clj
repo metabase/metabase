@@ -293,7 +293,7 @@
 (deftest custom-changes-test
   (let [change-set (mock-change-set
                     :changes
-                    [{:customChange {:class "metabase.db.custom_migrations.ReversibleUppercaseCards"}}])]
+                    [{:customChange {:class "metabase.app_db.custom_migrations.ReversibleUppercaseCards"}}])]
     (is (= :ok
            (validate change-set))))
   (testing "missing value"

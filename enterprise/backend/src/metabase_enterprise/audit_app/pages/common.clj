@@ -7,8 +7,8 @@
    [medley.core :as m]
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
     :as qp.middleware.audit]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.schema :as qp.schema]

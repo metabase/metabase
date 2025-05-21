@@ -1,12 +1,12 @@
 (ns metabase.search.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.appearance.core :as appearance]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
 
 (defsetting search-typeahead-enabled
   (i18n/deferred-tru "Enable typeahead search in the {0} navbar?"
-                     (public-settings/application-name-for-setting-descriptions))
+                     (setting/application-name-for-setting-descriptions appearance/application-name))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -28,3 +28,12 @@
   :default    nil
   :type       :json
   :doc        false)
+
+(defsetting search-language
+  (i18n/deferred-tru "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
+  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''")
+  :visibility :internal
+  :export?    false
+  :encryption :no
+  :default    nil
+  :type       :string)
