@@ -8,16 +8,9 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.logger :as logger]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
-
-(api.macros/defendpoint :get "/logs"
-  "Logs."
-  []
-  (validation/check-has-application-permission :monitoring)
-  (logger/messages))
 
 (api.macros/defendpoint :get "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
