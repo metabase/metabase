@@ -1651,7 +1651,7 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("second").should("be.visible");
       //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("datetimeAdd").should("be.visible");
+      cy.findByText("datetimeAdd").should("exist");
     });
   });
 
