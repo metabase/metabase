@@ -1,18 +1,31 @@
+import { useCallback } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import { useDispatch } from "metabase/lib/redux";
 import { Stack, Text, Title } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
-interface DataConnectionStepProps {
-  onSubmit: (database: DatabaseData) => void;
-  error?: string;
-}
+type DataConnectionStepProps = {
+  onSubmit: (databaseData: DatabaseData) => Promise<void>;
+  error: string;
+};
 
 export const DataConnectionStep = ({
   onSubmit,
   error,
 }: DataConnectionStepProps) => {
+  const dispatch = useDispatch();
+
+  const handleSubmit = useCallback(
+    async (databaseData: DatabaseData) => {
+      await onSubmit(databaseData);
+      dispatch(push("/setup/embedding/processing"));
+    },
+    [onSubmit, dispatch],
+  );
+
   return (
     <Stack gap="xl">
       <Stack gap="md">
@@ -28,7 +41,7 @@ export const DataConnectionStep = ({
       </Stack>
 
       <DatabaseForm
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         onEngineChange={() => {}}
         onCancel={() => {}}
       />

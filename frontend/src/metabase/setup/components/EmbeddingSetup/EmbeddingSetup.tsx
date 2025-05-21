@@ -1,26 +1,22 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setupEmbeddingSettings } from "metabase/setup/actions";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Table } from "metabase-types/api";
 
-import { DataConnectionStep } from "./steps/DataConnectionStep";
-import { FinalStep } from "./steps/FinalStep";
-import { ProcessingStep } from "./steps/ProcessingStep";
-import { WelcomeStep } from "./steps/WelcomeStep";
-
-type Step = "WELCOME" | "DATA_CONNECTION" | "PROCESSING" | "FINAL";
-
-const STEPS: Record<Step, Step> = {
-  WELCOME: "WELCOME",
-  DATA_CONNECTION: "DATA_CONNECTION",
-  PROCESSING: "PROCESSING",
-  FINAL: "FINAL",
+export const STEPS = {
+  WELCOME: "welcome",
+  DATA_CONNECTION: "data-connection",
+  PROCESSING: "processing",
+  FINAL: "final",
 } as const;
 
-export const EmbeddingSetup = () => {
-  const [currentStep, setCurrentStep] = useState<Step>(STEPS.WELCOME);
+type EmbeddingSetupProps = {
+  children: React.ReactNode;
+};
+
+export const EmbeddingSetup = ({ children }: EmbeddingSetupProps) => {
   const [database, setDatabase] = useState<DatabaseData | null>(null);
   const [processingStatus, setProcessingStatus] = useState("");
   const [sandboxingColumn, setSandboxingColumn] = useState<Table | null>(null);
@@ -29,7 +25,6 @@ export const EmbeddingSetup = () => {
   const dispatch = useDispatch();
 
   const handleDatabaseSubmit = async (databaseData: DatabaseData) => {
-    setCurrentStep(STEPS.PROCESSING);
     setProcessingStatus("Connecting to database...");
     setError("");
 
@@ -50,7 +45,6 @@ export const EmbeddingSetup = () => {
       setError(
         "Failed to connect to the database. Please check your settings and try again.",
       );
-      setCurrentStep(STEPS.DATA_CONNECTION);
       return;
     }
 
@@ -89,34 +83,20 @@ export const EmbeddingSetup = () => {
         "jwt-identity-provider-uri": window.location.origin,
       }),
     );
-
-    setCurrentStep(STEPS.FINAL);
   };
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case STEPS.WELCOME:
-        return (
-          <WelcomeStep onNext={() => setCurrentStep(STEPS.DATA_CONNECTION)} />
-        );
-      case STEPS.DATA_CONNECTION:
-        return (
-          <DataConnectionStep onSubmit={handleDatabaseSubmit} error={error} />
-        );
-      case STEPS.PROCESSING:
-        return <ProcessingStep status={processingStatus} />;
-      case STEPS.FINAL:
-        return database ? (
-          <FinalStep database={database} sandboxingColumn={sandboxingColumn} />
-        ) : null;
-      default:
-        return null;
-    }
+  const sharedProps = {
+    database,
+    processingStatus,
+    sandboxingColumn,
+    error,
+    onSubmit: handleDatabaseSubmit,
   };
 
   return (
     <Box p="xl" maw={800} mx="auto">
-      {renderStep()}
+      {children &&
+        React.cloneElement(children as React.ReactElement, sharedProps)}
     </Box>
   );
 };

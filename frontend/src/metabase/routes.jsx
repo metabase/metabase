@@ -103,6 +103,18 @@ export const getRoutes = (store) => {
         disableCommandPalette
       />
 
+      <Route
+        path="/setup/embedding/:step"
+        component={EmbeddingSetup}
+        onEnter={(nextState) => {
+          trackPageView(nextState.location.pathname);
+        }}
+        onChange={(prevState, nextState) => {
+          trackPageView(nextState.location.pathname);
+        }}
+        disableCommandPalette
+      />
+
       {/* APP */}
       <Route
         onEnter={async (nextState, replace, done) => {

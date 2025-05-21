@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { CodeSnippet } from "metabase/components/CodeSnippet";
@@ -54,10 +55,18 @@ function App() {
           <Text>
             {t`We detected a potential column for data sandboxing: ${sandboxingColumn.name}. You can use this to restrict data access for different users.`}
           </Text>
+          <Button
+            component={Link}
+            to="/admin/permissions"
+            variant="filled"
+            mt="md"
+          >
+            {t`Configure Permissions`}
+          </Button>
         </Box>
       )}
 
-      <Button size="lg" onClick={() => (window.location.href = "/")}>
+      <Button component={Link} to="/" size="lg" variant="filled">
         {t`Go to dashboard`}
       </Button>
     </Stack>
