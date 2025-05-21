@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
-import { Menu, Tooltip } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 
 import LegendActions from "./LegendActions";
 import {
@@ -90,6 +90,14 @@ export const LegendCaption = ({
       onMouseEnter={handleMouseEnter}
     >
       <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
+      {titleMenuItems && (
+        <Icon
+          style={{ flexShrink: 0, marginRight: 10 }}
+          name="chevrondown"
+          size={10}
+          className={CS.ml1}
+        />
+      )}
     </LegendLabel>
   );
 
