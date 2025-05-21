@@ -14,42 +14,11 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.signOut();
   });
 
-  it("should be able to retrieve the script tag source -- experimental", () => {
+  it("can find the embed.v1.js file", () => {
     cy.request("http://localhost:4000/app/embed.v1.js").then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body).to.be.a("string").and.not.be.empty;
     });
-  });
-
-  it("should load the iframe -- experimental", () => {
-    const dashboardId = ORDERS_DASHBOARD_ID;
-    const baseUrl = Cypress.config("baseUrl");
-
-    cy.get<string>("@apiKey")
-      .then((apiKey) => {
-        cy.log(`api key = ${apiKey}`);
-
-        Cypress.config("baseUrl", null);
-
-        cy.visit(
-          `e2e/test/scenarios/embedding/sdk-iframe-embedding/embedding-test.html?apiKey=${apiKey}&dashboardId=${dashboardId}`,
-        );
-
-        const iframe = cy
-          .get("iframe")
-          .should("be.visible")
-          .its("0.contentDocument")
-          .should("exist")
-          .its("body")
-          .should("not.be.empty");
-
-        iframe.within(() => {
-          cy.findByText("Metabase SDK").should("be.visible");
-        });
-      })
-      .then(() => {
-        Cypress.config("baseUrl", baseUrl);
-      });
   });
 
   it("displays a dashboard", () => {
