@@ -54,7 +54,6 @@ export const ConfigureEditableTableActions = ({
   const { enabledActions, enabledActionsMap } = useMemo(() => {
     const enabledActions =
       dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
-    debugger;
 
     const enabledActionsMap = enabledActions.reduce((result, item) => {
       result.set(item.id, item);
@@ -64,12 +63,7 @@ export const ConfigureEditableTableActions = ({
     return { enabledActions, enabledActionsMap };
   }, [dashcard.visualization_settings]);
 
-  // const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to optimize this
   const { data: actions } = useGetActionsQuery();
-  const tableActions = useMemo(
-    () => actions?.filter((action) => "table_id" in action),
-    [actions],
-  );
 
   const tableColumns = useMemo(() => {
     const fieldsWithRemmapedColumns = dashcard.card.result_metadata ?? [];
@@ -254,7 +248,7 @@ export const ConfigureEditableTableActions = ({
             action={editingAction}
             rowActionSettings={editingActionSetting}
             tableColumns={tableColumns}
-            tableActions={tableActions}
+            actions={actions}
             onSubmit={editingAction ? handleEditAction : handleAddAction}
             onClose={cancelEditAction}
           />

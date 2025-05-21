@@ -25,17 +25,21 @@ import CollapseSection from "metabase/components/CollapseSection";
 
 export function ActionPicker({
   models,
-  actions: modelActions,
-  editableActions = [],
+  actions,
   onClick,
   currentAction,
+  enableTableActions,
 }: {
   models: Card[];
   actions: WritebackAction[];
-  editableActions?: WritebackAction[];
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
+  enableTableActions?: boolean;
 }) {
+  const [tableActions, modelActions] = useMemo(
+    () => _.partition(actions, (action) => "table_id" in action),
+    [actions],
+  );
   const sortedModels =
     useMemo(
       () => models?.sort((a, b) => a.name.localeCompare(b.name)),
@@ -48,15 +52,20 @@ export function ActionPicker({
   );
 
   const actionsByTable = useMemo(
-    () => sortAndGroupTableActions(editableActions),
-    [editableActions],
+    () => sortAndGroupTableActions(tableActions),
+    [tableActions],
   );
 
+  // TODO: Think how to better handle all scenarios:
+  // - no actions
+  // - only model actions
+  // - only table actions
+  // - all actions
   const hasTwoActionGroups =
-    sortedModels.length > 0 && editableActions?.length > 0;
+    enableTableActions && sortedModels.length > 0 && tableActions?.length > 0;
 
   return (
-    <Stack gap="md" className={CS.scrollY}>
+    <Stack gap="md">
       {hasTwoActionGroups && (
         <>
           <Title order={4}>{t`Table actions`}</Title>
@@ -236,8 +245,5 @@ export const ConnectedActionPicker = _.compose(
       models: ["dataset"],
     }),
     listName: "models",
-  }),
-  Actions.loadList({
-    loadingAndErrorWrapper: false,
   }),
 )(ActionPicker);

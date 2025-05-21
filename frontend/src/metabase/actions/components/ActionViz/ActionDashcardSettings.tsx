@@ -31,6 +31,7 @@ import {
   isParameterHidden,
   isParameterRequired,
 } from "./utils";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -53,6 +54,7 @@ export function ActionDashcardSettings({
   setActionForDashcard,
 }: Props) {
   const action = dashcard.action;
+  const { data: actions } = useGetActionsQuery();
 
   const setAction = (newAction: WritebackAction) => {
     setActionForDashcard(dashcard, newAction);
@@ -87,7 +89,12 @@ export function ActionDashcardSettings({
     <ActionSettingsWrapper>
       <ActionSettingsLeft>
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
-        <ConnectedActionPicker currentAction={action} onClick={setAction} />
+        <ConnectedActionPicker
+          currentAction={action}
+          onClick={setAction}
+          actions={actions}
+          enableTableActions
+        />
       </ActionSettingsLeft>
       <ActionSettingsRight>
         {action ? (
