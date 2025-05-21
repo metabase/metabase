@@ -188,7 +188,6 @@ export function addDimensionColumnToCartesianChart(
 export function findColumnSlotForCartesianChart(
   {
     display,
-    columns,
     settings,
   }: Pick<
     VisualizerVizDefinitionWithColumns,
@@ -215,39 +214,7 @@ export function findColumnSlotForCartesianChart(
     }
   } else {
     if (isDimension(column) && !isMetric(column)) {
-      // Filtering out nulls as 'graph.dimensions' can be `[null]` sometimes
-      const ownDimensions = settings["graph.dimensions"]?.filter(Boolean) ?? [];
-      if (ownDimensions.length === 0) {
-        return "graph.dimensions";
-      } else {
-        const isCompatibleWithUsedColumns = columns.some((col) => {
-          if (isDate(col)) {
-            return isDate(column);
-          } else {
-            return col.id === column.id;
-          }
-        });
-        if (isCompatibleWithUsedColumns) {
-          return "graph.dimensions";
-        }
-
-        // Handles potential new dimensions that are not yet used in a chart
-        // For example, a chart could show several metrics over time (from different data sources)
-        // And each data source can have a "User → Source" column. This check ensure that
-        // dimensions are considered mappable in this case if they're present in every data source.
-        const isCompatibleWithUnusedColumns = Object.values(datasets).every(
-          (dataset) =>
-            dataset.data.cols.some((col) => {
-              if (isDate(col)) {
-                return isDate(column);
-              } else {
-                return col.id === column.id;
-              }
-            }),
-        );
-
-        return isCompatibleWithUnusedColumns ? "graph.dimensions" : undefined;
-      }
+      return "graph.dimensions";
     } else if (isMetric(column)) {
       return "graph.metrics";
     }

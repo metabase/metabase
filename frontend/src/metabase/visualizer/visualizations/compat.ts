@@ -108,43 +108,35 @@ function checkDimensionCompatibilityForCartesianCharts(
   const ownDimensions = ownColumns.filter(
     (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
   );
+  const dimensions = columns.filter(
+    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
+  );
 
   if (ownDimensions.length === 0) {
     return false;
   }
 
-  const ownOtherDimensions = ownDimensions.filter((col) => !isDate(col));
-  if (ownOtherDimensions.length > 0) {
-    const isCompatible = ownOtherDimensions.every((dimension) =>
-      columns.some((field) => dimension.id && field.id === dimension.id),
-    );
-    if (!isCompatible) {
-      return false;
-    }
-  }
-
-  const dimensions = columns.filter(
-    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
+  const [ownTimeDimensions, ownOtherDimensions] = _.partition(
+    ownDimensions,
+    (col) => isDate(col),
   );
   const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
     isDate(col),
   );
 
-  if (timeDimensions.length > 0) {
-    const isCompatible = ownColumns.some((field) => isDate(field));
-    if (!isCompatible) {
-      return false;
-    }
-  }
-
-  if (otherDimensions.length > 0) {
-    const isCompatible = otherDimensions.every((dimension) =>
-      ownColumns.some((field) => dimension.id && field.id === dimension.id),
+  if (ownTimeDimensions.length > 0) {
+    return columns.some((column) => isDate(column));
+  } else if (timeDimensions.length > 0) {
+    return false;
+  } else {
+    const ownDimensionsMatching = ownOtherDimensions.every(
+      (dimension) =>
+        dimension.id && columns.some((column) => column.id === dimension.id),
     );
-    if (!isCompatible) {
-      return false;
-    }
+    const dimensionMatching = otherDimensions.every(
+      (dimension) =>
+        dimension.id && ownColumns.some((column) => column.id === dimension.id),
+    );
+    return ownDimensionsMatching && dimensionMatching;
   }
-
-  return true;
 }
