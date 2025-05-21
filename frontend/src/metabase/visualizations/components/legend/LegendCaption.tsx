@@ -97,7 +97,7 @@ export const LegendCaption = ({
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
       {titleMenuItems ? (
-        <Menu shadow="md" width={200}>
+        <Menu>
           <Menu.Target>{titleElement}</Menu.Target>
           <Menu.Dropdown>{titleMenuItems}</Menu.Dropdown>
         </Menu>

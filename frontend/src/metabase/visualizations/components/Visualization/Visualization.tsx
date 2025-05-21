@@ -28,7 +28,7 @@ import {
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
-import { Icon, type IconName, type IconProps, Menu } from "metabase/ui";
+import { type IconName, type IconProps, Menu } from "metabase/ui";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -888,7 +888,6 @@ class Visualization extends PureComponent<
                                   nextCard: series.card,
                                 });
                               }}
-                              leftSection={<Icon name="external" aria-hidden />}
                             >
                               {series.card.name}
                             </Menu.Item>
