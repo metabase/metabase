@@ -370,7 +370,7 @@ describe("cartesian", () => {
   });
 
   describe("addColumnToCartesianChart", () => {
-    const dataSource = createDataSource("card", `entity_1`, "Card 1");
+    const dataSource = createDataSource("card", 1, "Card 1");
 
     const column1 = createMockDatetimeColumn({ id: 1, name: "CREATED_AT" });
     const column1Ref = createVisualizerColumnReference(dataSource, column1, []);
@@ -595,11 +595,11 @@ describe("cartesian", () => {
   });
 
   describe("removeColumnFromCartesianChart", () => {
-    const dataSource1 = createDataSource("card", `entity_1`, "Card 1");
+    const dataSource1 = createDataSource("card", 1, "Card 1");
     const metric1 = createMockNumericColumn({ id: 1, name: "count" });
     const dimension1 = createMockDatetimeColumn({ id: 2, name: "created_at" });
 
-    const dataSource2 = createDataSource("card", `entity_2`, "Card 2");
+    const dataSource2 = createDataSource("card", 2, "Card 2");
     const metric2 = createMockNumericColumn({ id: 3, name: "avg" });
     const dimension2 = createMockDatetimeColumn({ id: 4, name: "date" });
 
@@ -637,11 +637,7 @@ describe("cartesian", () => {
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_2"]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_2: [
-          {
-            sourceId: "card:entity_1",
-            name: "COLUMN_2",
-            originalName: "created_at",
-          },
+          { sourceId: "card:1", name: "COLUMN_2", originalName: "created_at" },
         ],
       });
       expect(state.settings).toEqual({
@@ -704,21 +700,13 @@ describe("cartesian", () => {
       ]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_2: [
-          {
-            sourceId: "card:entity_1",
-            name: "COLUMN_2",
-            originalName: "created_at",
-          },
+          { sourceId: "card:1", name: "COLUMN_2", originalName: "created_at" },
         ],
         COLUMN_3: [
-          { sourceId: "card:entity_2", name: "COLUMN_3", originalName: "avg" },
+          { sourceId: "card:2", name: "COLUMN_3", originalName: "avg" },
         ],
         COLUMN_4: [
-          {
-            sourceId: "card:entity_2",
-            name: "COLUMN_4",
-            originalName: "date",
-          },
+          { sourceId: "card:2", name: "COLUMN_4", originalName: "date" },
         ],
       });
       expect(state.settings).toEqual({
@@ -761,11 +749,7 @@ describe("cartesian", () => {
       expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
-          {
-            sourceId: "card:entity_1",
-            name: "COLUMN_1",
-            originalName: "count",
-          },
+          { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
         ],
       });
       expect(state.settings).toEqual({
@@ -828,21 +812,13 @@ describe("cartesian", () => {
       ]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
-          {
-            sourceId: "card:entity_1",
-            name: "COLUMN_1",
-            originalName: "count",
-          },
+          { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
         ],
         COLUMN_3: [
-          { sourceId: "card:entity_2", name: "COLUMN_3", originalName: "avg" },
+          { sourceId: "card:2", name: "COLUMN_3", originalName: "avg" },
         ],
         COLUMN_4: [
-          {
-            sourceId: "card:entity_2",
-            name: "COLUMN_4",
-            originalName: "date",
-          },
+          { sourceId: "card:2", name: "COLUMN_4", originalName: "date" },
         ],
       });
       expect(state.settings).toEqual({
@@ -865,15 +841,11 @@ describe("cartesian", () => {
         ],
         columnValuesMapping: {
           COLUMN_1: [
-            {
-              sourceId: "card:entity_1",
-              name: "COLUMN_1",
-              originalName: "Count",
-            },
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
           ],
           COLUMN_2: [
             {
-              sourceId: "card:entity_1",
+              sourceId: "card:1",
               name: "COLUMN_2",
               originalName: "Created At",
             },
@@ -901,7 +873,7 @@ describe("cartesian", () => {
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
-        createDataSource("card", `entity_2`, "Card 2"),
+        createDataSource("card", 2, "Card 2"),
       );
 
       expect(nextState.columns.map((col) => col.name)).toEqual([
@@ -913,10 +885,10 @@ describe("cartesian", () => {
       expect(nextState.columnValuesMapping).toEqual({
         ...state.columnValuesMapping,
         COLUMN_3: [
-          { sourceId: "card:entity_2", name: "COLUMN_3", originalName: "AVG" },
+          { sourceId: "card:2", name: "COLUMN_3", originalName: "AVG" },
         ],
         COLUMN_4: [
-          { sourceId: "card:entity_2", name: "COLUMN_4", originalName: "DATE" },
+          { sourceId: "card:2", name: "COLUMN_4", originalName: "DATE" },
         ],
       });
       expect(nextState.settings).toStrictEqual({
@@ -942,22 +914,18 @@ describe("cartesian", () => {
         ],
         columnValuesMapping: {
           COLUMN_1: [
-            {
-              sourceId: "card:entity_1",
-              name: "COLUMN_1",
-              originalName: "Count",
-            },
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
           ],
           COLUMN_2: [
             {
-              sourceId: "card:entity_1",
+              sourceId: "card:1",
               name: "COLUMN_2",
               originalName: "Created At",
             },
           ],
           COLUMN_3: [
             {
-              sourceId: "card:entity_1",
+              sourceId: "card:1",
               name: "COLUMN_3",
               originalName: "Category",
             },
@@ -1000,7 +968,7 @@ describe("cartesian", () => {
             ],
           },
         }),
-        createDataSource("card", `entity_2`, "Card 2"),
+        createDataSource("card", 2, "Card 2"),
       );
 
       expect(nextState.columns.map((col) => col.name)).toEqual([
@@ -1015,20 +983,16 @@ describe("cartesian", () => {
       expect(nextState.columnValuesMapping).toEqual({
         ...state.columnValuesMapping,
         COLUMN_4: [
-          { sourceId: "card:entity_2", name: "COLUMN_4", originalName: "AVG" },
+          { sourceId: "card:2", name: "COLUMN_4", originalName: "AVG" },
         ],
         COLUMN_5: [
-          { sourceId: "card:entity_2", name: "COLUMN_5", originalName: "MAX" },
+          { sourceId: "card:2", name: "COLUMN_5", originalName: "MAX" },
         ],
         COLUMN_6: [
-          { sourceId: "card:entity_2", name: "COLUMN_6", originalName: "DATE" },
+          { sourceId: "card:2", name: "COLUMN_6", originalName: "DATE" },
         ],
         COLUMN_7: [
-          {
-            sourceId: "card:entity_2",
-            name: "COLUMN_7",
-            originalName: "CATEGORY",
-          },
+          { sourceId: "card:2", name: "COLUMN_7", originalName: "CATEGORY" },
         ],
       });
       expect(nextState.settings).toStrictEqual({
@@ -1040,7 +1004,7 @@ describe("cartesian", () => {
   });
 
   describe("scatter bubble size", () => {
-    const dataSource = createDataSource("card", `entity_1`, "Card 1");
+    const dataSource = createDataSource("card", 1, "Card 1");
 
     const column1 = createMockNumericColumn({ id: 1, name: "count" });
     const column1Ref = createVisualizerColumnReference(dataSource, column1, []);
@@ -1071,7 +1035,7 @@ describe("cartesian", () => {
           {
             name: "COLUMN_1",
             originalName: "count",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
       });
@@ -1109,7 +1073,7 @@ describe("cartesian", () => {
           {
             name: "COLUMN_2",
             originalName: "sum",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
       });
@@ -1158,14 +1122,14 @@ describe("cartesian", () => {
           {
             name: "COLUMN_1",
             originalName: "count",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
         COLUMN_2: [
           {
             name: "COLUMN_2",
             originalName: "sum",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
       });
@@ -1209,7 +1173,7 @@ describe("cartesian", () => {
           {
             name: "COLUMN_1",
             originalName: "count",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
       });
@@ -1259,7 +1223,7 @@ describe("cartesian", () => {
           {
             name: "COLUMN_1",
             originalName: "count",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
       });
@@ -1311,14 +1275,14 @@ describe("cartesian", () => {
           {
             name: "COLUMN_1",
             originalName: "count",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
         COLUMN_2: [
           {
             name: "COLUMN_2",
             originalName: "sum",
-            sourceId: "card:entity_1",
+            sourceId: "card:1",
           },
         ],
       });

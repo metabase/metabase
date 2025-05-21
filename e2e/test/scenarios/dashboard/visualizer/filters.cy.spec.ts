@@ -19,13 +19,11 @@ describe("scenarios > dashboard > visualizer > filters", () => {
 
     H.createQuestion(PRODUCTS_COUNT_BY_CATEGORY, {
       idAlias: "productsCountByCategoryQuestionId",
-      entityIdAlias: "productsCountByCategoryQuestionEntityId",
       wrapId: true,
     });
 
     H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY, {
       idAlias: "productsAvgByCreatedAtQuestionId",
-      entityIdAlias: "productsAvgByCreatedAtQuestionEntityId",
       wrapId: true,
     });
   });

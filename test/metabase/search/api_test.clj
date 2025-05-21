@@ -122,11 +122,11 @@
   (cleaned-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "dataset test dataset", :model "dataset", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
                  :database_id true :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "metric test metric", :model "metric", :entity_id true :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
     (merge
      (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
@@ -398,7 +398,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card" :entity_id true :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
+                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
                          :display "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
@@ -870,7 +870,7 @@
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
-               (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable" :models "table"))))))))
+               (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
@@ -878,7 +878,7 @@
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "Foo Visible")]
-               (map #(dissoc % :entity_id) (search-request-data user :q "Foo"))))))))
+               (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
   (testing "You should be able to search by their display name"
@@ -886,7 +886,7 @@
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                 (map #(dissoc % :entity_id) (search-request-data user :q "Lancelot")))))))))
+                 (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
   (testing "You should be able to search by their description"
@@ -894,7 +894,7 @@
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                 (map #(dissoc % :entity_id) (search-request-data user :q "Lancelot")))))))))
+                 (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
@@ -902,7 +902,7 @@
       (mt/with-temp [:model/Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
-                 (map #(dissoc % :entity_id) (search-request-data user :q table-name :archived true)))))))))
+                 (search-request-data user :q table-name :archived true))))))))
 
 (deftest table-test-6
   (testing "*archived* tables should not appear in search results"
@@ -910,7 +910,7 @@
       (mt/with-temp [:model/Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
-                 (map #(dissoc % :entity_id) (search-request-data user :q table-name)))))))))
+                 (search-request-data user :q table-name))))))))
 
 (deftest table-test-7
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
@@ -919,7 +919,7 @@
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (binding [*search-request-results-database-id* db-id]
-                 (map #(dissoc % :entity_id) (search-request-data :rasta :q (:name table))))))))))
+                 (search-request-data :rasta :q (:name table)))))))))
 
 (deftest table-test-8
   (testing "you should be able to see a Table when the current user is a superuser"
@@ -928,7 +928,7 @@
       (mt/with-no-data-perms-for-all-users!
         (is (= 1
                (binding [*search-request-results-database-id* db-id]
-                 (count (map #(dissoc % :entity_id) (search-request-data :crowberto :q (:name table)))))))))))
+                 (count (search-request-data :crowberto :q (:name table))))))))))
 
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
@@ -943,7 +943,7 @@
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(default-table-search-row "RoundTable")]
                  (binding [*search-request-results-database-id* db-id]
-                   (map #(dissoc % :entity_id) (search-request-data user :q "RoundTable"))))))))))
+                   (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
@@ -954,7 +954,7 @@
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
-                         (map #(dissoc % :entity_id) (search-request-data :rasta :q "RoundTable"))))))))))
+                         (search-request-data :rasta :q "RoundTable")))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
