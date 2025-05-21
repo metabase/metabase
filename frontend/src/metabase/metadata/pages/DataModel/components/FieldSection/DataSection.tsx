@@ -13,6 +13,7 @@ import type { Field } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
 
+import S from "./DataSection.module.css";
 import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?component";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
@@ -44,18 +45,20 @@ export const DataSection = ({ field }: Props) => {
       <TextInput
         disabled
         label={t`Field name`}
-        rightSection={<Icon name="lock" />}
+        rightSection={<Icon name="lock" className={S.disabledInputIcon} />}
         rightSectionPointerEvents="none"
         value={field.name}
+        classNames={{ input: S.disabledInput }}
       />
 
       <Stack gap={0}>
         <TextInput
           disabled
           label={t`Data type`}
-          rightSection={<Icon name="lock" />}
+          rightSection={<Icon name="lock" className={S.disabledInputIcon} />}
           rightSectionPointerEvents="none"
           value={field.database_type}
+          classNames={{ input: S.disabledInput }}
         />
 
         {canCoerceFieldType(field) && (
