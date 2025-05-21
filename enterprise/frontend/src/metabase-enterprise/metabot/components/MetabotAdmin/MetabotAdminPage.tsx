@@ -1,26 +1,32 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { skipToken } from "metabase/api";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { color } from "metabase/lib/colors";
+import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Stack, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 import {
+  useDeleteMetabotEntitiesMutation,
   useListMetabotsEntitiesQuery,
   useListMetabotsQuery,
   useUpdateMetabotEntitiesMutation,
 } from "metabase-enterprise/api";
-import type { MetabotEntity, MetabotId } from "metabase-types/api";
+import type {
+  CollectionEssentials,
+  MetabotEntity,
+  MetabotId,
+} from "metabase-types/api";
 
-import { MetabotEntitiesTable } from "./MetabotEntityTable";
 import { useMetabotIdPath } from "./utils";
 
 export function MetabotAdminPage() {
@@ -34,11 +40,7 @@ export function MetabotAdminPage() {
             id="configure-metabot"
             title={t`Configure Metabot`}
             // eslint-disable-next-line no-literal-metabase-strings -- admin settings
-            description={t`Metabot is Metabase's AI agent. To help Metabot more easily find and focus on the data you care about most, select the models and metrics it should be able to use to create queries.`}
-          />
-          <SettingHeader
-            id="allow-metabot"
-            title={t`Items Metabot is allowed to use`}
+            description={t`Metabot is Metabase's AI agent. To help Metabot more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
           />
           <MetabotConfigurationPane metabotId={metabotId} />
         </Stack>
@@ -90,6 +92,7 @@ function MetabotConfigurationPane({
     metabotId ?? skipToken,
   );
   const [updateEntities] = useUpdateMetabotEntitiesMutation();
+  const [deleteEntity] = useDeleteMetabotEntitiesMutation();
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
@@ -100,16 +103,24 @@ function MetabotConfigurationPane({
     return <LoadingAndErrorWrapper loading />;
   }
 
+  const collection = entityList?.items?.[0];
+  const handleDelete = async () => {
+    if (collection) {
+      await deleteEntity({
+        metabotId,
+        entityModel: "collection",
+        entityId: collection.id,
+      });
+    }
+  };
+
   const handleAddEntity = async (
     newEntity: Pick<MetabotEntity, "model" | "id" | "name">,
   ) => {
-    const newItems = [...entityList.items, newEntity].map((item) =>
-      _.pick(item, "model", "id"),
-    );
-
+    handleDelete();
     const result = await updateEntities({
       id: metabotId,
-      entities: newItems,
+      entities: [_.pick(newEntity, "model", "id")],
     });
 
     if (result.error) {
@@ -121,34 +132,81 @@ function MetabotConfigurationPane({
     close();
   };
 
-  const itemCount = entityList?.items?.length ?? 0;
-
   return (
-    <Stack>
-      <Flex gap="md">
-        <Text fw="bold">
-          {ngettext(msgid`${itemCount} item`, `${itemCount} items`, itemCount)}
-        </Text>
-        <Text>{t`We recommend keeping this to no more than 30.`}</Text>
-      </Flex>
-      <Box>
-        <Button variant="filled" onClick={open}>
-          {t`Add items`}
+    <Box>
+      <SettingHeader id="allow-metabot" title={t`Collection Metabot can use`} />
+      <CollectionInfo collection={collection} />
+      <Flex gap="md" mt="md">
+        <Button onClick={open}>
+          {collection ? t`Pick a different Collection` : t`Pick a collection`}
         </Button>
-      </Box>
-      <MetabotEntitiesTable entities={entityList.items} />
+        {collection && (
+          <Button onClick={handleDelete}>
+            <Icon name="trash" />
+          </Button>
+        )}
+      </Flex>
       {isOpen && (
-        <QuestionPickerModal
+        <CollectionPickerModal
           title={t`Select items`}
-          models={["metric", "dataset"]}
+          value={{
+            id: collection?.id ?? null,
+            model: "collection",
+          }}
           onChange={(item) =>
             handleAddEntity(
-              item as Pick<MetabotEntity, "model" | "id" | "name">,
+              item as unknown as Pick<MetabotEntity, "model" | "id" | "name">,
             )
           }
           onClose={close}
+          options={{
+            showRootCollection: true,
+            showPersonalCollections: true,
+          }}
         />
       )}
-    </Stack>
+    </Box>
   );
 }
+
+function CollectionInfo({ collection }: { collection: MetabotEntity | null }) {
+  const { data: collectionInfo } = useGetCollectionQuery(
+    collection?.id ? { id: collection.id } : skipToken,
+  );
+
+  if (!collection || !collectionInfo) {
+    return null;
+  }
+
+  const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
+
+  return (
+    <Flex align="center" gap="sm" c="text-light" mb="sm">
+      {parent && (
+        <>
+          <CollectionDisplay collection={parent} />
+          <Text c="text-light" fw="bold">
+            /
+          </Text>
+        </>
+      )}
+      <CollectionDisplay collection={collectionInfo} />
+    </Flex>
+  );
+}
+
+const CollectionDisplay = ({
+  collection,
+}: {
+  collection: CollectionEssentials;
+}) => {
+  const icon = getIcon({ model: "collection", ...collection });
+  return (
+    <Flex align="center" gap="sm">
+      <Icon {...icon} color={color(icon.color ?? "brand")} />
+      <Text c="text-medium" fw="bold">
+        {collection.name}
+      </Text>
+    </Flex>
+  );
+};
