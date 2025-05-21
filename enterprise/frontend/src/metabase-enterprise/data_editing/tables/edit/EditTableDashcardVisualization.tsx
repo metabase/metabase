@@ -203,23 +203,27 @@ export const EditTableDashcardVisualization = ({
         <Text fw="bold">{title}</Text>
 
         <Group gap="sm" align="center">
-          <ActionIcon
-            size="md"
-            onClick={requestDeleteBulk}
-            disabled={shouldDisableActions || !selectedRowIndices.length}
-          >
-            <Icon
-              name="trash"
-              tooltip={
-                selectedRowIndices.length
-                  ? t`Delete`
-                  : t`Select rows for deletion`
-              }
-            />
-          </ActionIcon>
-          <Box h={rem(16)}>
-            <Divider orientation="vertical" h="100%" />
-          </Box>
+          {hasDeleteAction && (
+            <>
+              <ActionIcon
+                size="md"
+                onClick={requestDeleteBulk}
+                disabled={shouldDisableActions || !selectedRowIndices.length}
+              >
+                <Icon
+                  name="trash"
+                  tooltip={
+                    selectedRowIndices.length
+                      ? t`Delete`
+                      : t`Select rows for deletion`
+                  }
+                />
+              </ActionIcon>
+              <Box h={rem(16)}>
+                <Divider orientation="vertical" h="100%" />
+              </Box>
+            </>
+          )}
           <ActionIcon
             size="md"
             onClick={undo}
