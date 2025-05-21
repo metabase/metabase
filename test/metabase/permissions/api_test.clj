@@ -462,7 +462,3 @@
           (is (=? {:magic_group_type "all-external-users"
                    :name "All External Users"}
                   (get-magic-group "all-external-users"))))))))
-
-(mt/with-premium-features #{}
-  (mt/with-temporary-setting-values [use-tenants true]
-    (metabase.permissions.api/use-tenants)))
