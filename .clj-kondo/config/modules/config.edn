@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           public-sharing
            queries
            query-processor
            search
@@ -116,7 +117,6 @@
            api-routes
            classloader
            config
-           embedding
            events
            logger
            models
@@ -335,6 +335,7 @@
            channel
            collections
            config
+           embedding
            events
            lib
            lib-be
@@ -419,7 +420,8 @@
   {:api  #{metabase.embedding.api
            metabase.embedding.app-origins-sdk
            metabase.embedding.init
-           metabase.embedding.settings}
+           metabase.embedding.settings
+           metabase.embedding.validation}
    :uses #{analytics
            api
            config
@@ -540,7 +542,6 @@
    :uses #{lib
            models
            settings
-           task
            util}}
 
   logger
@@ -728,7 +729,8 @@
   public-sharing
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
-           metabase.public-sharing.init}
+           metabase.public-sharing.init
+           metabase.public-sharing.validation}
    :uses #{actions
            analytics
            api
@@ -787,6 +789,7 @@
            config
            content-verification
            dashboards
+           embedding
            events
            legacy-mbql
            lib
