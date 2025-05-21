@@ -14,7 +14,7 @@ import {
 } from "./pie";
 
 describe("pie", () => {
-  const dataSource = createDataSource("card", "1:1", "Q1");
+  const dataSource = createDataSource("card", 1, "Q1");
 
   const metricColumn = createMockNumericColumn({ id: 1, name: "count" });
   const metricColumnRef = createVisualizerColumnReference(
