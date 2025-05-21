@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -7140,7 +7139,8 @@ msgstr "Giá trị riêng biệt"
 #: frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts:22
 msgid "record"
 msgid_plural "records"
-msgstr[0] "bản ghi\n"
+msgstr[0] ""
+"bản ghi\n"
 "Số nhiều: các bản ghi"
 
 #: frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts:24
@@ -14015,7 +14015,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Bao gồm ID người dùng và băm truy vấn trong các truy vấn"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Điều này có thể hữu ích cho việc kiểm tra và gỡ lỗi, nhưng lại ngăn cơ sở dữ liệu lưu trữ kết quả và có thể làm tăng chi phí của bạn."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -16208,13 +16208,13 @@ msgstr "Đảm bảo thông tin xác thực cơ sở dữ liệu chính có quy�
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "Bạn đang kết nối Metabase với cơ sở dữ liệu {0} bằng thông tin đăng nhập của người dùng Redshift {1}. Để mạo danh hoạt động,  {2} phải là siêu người dùng trong Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "Bạn đang kết nối Metabase với cơ sở dữ liệu {0} bằng thông tin đăng nhập của người dùng Redshift {1}. Để mạo danh hoạt động, {2} phải là siêu người dùng trong Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} là người dùng cơ sở dữ liệu mà Metabase đang sử dụng để kết nối với cơ sở dữ liệu  {1} của bạn. Đảm bảo rằng {2} có quyền truy cập vào mọi thứ trong {3} mà tất cả các nhóm Metabase có thể cần quyền truy cập, vì tài khoản người dùng cơ sở dữ liệu đó là thứ Metabase sử dụng để đồng bộ hóa thông tin bảng."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} là người dùng cơ sở dữ liệu mà Metabase đang sử dụng để kết nối với cơ sở dữ liệu {1} của bạn. Đảm bảo rằng {2} có quyền truy cập vào mọi thứ trong {3} mà tất cả các nhóm Metabase có thể cần quyền truy cập, vì tài khoản người dùng cơ sở dữ liệu đó là thứ Metabase sử dụng để đồng bộ hóa thông tin bảng."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -19884,7 +19884,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "Máy chủ '' {0} '' không truy cập được"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Kiểu khớp cho chức năng tự động hoàn thành của trình soạn thảo truy vấn gốc. Có thể là \"chuỗi con\", \"tiền tố\" hoặc \"tắt\". Các phiên bản lớn hơn có thể gặp sự cố về hiệu suất khi khớp bằng chuỗi con, do đó có thể sử dụng chức năng khớp tiền tố hoặc tắt chức năng tự động hoàn thành."
 
 #: metabase/api/database.clj:629
@@ -20175,9 +20175,9 @@ msgstr "Địa chỉ của máy chủ SMTP xử lý email của bạn."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Số lượng người nhận tối đa, cộng lại từ tất cả các email, có thể được gửi mỗi giây.\n"
-"                Lưu ý rằng email cuối cùng được gửi trước khi đạt đến giới hạn có thể vượt quá giới hạn này nếu có nhiều người nhận."
+" Lưu ý rằng email cuối cùng được gửi trước khi đạt đến giới hạn có thể vượt quá giới hạn này nếu có nhiều người nhận."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -22019,7 +22019,7 @@ msgid "Stage {0} does not exist"
 msgstr "Giai đoạn {0} không tồn tại"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Tần suất chạy tác vụ id thực thể backfill tính bằng ms. Giá trị tối thiểu là 1000 và bất kỳ giá trị nào bằng hoặc dưới 0 sẽ vô hiệu hóa hoàn toàn tác vụ."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23270,11 +23270,13 @@ msgstr "Truy vấn cơ sở dữ liệu này yêu cầu cờ tính năng audit-a
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Bật phân tích sử dụng trường cho truy vấn. Điều này sẽ phân tích các trường được sử dụng trong truy vấn và lưu trữ chúng trong cơ sở dữ liệu ứng dụng\n"
-"    .\n\n"
-"    Tắt theo mặc định vì chúng tôi chưa có tính năng dành cho người dùng sử dụng dữ liệu này."
+" .\n"
+"\n"
+" Tắt theo mặc định vì chúng tôi chưa có tính năng dành cho người dùng sử dụng dữ liệu này."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -25982,4 +25984,947 @@ msgstr "Người dùng mua lại theo vùn"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 vùng theo doanh s"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Phạm vi ngày cố định…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Khoảng ngày tương đối…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Không thể bật định tuyến cơ sở dữ liệu nếu hành động mô hình và tính bền bỉ được bật."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Không thể bật định tuyến cơ sở dữ liệu nếu bật hành động mô hình."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Không thể bật định tuyến cơ sở dữ liệu nếu bật tính năng lưu trữ mô hình."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Không thể bật định tuyến cơ sở dữ liệu nếu bật tính năng tải lên cho cơ sở dữ liệu này."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Bạn phải thiết lập thuộc tính người dùng cho người dùng để tính năng này khả dụng"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Bạn phải chọn thuộc tính người dùng để kích hoạt định tuyến DB"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Bật tính năng X-Ray"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Lỗi khi bật tải lên"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Lỗi khi vô hiệu hóa tải lên"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Chúng tôi không thể tìm thấy bất kỳ sơ đồ nào"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Lọc theo nhiệm vụ"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Lọc theo trạng thái"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Bắt đầu"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Xem nhật ký"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Duyệt bộ sưu tập của bạn để tìm và thêm các câu hỏi hiện có."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Chỉnh sửa thứ tự cột"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Sau đó chọn một số liệu và nhiều cột để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Ví dụ: Số lượng đơn hàng được nhóm theo Năm và Danh mục sản phẩm"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Sau đó chọn một số liệu và một cột để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Ví dụ: Số lượng người dùng được nhóm theo Quốc gia"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Sau đó chọn hai hoặc nhiều số liệu và một hoặc hai cột để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Ví dụ: Số lượng đơn hàng và Xếp hạng trung bình được nhóm theo Năm"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "Biểu đồ phễu trực quan hóa cách giá trị được chia thành một loạt các bước và phần trăm thay đổi giữa các bước."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Sau đó chọn một số liệu tổng hợp (như Trung bình hoặc Tổng) và tùy chỉnh thước đo trong cài đặt trực quan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Ví dụ: Xếp hạng sao trung bình"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Sau đó chọn một hoặc nhiều số liệu và cột thời gian để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Ví dụ, Số lượng đơn hàng được nhóm theo Năm"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Xây dựng hình ảnh bản đồ bằng dữ liệu không gian địa lý: Bản đồ ghim và lưới yêu cầu các cột kinh độ và vĩ độ, bản đồ khu vực yêu cầu cột tên khu vực của Hoa Kỳ."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Ví dụ: Số lượng người dùng được nhóm theo Gói đăng ký"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Sau đó chọn một số liệu tổng hợp (như Trung bình hoặc Tổng) và nhiều cột để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Ví dụ: Số lượng đơn hàng được nhóm theo Tiểu bang, Năm và Danh mục sản phẩm"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Sau đó chọn một số liệu tổng hợp (như Đếm hoặc Tổng) và tùy chỉnh thanh tiến trình trong cài đặt trực quan hóa."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Ví dụ: Số lượng đơn hàng"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Ví dụ: Số lượng khách hàng được nhóm theo Tiểu bang"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "Biểu đồ Sankey cho thấy dữ liệu chảy qua các bước đa chiều như thế nào. Chúng hữu ích để hiển thị các thành phần nào, được gọi là nút, đóng góp vào luồng tổng thể."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Sau đó chọn một số liệu tổng hợp (chẳng hạn như Trung bình hoặc Tổng)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Sau đó chọn một số liệu và một số cột để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Ví dụ: Số lượng đơn hàng được nhóm theo Độ tuổi của khách hàng"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Sau đó chọn một số liệu tổng hợp (như Trung bình hoặc Tổng) và một cột thời gian để nhóm theo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Ví dụ: Số lượng đơn hàng được nhóm theo Tháng"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Sau đó chọn một số liệu và một cột để nhóm theo: thời gian hoặc danh mục."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Ví dụ Tổng doanh thu được nhóm theo Quốc gia"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Đang mong đợi toán tử nhưng lại nhận được {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "Cơ sở dữ liệu đích đã được tạo thành công"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "Cơ sở dữ liệu đích đã được cập nhật thành công"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Thêm cơ sở dữ liệu đích"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Chỉnh sửa cơ sở dữ liệu đích"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Bạn cũng có thể thêm cơ sở dữ liệu theo chương trình thông qua API."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Chưa có cơ sở dữ liệu đích nào được thêm vào"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Cơ sở dữ liệu đích"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Xóa cơ sở dữ liệu đích {0} ?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Người dùng được chuyển hướng đến cơ sở dữ liệu này sẽ mất quyền truy cập vào mọi câu hỏi, mô hình, số liệu và phân đoạn nếu bạn tiếp tục."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Sên"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase ánh xạ giá trị này vào thuộc tính người dùng bạn chọn để hoán đổi các truy vấn khi chạy"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Ví dụ người dùng chuyên nghiệp"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "Không tìm thấy email"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Liên kết Google không hợp lệ"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Toàn bộ thư mục"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Tờ đơn"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Chọn quyền **Người xem** và nhấp vào **Gửi**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Nếu lỗi vẫn tiếp diễn, bạn có thể tải xuống thông tin chẩn đoán"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Phím tắt"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Duyệt số liệu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Bảng điều khiển đánh dấu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Khi xem"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Thêm Bộ lọc"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Khi chỉnh sửa"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Thêm câu hỏi sổ tay"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Thêm Câu hỏi bản địa"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Hủy Sửa Bảng điều khiển"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Gửi tabboard vào thùng rác"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Chuyển đổi thông tin bảng điều khiển"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Chỉnh sửa bảng điều khiển"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Lưu bảng điều khiển"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Tạo một câu hỏi"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Tạo truy vấn gốc"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Tạo bảng điều khiển"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Tạo một bộ sưu tập"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Tạo một mô hình"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Tạo một số liệu"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Chuyển đổi phím tắt Modal"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Mở thùng rác"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Mở bộ sưu tập cá nhân"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Đi đến quản trị"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Đi đến cài đặt người dùng"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Đi về nhà"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Chuyển đổi sổ tay"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Mở thả xuống bộ lọc"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Mở thanh bên tóm tắt"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Đánh dấu câu hỏi"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Thông tin câu hỏi mở"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Lấy lại dữ liệu câu hỏi"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Chuyển đổi cài đặt hình ảnh"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Chuyển đổi các loại hình ảnh"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Gửi câu hỏi vào thùng rác"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Chuyển đổi một chuỗi thành số dấu phẩy động."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Cột chuỗi để chuyển đổi thành số thực."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Phải là nút gốc"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "Gốc phải có một con"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Tên kích thước không hợp lệ: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Giá trị trường trống"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Văn bản mã thông báo trống"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Nhóm phải có một đứa con"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Không có văn bản mã thông báo"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Toán tử không hợp lệ: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Đối số đầu tiên phải là một arglist"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Toán tử không xác định {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Mệnh đề biểu thức mong đợi"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Mệnh đề giá trị mong đợi"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Số hoặc chuỗi mong đợi"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Biểu hiện bất ngờ"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Đã bật định tuyến cơ sở dữ liệu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Đã cập nhật định tuyến cơ sở dữ liệu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Đã tắt định tuyến cơ sở dữ liệu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Định tuyến cơ sở dữ liệu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Khi ai đó xem một câu hỏi bằng dữ liệu từ cơ sở dữ liệu này, Metabase sẽ gửi các truy vấn đến cơ sở dữ liệu đích được thiết lập bởi thuộc tính người dùng của người đó. Mỗi cơ sở dữ liệu đích phải có một lược đồ giống hệt nhau."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Bật định tuyến cơ sở dữ liệu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Thuộc tính người dùng để khớp với cơ sở dữ liệu đích"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Thuộc tính này xác định cơ sở dữ liệu đích mà người đó có thể truy vấn. Giá trị phải khớp với slug của cơ sở dữ liệu đích."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Chọn một thuộc tính"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Vui lòng chọn thuộc tính người dùng trước"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "Trong Google Drive, nhấp chuột phải vào tệp và nhấp vào Chia sẻ"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Dán liên kết chia sẻ cho tập tin"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "Trong Google Drive, nhấp chuột phải vào tệp → Chia sẻ → Sao chép liên kết"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Nhập tập tin"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "Trong Google Drive, nhấp chuột phải vào thư mục và nhấp vào Chia sẻ"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Nhập thư mục"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Di chuyển các mục sưu tập vào thùng rác"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "Không thể bật tính năng duy trì mô hình nếu tính năng định tuyến cơ sở dữ liệu được bật."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Không thể bật hành động mô hình nếu định tuyến cơ sở dữ liệu được bật."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Cài đặt bảng"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Các loại bản phát hành cần kiểm tra"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Lỗi khi lưu URL trang web"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Url trang web"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabase {0} đã khả dụng. Bạn đang chạy {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Không có gì phù hợp với bộ lọc của bạn."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Lọc nhật ký"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Tải xuống dưới dạng PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Cho phép mọi người nhấp chuột để khám phá."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Tải xuống"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Xuất sang PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Kết quả (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Tải xuống (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Tìm kiếm theo {0} hoặc nhập ID"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "Thứ hai, thứ ba"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "Tháng 1, tháng 2"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Nhập: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} ví dụ minh họa biểu đồ"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Nhấp vào {0} ở góc trên bên phải. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "Không hỗ trợ nhúng {0} trong các hàm tổng hợp"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "{0} tuần tới"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "bắt đầu {0} giây kể từ bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "bắt đầu {0} phút trước"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Tháng này"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "{0} phút tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Mili giây tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "{0} quý tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Giờ tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "{0} năm tới"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Tiếp theo {0} giây"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Thứ hai này"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Tiếp theo {0} mili giây"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "Quý này"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "bắt đầu từ {0} tuần kể từ bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "bắt đầu từ {0} quý kể từ bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Mili giây này"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "bắt đầu từ {0} ngày trước"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Mili giây trước"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "{0} ngày trước"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "bắt đầu từ {0} phút nữa"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "{0} ngày tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "{0} tháng tới"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "bắt đầu từ {0} tháng trước"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "Năm sau"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "{0} quý trước"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Ngày mai"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "{0} giờ tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} năm trước"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "{0} tháng trước"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "Tuần tới"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Tháng tới"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "bắt đầu {0} giây trước"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Trước đó {0} mili giây"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "{0} giờ trước"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "Phút tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "bắt đầu ngay bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "Giờ này"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "Phút này"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Trước {0} giây"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "bắt đầu từ {0} ngày kể từ bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "bắt đầu từ {0} năm trước"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "bắt đầu từ {0} quý trước"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Tuần trước {0}"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "bắt đầu từ {0} mili giây trước"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Tuần này"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "bắt đầu từ {0} tuần trước"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "bắt đầu từ {0} năm sau"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Giây trước"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "bắt đầu từ {0} mili giây kể từ bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Trước {0} phút"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Đơn vị không xác định"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "Năm nay"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "bắt đầu từ {0} giờ trước"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Quý tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Giây tiếp theo"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "bắt đầu từ {0} tháng kể từ bây giờ"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "bắt đầu từ {0} giờ nữa"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Tần suất chạy các công việc id thực thể lấp đầy và id thực thể thoát tính bằng ms. Giá trị tối thiểu là 1000 và bất kỳ giá trị nào bằng hoặc dưới 0 sẽ vô hiệu hóa hoàn toàn công việc."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Loại trừ {0} lựa chọn"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Định tuyến cơ sở dữ liệu"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Lỗi định tuyến cơ sở dữ liệu: Không tìm thấy cơ sở dữ liệu đích có slug `{0}`."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Thuộc tính người dùng bắt buộc bị thiếu. Không thể định tuyến đến Cơ sở dữ liệu đích."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Người dùng ẩn danh không thể truy cập cơ sở dữ liệu khi bật tính năng định tuyến."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "URL không hợp lệ: {0}"
 

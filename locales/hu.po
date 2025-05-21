@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -8230,7 +8229,7 @@ msgstr "Jobb"
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/chart-definition.ts:74
 msgid "Justify"
-msgstr "Igazolja a  címet."
+msgstr "Igazolja a címet."
 
 #: frontend/src/metabase/visualizations/visualizations/SankeyChart/chart-definition.ts:82
 msgid "Show edge labels"
@@ -11659,7 +11658,7 @@ msgstr "Ha magát a modellt szeretné szerkeszteni, kattintson a modell hárompo
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.tsx:37
 msgid "It's okay to play around with metrics"
-msgstr "Rendben van ha játszani akarsz a  metrikákkal"
+msgstr "Rendben van ha játszani akarsz a metrikákkal"
 
 #: frontend/src/metabase/query_builder/components/SavedQuestionIntroModal.tsx:38
 msgid "You won't make any permanent changes to them unless you edit their query definition."
@@ -14054,7 +14053,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "A felhasználói azonosító és a lekérdezési hash belefoglalása a lekérdezésekbe"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Ez hasznos lehet az ellenőrzéshez és a hibakereséshez, de megakadályozza, hogy az adatbázisok gyorsítótárazzanak az eredményeket, és növelhetik a költségeket"
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -15313,12 +15312,12 @@ msgstr "Csoport Törlése"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:251
 msgid " (includes 1 API key)"
-msgstr "  (1 API-kulcsot tartalmaz)"
+msgstr " (1 API-kulcsot tartalmaz)"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:252
 #, javascript-format
 msgid " (includes {0} API keys)"
-msgstr "  ({0} API-kulcsot tartalmaz)"
+msgstr " ({0} API-kulcsot tartalmaz)"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:286
 msgid "Members"
@@ -16258,12 +16257,12 @@ msgstr "Győződjön meg arról, hogy a fő adatbázis hitelesítő adatok hozz�
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
 msgstr "A Metabase-t a(z) {0} adatbázishoz kapcsolja a Redshift felhasználó {1} hitelesítő adataival. Ahhoz, hogy a megszemélyesítés működjön, {2} szuperfelhasználónak kell lennie a Redshiftben."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
 msgstr "A(z) {0} adatbázis-felhasználó a Metabase csatlakozik a(z) {1} adatbázisához. Győződjön meg arról, hogy a(z) {2} mindenhez hozzáfér a(z) {3}-ban, amelyhez minden metabázis-csoportnak hozzá kell férnie, mivel ezt az adatbázis-felhasználói fiókot használja a Metabase a táblaadatok szinkronizálására."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
@@ -19952,7 +19951,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "A(z) ''{0}'' gazdagép nem elérhető"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Egyező stílus a natív lekérdezésszerkesztő automatikus kiegészítéséhez. Lehet \"alkarakterlánc\", \"előtag\" vagy \"kikapcsolva\". A nagyobb példányoknál teljesítményproblémák adódhatnak a részkarakterlánc használatával történő egyeztetéssel, ezért használhatnak előtagegyeztetést, vagy kikapcsolhatják az automatikus kiegészítést."
 
 #: metabase/api/database.clj:629
@@ -20251,7 +20250,7 @@ msgstr "Az e-mailjeit kezelő SMTP szerver címe."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Az egy másodperc alatt küldhető címzettek maximális száma, az e-mailek között összesítve.\n"
 "Megjegyzés: Az utolsó e-mail, amely a határ elérése előtt kerül elküldésre, túllépheti azt, ha több címzettet tartalmaz."
 
@@ -22101,7 +22100,7 @@ msgid "Stage {0} does not exist"
 msgstr "A(z) {0} szakasz nem létezik"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "A háttérkitöltési entitásazonosítók feladat futtatásának gyakorisága ms-ban. A minimális érték 1000, és a 0 vagy annál kisebb érték teljesen letiltja a munkát."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23352,11 +23351,13 @@ msgstr "Ennek az adatbázisnak a lekérdezéséhez szükség van az audit-app sz
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "A lekérdezések mezőhasználati elemzésének engedélyezése. Ez elemzi a lekérdezésekben használt mezőket, és tárolja azokat a\n"
-"    alkalmazásadatbázisban.\n\n"
-"    Alapértelmezés szerint kapcsolja ki, mivel még nem volt olyan felhasználóbarát szolgáltatásunk, amely ezeket az adatokat használja."
+" alkalmazásadatbázisban.\n"
+"\n"
+" Alapértelmezés szerint kapcsolja ki, mivel még nem volt olyan felhasználóbarát szolgáltatásunk, amely ezeket az adatokat használja."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -26068,4 +26069,983 @@ msgstr "Felhasználók szerzése országonként"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "A 10 legjobb ország eladások szerint"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Rögzített dátumtartomány…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Relatív dátumtartomány…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Az adatbázis-útválasztás nem engedélyezhető, ha a modellműveletek és a perzisztencia engedélyezett."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Az adatbázis-útválasztás nem engedélyezhető, ha a modellműveletek engedélyezve vannak."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Az adatbázis-útválasztás nem engedélyezhető, ha a modellperzisztencia engedélyezve van."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Az adatbázis-útválasztás nem engedélyezhető, ha a feltöltés engedélyezve van ehhez az adatbázishoz."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Ahhoz, hogy ez a funkció elérhető legyen, be kell állítania a felhasználók felhasználói attribútumait"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "A DB-útválasztás engedélyezéséhez ki kell választania egy felhasználói attribútumot"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Engedélyezze a röntgenfunkciókat"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Hiba a feltöltés engedélyezésekor"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Hiba a feltöltések letiltásakor"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Nem találtunk semmilyen sémát"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Szűrés feladat szerint"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Szűrés állapot szerint"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Elindult"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Lásd a naplókat"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Böngésszen a gyűjtemények között a meglévő kérdések kereséséhez és hozzáadásához."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Oszlopsorrend szerkesztése"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Ezután válasszon egy mutatót és több oszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Pl. a rendelések száma év és termékkategória szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Ezután válasszon egy mutatót és egy oszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Pl. a felhasználók száma ország szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Ezután válasszon két vagy több mutatót és egy vagy két oszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Pl. a rendelések száma és az átlagos értékelés év szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "A tölcsérdiagramok azt szemléltetik, hogy egy érték hogyan oszlik fel lépések sorozatával, és hogyan változik a lépések között a százalékos változás."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Ezután válasszon egy összesített mérőszámot (például Átlag vagy Összeg), és szabja testre a mérőeszközt a megjelenítési beállításokban."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Pl. Átlagos csillagos értékelés"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Ezután válasszon egy vagy több mutatót és egy időoszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Pl. a rendelések száma év szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Térkép-vizualizációk készítése térinformatikai adatokkal: A Pin és Grid térképekhez hosszúsági és szélességi oszlopokat, a régiótérképekhez pedig az egyesült államokbeli régiónevek oszlopot kell megadni."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Pl. a felhasználók száma előfizetési csomag szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Ezután válasszon egy összesített mérőszámot (például Átlag vagy Összeg) és több oszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Pl. a rendelések száma állam, év és termékkategória szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Ezután válasszon egy összesített mérőszámot (például Szám vagy Összeg), és szabja testre a folyamatjelző sávot a megjelenítési beállításokban."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Pl. Megrendelések száma"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Pl. Ügyfelek száma állam szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "A Sankey-diagramok azt mutatják, hogy az adatok hogyan áramlanak többdimenziós lépéseken keresztül. Hasznosak annak bemutatására, hogy mely elemek, az úgynevezett csomópontok járulnak hozzá a teljes folyamathoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Ezután válasszon egy összesített mutatót (például Átlag vagy Összeg)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Ezután válasszon egy mutatót és egy számoszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Pl. Megrendelések száma Vevő életkora szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Ezután válasszon egy összesített mutatót (például az Átlag vagy az Összeg) és egy időoszlopot a csoportosításhoz."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Pl. a rendelések száma hónapok szerint csoportosítva"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Ezután válasszon egy mutatót és egyetlen oszlopot a csoportosításhoz: idő vagy kategória."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Pl. Bevételek összege ország szerint csoportosítva"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Operátort várt, de helyette {0} lett"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "A cél adatbázis sikeresen létrehozva"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "A cél adatbázis sikeresen frissítve"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Cél adatbázis hozzáadása"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Cél adatbázis szerkesztése"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Az API-n keresztül programozottan is hozzáadhat adatbázisokat."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Még nincs hozzáadott céladatbázis"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Úticél adatbázisok"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Törli a {0} céladatbázist?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Az ehhez az adatbázishoz irányított felhasználók elveszítik hozzáférésüket minden kérdéshez, modellhez, mutatóhoz és szegmenshez, ha folytatja."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Meztelen csiga"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "A metabázis leképezi ezt az értéket a kiválasztott felhasználói attribútumhoz, hogy a lekérdezéseket futás közben felcserélje"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Pl. felhasználóbarátok"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-mail nem található"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Érvénytelen Google link"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "A teljes mappa"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Egyetlen lap"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Válassza ki a **Viewer** engedélyeket, majd kattintson a **Küldés** gombra."
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Ha a hiba továbbra is fennáll, letöltheti a diagnosztikai információkat"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Gyorsbillentyűk"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Tallózás a mutatók között"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Könyvjelző műszerfal"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Megtekintéskor"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Szűrő hozzáadása"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Szerkesztéskor"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Jegyzetfüzet-kérdés hozzáadása"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Natív kérdés hozzáadása"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Mégsem az Irányítópult szerkesztését"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Irányítópult küldése a kukába"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Az irányítópult információinak váltása"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Irányítópult szerkesztése"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Irányítópult mentése"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Hozz létre egy kérdést"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Hozzon létre egy natív lekérdezést"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Hozzon létre egy irányítópultot"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Hozzon létre egy gyűjteményt"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Hozzon létre egy modellt"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Hozzon létre egy mérőszámot"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Parancsikonok mód váltása"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Nyissa meg a szemetet"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Nyissa meg a személyes gyűjteményt"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Menj az adminisztrátorhoz"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Menjen a felhasználói beállításokhoz"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Menj haza"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Jegyzetfüzet váltása"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Nyissa meg a szűrő legördülő menüjét"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Nyissa meg az összefoglaló oldalsávot"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Könyvjelző kérdés"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Nyitott kérdés információ"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Kérdezze vissza a kérdés adatait"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Váltás a viz beállítások között"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Válts viz típusokat"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Kérdés küldése a kukába"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "A karakterláncot lebegőpontos számmá alakítja."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "A lebegővé konvertálandó karakterlánc oszlop."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Gyökér csomópontnak kell lennie"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "A gyökérnek egy gyermeke kell legyen"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Érvénytelen dimenziónév: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Üres mező értéke"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Üres token szöveg"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "A csoportnak egy gyermeknek kell lennie"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Nincs token szöveg"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Érvénytelen operátor: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Az első argumentumnak egy arglistnak kell lennie"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Ismeretlen operátor {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Várható kifejezési záradék"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Várható érték záradék"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Várt szám vagy karakterlánc"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Váratlan kifejezés"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Adatbázis-útválasztás engedélyezve"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Adatbázis-útválasztás frissítve"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Adatbázis-útválasztás letiltva"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Adatbázis-útválasztás"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Amikor valaki megtekint egy kérdést az adatbázisból származó adatok felhasználásával, a Metabase elküldi a lekérdezéseket a személy felhasználói attribútuma által beállított céladatbázisba. Minden céladatbázisnak azonos sémával kell rendelkeznie."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Adatbázis-útválasztás engedélyezése"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Felhasználói attribútum a céladatbázishoz"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Ez az attribútum határozza meg, hogy a személy melyik céladatbázist kérdezheti le. Az értéknek meg kell egyeznie a céladatbázis slugjával."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Válasszon egy attribútumot"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Kérjük, először válasszon egy felhasználói attribútumot"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "A Google Drive-ban kattintson a jobb gombbal a fájlra, majd kattintson a Megosztás parancsra"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Illessze be a fájl megosztási hivatkozását"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "A Google Drive-ban kattintson a jobb gombbal a fájlra → Megosztás → Hivatkozás másolása"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Fájl importálása"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "A Google Drive-ban kattintson a jobb gombbal a mappára, majd kattintson a Megosztás parancsra"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Mappa importálása"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "A gyűjtemény elemeinek áthelyezése a kukába"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "A modell perzisztenciája nem engedélyezhető, ha az adatbázis-útválasztás engedélyezve van."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "A modellműveletek nem engedélyezhetők, ha az adatbázis-útválasztás engedélyezve van."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Táblázat beállítások"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Az ellenőrizendő kiadások típusai"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Hiba a webhely URL-jének mentésekor"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Webhely URL-je"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "A {0} metabázis elérhető. A {1}programot futtatod."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Semmi sem felel meg a szűrőknek."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Szűrőnaplók"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Letöltés PDF formátumban"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Hagyja, hogy az emberek kattintsanak a felfedezéshez."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Letöltések"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Exportálás PDF-be"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Eredmények (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Letöltés (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Keressen {0} szerint, vagy írjon be egy azonosítót"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "hétfő, kedd"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "jan., febr"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Írja be: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} diagramminta illusztráció"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Kattintson a {0} elemre a jobb felső sarokban. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "A {0} beágyazása az összesítő függvényekbe nem támogatott"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Következő {0} hét"
+msgstr[1] "Következő {0} hét"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "{0} másodperctől kezdve"
+msgstr[1] "{0} másodperctől kezdve"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "{0} perccel ezelőtt kezdődik"
+msgstr[1] "{0} perccel ezelőtt kezdődik"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Ebben a hónapban"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Következő {0} perc"
+msgstr[1] "Következő {0} perc"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Következő ezredmásodperc"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Következő {0} negyedév"
+msgstr[1] "Következő {0} negyedév"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Következő óra"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Következő {0} évben"
+msgstr[1] "Következő {0} év"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Következő {0} másodperc"
+msgstr[1] "Következő {0} másodperc"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Ezt a másodikat"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Következő {0} ezredmásodperc"
+msgstr[1] "Következő {0} ezredmásodperc"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "Ebben a negyedévben"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "{0} hét múlva"
+msgstr[1] "{0} hét múlva kezdődik"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "{0} negyedévtől kezdődően"
+msgstr[1] "{0} negyedévtől kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Ez az ezredmásodperc"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "{0} napja kezdődően"
+msgstr[1] "{0} napja kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Előző ezredmásodperc"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Előző {0} nap"
+msgstr[1] "Előző {0} nap"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "{0} perctől kezdődően"
+msgstr[1] "{0} perc múlva kezdődik"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Következő {0} nap"
+msgstr[1] "Következő {0} nap"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Következő {0} hónap"
+msgstr[1] "Következő {0} hónap"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "{0} hónapja kezdődően"
+msgstr[1] "{0} hónapja kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "Jövőre"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Előző {0} negyedév"
+msgstr[1] "Előző {0} negyedév"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Holnap"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Következő {0} óra"
+msgstr[1] "Következő {0} óra"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Előző {0} év"
+msgstr[1] "Előző {0} év"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Előző {0} hónap"
+msgstr[1] "Előző {0} hónap"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "Jövő héten"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Következő hónapban"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "kezdődő {0} másodperce"
+msgstr[1] "{0} másodperccel ezelőtt"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Előző {0} ezredmásodperc"
+msgstr[1] "Előző {0} ezredmásodperc"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Előző {0} óra"
+msgstr[1] "Előző {0} óra"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "A következő percben"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "most kezdődik"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "Ez az óra"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "Ebben a percben"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Előző {0} másodperc"
+msgstr[1] "Előző {0} másodperc"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "{0} naptól kezdődően"
+msgstr[1] "{0} nap múlva kezdődik"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "{0} éve kezdődően"
+msgstr[1] "{0} évvel ezelőtt kezdődött"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "{0} negyedévvel ezelőtt kezdődően"
+msgstr[1] "{0} negyedévvel ezelőtt kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Előző {0} hét"
+msgstr[1] "Előző {0} hét"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "{0} ezredmásodperce óta kezdődik"
+msgstr[1] "{0} ezredmásodperccel ezelőtt"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Ezen a héten"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "{0} héttel ezelőtt kezdődött"
+msgstr[1] "{0} héttel ezelőtt kezdődött"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "{0} év múlva kezdődően"
+msgstr[1] "{0} év múlva kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Előző második"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "{0} ezredmásodperccel kezdődően"
+msgstr[1] "{0} ezredmásodperccel kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Előző {0} perc"
+msgstr[1] "Előző {0} perc"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Ismeretlen egység"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "Idén"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "{0} órája kezdődően"
+msgstr[1] "{0} órája kezdődően"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Következő negyedév"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Következő másodperc"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "{0} hónap múlva kezdődően"
+msgstr[1] "{0} hónap múlva kezdődik"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "{0} óra múlva kezdődik"
+msgstr[1] "{0} óra múlva kezdődik"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "A háttérkitöltési entitásazonosítók és leürítési entitásazonosítók feladatok futtatásának gyakorisága ms-ban. A minimális érték 1000, és a 0 vagy annál kisebb érték teljesen letiltja a munkát."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "{0} kiválasztás kizárása"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Adatbázis-útválasztás"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Adatbázis-útválasztási hiba: Nem található `{0}` slug-mal rendelkező céladatbázis."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "A kötelező felhasználói attribútum hiányzik. Nem lehet irányítani egy céladatbázishoz."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "A névtelen felhasználók nem férhetnek hozzá az adatbázishoz, ha az útválasztás engedélyezve van."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "Érvénytelen URL: {0}"
 

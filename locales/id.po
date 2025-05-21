@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -832,7 +831,8 @@ msgstr[0] "{0} Tabel Tersembunyi"
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
 msgid "{0} Queryable Table"
 msgid_plural "{0} Queryable Tables"
-msgstr[0] "{0} Tabel Kueri\n"
+msgstr[0] ""
+"{0} Tabel Kueri\n"
 "Jamak: {0} Tabel Kueri"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
@@ -6727,7 +6727,8 @@ msgstr[0] "{0} model"
 #, javascript-format
 msgid "{0} schema"
 msgid_plural "{0} schemas"
-msgstr[0] "{0} skema\n"
+msgstr[0] ""
+"{0} skema\n"
 "Plural: {0} skema"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:33
@@ -14016,7 +14017,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Sertakan ID Pengguna dan Hash Query dalam kueri"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Hal ini dapat berguna untuk audit dan debugging, tetapi mencegah basis data menyimpan hasil dalam cache dan dapat meningkatkan biaya Anda."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -15290,7 +15291,8 @@ msgstr "Anda bisa menggunakan grup untuk mengendalikan akses data pengguna Anda.
 #, javascript-format
 msgid "{0} other group"
 msgid_plural "{0} other groups"
-msgstr[0] "{0} grup lain\n"
+msgstr[0] ""
+"{0} grup lain\n"
 "Jamak: {0} grup lain"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:40
@@ -16212,13 +16214,13 @@ msgstr "Pastikan kredensial basis data utama memiliki akses ke semua hal yang mu
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "Anda menghubungkan Metabase ke database {0} menggunakan kredensial untuk pengguna Redshift {1}. Agar peniruan identitas dapat berfungsi,  {2} harus menjadi pengguna super di Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "Anda menghubungkan Metabase ke database {0} menggunakan kredensial untuk pengguna Redshift {1}. Agar peniruan identitas dapat berfungsi, {2} harus menjadi pengguna super di Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} adalah pengguna basis data yang digunakan Metabase untuk terhubung ke basis data  {1} Anda. Pastikan bahwa {2} memiliki akses ke semua hal di {3} yang mungkin perlu diakses oleh semua grup Metabase, karena akun pengguna basis data itulah yang digunakan Metabase untuk menyinkronkan informasi tabel."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} adalah pengguna basis data yang digunakan Metabase untuk terhubung ke basis data {1} Anda. Pastikan bahwa {2} memiliki akses ke semua hal di {3} yang mungkin perlu diakses oleh semua grup Metabase, karena akun pengguna basis data itulah yang digunakan Metabase untuk menyinkronkan informasi tabel."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -19889,7 +19891,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "Host '' {0} '' tidak dapat dijangkau"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Gaya yang cocok untuk pelengkapan otomatis editor kueri asli. Dapat berupa \"substring\", \"prefix\", atau \"off\". Instance yang lebih besar dapat memiliki masalah kinerja yang cocok dengan penggunaan substring, sehingga dapat menggunakan pencocokan prefiks, atau menonaktifkan pelengkapan otomatis."
 
 #: metabase/api/database.clj:629
@@ -20180,9 +20182,9 @@ msgstr "Alamat server SMTP yang menangani email Anda."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Jumlah maksimum penerima, dijumlahkan semua email, yang dapat dikirim per detik.\n"
-"                Perlu diketahui bahwa email terakhir yang dikirim sebelum mencapai batas dapat melampauinya, jika memiliki beberapa penerima."
+" Perlu diketahui bahwa email terakhir yang dikirim sebelum mencapai batas dapat melampauinya, jika memiliki beberapa penerima."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -22024,7 +22026,7 @@ msgid "Stage {0} does not exist"
 msgstr "Tahap {0} tidak ada"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Frekuensi untuk menjalankan pekerjaan backfill entity ids dalam ms. Nilai minimum adalah 1000, dan nilai apa pun pada atau di bawah 0 akan menonaktifkan pekerjaan sepenuhnya."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23275,11 +23277,13 @@ msgstr "Menanyakan database ini memerlukan fitur tanda audit-app"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Aktifkan analisis penggunaan bidang untuk kueri. Ini akan menganalisis bidang yang digunakan dalam kueri dan menyimpannya dalam basis data aplikasi\n"
-"    .\n\n"
-"    Nonaktifkan secara default karena kami belum memiliki fitur yang dapat diakses pengguna yang menggunakan data ini."
+" .\n"
+"\n"
+" Nonaktifkan secara default karena kami belum memiliki fitur yang dapat diakses pengguna yang menggunakan data ini."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -25988,4 +25992,947 @@ msgstr "Akuisisi pengguna berdasarkan negara"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 negara teratas dengan penjualan"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Rentang tanggal tetap…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Rentang tanggal relatif…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Perutean basis data tidak dapat diaktifkan jika tindakan model dan persistensi diaktifkan."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Perutean basis data tidak dapat diaktifkan jika tindakan model diaktifkan."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Perutean basis data tidak dapat diaktifkan jika persistensi model diaktifkan."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Perutean basis data tidak dapat diaktifkan jika unggahan diaktifkan untuk basis data ini."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Anda harus mengatur atribut pengguna pada pengguna agar fitur ini tersedia"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Anda harus memilih atribut pengguna untuk mengaktifkan perutean DB"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Aktifkan Fitur Sinar-X"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Terjadi kesalahan saat mengaktifkan unggahan"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Terjadi kesalahan saat menonaktifkan unggahan"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Kami tidak dapat menemukan skema apa pun"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Filter berdasarkan tugas"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Filter berdasarkan status"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Dimulai"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Lihat log"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Telusuri koleksi Anda untuk menemukan dan menambahkan pertanyaan yang ada."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Edit urutan kolom"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Lalu pilih metrik dan beberapa kolom untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Misalnya, Jumlah pesanan dikelompokkan berdasarkan Tahun dan Kategori Produk"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Lalu pilih metrik dan kolom untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Misalnya, Jumlah pengguna dikelompokkan berdasarkan Negara"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Lalu pilih dua atau lebih metrik dan satu atau dua kolom untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Misalnya, Jumlah pesanan dan Peringkat rata-rata dikelompokkan berdasarkan Tahun"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "Bagan corong memvisualisasikan bagaimana suatu nilai dipecah berdasarkan serangkaian langkah dan persentase perubahan antar langkah."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Lalu pilih metrik agregat (misalnya Rata-rata atau Jumlah) dan sesuaikan pengukur dalam pengaturan visualisasi."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Misalnya Peringkat bintang rata-rata"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Lalu pilih satu atau lebih metrik dan kolom waktu untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Misalnya, Jumlah pesanan dikelompokkan berdasarkan Tahun"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Membangun visualisasi peta dengan data geospasial: Peta Pin dan Grid memerlukan kolom bujur dan lintang, Peta wilayah memerlukan kolom nama wilayah AS."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Misalnya, Jumlah pengguna dikelompokkan berdasarkan paket Langganan"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Lalu pilih metrik agregat (misalnya Rata-rata atau Jumlah) dan beberapa kolom untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Misalnya Jumlah pesanan dikelompokkan berdasarkan Negara Bagian, Tahun, dan Kategori Produk"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Kemudian pilih metrik agregat (misalnya Jumlah atau Jumlah) dan sesuaikan bilah kemajuan dalam pengaturan visualisasi."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Misalnya Jumlah Pesanan"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Misalnya, Jumlah pelanggan dikelompokkan berdasarkan Negara Bagian"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "Bagan Sankey menunjukkan bagaimana data mengalir melalui langkah-langkah multidimensi. Bagan ini berguna untuk menunjukkan elemen mana, yang disebut node, yang berkontribusi pada keseluruhan aliran."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Lalu pilih metrik agregat (seperti Rata-rata atau Jumlah)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Lalu pilih metrik dan jumlah kolom untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Misalnya Jumlah pesanan dikelompokkan berdasarkan usia Pelanggan"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Lalu pilih metrik agregat (seperti Rata-rata atau Jumlah) dan kolom waktu untuk dikelompokkan."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Misalnya Jumlah pesanan dikelompokkan berdasarkan Bulan"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Lalu pilih metrik dan satu kolom untuk dikelompokkan: waktu atau kategori."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Misalnya Jumlah pendapatan dikelompokkan berdasarkan Negara"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Mengharapkan operator tetapi malah mendapat {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "Database tujuan berhasil dibuat"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "Basis data tujuan berhasil diperbarui"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Tambahkan database tujuan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Edit basis data tujuan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Anda juga dapat menambahkan basis data secara terprogram melalui API."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Belum ada database tujuan yang ditambahkan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Basis data tujuan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Hapus basis data tujuan {0} ?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Pengguna yang diarahkan ke basis data ini akan kehilangan akses ke setiap pertanyaan, model, metrik, dan segmen jika Anda melanjutkan."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Siput"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase memetakan nilai ini ke atribut pengguna yang Anda pilih untuk menukar kueri saat runtime"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Misalnya pro-pengguna"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "Email tidak ditemukan"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Tautan Google tidak valid"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Seluruh folder"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Lembar Tunggal"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Pilih izin **Viewer**, lalu klik **Kirim**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Jika kesalahan masih berlanjut, Anda dapat mengunduh informasi diagnostik"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Jalan Pintas"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Telusuri Metrik"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Dasbor Penanda Buku"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Saat melihat"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Tambahkan Filter"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Saat mengedit"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Tambahkan Pertanyaan Buku Catatan"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Tambahkan Pertanyaan Asli"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Batal Edit Dasbor"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Kirim papan tugas ke tempat sampah"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Alihkan Info Dasbor"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Edit Dasbor"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Simpan Dasbor"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Buat pertanyaan"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Buat kueri asli"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Buat dasbor"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Buat koleksi"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Membuat model"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Buat metrik"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Beralih Pintasan Modal"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Tempat sampah terbuka"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Koleksi pribadi terbuka"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Pergi ke admin"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Buka pengaturan pengguna"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Pergi ke rumah"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Alihkan Buku Catatan"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Buka menu tarik-turun filter"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Buka bilah sisi ringkasan"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Tandai Pertanyaan"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Info pertanyaan terbuka"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Ambil ulang data pertanyaan"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Beralih pengaturan viz"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Beralih jenis viz"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Kirim pertanyaan ke tempat sampah"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Mengonversi string menjadi angka floating-point."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Kolom string yang akan diubah menjadi float."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Harus berupa simpul akar"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "Root harus memiliki satu anak"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Nama dimensi tidak valid: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Nilai bidang kosong"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Teks token kosong"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Grup harus memiliki satu anak"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Tidak ada teks token"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Operator tidak valid: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Argumen pertama harus berupa arglist"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Operator tidak dikenal {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Klausa ekspresi yang diharapkan"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Klausul nilai yang diharapkan"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Angka atau string yang diharapkan"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Ekspresi yang tak terduga"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Perutean basis data diaktifkan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Perutean basis data diperbarui"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Perutean basis data dinonaktifkan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Perutean basis data"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Bila seseorang melihat pertanyaan menggunakan data dari basis data ini, Metabase akan mengirim pertanyaan ke basis data tujuan yang ditetapkan berdasarkan atribut pengguna orang tersebut. Setiap basis data tujuan harus memiliki skema yang identik."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Aktifkan perutean basis data"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Atribut pengguna untuk mencocokkan database tujuan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Atribut ini menentukan basis data tujuan yang dapat diakses oleh orang tersebut. Nilainya harus sesuai dengan slug basis data tujuan."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Pilih atribut"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Silakan pilih atribut pengguna terlebih dahulu"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "Di Google Drive, klik kanan pada file dan klik Bagikan"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Tempel tautan berbagi untuk file tersebut"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "Di Google Drive, klik kanan pada file → Bagikan → Salin tautan"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Impor berkas"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "Di Google Drive, klik kanan pada folder dan klik Bagikan"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Folder impor"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Pindahkan item koleksi ke tempat sampah"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "Ketahanan model tidak dapat diaktifkan jika perutean basis data diaktifkan."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Tindakan model tidak dapat diaktifkan jika perutean basis data diaktifkan."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Pengaturan meja"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Jenis rilis yang perlu diperiksa"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Terjadi kesalahan saat menyimpan URL Situs"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "URL Situs"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabase {0} tersedia. Anda menjalankan {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Tidak ada yang cocok dengan filter Anda."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Menyaring log"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Unduh sebagai PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Biarkan orang mengeklik untuk menjelajah."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Unduhan"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Ekspor ke PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Hasil (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Unduh (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Cari berdasarkan {0} atau masukkan ID"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "Senin, Selasa"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "Januari, Februari"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Masuk: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} contoh ilustrasi grafik"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Klik {0} di sudut kanan atas. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "Penyematan {0} dalam fungsi agregasi tidak didukung"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "{0} minggu berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "mulai {0} detik dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "mulai {0} menit yang lalu"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Bulan ini"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Berikutnya {0} menit"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Milidetik berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Kuartal berikutnya {0}"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Jam berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "{0} tahun berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Berikutnya {0} detik"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Yang kedua ini"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Berikutnya {0} milidetik"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "Kuartal ini"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "mulai {0} minggu dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "mulai {0} kuartal dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Milidetik ini"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "mulai {0} hari yang lalu"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Milidetik sebelumnya"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Sebelumnya {0} hari"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "mulai {0} menit dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Berikutnya {0} hari"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "{0} bulan berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "dimulai {0} bulan lalu"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "Tahun depan"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Kuartal sebelumnya {0}"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Besok"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Berikutnya {0} jam"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Sebelumnya {0} tahun"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Sebelumnya {0} bulan"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "Minggu depan"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Bulan depan"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "mulai {0} detik yang lalu"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Sebelumnya {0} milidetik"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Sebelumnya {0} jam"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "Menit berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "mulai sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "Jam ini"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "Menit ini"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Sebelumnya {0} detik"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "mulai {0} hari dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "dimulai {0} tahun yang lalu"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "mulai {0} kuartal lalu"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Minggu sebelumnya {0}"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "dimulai {0} milidetik yang lalu"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Minggu ini"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "dimulai {0} minggu lalu"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "dimulai {0} tahun dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Sebelumnya kedua"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "mulai {0} milidetik dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Sebelumnya {0} menit"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Unit tidak diketahui"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "tahun ini"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "mulai {0} jam yang lalu"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Kuartal berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Detik berikutnya"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "mulai {0} bulan dari sekarang"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "mulai {0} jam dari sekarang"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Frekuensi untuk menjalankan backfill entity id dan drain entity id dalam ms. Nilai minimum adalah 1000, dan nilai apa pun pada atau di bawah 0 akan menonaktifkan pekerjaan sepenuhnya."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Kecualikan {0} pilihan"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Perutean Basis Data"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Kesalahan perutean basis data: Tidak ditemukan basis data tujuan dengan slug `{0}`."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Atribut pengguna yang dibutuhkan tidak ada. Tidak dapat diarahkan ke Basis Data Tujuan."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Pengguna anonim tidak dapat mengakses basis data dengan perutean diaktifkan."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "URL tidak valid: {0}"
 

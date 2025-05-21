@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -118,7 +117,7 @@ msgstr "Lær mere"
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/StaticEmbeddingOptionCard/StaticEmbeddingOptionCard.tsx:26
 #, javascript-format
 msgid "A \"powered by Metabase\" banner appears on static embeds. You can {0} which removes it."
-msgstr "Der er et \"powered by Metabase\" banner på statiske indlejringer- Du kan  {0} hvilket fjerner det."
+msgstr "Der er et \"powered by Metabase\" banner på statiske indlejringer- Du kan {0} hvilket fjerner det."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/StaticEmbeddingOptionCard/StaticEmbeddingOptionCard.tsx:28
 msgid "upgrade to a specific paid plan"
@@ -14055,7 +14054,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Inkluder bruger-id og forespørgselshash i forespørgsler"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Dette kan være nyttigt til revision og fejlretning, men forhindrer databaser i at cache resultater og kan øge dine omkostninger."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -16261,12 +16260,12 @@ msgstr "Sørg for, at hoveddatabasen har adgang til alt, hvad forskellige bruger
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
 msgstr "Du forbinder Metabase til {0}-databasen ved hjælp af legitimationsoplysningerne for Redshift-brugeren {1}. For at personefterligning skal virke, skal {2} være en superbruger i Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
 msgstr "{0} er den databasebruger Metabase bruger til at oprette forbindelse til din {1}-database. Sørg for, at {2} har adgang til alt i {3}, som alle Metabase-grupper muligvis har brug for adgang til, da den databasebrugerkonto er det, Metabase bruger til at synkronisere tabeloplysninger."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
@@ -19956,7 +19955,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "Værten ''{0}'' er ikke tilgængelig"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Matchende stil til native forespørgselseditors autofuldførelse. Kan være \"understreng\", \"præfiks\" eller \"fra\". Større forekomster kan have ydeevneproblemer med at matche ved hjælp af understreng, så du kan bruge præfiksmatchning eller slå autofuldførelser fra."
 
 #: metabase/api/database.clj:629
@@ -20255,7 +20254,7 @@ msgstr "Adressen på den SMTP-server, der håndterer dine e-mails."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Det maksimale antal modtagere, opsummeret på tværs af e-mails, der kan sendes pr. sekund.\n"
 " Bemærk, at den sidste e-mail, der sendes, før grænsen er nået, kan overskride den, hvis den har flere modtagere."
 
@@ -22105,7 +22104,7 @@ msgid "Stage {0} does not exist"
 msgstr "Fase {0} eksisterer ikke"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Hyppighed for at køre udfyldningsentitets-id-job i ms. Minimumsværdien er 1000, og enhver værdi ved eller under 0 vil deaktivere jobbet helt."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -22420,7 +22419,7 @@ msgstr "Du har ikke tilladelse til at køre denne forespørgsel."
 
 #: metabase/models/query/permissions.clj:268
 msgid "Invalid permissions format"
-msgstr "Ugyldigt format  af tilladelser"
+msgstr "Ugyldigt format af tilladelser"
 
 #: metabase/models/query_execution.clj:28
 msgid "Invalid query execution context: {0}"
@@ -23356,11 +23355,13 @@ msgstr "Forespørgsel i denne database kræver revision-app-funktionsflaget"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Aktiver analyse af feltbrug for forespørgsler. Dette vil analysere de felter, der bruges i forespørgsler og gemme dem i\n"
-"    applikationsdatabasen.\n\n"
-"    Sluk som standard, da vi endnu ikke har haft en brugervendt funktion, der bruger disse data."
+" applikationsdatabasen.\n"
+"\n"
+" Sluk som standard, da vi endnu ikke har haft en brugervendt funktion, der bruger disse data."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -26073,4 +26074,983 @@ msgstr "Brugerhvervelse efter land"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 lande efter salg"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Fast datointerval…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Relativt datointerval…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Databaserouting kan ikke aktiveres, hvis modelhandlinger og persistens er aktiveret."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Databaserouting kan ikke aktiveres, hvis modelhandlinger er aktiveret."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Databaserouting kan ikke aktiveres, hvis modelpersistens er aktiveret."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Databaserouting kan ikke aktiveres, hvis uploads er aktiveret for denne database."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Du skal indstille brugerattributter for brugere, for at denne funktion er tilgængelig"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Du skal vælge en brugerattribut for at aktivere DB-routing"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Aktiver røntgenfunktioner"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Fejl ved aktivering af uploads"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Fejl ved deaktivering af uploads"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Vi kunne ikke finde noget skema"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Filtrer efter opgave"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Filtrer efter status"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Startede"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Se logfiler"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Gennemse dine samlinger for at finde og tilføje eksisterende spørgsmål."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Rediger kolonnerækkefølge"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Vælg derefter en metrik og flere kolonner, der skal grupperes efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "F.eks. Antal ordrer grupperet efter år og produktkategori"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Vælg derefter en metrik og en kolonne at gruppere efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "F.eks. antal brugere grupperet efter land"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Vælg derefter to eller flere metrics og en eller to kolonner, der skal grupperes efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "F.eks. Antal ordrer og Gennemsnitlig bedømmelse grupperet efter år"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "Tragtdiagrammer visualiserer, hvordan en værdi er opdelt efter en række trin, og den procentvise ændring mellem trin."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Vælg derefter en samlet metrik (såsom gennemsnit eller sum), og tilpas måleren i visualiseringsindstillingerne."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "F.eks. Gennemsnitlig stjernebedømmelse"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Vælg derefter en eller flere metrics og en tidskolonne, som du vil gruppere efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "F.eks. Antal ordrer grupperet efter år"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Byg kortvisualiseringer med geospatiale data: Pin- og gitterkort kræver længde- og breddegradskolonner, Regionskort kræver en kolonne med amerikanske regionsnavne."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "F.eks. Antal brugere grupperet efter abonnementsplan"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Vælg derefter en samlet metrik (såsom gennemsnit eller sum) og flere kolonner, der skal grupperes efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "F.eks. Antal ordrer grupperet efter stat, år og produktkategori"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Vælg derefter en samlet metrik (såsom Antal eller Sum), og tilpas statuslinjen i visualiseringsindstillingerne."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Fx Antal ordrer"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "F.eks. Antal kunder grupperet efter stat"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "Sankey-diagrammer viser, hvordan data flyder gennem flerdimensionelle trin. De er nyttige til at vise, hvilke elementer, kaldet noder, der bidrager til det overordnede flow."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Vælg derefter en samlet metric (såsom gennemsnit eller sum)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Vælg derefter en metrik og en talkolonner, som du vil gruppere efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "F.eks. Antal ordrer grupperet efter kundens alder"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Vælg derefter en samlet metrik (såsom gennemsnit eller sum) og en tidskolonne, du vil gruppere efter."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "F.eks. Antal ordrer grupperet efter måned"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Vælg derefter en metrik og en enkelt kolonne, der skal grupperes efter: enten tid eller kategori."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "F.eks. Summen af omsætning grupperet efter land"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Forventer operatør, men fik {0} i stedet"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "Destinationsdatabase oprettet"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "Destinationsdatabasen blev opdateret"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Tilføj destinationsdatabase"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Rediger destinationsdatabase"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Du kan også tilføje databaser programmatisk via API'et."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Ingen destinationsdatabaser tilføjet endnu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Destinationsdatabaser"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Vil du slette {0} destinationsdatabasen?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Brugere, der dirigeres til denne database, mister adgang til alle spørgsmål, modeller, målinger og segmenter, hvis du fortsætter."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Snegl"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase knytter denne værdi til din valgte brugerattribut for at udveksle forespørgsler under kørsel"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Fx pro-brugere"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-mail ikke fundet"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Ugyldigt Google-link"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Hele mappen"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Enkelt ark"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Vælg **Seer**-tilladelser, og klik på **Send**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Hvis fejlen fortsætter, kan du downloade diagnosticeringsoplysninger"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Genveje"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Gennemse metrics"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Bogmærke Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Ved visning"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Tilføj filter"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Ved redigering"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Tilføj notesbogsspørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Tilføj indfødte spørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Annuller Rediger Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Send betjeningspanelet til papirkurven"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Skift Dashboard Info"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Rediger Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Gem Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Opret et spørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Opret en indbygget forespørgsel"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Opret et dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Opret en samling"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Lav en model"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Opret en metric"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Skift genveje modal"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Åbn papirkurven"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Åbn personlig samling"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Gå til admin"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Gå til brugerindstillinger"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Gå hjem"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Skift Notesbog"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Åbn filterrullemenuen"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Åbn opsummeringssidebjælken"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Bogmærke spørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Åbn spørgsmål info"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Hent spørgsmålsdata igen"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Skift nemlig indstillinger"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Skift mellem nemlig typer"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Send spørgsmål til papirkurven"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Konverterer en streng til et flydende kommatal."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Strengesøjlen, der skal konverteres til flydende."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Skal være rodnode"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "Root skal have et barn"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Ugyldigt dimensionsnavn: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Tom feltværdi"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Tom token-tekst"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Gruppen skal have et barn"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Ingen symbolsk tekst"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Ugyldig operator: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Første argument skal være en argumentliste"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Ukendt operatør {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Forventet udtryksklausul"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Forventet værdiklausul"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Forventet tal eller streng"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Uventet udtryk"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Databaserouting aktiveret"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Databaserouting opdateret"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Databaserouting deaktiveret"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Database routing"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Når nogen ser et spørgsmål ved hjælp af data fra denne database, sender Metabase forespørgslerne til en destinationsdatabase indstillet af personens brugerattribut. Hver destinationsdatabase skal have et identisk skema."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Aktiver database routing"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Brugerattribut til at matche destinationsdatabase"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Denne egenskab bestemmer, hvilken destinationsdatabase personen kan forespørge på. Værdien skal svare til slug'en for destinationsdatabasen."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Vælg en egenskab"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Vælg venligst en brugerattribut først"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "I Google Drev skal du højreklikke på filen og klikke på Del"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Indsæt delingslinket til filen"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "I Google Drev skal du højreklikke på filen → Del → Kopier link"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Importer fil"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "I Google Drev skal du højreklikke på mappen og klikke på Del"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Importer mappe"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Flyt samlingsgenstande til papirkurven"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "Modelpersistens kan ikke aktiveres, hvis databaserouting er aktiveret."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Modelhandlinger kan ikke aktiveres, hvis databaserouting er aktiveret."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Tabelindstillinger"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Typer af udgivelser at tjekke efter"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Fejl under lagring af webstedets URL"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Webstedets URL"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabase {0} er tilgængelig. Du kører {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Intet matcher dine filtre."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Filtrer logfiler"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Download som PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Lad folk klikke for at udforske."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Downloads"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Eksporter til PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Resultater (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Download (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Søg efter {0} eller indtast et ID"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "mandag, tirsdag"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "Jan, feb"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Indtast: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} diagrameksempel illustration"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Klik på {0} i øverste højre hjørne. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "Indlejring af {0} i aggregeringsfunktioner understøttes ikke"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Næste {0} uge"
+msgstr[1] "Næste {0} uger"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "starter {0} sekund fra nu"
+msgstr[1] "starter {0} sekunder fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "starter for {0} minut siden"
+msgstr[1] "starter for {0} minutter siden"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Denne måned"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Næste {0} minut"
+msgstr[1] "Næste {0} minutter"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Næste millisekund"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Næste {0} kvartal"
+msgstr[1] "Næste {0} kvartaler"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Næste time"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Næste {0} år"
+msgstr[1] "Næste {0} år"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Næste {0} sekund"
+msgstr[1] "Næste {0} sekunder"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Dette andet"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Næste {0} millisekund"
+msgstr[1] "Næste {0} millisekunder"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "Dette kvartal"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "starter {0} uge fra nu"
+msgstr[1] "starter {0} uger fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "starter {0} kvartal fra nu"
+msgstr[1] "starter {0} kvartaler fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Dette millisekund"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "starter for {0} dag siden"
+msgstr[1] "starter for {0} dage siden"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Forrige millisekund"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Forrige {0} dag"
+msgstr[1] "Forrige {0} dage"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "starter {0} minut fra nu"
+msgstr[1] "starter {0} minutter fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Næste {0} dag"
+msgstr[1] "Næste {0} dage"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Næste {0} måned"
+msgstr[1] "Næste {0} måneder"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "starter for {0} måned siden"
+msgstr[1] "starter for {0} måneder siden"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "Næste år"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Forrige {0} kvartal"
+msgstr[1] "Tidligere {0} kvartaler"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "I morgen"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Næste {0} time"
+msgstr[1] "Næste {0} timer"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Forrige {0} år"
+msgstr[1] "Tidligere {0} år"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Forrige {0} måned"
+msgstr[1] "Tidligere {0} måneder"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "Næste uge"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Næste måned"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "startede for {0} for sekund siden"
+msgstr[1] "starter for {0} sekunder siden"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Forrige {0} millisekund"
+msgstr[1] "Forrige {0} millisekunder"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Forrige {0} time"
+msgstr[1] "Tidligere {0} timer"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "Næste minut"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "starter nu"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "Denne time"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "Dette minut"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Forrige {0} sekund"
+msgstr[1] "Forrige {0} sekunder"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "starter {0} dag fra nu"
+msgstr[1] "starter {0} dage fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "starter for {0} år siden"
+msgstr[1] "startede for {0} år siden"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "starter for {0} kvartal siden"
+msgstr[1] "starter for {0} kvartaler siden"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Forrige {0} uge"
+msgstr[1] "Forrige {0} uger"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "starter for {0} millisekund siden"
+msgstr[1] "starter for {0} millisekunder siden"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Denne uge"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "starter for {0} uge siden"
+msgstr[1] "starter for {0} uger siden"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "starter {0} år fra nu"
+msgstr[1] "starter {0} år fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Forrige sekund"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "starter {0} millisekund fra nu"
+msgstr[1] "starter {0} millisekunder fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Forrige {0} minut"
+msgstr[1] "Forrige {0} minutter"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Ukendt enhed"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "I år"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "starter for {0} time siden"
+msgstr[1] "starter for {0} timer siden"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Næste kvartal"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Næste sekund"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "starter {0} måned fra nu"
+msgstr[1] "starter {0} måneder fra nu"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "starter {0} time fra nu"
+msgstr[1] "starter {0} timer fra nu"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Hyppighed for at køre opfyldningsentitets-id'er og drænenheds-id'er i ms. Minimumværdien er 1000, og enhver værdi ved eller under 0 vil deaktivere jobbet helt."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Udelad {0} valg"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Databaserouting"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Databaseroutingsfejl: Ingen destinationsdatabase med slug `{0}` fundet."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Påkrævet brugerattribut mangler. Kan ikke rute til en destinationsdatabase."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Anonyme brugere kan ikke få adgang til en database med routing aktiveret."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "Ugyldig webadresse: {0}"
 

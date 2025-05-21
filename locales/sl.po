@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=4; plural=n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -14141,7 +14140,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Vključitev ID-ja uporabnika in razpršitve poizvedbe v poizvedbe"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "To je lahko uporabno za nadzor in odpravljanje napak, vendar zbirkam podatkov preprečuje predpomnjenje rezultatov in lahko poveča stroške."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -16368,12 +16367,12 @@ msgstr "Prepričajte se, da ima poverilnica glavne baze podatkov dostop do vsega
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
 msgstr "Metabase povezujete z bazo podatkov {0} z uporabo poverilnic za {1} uporabnika Redshift. Da bi lažno predstavljanje delovalo, mora biti {2} superuporabnik v Redshiftu."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
 msgstr "{0} je uporabnik zbirke podatkov, ki ga Metabase uporablja za povezavo z vašo {1} bazo podatkov. Prepričajte se, da ima {2} dostop do vsega, do česar {3} morda potrebujejo dostop do vseh skupin metabaze, saj je ta uporabniški račun zbirke podatkov tisto, kar Metabase uporablja za sinhronizacijo informacij o tabeli."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
@@ -20099,7 +20098,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "Gostitelj ''{0}'' ni dosegljiv"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Ujemanje sloga za samodokončanje izvornega urejevalnika poizvedb. Lahko je \"podniz\", \"predpona\" ali \"izklopljeno\". Večji primerki imajo lahko težave z zmogljivostjo pri ujemanju z uporabo podniza, zato lahko uporabite ujemanje predpone ali izklopite samodokončanja."
 
 #: metabase/api/database.clj:629
@@ -20414,9 +20413,9 @@ msgstr "Naslov strežnika SMTP, ki obravnava vaša e-poštna sporočila."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Največje število prejemnikov, sešteto po e-poštnih sporočilih, ki jih je mogoče poslati na sekundo.\n"
-"                Upoštevajte, da lahko zadnje e-poštno sporočilo, poslano pred dosego omejitve, to preseže, če ima več prejemnikov."
+" Upoštevajte, da lahko zadnje e-poštno sporočilo, poslano pred dosego omejitve, to preseže, če ima več prejemnikov."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -22276,7 +22275,7 @@ msgid "Stage {0} does not exist"
 msgstr "Stopnja {0} ne obstaja"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Pogostost izvajanja posla ID-jev subjektov za zapolnitev v ms. Najmanjša vrednost je 1000 in vsaka vrednost na ali pod 0 bo v celoti onemogočila opravilo."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23527,11 +23526,13 @@ msgstr "Če želite poizvedovati po tej zbirki podatkov, potrebujete zastavico f
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Omogoči analizo uporabe polja za poizvedbe. To bo analiziralo polja, uporabljena v poizvedbah, in jih shranilo v bazo podatkov aplikacije\n"
-"    .\n\n"
-"    Privzeto izklopi, ker še nismo imeli uporabniške funkcije, ki bi uporabljala te podatke."
+" .\n"
+"\n"
+" Privzeto izklopi, ker še nismo imeli uporabniške funkcije, ki bi uporabljala te podatke."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -26252,4 +26253,1055 @@ msgstr "Pridobivanje uporabnikov po državah"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 držav po prodaji"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Fiksno časovno obdobje…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Relativno časovno obdobje…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Usmerjanja baze podatkov ni mogoče omogočiti, če sta omogočena dejanja modela in obstojnost."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Usmerjanja baze podatkov ni mogoče omogočiti, če so omogočena dejanja modela."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Usmerjanja baze podatkov ni mogoče omogočiti, če je omogočena obstojnost modela."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Usmerjanja v zbirko podatkov ni mogoče omogočiti, če so za to zbirko podatkov omogočena nalaganja."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Za uporabnike morate nastaviti uporabniške atribute, da bo ta funkcija na voljo"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Če želite omogočiti usmerjanje DB, morate izbrati atribut uporabnika"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Omogoči rentgenske funkcije"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Napaka pri omogočanju nalaganja"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Napaka pri onemogočanju nalaganja"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Nismo mogli najti nobene sheme"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Filtriraj po nalogi"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Filtriraj po statusu"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Začelo"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Glej dnevnike"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Prebrskajte svoje zbirke, da poiščete in dodate obstoječa vprašanja."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Uredi vrstni red stolpcev"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Nato izberite meritev in več stolpcev, po katerih jih želite združiti."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Npr. število naročil, razvrščenih po letu in kategoriji izdelka"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Nato izberite meritev in stolpec za grupiranje."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Npr. Število uporabnikov, razvrščenih po državah"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Nato izberite dve ali več meritev in enega ali dva stolpca za razvrščanje v skupine."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Npr. Število naročil in Povprečna ocena, združena po letih"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "Grafikoni lijaka prikazujejo, kako je vrednost razčlenjena po nizu korakov, in odstotno spremembo med koraki."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Nato izberite agregatno meritev (na primer povprečje ali vsota) in prilagodite merilnik v nastavitvah vizualizacije."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Npr. povprečna ocena z zvezdicami"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Nato izberite eno ali več meritev in časovni stolpec, po katerem jih želite združiti."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Npr. Število naročil, razvrščenih po letu"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Ustvarite vizualizacije zemljevidov z geoprostorskimi podatki: Zemljevidi z žebljički in mrežo zahtevajo stolpce z zemljepisno dolžino in širino, zemljevidi regij zahtevajo stolpec z imeni regij ZDA."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Npr. število uporabnikov, razvrščenih po naročniškem načrtu"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Nato izberite agregatno meritev (kot je povprečje ali vsota) in več stolpcev, po katerih želite združiti."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Npr. število naročil, razvrščenih po državi, letu in kategoriji izdelkov"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Nato izberite agregatno meritev (na primer štetje ali vsota) in prilagodite vrstico napredka v nastavitvah vizualizacije."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Npr. štetje naročil"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Npr. število strank, razvrščenih po državi"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "Diagrami Sankey prikazujejo, kako podatki tečejo skozi večdimenzionalne korake. Uporabni so za prikaz elementov, imenovanih vozlišča, ki prispevajo k celotnemu toku."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Nato izberite skupno meritev (na primer povprečje ali vsota)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Nato izberite meritev in številske stolpce, po katerih želite razvrstiti."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Npr. število naročil, razvrščenih glede na starost stranke"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Nato izberite skupno meritev (na primer povprečje ali vsota) in časovni stolpec, po katerem želite združiti."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Npr. Število naročil, razvrščenih po mesecih"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Nato izberite meritev in en stolpec, ki ga želite razvrstiti v skupine: bodisi po času ali kategoriji."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Npr. vsota prihodkov, razvrščenih po državah"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Pričakoval sem operaterja, vendar sem namesto tega dobil {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "Ciljna zbirka podatkov je uspešno ustvarjena"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "Ciljna zbirka podatkov je bila uspešno posodobljena"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Dodajte ciljno zbirko podatkov"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Uredite ciljno zbirko podatkov"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Baze podatkov lahko dodate tudi programsko prek API-ja."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Dodana še ni nobena ciljna zbirka podatkov"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Podatkovne baze destinacij"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Želite izbrisati {0} ciljno bazo podatkov?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Uporabniki, preusmerjeni v to bazo podatkov, bodo izgubili dostop do vseh vprašanj, modelov, meritev in segmentov, če boste nadaljevali."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Polž"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabaza preslika to vrednost v vaš izbrani uporabniški atribut za zamenjavo poizvedb med izvajanjem"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Npr. pro-uporabniki"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-pošte ni bilo mogoče najti"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Neveljavna Googlova povezava"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Celotna mapa"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Posamezen list"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Izberite dovoljenja **Gledalnik** in kliknite **Pošlji**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Če napaka ne odpravite, lahko prenesete diagnostične podatke"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Bližnjice"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Brskanje po meritvah"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Nadzorna plošča med zaznamki"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Pri ogledu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Dodaj filter"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Pri urejanju"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Dodajte vprašanje v zvezek"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Dodaj izvorno vprašanje"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Prekliči urejanje nadzorne plošče"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Pošlji nadzorno ploščo v koš"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Preklop informacij na nadzorni plošči"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Uredi nadzorno ploščo"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Shrani nadzorno ploščo"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Ustvarite vprašanje"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Ustvarite izvorno poizvedbo"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Ustvarite nadzorno ploščo"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Ustvarite zbirko"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Ustvarjanje modela"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Ustvarite meritev"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Modalno preklapljanje bližnjic"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Odpri koš"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Odpri osebno zbirko"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Pojdi k skrbniku"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Pojdite na uporabniške nastavitve"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Pojdi domov"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Preklop Beležnice"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Odpri spustni meni filtrov"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Odpri stransko vrstico za povzetek"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Zaznamek Vprašanje"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Informacije o odprtem vprašanju"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Ponovno pridobi podatke o vprašanju"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Preklopi nastavitve vida"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Preklapljanje vrst vidov"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Pošlji vprašanje v koš"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Pretvori niz v število s plavajočo vejico."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Stolpec niza za pretvorbo v lebdeče."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Mora biti korensko vozlišče"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "Root mora imeti enega otroka"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Neveljavno ime dimenzije: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Vrednost praznega polja"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Prazno besedilo žetona"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Skupina mora imeti enega otroka"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Brez besedila žetona"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Neveljaven operator: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Prvi argument mora biti arglist"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Neznani operater {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Pričakovana izrazna klavzula"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Klavzula o pričakovani vrednosti"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Pričakovano število ali niz"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Nepričakovan izraz"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Usmerjanje baze podatkov omogočeno"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Usmerjanje baze podatkov posodobljeno"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Usmerjanje baze podatkov onemogočeno"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Usmerjanje baze podatkov"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Ko si nekdo ogleda vprašanje z uporabo podatkov iz te zbirke podatkov, bo Metabase poslala poizvedbe v ciljno bazo podatkov, ki jo določi uporabniški atribut osebe. Vsaka ciljna zbirka podatkov mora imeti enako shemo."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Omogoči usmerjanje baze podatkov"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Uporabniški atribut za ujemanje s ciljno bazo podatkov"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Ta atribut določa, po kateri ciljni bazi podatkov lahko oseba poizveduje. Vrednost se mora ujemati s polžem ciljne baze podatkov."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Izberite atribut"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Najprej izberite atribut uporabnika"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "V storitvi Google Drive z desno miškino tipko kliknite datoteko in kliknite Skupna raba"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Prilepite povezavo za skupno rabo datoteke"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "V storitvi Google Drive z desno miškino tipko kliknite datoteko → Skupna raba → Kopiraj povezavo"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Uvozi datoteko"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "V storitvi Google Drive z desno tipko miške kliknite mapo in kliknite Skupna raba"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Uvozi mapo"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Premaknite predmete zbirke v koš"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "Obstojnosti modela ni mogoče omogočiti, če je omogočeno usmerjanje baze podatkov."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Dejanj modela ni mogoče omogočiti, če je omogočeno usmerjanje baze podatkov."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Nastavitve tabele"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Vrste izdaj, ki jih je treba preveriti"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Napaka pri shranjevanju URL-ja spletnega mesta"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "URL spletnega mesta"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabaza {0} je na voljo. Tečete {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Nič se ne ujema z vašimi filtri."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Dnevniki filtrov"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Prenesi kot PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Naj ljudje kliknejo, da raziščejo."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Prenosi"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Izvozi v PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Rezultati (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Prenos (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Iščite po {0} ali vnesite ID"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "ponedeljek, torek"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "jan, feb"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Vnesite: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} ilustracija primera grafikona"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "V zgornjem desnem kotu kliknite {0} . {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "Vdelava {0} v funkcije združevanja ni podprta"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Naslednji {0} teden"
+msgstr[1] "Naslednjih {0} tednov"
+msgstr[2] "Naslednjih {0} tednov"
+msgstr[3] "Naslednjih {0} tednov"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "začenši čez {0} sekundo"
+msgstr[1] "od {0} sekund čez zdaj"
+msgstr[2] "od {0} sekund čez zdaj"
+msgstr[3] "od {0} sekund čez zdaj"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "začetek pred {0} minuto"
+msgstr[1] "začetek pred {0} minutami"
+msgstr[2] "začetek pred {0} minutami"
+msgstr[3] "začetek pred {0} minutami"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Ta mesec"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Naslednja {0} minuta"
+msgstr[1] "Naslednjih {0} minut"
+msgstr[2] "Naslednjih {0} minut"
+msgstr[3] "Naslednjih {0} minut"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Naslednja milisekunda"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Naslednje {0} četrtletje"
+msgstr[1] "Naslednjih {0} četrtin"
+msgstr[2] "Naslednjih {0} četrtin"
+msgstr[3] "Naslednjih {0} četrtin"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Naslednjo uro"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Naslednje {0} leto"
+msgstr[1] "Naslednjih {0} let"
+msgstr[2] "Naslednjih {0} let"
+msgstr[3] "Naslednjih {0} let"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Naslednja {0} sekunda"
+msgstr[1] "Naslednjih {0} sekund"
+msgstr[2] "Naslednjih {0} sekund"
+msgstr[3] "Naslednjih {0} sekund"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Ta drugič"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Naslednja {0} milisekunda"
+msgstr[1] "Naslednjih {0} milisekund"
+msgstr[2] "Naslednjih {0} milisekund"
+msgstr[3] "Naslednjih {0} milisekund"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "To četrtletje"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "od {0} tedna naprej"
+msgstr[1] "za {0} tednov od zdaj"
+msgstr[2] "za {0} tednov od zdaj"
+msgstr[3] "za {0} tednov od zdaj"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "od tega {0} četrtletja dalje"
+msgstr[1] "začenši s {0} četrtletji od zdaj"
+msgstr[2] "začenši s {0} četrtletji od zdaj"
+msgstr[3] "začenši s {0} četrtletji od zdaj"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Ta milisekunda"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "z začetkom pred {0} dnevi"
+msgstr[1] "z začetkom pred {0} dnevi"
+msgstr[2] "z začetkom pred {0} dnevi"
+msgstr[3] "z začetkom pred {0} dnevi"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Prejšnja milisekunda"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Prejšnji {0} dan"
+msgstr[1] "Prejšnjih {0} dni"
+msgstr[2] "Prejšnjih {0} dni"
+msgstr[3] "Prejšnjih {0} dni"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "začne čez {0} minuto"
+msgstr[1] "začne čez {0} minut"
+msgstr[2] "začne čez {0} minut"
+msgstr[3] "začne čez {0} minut"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Naslednji {0} dan"
+msgstr[1] "Naslednjih {0} dni"
+msgstr[2] "Naslednjih {0} dni"
+msgstr[3] "Naslednjih {0} dni"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Naslednji {0} mesec"
+msgstr[1] "Naslednjih {0} mesecev"
+msgstr[2] "Naslednjih {0} mesecev"
+msgstr[3] "Naslednjih {0} mesecev"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "z začetkom pred {0} mesecem"
+msgstr[1] "začel pred {0} meseci"
+msgstr[2] "začel pred {0} meseci"
+msgstr[3] "začel pred {0} meseci"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "Naslednje leto"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Prejšnje {0} četrtletje"
+msgstr[1] "Prejšnja {0} četrtletja"
+msgstr[2] "Prejšnja {0} četrtletja"
+msgstr[3] "Prejšnja {0} četrtletja"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Jutri"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Naslednja {0} ura"
+msgstr[1] "Naslednjih {0} ur"
+msgstr[2] "Naslednjih {0} ur"
+msgstr[3] "Naslednjih {0} ur"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Prejšnje {0} leto"
+msgstr[1] "Prejšnja {0} leta"
+msgstr[2] "Prejšnja {0} leta"
+msgstr[3] "Prejšnja {0} leta"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Prejšnji {0} mesec"
+msgstr[1] "Prejšnji {0} meseci"
+msgstr[2] "Prejšnji {0} meseci"
+msgstr[3] "Prejšnji {0} meseci"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "Naslednji teden"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Naslednji mesec"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "začetek pred {0} sekundo"
+msgstr[1] "začetek pred {0} sekundami"
+msgstr[2] "začetek pred {0} sekundami"
+msgstr[3] "začetek pred {0} sekundami"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Prejšnja {0} milisekunda"
+msgstr[1] "Prejšnjih {0} milisekund"
+msgstr[2] "Prejšnjih {0} milisekund"
+msgstr[3] "Prejšnjih {0} milisekund"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Prejšnja {0} ura"
+msgstr[1] "Prejšnjih {0} ur"
+msgstr[2] "Prejšnjih {0} ur"
+msgstr[3] "Prejšnjih {0} ur"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "Naslednja minuta"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "začenši zdaj"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "To uro"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "To minuto"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Prejšnja {0} sekunda"
+msgstr[1] "Prejšnjih {0} sekund"
+msgstr[2] "Prejšnjih {0} sekund"
+msgstr[3] "Prejšnjih {0} sekund"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "od {0} dne naprej"
+msgstr[1] "od {0} dni od zdaj"
+msgstr[2] "od {0} dni od zdaj"
+msgstr[3] "od {0} dni od zdaj"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "z začetkom pred {0} letom"
+msgstr[1] "začel pred {0} leti"
+msgstr[2] "začel pred {0} leti"
+msgstr[3] "začel pred {0} leti"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "z začetkom pred {0} četrtletjem"
+msgstr[1] "z začetkom pred {0} četrtletji"
+msgstr[2] "z začetkom pred {0} četrtletji"
+msgstr[3] "z začetkom pred {0} četrtletji"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Prejšnji {0} teden"
+msgstr[1] "Prejšnji {0} tedni"
+msgstr[2] "Prejšnji {0} tedni"
+msgstr[3] "Prejšnji {0} tedni"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "začetek pred {0} milisekundami"
+msgstr[1] "začetek pred {0} milisekundami"
+msgstr[2] "začetek pred {0} milisekundami"
+msgstr[3] "začetek pred {0} milisekundami"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Ta teden"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "z začetkom pred {0} tednom"
+msgstr[1] "z začetkom pred {0} tedni"
+msgstr[2] "z začetkom pred {0} tedni"
+msgstr[3] "z začetkom pred {0} tedni"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "od {0} leta naprej"
+msgstr[1] "od {0} let naprej"
+msgstr[2] "začenši čez {0} let"
+msgstr[3] "začenši čez {0} let"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Prejšnja druga"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "od {0} milisekunde naprej"
+msgstr[1] "začne se čez {0} milisekund"
+msgstr[2] "začne se čez {0} milisekund"
+msgstr[3] "začne se čez {0} milisekund"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Prejšnja {0} minuta"
+msgstr[1] "Prejšnjih {0} minut"
+msgstr[2] "Prejšnjih {0} minut"
+msgstr[3] "Prejšnjih {0} minut"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Neznana enota"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "letos"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "začetek pred {0} uro"
+msgstr[1] "začetek pred {0} urami"
+msgstr[2] "začetek pred {0} urami"
+msgstr[3] "začetek pred {0} urami"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Naslednje četrtletje"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Naslednja sekunda"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "od {0} meseca naprej"
+msgstr[1] "od {0} mesecev naprej"
+msgstr[2] "od {0} mesecev naprej"
+msgstr[3] "od {0} mesecev naprej"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "začne se čez {0} uro"
+msgstr[1] "začne se čez {0} ur"
+msgstr[2] "začne se čez {0} ur"
+msgstr[3] "začne se čez {0} ur"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Pogostost izvajanja opravil ID-jev subjektov za zapolnitev in ID-jev subjektov izčrpavanja v ms. Najmanjša vrednost je 1000 in vsaka vrednost na ali pod 0 bo v celoti onemogočila opravilo."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Drugo {0}"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Usmerjanje baze podatkov"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Napaka pri usmerjanju baze podatkov: ni bila najdena ciljna zbirka podatkov s polžem `{0}`."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Manjka zahtevani uporabniški atribut. Ni mogoče usmeriti v ciljno bazo podatkov."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Anonimni uporabniki ne morejo dostopati do zbirke podatkov z omogočenim usmerjanjem."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "Neveljaven URL: {0}"
 

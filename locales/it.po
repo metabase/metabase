@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -6862,7 +6861,7 @@ msgstr "Clausole opzionali"
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:293
 #, javascript-format
 msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr "Le parentesi attorno a {0} creano una clausola facoltativa nel modello.  Se è impostata \"variabile\", l'intera clausola viene inserita nel modello.  In caso contrario, l'intera clausola viene ignorata."
+msgstr "Le parentesi attorno a {0} creano una clausola facoltativa nel modello. Se è impostata \"variabile\", l'intera clausola viene inserita nel modello. In caso contrario, l'intera clausola viene ignorata."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:303
 msgid "To use multiple optional clauses you can include at least one non-optional WHERE clause followed by optional clauses starting with \"AND\"."
@@ -6870,7 +6869,7 @@ msgstr "Per utilizzare più clausole facoltative, è possibile includere almeno 
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:310
 msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr "Quando si utilizza un Field Filter, il nome della colonna non deve essere incluso in SQL.  Invece, la variabile dovrebbe essere mappata su un campo nel pannello laterale."
+msgstr "Quando si utilizza un Field Filter, il nome della colonna non deve essere incluso in SQL. Invece, la variabile dovrebbe essere mappata su un campo nel pannello laterale."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:321
 msgid "Read the full documentation"
@@ -8422,7 +8421,7 @@ msgstr "Testo del link"
 
 #: frontend/src/metabase/visualizations/visualizations/Table/Table.tsx:330
 msgid "Link to {{bird_id}}"
-msgstr "collegamento a  {{bird_id}}"
+msgstr "collegamento a {{bird_id}}"
 
 #: frontend/src/metabase/visualizations/visualizations/Table/Table.tsx:336
 msgid "Link URL"
@@ -14054,7 +14053,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Includi ID utente e hash della query nelle query"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Questo può essere utile per la verifica e il debug, ma impedisce ai database di memorizzare i risultati nella cache e può aumentare i costi."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -15234,7 +15233,7 @@ msgstr "Crea segmenti per aggiungerli al menu di selezione nel generatore di que
 
 #: frontend/src/metabase/admin/people/components/PeopleListRow.jsx:63
 msgid "Signed up via Google"
-msgstr "Iscritto  tramite  Google"
+msgstr "Iscritto tramite Google"
 
 #: frontend/src/metabase/admin/people/components/PeopleListRow.jsx:68
 msgid "Signed up via LDAP"
@@ -16259,13 +16258,13 @@ msgstr "Assicurarsi che la credenziale principale del database abbia accesso a t
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "Si sta collegando Metabase al database {0} utilizzando le credenziali dell'utente Redshift {1}. Perché l'impersonificazione funzioni,  {2} deve essere un superutente in Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "Si sta collegando Metabase al database {0} utilizzando le credenziali dell'utente Redshift {1}. Perché l'impersonificazione funzioni, {2} deve essere un superutente in Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} è l'utente del database che Metabase usa per connettersi al database  {1} . Assicurarsi che {2} abbia accesso a tutto ciò che è presente in {3} e a cui tutti i gruppi di Metabase potrebbero aver bisogno di accedere, poiché l'account utente del database è quello che Metabase usa per sincronizzare le informazioni sulle tabelle."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} è l'utente del database che Metabase usa per connettersi al database {1} . Assicurarsi che {2} abbia accesso a tutto ciò che è presente in {3} e a cui tutti i gruppi di Metabase potrebbero aver bisogno di accedere, poiché l'account utente del database è quello che Metabase usa per sincronizzare le informazioni sulle tabelle."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -19953,7 +19952,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "L'host ''{0}'' non è raggiungibile"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Stile di corrispondenza per il completamento automatico dell'editor di query nativo. Può essere \"sottostringa\", \"prefisso\" o \"disattivato\". Le istanze più grandi possono avere problemi di prestazioni nella corrispondenza tramite sottostringa, quindi possono usare la corrispondenza prefisso o disattivare i completamenti automatici."
 
 #: metabase/api/database.clj:629
@@ -20252,9 +20251,9 @@ msgstr "L'indirizzo del server SMTP che invia le tue email."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Il numero massimo di destinatari, sommato tra le e-mail, che può essere inviato al secondo.\n"
-"                Si noti che l'ultima e-mail inviata prima di raggiungere il limite può superarlo, se ha più destinatari."
+" Si noti che l'ultima e-mail inviata prima di raggiungere il limite può superarlo, se ha più destinatari."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -22102,7 +22101,7 @@ msgid "Stage {0} does not exist"
 msgstr "La fase {0} non esiste"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Frequenza per l'esecuzione del job di backfill entity id in ms. Il valore minimo è 1000 e qualsiasi valore pari o inferiore a 0 disabiliterà completamente il job."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -22469,7 +22468,7 @@ msgstr "I nomi delle impostazioni potrebbero entrare in conflitto: {0} e {1}"
 
 #: metabase/models/setting.clj:727
 msgid "You cannot update `settings-last-updated` yourself! This is done automatically."
-msgstr "Non puoi aggiornare  `settings-last-updated` direttamente! Verrà fatto automaticamente."
+msgstr "Non puoi aggiornare `settings-last-updated` direttamente! Verrà fatto automaticamente."
 
 #: metabase/models/setting.clj:1396
 msgid "Using value of env var {0}"
@@ -23166,7 +23165,7 @@ msgstr "Avviso non valido: l'avviso non ha una carta associata"
 
 #: metabase/pulse/models/pulse.clj:185
 msgid "value must be a map with the keys `{0}`, `{1}`, and `{2}`."
-msgstr "Il valore deve essere una mappa con le chiavi  `{0}`, `{1}` e `{2}`."
+msgstr "Il valore deve essere una mappa con le chiavi `{0}`, `{1}` e `{2}`."
 
 #: metabase/pulse/models/pulse.clj:97
 msgid "dashboard ID of a dashboard subscription cannot be modified"
@@ -23174,7 +23173,7 @@ msgstr "l'ID di un dashboard di un abbonamento non può essere modificato"
 
 #: metabase/pulse/models/pulse.clj:209
 msgid "value must be a map with the following keys `({0})`"
-msgstr "Il valore deve essere una mappa con le seguenti chiavi  `{0}`"
+msgstr "Il valore deve essere una mappa con le seguenti chiavi `{0}`"
 
 #: metabase/pulse/models/pulse.clj:58
 msgid ":parameters must be a sequence of maps with String :id keys"
@@ -23353,11 +23352,13 @@ msgstr "L'interrogazione di questo database richiede il flag della funzione audi
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Abilita l'analisi dell'utilizzo dei campi per le query. Ciò analizzerà i campi utilizzati nelle query e li memorizzerà nel database dell'applicazione\n"
-"    .\n\n"
-"    Disattiva per impostazione predefinita poiché non abbiamo ancora una funzionalità rivolta all'utente che utilizzi questi dati."
+" .\n"
+"\n"
+" Disattiva per impostazione predefinita poiché non abbiamo ancora una funzionalità rivolta all'utente che utilizzi questi dati."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -26070,4 +26071,983 @@ msgstr "Acquisizione degli utenti per paesi"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Migliori 10 paesi per vendite"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Intervallo di date fisso…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Intervallo di date relative…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Il routing del database non può essere abilitato se sono abilitate le azioni del modello e la persistenza."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Il routing del database non può essere abilitato se le azioni del modello sono abilitate."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Il routing del database non può essere abilitato se è abilitata la persistenza del modello."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Il routing del database non può essere abilitato se i caricamenti sono abilitati per questo database."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "È necessario impostare gli attributi utente sugli utenti affinché questa funzionalità sia disponibile"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "È necessario scegliere un attributo utente per abilitare il routing DB"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Abilita le funzionalità dei raggi X"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Errore durante l'abilitazione dei caricamenti"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Errore durante la disabilitazione dei caricamenti"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Non siamo riusciti a trovare alcuno schema"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Filtra per attività"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Filtra per stato"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Iniziato"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Vedi i registri"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Esplora le tue raccolte per trovare e aggiungere domande esistenti."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Modifica l'ordine delle colonne"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Quindi seleziona una metrica e più colonne in base alle quali effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Ad esempio, conteggio degli ordini raggruppati per anno e categoria di prodotto"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Quindi seleziona una metrica e una colonna in base a cui effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Ad esempio, conteggio degli utenti raggruppati per Paese"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Quindi seleziona due o più metriche e una o due colonne in base alle quali effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Ad esempio, conteggio degli ordini e valutazione media raggruppati per anno"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "I grafici a imbuto visualizzano il modo in cui un valore viene suddiviso in una serie di passaggi e la variazione percentuale tra i passaggi."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Quindi seleziona una metrica aggregata (ad esempio Media o Somma) e personalizza l'indicatore nelle impostazioni di visualizzazione."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Ad esempio, valutazione media in stelle"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Quindi seleziona una o più metriche e una colonna temporale in base alla quale effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Ad esempio, conteggio degli ordini raggruppati per anno"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Crea visualizzazioni di mappe con dati geospaziali: le mappe con puntine e griglie richiedono colonne di longitudine e latitudine, le mappe regionali richiedono una colonna con i nomi delle regioni degli Stati Uniti."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Ad esempio, conteggio degli utenti raggruppati per piano di abbonamento"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Quindi seleziona una metrica aggregata (ad esempio Media o Somma) e più colonne in base alle quali effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Ad esempio, conteggio degli ordini raggruppati per Stato, Anno e Categoria di prodotto"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Quindi seleziona una metrica aggregata (ad esempio Conteggio o Somma) e personalizza la barra di avanzamento nelle impostazioni di visualizzazione."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Ad esempio, conteggio degli ordini"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Ad esempio, conteggio dei clienti raggruppati per Stato"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "I grafici di Sankey mostrano come i dati fluiscono attraverso passaggi multidimensionali. Sono utili per mostrare quali elementi, chiamati nodi, contribuiscono al flusso complessivo."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Quindi seleziona una metrica aggregata (ad esempio Media o Somma)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Quindi seleziona una metrica e un numero di colonne in base a cui effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Ad esempio, conteggio degli ordini raggruppati per età del cliente"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Quindi seleziona una metrica aggregata (ad esempio Media o Somma) e una colonna temporale in base alla quale effettuare il raggruppamento."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Ad esempio, conteggio degli ordini raggruppati per mese"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Quindi seleziona una metrica e una singola colonna in base alla quale effettuare il raggruppamento: in base al tempo o alla categoria."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Ad esempio, somma delle entrate raggruppate per Paese"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Mi aspettavo un operatore ma ho ottenuto {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "Database di destinazione creato con successo"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "Database di destinazione aggiornato correttamente"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Aggiungi database di destinazione"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Modifica il database di destinazione"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "È anche possibile aggiungere database a livello di programmazione tramite l'API."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Nessun database di destinazione ancora aggiunto"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Database di destinazione"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Eliminare il database di destinazione {0} ?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Se continui, gli utenti indirizzati a questo database perderanno l'accesso a tutte le domande, modelli, metriche e segmenti."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Lumaca"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase mappa questo valore all'attributo utente scelto per scambiare le query in fase di esecuzione"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Ad esempio, utenti professionisti"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "Email non trovata"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Link Google non valido"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Tutta la cartella"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Foglio singolo"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Seleziona le autorizzazioni **Visualizzatore** e fai clic su **Invia**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Se l'errore persiste, è possibile scaricare le informazioni diagnostiche"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Scorciatoie"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Sfoglia le metriche"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Segnalibro Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Durante la visualizzazione"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Aggiungi filtro"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Durante la modifica"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Aggiungi domanda al notebook"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Aggiungi domanda nativa"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Annulla Modifica Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Sposta la bacheca nel cestino"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Attiva/disattiva le informazioni della dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Modifica Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Salva Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Crea una domanda"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Crea una query nativa"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Crea una dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Crea una raccolta"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Crea un modello"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Crea una metrica"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Attiva/disattiva la modalità scorciatoie"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Apri cestino"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Collezione personale aperta"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Vai all'amministrazione"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Vai alle impostazioni utente"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Vai a casa"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Attiva/disattiva il notebook"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Apri il menu a discesa del filtro"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Apri la barra laterale di riepilogo"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Aggiungi ai segnalibri la domanda"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Informazioni sulla domanda aperta"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Recupera i dati della domanda"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Attiva/disattiva le impostazioni di visualizzazione"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Attiva/disattiva i tipi di visualizzazione"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Invia la domanda al cestino"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Converte una stringa in un numero in virgola mobile."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Colonna stringa da convertire in valori float."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Deve essere il nodo radice"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "La radice deve avere un figlio"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Nome dimensione non valido: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Valore del campo vuoto"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Testo del token vuoto"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Il gruppo deve avere un bambino"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Nessun testo simbolico"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Operatore non valido: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Il primo argomento deve essere un arglist"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Operatore sconosciuto {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Clausola di espressione attesa"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Clausola del valore atteso"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Numero o stringa previsti"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Espressione inaspettata"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Routing del database abilitato"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Routing del database aggiornato"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Routing del database disabilitato"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Instradamento del database"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Quando qualcuno visualizza una domanda utilizzando i dati di questo database, Metabase invierà le query a un database di destinazione impostato in base all'attributo utente della persona. Ogni database di destinazione deve avere uno schema identico."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Abilita il routing del database"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Attributo utente da abbinare al database di destinazione"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Questo attributo determina il database di destinazione a cui l'utente può effettuare query. Il valore deve corrispondere allo slug del database di destinazione."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Scegli un attributo"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Si prega di scegliere prima un attributo utente"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "In Google Drive, fai clic con il pulsante destro del mouse sul file e fai clic su Condividi"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Incolla il link di condivisione per il file"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "In Google Drive, fai clic con il pulsante destro del mouse sul file → Condividi → Copia collegamento"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Importa file"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "In Google Drive, fai clic con il pulsante destro del mouse sulla cartella e fai clic su Condividi"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Importa cartella"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Sposta gli elementi della raccolta nel cestino"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "La persistenza del modello non può essere abilitata se è abilitato il routing del database."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Le azioni del modello non possono essere abilitate se è abilitato il routing del database."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Impostazioni del tavolo"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Tipi di release da controllare"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Errore durante il salvataggio dell'URL del sito"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "URL del sito"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "La metabase {0} è disponibile. Stai eseguendo {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Non c'è nulla che corrisponda ai tuoi filtri."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Filtra i registri"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Scarica come PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Lascia che le persone clicchino per esplorare."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Scarica"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Esporta in PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Risultati (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Scarica (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Cerca per {0} o inserisci un ID"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "Lunedì, Martedì"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "gennaio, febbraio"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Inserisci: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} illustrazione di esempio del grafico"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Fare clic su {0} nell'angolo in alto a destra. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "L'incorporamento di {0} nelle funzioni di aggregazione non è supportato"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Prossima settimana {0}"
+msgstr[1] "Prossime {0} settimane"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "a partire da {0} secondi da adesso"
+msgstr[1] "a partire da {0} secondi da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "iniziato {0} minuto fa"
+msgstr[1] "iniziato {0} minuti fa"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Questo mese"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Prossimo {0} minuto"
+msgstr[1] "Prossimi {0} minuti"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Prossimo millisecondo"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Prossimo {0} trimestre"
+msgstr[1] "Prossimi {0} trimestri"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Prossima ora"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Prossimo {0} anno"
+msgstr[1] "Prossimi {0} anni"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Prossimi {0} secondi"
+msgstr[1] "Prossimi {0} secondi"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Questo secondo"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Prossimo {0} millisecondo"
+msgstr[1] "Prossimi {0} millisecondi"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "Questo trimestre"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "a partire da {0} settimana da adesso"
+msgstr[1] "a partire da {0} settimane da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "a partire da {0} trimestre da adesso"
+msgstr[1] "a partire da {0} trimestri da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Questo millisecondo"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "a partire da {0} giorno fa"
+msgstr[1] "a partire da {0} giorni fa"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Millisecondo precedente"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Giorno precedente {0}"
+msgstr[1] "{0} giorni precedenti"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "a partire da {0} minuto da adesso"
+msgstr[1] "a partire da {0} minuti da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Prossimo {0} giorno"
+msgstr[1] "Prossimi {0} giorni"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Prossimo {0} mese"
+msgstr[1] "Prossimi {0} mesi"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "iniziato {0} mese fa"
+msgstr[1] "iniziato {0} mesi fa"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "L'anno prossimo"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Precedente {0} trimestre"
+msgstr[1] "Quartieri precedenti {0}"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Domani"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Prossima {0} ora"
+msgstr[1] "Prossime {0} ore"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} anno precedente"
+msgstr[1] "{0} anni precedenti"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Mese precedente {0}"
+msgstr[1] "{0} mesi precedenti"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "La prossima settimana"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Il mese prossimo"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "iniziato {0} secondi fa"
+msgstr[1] "iniziato {0} secondi fa"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Precedente {0} millisecondo"
+msgstr[1] "Precedente {0} millisecondi"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Precedente {0} ora"
+msgstr[1] "{0} ore precedenti"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "Il minuto successivo"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "a partire da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "Quest'ora"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "Questo minuto"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Precedente {0} secondo"
+msgstr[1] "Precedenti {0} secondi"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "a partire da {0} giorno da adesso"
+msgstr[1] "a partire da {0} giorni da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "a partire da {0} anni fa"
+msgstr[1] "a partire da {0} anni fa"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "a partire da {0} trimestre fa"
+msgstr[1] "a partire da {0} trimestri fa"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Settimana precedente {0}"
+msgstr[1] "{0} settimane precedenti"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "a partire da {0} millisecondi fa"
+msgstr[1] "a partire da {0} millisecondi fa"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Questa settimana"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "a partire da {0} settimana fa"
+msgstr[1] "a partire da {0} settimane fa"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "a partire da {0} anno da adesso"
+msgstr[1] "a partire da {0} anni da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Secondo precedente"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "a partire da {0} millisecondi da adesso"
+msgstr[1] "a partire da {0} millisecondi da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Minuto precedente {0}"
+msgstr[1] "Minuti precedenti {0}"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Unità sconosciuta"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "Quest'anno"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "iniziato {0} ora fa"
+msgstr[1] "iniziato {0} ore fa"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Prossimo trimestre"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Secondo successivo"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "a partire da {0} mese da adesso"
+msgstr[1] "a partire da {0} mesi da adesso"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "a partire da {0} ora da adesso"
+msgstr[1] "a partire da {0} ore da adesso"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Frequenza di esecuzione dei processi di riempimento e svuotamento degli ID entità in ms. Il valore minimo è 1000 e qualsiasi valore pari o inferiore a 0 disabiliterà completamente il processo."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Escludi selezioni {0}"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Instradamento del database"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Errore di routing del database: nessun database di destinazione con slug `{0}` trovato."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Manca l'attributo utente obbligatorio. Impossibile indirizzare a un database di destinazione."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Gli utenti anonimi non possono accedere a un database con routing abilitato."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "URL non valido: {0}"
 

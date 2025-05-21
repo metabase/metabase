@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=4; plural=((n%10==1 && n%100!=11) ? 0 : ((n%10 >= 2 && n%10 <=4 && (n%100 < 12 || n%100 > 14)) ? 1 : ((n%10 == 0 || (n%10 >= 5 && n%10 <=9)) || (n%100 >= 11 && n%100 <= 14)) ? 2 : 3));\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -13754,7 +13753,7 @@ msgstr "У нас проблемы с подтверждением вашего 
 
 #: enterprise/frontend/src/metabase-enterprise/sharing/components/MutableParametersSection.tsx:68
 msgid "Set filter values for when this gets sent"
-msgstr "Установите значения фильтра,  при котором это будет отправлено"
+msgstr "Установите значения фильтра, при котором это будет отправлено"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:39
 msgid "This may impact the models and questions that use the table(s) as their data source. This can't be undone."
@@ -14139,7 +14138,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Включить ИД пользователя и хэш запроса в запросы"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Это может быть полезно для аудита и отладки, но не позволяет базам данных кэшировать результаты и может увеличить ваши расходы."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -14468,7 +14467,7 @@ msgstr "Год начала должен быть меньше года окон
 
 #: frontend/src/metabase/lib/cron.ts:20
 msgid "Unsupported year value. Possible values are 1970-2099 , - * /"
-msgstr "Неподдерживаемое значение года. Возможные значения 1970-2099  , - * /"
+msgstr "Неподдерживаемое значение года. Возможные значения 1970-2099 , - * /"
 
 #: frontend/src/metabase/lib/cron.ts:21
 msgid "Minute and second values must be between 0 and 59 and hour values must be between 0 and 23"
@@ -16362,13 +16361,13 @@ msgstr "Убедитесь, что основные учетные данные 
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "Вы подключаете Metabase к базе данных {0} , используя учетные данные пользователя Redshift {1}. Чтобы имперсонация работала,  {2} должен быть суперпользователем в Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "Вы подключаете Metabase к базе данных {0} , используя учетные данные пользователя Redshift {1}. Чтобы имперсонация работала, {2} должен быть суперпользователем в Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} это пользователь базы данных, которого Metabase использует для подключения к вашей базе данных  {1} . Убедитесь, что {2} имеет доступ ко всему в {3} , к чему может понадобиться доступ всем группам Metabase, поскольку эта учетная запись пользователя базы данных используется Metabase для синхронизации информации о таблицах."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} это пользователь базы данных, которого Metabase использует для подключения к вашей базе данных {1} . Убедитесь, что {2} имеет доступ ко всему в {3} , к чему может понадобиться доступ всем группам Metabase, поскольку эта учетная запись пользователя базы данных используется Metabase для синхронизации информации о таблицах."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -20092,7 +20091,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "Хост '' {0} '' недоступен"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Стиль соответствия для автозаполнения собственного редактора запросов. Может быть \"substring\", \"prefix\" или \"off\". Более крупные экземпляры могут иметь проблемы с производительностью при сопоставлении с использованием подстроки, поэтому можно использовать сопоставление префикса или отключить автозаполнение."
 
 #: metabase/api/database.clj:629
@@ -20407,9 +20406,9 @@ msgstr "Адрес SMTP сервера, который обрабатывает 
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Максимальное количество получателей, суммированное по всем письмам, которое может быть отправлено в секунду.\n"
-"                Обратите внимание, что последнее письмо, отправленное перед достижением лимита, может превысить его, если у него несколько получателей."
+" Обратите внимание, что последнее письмо, отправленное перед достижением лимита, может превысить его, если у него несколько получателей."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -22267,7 +22266,7 @@ msgid "Stage {0} does not exist"
 msgstr "Стадия {0} не существует"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Частота запуска задания по заполнению идентификаторов сущностей в мс. Минимальное значение — 1000, а любое значение, равное или меньше 0, полностью отключит задание."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -22602,7 +22601,7 @@ msgstr "Путь к файлу {0}"
 
 #: metabase/models/setting.clj:650
 msgid "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."
-msgstr "Некорректное значение строки:  должно быть \"true\" или \"false\" (регистро-независимо)"
+msgstr "Некорректное значение строки: должно быть \"true\" или \"false\" (регистро-независимо)"
 
 #: metabase/models/setting.clj:992
 msgid "`:encryption` is a required option for setting {0}"
@@ -23518,11 +23517,13 @@ msgstr "Для запроса этой базы данных требуется 
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Включить анализ использования полей для запросов. Это позволит проанализировать поля, используемые в запросах, и сохранить их в базе данных приложения\n"
-"    .\n\n"
-"    Отключить по умолчанию, поскольку у нас пока нет функции, которая бы использовала эти данные и была доступна пользователю."
+" .\n"
+"\n"
+" Отключить по умолчанию, поскольку у нас пока нет функции, которая бы использовала эти данные и была доступна пользователю."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -24226,7 +24227,7 @@ msgstr "Неверный встраиваемый секретный ключ! �
 
 #: metabase/util/embed.clj:60
 msgid "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints."
-msgstr "Секретный ключ используется для подписи JSON Web токенов для обращений к назначениям  `/api/embed`"
+msgstr "Секретный ключ используется для подписи JSON Web токенов для обращений к назначениям `/api/embed`"
 
 #: metabase/util/embed.clj:119
 msgid "Check if the static embedding licensing should be hidden in the static embedding flow"
@@ -24924,7 +24925,7 @@ msgstr "Ошибка обработки запроса при применени
 
 #: metabase_enterprise/sandbox/query_processor/middleware/row_level_restrictions.clj:114
 msgid "Query requires user attribute `{0}`"
-msgstr "Запросу требуется атрибут пользовательский атрибут  `{0}`"
+msgstr "Запросу требуется атрибут пользовательский атрибут `{0}`"
 
 #: metabase_enterprise/sandbox/query_processor/middleware/row_level_restrictions.clj:192
 msgid "Error running query to determine metadata"
@@ -25782,7 +25783,7 @@ msgstr "События по дням недели"
 
 #: resources/automagic_dashboards/field/State.yaml
 msgid "Sum of [[GenericNumber]] per [[this]]"
-msgstr "Сумма по [[GenericNumber]]  [[this]]"
+msgstr "Сумма по [[GenericNumber]] [[this]]"
 
 #: resources/automagic_dashboards/field/Number.yaml
 msgid "Sum of [[this]] by [[State]]"
@@ -26243,4 +26244,1055 @@ msgstr "Приобретение пользователя по стране"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Топ-10 стран по продажам"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Фиксированный диапазон дат…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Относительный диапазон дат…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Маршрутизацию базы данных невозможно включить, если включены действия модели и сохранение."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Маршрутизацию базы данных невозможно включить, если включены действия модели."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Маршрутизацию базы данных невозможно включить, если включена сохраняемость модели."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Маршрутизация базы данных не может быть включена, если для этой базы данных включены загрузки."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Для того чтобы эта функция была доступна, необходимо задать атрибуты пользователя."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Для включения маршрутизации БД необходимо выбрать атрибут пользователя."
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Включить функции рентгеновского излучения"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Ошибка включения загрузки"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Ошибка отключения загрузок"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Мы не смогли найти ни одной схемы."
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Фильтр по задаче"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Фильтр по статусу"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Начато"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Смотреть журналы"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Просмотрите свои коллекции, чтобы найти и добавить существующие вопросы."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Изменить порядок столбцов"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Затем выберите показатель и несколько столбцов для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Например, количество заказов, сгруппированных по году и категории продукта."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Затем выберите показатель и столбец для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Например, количество пользователей, сгруппированных по стране"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Затем выберите два или более показателей и один или два столбца для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Например, количество заказов и средний рейтинг, сгруппированные по году"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "Воронкообразные диаграммы наглядно показывают, как значение разбивается на последовательность шагов, а также процентное изменение между шагами."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Затем выберите совокупный показатель (например, среднее значение или сумма) и настройте шкалу в настройках визуализации."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Например, средний рейтинг звезд"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Затем выберите один или несколько показателей и столбец времени для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Например, количество заказов, сгруппированных по году"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Создавайте визуализации карт с использованием геопространственных данных: для карт Pin и Grid требуются столбцы долготы и широты, для карт регионов требуется столбец названий регионов США."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Например, количество пользователей, сгруппированных по плану подписки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Затем выберите совокупный показатель (например, среднее значение или сумма) и несколько столбцов для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Например, количество заказов, сгруппированных по штату, году и категории продукта."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Затем выберите совокупный показатель (например, количество или сумма) и настройте индикатор выполнения в настройках визуализации."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Например, количество заказов"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Например, количество клиентов, сгруппированных по штату"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "Диаграммы Сэнки показывают, как данные проходят через многомерные шаги. Они полезны для демонстрации того, какие элементы, называемые узлами, вносят вклад в общий поток."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Затем выберите совокупный показатель (например, среднее значение или сумма)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Затем выберите метрику и число столбцов для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Например, количество заказов, сгруппированных по возрасту клиента."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Затем выберите совокупный показатель (например, среднее значение или сумму) и столбец времени для группировки."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Например, количество заказов, сгруппированных по месяцам."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Затем выберите показатель и один столбец для группировки: время или категория."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Например, сумма дохода, сгруппированная по странам"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Ожидался оператор, но вместо этого получено {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "База данных назначения успешно создана"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "База данных назначения успешно обновлена"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Добавить базу данных назначения"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Редактировать базу данных назначения"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Вы также можете добавлять базы данных программно через API."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Пока не добавлено ни одной базы данных назначения"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Базы данных назначения"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Удалить базу данных назначения {0} ?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Если вы продолжите, пользователи, перенаправленные в эту базу данных, потеряют доступ ко всем вопросам, моделям, метрикам и сегментам."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Слизень"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase сопоставляет это значение с выбранным вами атрибутом пользователя для обмена запросами во время выполнения."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Например, про-пользователи"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "Электронная почта не найдена"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Недействительная ссылка Google"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Вся папка"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Отдельный лист"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Выберите разрешения **Просмотр** и нажмите **Отправить**."
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Если ошибка повторяется, вы можете загрузить диагностическую информацию."
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Ярлыки"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Обзор метрик"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Панель инструментов закладок"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "При просмотре"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Добавить фильтр"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "При редактировании"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Добавить вопрос в блокнот"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Добавить вопрос на родном языке"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Отменить Редактировать панель инструментов"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Отправить панель задач в корзину"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Переключить панель управления Информация"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Изменить панель инструментов"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Сохранить панель инструментов"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Создать вопрос"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Создать собственный запрос"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Создать панель инструментов"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Создать коллекцию"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Создать модель"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Создать метрику"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Переключить модальные сочетания клавиш"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Открыть корзину"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Открыть личную коллекцию"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Перейти к администратору"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Перейти к настройкам пользователя"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Идти домой"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Переключить блокнот"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Открыть раскрывающийся список фильтров"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Открыть боковую панель резюме"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Вопрос по закладкам"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Информация об открытом вопросе"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Повторить запрос данных"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Переключить настройки визуализации"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Переключить типы визуализации"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Отправить вопрос в корзину"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Преобразует строку в число с плавающей точкой."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Столбец строки для преобразования в число с плавающей точкой."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Должен быть корневым узлом"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "Корень должен иметь одного потомка"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Неверное имя измерения: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Значение пустого поля"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Текст пустого токена"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Группа должна иметь одного ребенка"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Текст токена отсутствует"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Неверный оператор: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Первый аргумент должен быть списком аргументов"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Неизвестный оператор {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Ожидаемое выражение предложения"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Пункт об ожидаемой стоимости"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Ожидаемое число или строка"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Неожиданное выражение"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Включена маршрутизация базы данных"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Маршрутизация базы данных обновлена"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Маршрутизация базы данных отключена"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Маршрутизация базы данных"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Когда кто-то просматривает вопрос, используя данные из этой базы данных, Metabase отправит запросы в целевую базу данных, заданную атрибутом пользователя. Каждая целевая база данных должна иметь идентичную схему."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Включить маршрутизацию базы данных"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Атрибут пользователя для соответствия целевой базе данных"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Этот атрибут определяет, к какой целевой базе данных может обращаться человек. Значение должно соответствовать слагу целевой базы данных."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Выберите атрибут"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Сначала выберите атрибут пользователя."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "В Google Диске щелкните правой кнопкой мыши по файлу и выберите «Поделиться»."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Вставьте ссылку для совместного использования файла"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "В Google Диске щелкните правой кнопкой мыши по файлу → Поделиться → Копировать ссылку."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Импорт файла"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "В Google Диске щелкните правой кнопкой мыши по папке и выберите «Поделиться»."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Импортировать папку"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Переместить предметы коллекции в корзину"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "Сохранение модели невозможно включить, если включена маршрутизация базы данных."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Действия модели не могут быть включены, если включена маршрутизация базы данных."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Сервировка стола"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Типы релизов, которые следует проверить"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Ошибка сохранения URL-адреса сайта"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "URL-адрес сайта"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Метабаза {0} доступна. Вы используете {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Ничего не соответствует вашим фильтрам."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Фильтровать журналы"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Загрузить как PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Позвольте людям нажимать, чтобы исследовать."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "Загрузки"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Экспорт в PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Результаты (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Скачать (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Поиск по {0} или введите идентификатор"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "понедельник, вторник"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "Янв, Фев"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Введите: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} пример диаграммы иллюстрация"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Нажмите на {0} в правом верхнем углу. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "Встраивание {0} в функции агрегации не поддерживается."
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Следующая {0} неделя"
+msgstr[1] "Следующие {0} недели"
+msgstr[2] "Следующие {0} недели"
+msgstr[3] "Следующие {0} недели"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "начиная с {0} секунды"
+msgstr[1] "начиная с {0} секунд с этого момента"
+msgstr[2] "начиная с {0} секунд с этого момента"
+msgstr[3] "начиная с {0} секунд с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "начало {0} минуту назад"
+msgstr[1] "начало {0} минут назад"
+msgstr[2] "начало {0} минут назад"
+msgstr[3] "начало {0} минут назад"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "В этом месяце"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Следующая {0} минута"
+msgstr[1] "Следующие {0} минут"
+msgstr[2] "Следующие {0} минут"
+msgstr[3] "Следующие {0} минут"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Следующая миллисекунда"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Следующий {0} квартал"
+msgstr[1] "Следующие {0} кварталы"
+msgstr[2] "Следующие {0} кварталы"
+msgstr[3] "Следующие {0} кварталы"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Следующий час"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Следующий {0} год"
+msgstr[1] "Следующие {0} лет"
+msgstr[2] "Следующие {0} лет"
+msgstr[3] "Следующие {0} лет"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Следующая {0} секунда"
+msgstr[1] "Следующие {0} секунд"
+msgstr[2] "Следующие {0} секунд"
+msgstr[3] "Следующие {0} секунд"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Эта секунда"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Далее {0} миллисекунда"
+msgstr[1] "Далее {0} миллисекунд"
+msgstr[2] "Далее {0} миллисекунд"
+msgstr[3] "Далее {0} миллисекунд"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "В этом квартале"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "начиная с {0} недели"
+msgstr[1] "начиная с {0} недель с этого момента"
+msgstr[2] "начиная с {0} недель с этого момента"
+msgstr[3] "начиная с {0} недель с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "начиная с {0} квартала с этого момента"
+msgstr[1] "начиная с {0} кварталов с этого момента"
+msgstr[2] "начиная с {0} кварталов с этого момента"
+msgstr[3] "начиная с {0} кварталов с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Эта миллисекунда"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "начало {0} день назад"
+msgstr[1] "начало {0} дней назад"
+msgstr[2] "начало {0} дней назад"
+msgstr[3] "начало {0} дней назад"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Предыдущая миллисекунда"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Предыдущий {0} день"
+msgstr[1] "Предыдущие {0} дней"
+msgstr[2] "Предыдущие {0} дней"
+msgstr[3] "Предыдущие {0} дней"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "начиная с {0} минуты"
+msgstr[1] "начиная с {0} минут с этого момента"
+msgstr[2] "начиная с {0} минут с этого момента"
+msgstr[3] "начиная с {0} минут с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Следующий {0} день"
+msgstr[1] "Следующие {0} дней"
+msgstr[2] "Следующие {0} дней"
+msgstr[3] "Следующие {0} дней"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Следующий {0} месяц"
+msgstr[1] "Следующие {0} месяцев"
+msgstr[2] "Следующие {0} месяцев"
+msgstr[3] "Следующие {0} месяцев"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "начало {0} месяц назад"
+msgstr[1] "начало {0} месяцев назад"
+msgstr[2] "начало {0} месяцев назад"
+msgstr[3] "начало {0} месяцев назад"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "В следующем году"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Предыдущий {0} квартал"
+msgstr[1] "Предыдущие {0} кварталы"
+msgstr[2] "Предыдущие {0} кварталы"
+msgstr[3] "Предыдущие {0} кварталы"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Завтра"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Следующий {0} час"
+msgstr[1] "Следующие {0} часов"
+msgstr[2] "Следующие {0} часов"
+msgstr[3] "Следующие {0} часов"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Предыдущий {0} год"
+msgstr[1] "Предыдущие {0} лет"
+msgstr[2] "Предыдущие {0} лет"
+msgstr[3] "Предыдущие {0} лет"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Предыдущий {0} месяц"
+msgstr[1] "Предыдущие {0} месяцев"
+msgstr[2] "Предыдущие {0} месяцев"
+msgstr[3] "Предыдущие {0} месяцев"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "На следующей неделе"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "В следующем месяце"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "начало {0} секунду назад"
+msgstr[1] "начало {0} секунд назад"
+msgstr[2] "начало {0} секунд назад"
+msgstr[3] "начало {0} секунд назад"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Предыдущая {0} миллисекунда"
+msgstr[1] "Предыдущие {0} миллисекунд"
+msgstr[2] "Предыдущие {0} миллисекунд"
+msgstr[3] "Предыдущие {0} миллисекунд"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Предыдущий {0} час"
+msgstr[1] "Предыдущие {0} часов"
+msgstr[2] "Предыдущие {0} часов"
+msgstr[3] "Предыдущие {0} часов"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "В следующую минуту"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "начиная сейчас"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "В этот час"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "В эту минуту"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Предыдущая {0} секунда"
+msgstr[1] "Предыдущие {0} секунд"
+msgstr[2] "Предыдущие {0} секунд"
+msgstr[3] "Предыдущие {0} секунд"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "начиная с {0} дня с этого момента"
+msgstr[1] "начиная с {0} дней с этого момента"
+msgstr[2] "начиная с {0} дней с этого момента"
+msgstr[3] "начиная с {0} дней с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "начало {0} год назад"
+msgstr[1] "начало {0} лет назад"
+msgstr[2] "начало {0} лет назад"
+msgstr[3] "начало {0} лет назад"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "начало {0} четверть назад"
+msgstr[1] "начало {0} кварталов назад"
+msgstr[2] "начало {0} кварталов назад"
+msgstr[3] "начало {0} кварталов назад"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Предыдущая {0} неделя"
+msgstr[1] "Предыдущие {0} недели"
+msgstr[2] "Предыдущие {0} недели"
+msgstr[3] "Предыдущие {0} недели"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "начало {0} миллисекунды назад"
+msgstr[1] "начало {0} миллисекунд назад"
+msgstr[2] "начало {0} миллисекунд назад"
+msgstr[3] "начало {0} миллисекунд назад"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "На этой неделе"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "начало {0} неделю назад"
+msgstr[1] "начало {0} недель назад"
+msgstr[2] "начало {0} недель назад"
+msgstr[3] "начало {0} недель назад"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "начиная с {0} года"
+msgstr[1] "начиная с {0} лет с этого момента"
+msgstr[2] "начиная с {0} лет с этого момента"
+msgstr[3] "начиная с {0} лет с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Предыдущая вторая"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "начиная с {0} миллисекунды с этого момента"
+msgstr[1] "начиная с {0} миллисекунд с этого момента"
+msgstr[2] "начиная с {0} миллисекунд с этого момента"
+msgstr[3] "начиная с {0} миллисекунд с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Предыдущая {0} минута"
+msgstr[1] "Предыдущие {0} минут"
+msgstr[2] "Предыдущие {0} минут"
+msgstr[3] "Предыдущие {0} минут"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Неизвестная единица"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "В этом году"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "начало {0} час назад"
+msgstr[1] "начало {0} часов назад"
+msgstr[2] "начало {0} часов назад"
+msgstr[3] "начало {0} часов назад"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Следующий квартал"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Следующая секунда"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "начиная с {0} месяца с этого момента"
+msgstr[1] "начиная с {0} месяцев с этого момента"
+msgstr[2] "начиная с {0} месяцев с этого момента"
+msgstr[3] "начиная с {0} месяцев с этого момента"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "начиная с {0} часа с этого момента"
+msgstr[1] "начиная с {0} часов с этого момента"
+msgstr[2] "начиная с {0} часов с этого момента"
+msgstr[3] "начиная с {0} часов с этого момента"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Частота выполнения заданий по заполнению идентификаторов сущностей и удалению идентификаторов сущностей в мс. Минимальное значение — 1000, а любое значение, равное или меньше 0, полностью отключит задание."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Исключить {0} выборок"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Маршрутизация базы данных"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Ошибка маршрутизации базы данных: не найдена база данных назначения со слагом `{0}`."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Отсутствует требуемый атрибут пользователя. Невозможно направить в базу данных назначения."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Анонимные пользователи не могут получить доступ к базе данных с включенной маршрутизацией."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "Неверный URL: {0}"
 

@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=4; plural=n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || n%100==4 ? 2 : 3;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -14140,7 +14139,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "כלול מזהה משתמש וחשיש שאילתה בשאילתות"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "זה יכול להיות שימושי לביקורת וניפוי באגים, אבל מונע ממסד נתונים לאגור תוצאות במטמון ועלול להגדיל את העלויות שלך."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -16366,13 +16365,13 @@ msgstr "וודא כי לתעודת מסד הנתונים הראשי יש גיש�
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "אתה מחבר את Metabase למסד הנתונים {0} באמצעות האישורים של המשתמש Redshift {1}. כדי שההתחזות תעבוד,  {2} חייב להיות משתמש-על ב-Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "אתה מחבר את Metabase למסד הנתונים {0} באמצעות האישורים של המשתמש Redshift {1}. כדי שההתחזות תעבוד, {2} חייב להיות משתמש-על ב-Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} הוא בסיס הנתונים שבו משתמש Metabase כדי להתחבר למסד הנתונים  {1} שלך. ודא של {2} יש גישה לכל מה ב- {3} שכל קבוצות Metabase עשויות להזדקק אליו, מכיוון שחשבון המשתמש של מסד הנתונים הזה הוא מה ש-Metabase משתמש בו כדי לסנכרן מידע טבלה."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} הוא בסיס הנתונים שבו משתמש Metabase כדי להתחבר למסד הנתונים {1} שלך. ודא של {2} יש גישה לכל מה ב- {3} שכל קבוצות Metabase עשויות להזדקק אליו, מכיוון שחשבון המשתמש של מסד הנתונים הזה הוא מה ש-Metabase משתמש בו כדי לסנכרן מידע טבלה."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -20097,7 +20096,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "לא ניתן להגיע למארח '' {0} ''"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "סגנון תואם עבור השלמה אוטומטית של עורך שאילתות מקורי. יכול להיות \"מחרוזת משנה\", \"תחילית\" או \"כבוי\". למופעים גדולים יותר יכולות להיות בעיות ביצועים בהתאמה באמצעות מחרוזת משנה, כך שניתן להשתמש בהתאמת קידומת, או לכבות השלמות אוטומטיות."
 
 #: metabase/api/database.clj:629
@@ -20412,9 +20411,9 @@ msgstr "הכתובת של שרת SMTP המטפל בדוא\"ל שלך."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "המספר המרבי של נמענים, המסוכם על פני הודעות דוא\"ל, שניתן לשלוח בשנייה.\n"
-"                שימו לב שהאימייל הסופי שנשלח לפני הגעה למגבלה מסוגל לחרוג ממנו, אם יש לו מספר נמענים."
+" שימו לב שהאימייל הסופי שנשלח לפני הגעה למגבלה מסוגל לחרוג ממנו, אם יש לו מספר נמענים."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -22274,7 +22273,7 @@ msgid "Stage {0} does not exist"
 msgstr "שלב {0} אינו קיים"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "תדירות להפעלת משימת מזהי ישות מילוי חוזר ב-ms. הערך המינימלי הוא 1000, וכל ערך ב-0 או מתחת ל-0 ישבית את העבודה לחלוטין."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23525,11 +23524,13 @@ msgstr "שאילתת מסד נתונים זה דורשת את דגל תכונו�
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "אפשר ניתוח שימוש בשדה עבור שאילתות. פעולה זו תנתח את השדות המשמשים בשאילתות ויאחסן אותם במסד הנתונים של היישום\n"
-"    .\n\n"
-"    כבה כברירת מחדל מכיוון שעדיין לא הייתה לנו תכונה הפונה למשתמש שמשתמשת בנתונים האלה."
+" .\n"
+"\n"
+" כבה כברירת מחדל מכיוון שעדיין לא הייתה לנו תכונה הפונה למשתמש שמשתמשת בנתונים האלה."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -26250,4 +26251,1055 @@ msgstr "רכישת משתמשים לפי מדינה"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 המדינות המובילות לפי מכירות"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "טווח תאריכים קבוע…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "טווח תאריכים יחסי…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "לא ניתן להפעיל ניתוב מסד נתונים אם מופעלים פעולות מודל והתמדה."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "לא ניתן להפעיל ניתוב מסד נתונים אם פעולות המודל מופעלות."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "לא ניתן להפעיל ניתוב מסד נתונים אם התמדה של המודל מופעלת."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "לא ניתן להפעיל ניתוב מסד נתונים אם העלאות מופעלות עבור מסד נתונים זה."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "עליך להגדיר תכונות משתמש למשתמשים כדי שתכונה זו תהיה זמינה"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "עליך לבחור תכונת משתמש כדי לאפשר ניתוב DB"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "אפשר תכונות רנטגן"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "שגיאה בהפעלת העלאות"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "שגיאה בהשבתת העלאות"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "לא יכולנו למצוא שום סכמה"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "סנן לפי משימה"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "סנן לפי סטטוס"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "התחיל"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "ראה יומנים"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "עיין באוספים שלך כדי למצוא ולהוסיף שאלות קיימות."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "ערוך את סדר העמודות"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "לאחר מכן בחר ערך ועמודות מרובות לקבץ לפיהן."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "לדוגמה, ספירת ההזמנות מקובצות לפי שנה וקטגוריית מוצר"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "לאחר מכן בחר מדד ועמודה לקבץ לפיהם."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "לדוגמה, ספירת המשתמשים מקובצים לפי מדינה"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "לאחר מכן בחר שני מדדים או יותר ועמודה אחת או שתיים לקבץ לפיהן."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "לדוגמה, ספירת הזמנות ודירוג ממוצע מקובצים לפי שנה"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "תרשימי משפך מדגים כיצד ערך מתחלק לפי סדרה של שלבים, ואת אחוז השינוי בין השלבים."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "לאחר מכן בחר מדד מצטבר (כגון ממוצע או סכום) והתאם אישית את המדיד בהגדרות ההדמיה."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "למשל דירוג כוכבים ממוצע"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "לאחר מכן בחר מדד אחד או יותר ועמודת זמן לקבץ לפי."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "לדוגמה, ספירת ההזמנות מקובצות לפי שנה"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "בנו הדמיות מפות עם נתונים גיאו-מרחביים: מפות סיכה ורשת דורשות עמודות קווי אורך ורוחב, מפות אזור דורשות עמודת שמות אזורים בארה\"ב."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "לדוגמה, ספירת המשתמשים מקובצים לפי תוכנית מנוי"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "לאחר מכן בחר מדד מצטבר (כגון ממוצע או סכום) ועמודות מרובות לקבץ לפי."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "למשל ספירת ההזמנות מקובצות לפי מדינה, שנה וקטגוריית מוצר"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "לאחר מכן בחר מדד מצטבר (כגון ספירה או סכום) והתאם אישית את סרגל ההתקדמות בהגדרות ההדמיה."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "למשל ספירת הזמנות"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "לדוגמה, ספירת הלקוחות מקובצים לפי מדינה"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "תרשימי Sankey מראים כיצד הנתונים זורמים דרך שלבים רב-ממדיים. הם שימושיים להראות אילו אלמנטים, הנקראים צמתים, תורמים לזרימה הכוללת."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "לאחר מכן בחר מדד מצטבר (כגון ממוצע או סכום)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "לאחר מכן בחר ערך ועמודות מספר לקבץ לפיהן."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "למשל ספירת ההזמנות מקובצות לפי גיל הלקוח"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "לאחר מכן בחר מדד מצטבר (כגון ממוצע או סכום) ועמודת זמן לקבץ לפי."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "למשל ספירת ההזמנות מקובצות לפי חודש"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "לאחר מכן בחר מדד ועמודה בודדת לקיבוץ לפי: זמן או קטגוריה."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "למשל סכום ההכנסות מקובץ לפי מדינה"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "מצפה לאופרטור אבל קיבלתי {0} במקום זאת"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "מסד הנתונים של היעד נוצר בהצלחה"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "מסד הנתונים של היעד עודכן בהצלחה"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "הוסף מסד נתונים יעד"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "ערוך מסד נתונים יעד"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "אתה יכול גם להוסיף מסדי נתונים באופן פרוגרמטי דרך ה-API."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "לא נוספו עדיין מסדי נתונים של יעדים"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "מסדי נתונים של יעדים"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "למחוק את מסד הנתונים של היעד {0} ?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "משתמשים שינותבו למסד נתונים זה יאבדו גישה לכל שאלה, דגם, מדד ופלח אם תמשיך."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "שַׁבְּלוּל"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase ממפה ערך זה לתכונת המשתמש שבחרת כדי להחליף שאילתות בזמן ריצה"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "למשל פרו-משתמשים"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "אימייל לא נמצא"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "קישור גוגל לא חוקי"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "כל התיקיה"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "גיליון בודד"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "בחר הרשאות **צופה** ולחץ על **שלח**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "אם השגיאה נמשכת, תוכל להוריד מידע אבחון"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "קיצורי דרך"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "עיון במדדים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "לוח המחוונים לסימניות"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "בעת צפייה"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "הוסף מסנן"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "בעת עריכה"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "הוסף שאלת מחברת"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "הוסף שאלה מקורית"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "בטל עריכת לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "שלח לוח שליטה לאשפה"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "החלף את פרטי לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "ערוך את לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "שמור את לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "צור שאלה"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "צור שאילתה מקורית"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "צור לוח מחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "צור אוסף"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "צור מודל"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "צור מדד"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "החלף קיצורי דרך"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "פתח את האשפה"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "פתיחת אוסף אישי"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "עבור אל אדמין"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "עבור להגדרות משתמש"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "לך הביתה"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "החלף מחברת"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "פתח את תפריט המסנן הנפתח"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "פתח את סרגל הצד של סיכום"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "סימניה שאלה"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "פתח מידע על שאלה"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "אחזר את נתוני השאלה"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "החלף הגדרות"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "החלף סוגים של דהיינו"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "שלח שאלה לאשפה"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "ממירה מחרוזת למספר נקודה צפה."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "עמודת המחרוזת להמרה לצפים."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "חייב להיות צומת שורש"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "לשורש חייב להיות ילד אחד"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "שם מאפיין לא חוקי: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "ערך שדה ריק"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "טקסט אסימון ריק"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "לקבוצה חייב להיות ילד אחד"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "אין טקסט אסימון"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "אופרטור לא חוקי: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "הטיעון הראשון חייב להיות ארגליסט"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "אופרטור לא ידוע {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "סעיף ביטוי צפוי"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "סעיף ערך צפוי"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "מספר או מחרוזת צפויים"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "ביטוי לא צפוי"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "ניתוב מסד נתונים מופעל"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "ניתוב מסד הנתונים עודכן"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "ניתוב מסד נתונים מושבת"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "ניתוב מסד נתונים"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "כאשר מישהו צופה בשאלה באמצעות נתונים ממסד נתונים זה, Metabase ישלח את השאילתות למסד נתונים יעד שנקבע על ידי תכונת המשתמש של האדם. לכל מסד נתונים יעד חייב להיות סכימה זהה."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "אפשר ניתוב מסד נתונים"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "תכונת משתמש כדי להתאים את מסד הנתונים של יעד"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "תכונה זו קובעת איזה מסד נתונים של יעד האדם יכול לבצע שאילתות. הערך חייב להתאים ל-slug של מסד הנתונים היעד."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "בחר תכונה"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "אנא בחר תכונת משתמש תחילה"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "ב-Google Drive, לחץ לחיצה ימנית על הקובץ ולחץ על שתף"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "הדבק את קישור השיתוף של הקובץ"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "ב-Google Drive, לחץ לחיצה ימנית על הקובץ ← שתף ← העתק קישור"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "ייבוא קובץ"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "ב-Google Drive, לחץ לחיצה ימנית על התיקיה ולחץ על שתף"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "תיקיית ייבוא"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "העבר פריטי אוסף לאשפה"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "לא ניתן להפעיל התמדה של מודל אם ניתוב מסד נתונים מופעל."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "לא ניתן להפעיל פעולות מודל אם ניתוב מסד נתונים מופעל."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "הגדרות טבלה"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "סוגי מהדורות לבדיקה"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "שגיאה בשמירת כתובת האתר"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "כתובת אתר"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabase {0} זמין. אתה מפעיל {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "שום דבר לא תואם את המסננים שלך."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "סינון יומנים"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "הורד כ-PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "אפשר לאנשים ללחוץ כדי לחקור."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "הורדות"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "ייצוא ל-PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "תוצאות (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "הורד (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "חפש לפי {0} או הזן מזהה"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "שני, שלישי"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "יאן, פברואר"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "הזן: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} איור לדוגמה של תרשים"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "לחץ על {0} בפינה השמאלית העליונה. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "הטמעת {0} בפונקציות צבירה אינה נתמכת"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "בשבוע הבא {0}"
+msgstr[1] "{0} השבועות הבאים"
+msgstr[2] "{0} השבועות הבאים"
+msgstr[3] "{0} השבועות הבאים"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "החל מ- {0} שניה מעכשיו"
+msgstr[1] "החל {0} שניות מעכשיו"
+msgstr[2] "החל {0} שניות מעכשיו"
+msgstr[3] "החל {0} שניות מעכשיו"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "החל לפני דקה {0}"
+msgstr[1] "החל לפני {0} דקות"
+msgstr[2] "החל לפני {0} דקות"
+msgstr[3] "החל לפני {0} דקות"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "החודש הזה"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "הדקה הבאה של {0}"
+msgstr[1] "{0} דקות הבאות"
+msgstr[2] "{0} דקות הבאות"
+msgstr[3] "{0} דקות הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "האלפית השנייה הבאה"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "הרבעון הבא של {0}"
+msgstr[1] "הרבעונים הבאים של {0}"
+msgstr[2] "הרבעונים הבאים של {0}"
+msgstr[3] "הרבעונים הבאים של {0}"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "שעה הבאה"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "בשנה הבאה {0}"
+msgstr[1] "{0} השנים הבאות"
+msgstr[2] "{0} השנים הבאות"
+msgstr[3] "{0} השנים הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "השנייה {0} הבאה"
+msgstr[1] "{0} השניות הבאות"
+msgstr[2] "{0} השניות הבאות"
+msgstr[3] "{0} השניות הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "השנייה הזו"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "הבא {0} אלפית השנייה"
+msgstr[1] "הבא {0} אלפיות השנייה"
+msgstr[2] "הבא {0} אלפיות השנייה"
+msgstr[3] "הבא {0} אלפיות השנייה"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "הרבעון הזה"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "החל משבוע {0} מהיום"
+msgstr[1] "החל {0} שבועות מהיום"
+msgstr[2] "החל {0} שבועות מהיום"
+msgstr[3] "החל {0} שבועות מהיום"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "החל מ- {0} רבעון מעכשיו"
+msgstr[1] "החל מ- {0} רבעונים מעכשיו"
+msgstr[2] "החל מ- {0} רבעונים מעכשיו"
+msgstr[3] "החל מ- {0} רבעונים מעכשיו"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "האלפית השנייה הזו"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "החל לפני {0} יום"
+msgstr[1] "החל לפני {0} ימים"
+msgstr[2] "החל לפני {0} ימים"
+msgstr[3] "החל לפני {0} ימים"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "אלפית השנייה הקודמת"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "{0} היום הקודם"
+msgstr[1] "{0} ימים קודמים"
+msgstr[2] "{0} ימים קודמים"
+msgstr[3] "{0} ימים קודמים"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "החל דקה {0} מעכשיו"
+msgstr[1] "החל {0} דקות מעכשיו"
+msgstr[2] "החל {0} דקות מעכשיו"
+msgstr[3] "החל {0} דקות מעכשיו"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "{0} היום הבא"
+msgstr[1] "{0} הימים הבאים"
+msgstr[2] "{0} הימים הבאים"
+msgstr[3] "{0} הימים הבאים"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "החודש הבא של {0}"
+msgstr[1] "{0} החודשים הבאים"
+msgstr[2] "{0} החודשים הבאים"
+msgstr[3] "{0} החודשים הבאים"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "החל לפני {0} לפני חודש"
+msgstr[1] "החל לפני {0} חודשים"
+msgstr[2] "החל לפני {0} חודשים"
+msgstr[3] "החל לפני {0} חודשים"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "שנה הבאה"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "רבעון {0} הקודם"
+msgstr[1] "{0} רבעונים קודמים"
+msgstr[2] "{0} רבעונים קודמים"
+msgstr[3] "{0} רבעונים קודמים"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "מָחָר"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "השעה הבאה של {0}"
+msgstr[1] "{0} השעות הבאות"
+msgstr[2] "{0} השעות הבאות"
+msgstr[3] "{0} השעות הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} שנה קודמת"
+msgstr[1] "{0} שנים קודמות"
+msgstr[2] "{0} שנים קודמות"
+msgstr[3] "{0} שנים קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "{0} חודש קודם"
+msgstr[1] "{0} חודשים קודמים"
+msgstr[2] "{0} חודשים קודמים"
+msgstr[3] "{0} חודשים קודמים"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "בשבוע הבא"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "בחודש הבא"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "החל מלפני שנייה {0}"
+msgstr[1] "החל לפני {0} שניות"
+msgstr[2] "החל לפני {0} שניות"
+msgstr[3] "החל לפני {0} שניות"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "הקודם {0} אלפיות השנייה"
+msgstr[1] "{0} מילי-שניות קודמות"
+msgstr[2] "{0} מילי-שניות קודמות"
+msgstr[3] "{0} מילי-שניות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "{0} השעה הקודמת"
+msgstr[1] "{0} שעות קודמות"
+msgstr[2] "{0} שעות קודמות"
+msgstr[3] "{0} שעות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "דקה הבאה"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "מתחיל עכשיו"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "השעה הזו"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "הדקה הזו"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "{0} השניה הקודמת"
+msgstr[1] "{0} שניות קודמות"
+msgstr[2] "{0} שניות קודמות"
+msgstr[3] "{0} שניות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "החל {0} יום מהיום"
+msgstr[1] "החל {0} ימים מהיום"
+msgstr[2] "החל {0} ימים מהיום"
+msgstr[3] "החל {0} ימים מהיום"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "החל לפני {0} לפני שנה"
+msgstr[1] "החל לפני {0} שנים"
+msgstr[2] "החל לפני {0} שנים"
+msgstr[3] "החל לפני {0} שנים"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "החל מלפני {0} לפני רבעון"
+msgstr[1] "החל לפני {0} רבעונים"
+msgstr[2] "החל לפני {0} רבעונים"
+msgstr[3] "החל לפני {0} רבעונים"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "השבוע {0} הקודם"
+msgstr[1] "{0} השבועות הקודמים"
+msgstr[2] "{0} השבועות הקודמים"
+msgstr[3] "{0} השבועות הקודמים"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "החל מלפני מילי-שנייה {0}"
+msgstr[1] "החל לפני מילי-שניות {0}"
+msgstr[2] "החל לפני מילי-שניות {0}"
+msgstr[3] "החל לפני מילי-שניות {0}"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "השבוע"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "החל לפני {0} לפני שבוע"
+msgstr[1] "החל לפני {0} שבועות"
+msgstr[2] "החל לפני {0} שבועות"
+msgstr[3] "החל לפני {0} שבועות"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "החל {0} שנה מהיום"
+msgstr[1] "החל {0} שנים מהיום"
+msgstr[2] "החל {0} שנים מהיום"
+msgstr[3] "החל {0} שנים מהיום"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "השנייה הקודמת"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "החל מ- {0} אלפיות השנייה מעכשיו"
+msgstr[1] "החל מ- {0} מילישניות מעכשיו"
+msgstr[2] "החל מ- {0} מילישניות מעכשיו"
+msgstr[3] "החל מ- {0} מילישניות מעכשיו"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "דקה {0} קודמת"
+msgstr[1] "{0} דקות קודמות"
+msgstr[2] "{0} דקות קודמות"
+msgstr[3] "{0} דקות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "יחידה לא ידועה"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "השנה"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "החל מלפני {0} שעה"
+msgstr[1] "החל לפני {0} שעות"
+msgstr[2] "החל לפני {0} שעות"
+msgstr[3] "החל לפני {0} שעות"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "הרבעון הבא"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "השנייה הבאה"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] ""
+msgstr[1] "החל {0} חודשים מהיום"
+msgstr[2] "החל מ- {0} חודשים מהיום"
+msgstr[3] "החל מ- {0} חודשים מהיום"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "החל משעה {0} מעכשיו"
+msgstr[1] "החל {0} שעות מעכשיו"
+msgstr[2] "החל {0} שעות מעכשיו"
+msgstr[3] "החל {0} שעות מעכשיו"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "תדירות להרצת זיהויי ישות מילוי חוזר ומשרות זיהוי ישות ניקוז ב-ms. הערך המינימלי הוא 1000, וכל ערך ב-0 או מתחת ל-0 ישבית את העבודה לחלוטין."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "אל תכלול בחירות {0}"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "ניתוב מסד נתונים"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "שגיאת ניתוב מסד נתונים: לא נמצא מסד נתונים של יעד עם שבלול `{0}`."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "מאפיין משתמש נדרש חסר. לא ניתן לנתב למסד נתונים של יעדים."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "משתמשים אנונימיים אינם יכולים לגשת למסד נתונים עם ניתוב מופעל."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "כתובת אתר לא חוקית: {0}"
 

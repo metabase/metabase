@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 3;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -6763,7 +6762,7 @@ msgstr[3] "{0} modelov"
 #, javascript-format
 msgid "{0} schema"
 msgid_plural "{0} schemas"
-msgstr[0] "{0}  schema"
+msgstr[0] "{0} schema"
 msgstr[1] "{0} schémy"
 msgstr[2] "{0} schém"
 msgstr[3] "{0} schém"
@@ -14138,7 +14137,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "Zahrnúť ID používateľa a heš dopytu do dopytov"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "Môže to byť užitočné pri audite a ladení, ale bráni to databázam ukladať výsledky do vyrovnávacej pamäte a môže to zvýšiť náklady."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -16362,13 +16361,13 @@ msgstr "Uistite sa, že hlavné poverenie databázy má prístup ku všetkému, 
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "Metabázu pripájate k databáze {0} pomocou poverení pre používateľa Redshift {1}. Aby zosobnenie fungovalo, musí byť  {2} superužívateľom v Redshift."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "Metabázu pripájate k databáze {0} pomocou poverení pre používateľa Redshift {1}. Aby zosobnenie fungovalo, musí byť {2} superužívateľom v Redshift."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} je používateľ databázy Metabase, ktorý sa pripája k databáze  {1} . Uistite sa, že {2} má prístup ku všetkému v {3} , ku ktorému môžu potrebovať prístup všetky skupiny Metabase, pretože práve toto konto databázového používateľa používa Metabase na synchronizáciu informácií o tabuľkách."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} je používateľ databázy Metabase, ktorý sa pripája k databáze {1} . Uistite sa, že {2} má prístup ku všetkému v {3} , ku ktorému môžu potrebovať prístup všetky skupiny Metabase, pretože práve toto konto databázového používateľa používa Metabase na synchronizáciu informácií o tabuľkách."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -20093,7 +20092,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "Hostiteľ ''{0}'' nie je dosiahnuteľný"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "Štýl zhody pre automatické dopĺňanie editora natívnych dotazov. Môže byť „podreťazec“, „predpona“ alebo „vypnuté“. Väčšie inštancie môžu mať problémy s výkonom pri zhode pomocou podreťazca, takže môžete použiť zhodu predpony alebo vypnúť automatické dopĺňanie."
 
 #: metabase/api/database.clj:629
@@ -20408,9 +20407,9 @@ msgstr "Adresa servera SMTP, ktorý spracováva vaše emaily."
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "Maximálny počet príjemcov, ktorý možno odoslať za sekundu.\n"
-"                Všimnite si, že posledný e-mail odoslaný pred dosiahnutím limitu ho môže prekročiť, ak má viacero príjemcov."
+" Všimnite si, že posledný e-mail odoslaný pred dosiahnutím limitu ho môže prekročiť, ak má viacero príjemcov."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -21155,7 +21154,7 @@ msgstr "{0} musia mať hodnoty."
 
 #: metabase/driver/impl.clj:115
 msgid "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-msgstr "Chyba: pokus o zmenu vlastnosti {0} `:abstract?`  z {1} na {2}."
+msgstr "Chyba: pokus o zmenu vlastnosti {0} `:abstract?` z {1} na {2}."
 
 #: metabase/driver/impl.clj:153
 msgid "Abstract drivers cannot derive from concrete parent drivers."
@@ -22270,7 +22269,7 @@ msgid "Stage {0} does not exist"
 msgstr "Fáza {0} neexistuje"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "Frekvencia spustenia úlohy ID entít záložného obsahu v ms. Minimálna hodnota je 1 000 a akákoľvek hodnota rovnajúca sa 0 alebo menej úlohu úplne zakáže."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23521,11 +23520,13 @@ msgstr "Vyhľadávanie v tejto databáze vyžaduje príznak funkcie audit-app"
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "Povoliť analýzu využitia poľa pre dopyty. Tým sa analyzujú polia použité v dotazoch a uložia sa do databázy aplikácie\n"
-"    .\n\n"
-"    Predvolene vypnuté, pretože zatiaľ nemáme funkciu pre používateľov, ktorá by tieto údaje využívala."
+" .\n"
+"\n"
+" Predvolene vypnuté, pretože zatiaľ nemáme funkciu pre používateľov, ktorá by tieto údaje využívala."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -24069,7 +24070,7 @@ msgstr "JSON obsahujúci mapovanie skupín LDAP do Metabase."
 
 #: metabase/sso/settings.clj:38
 msgid "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."
-msgstr "Rozlišujúci názov, ktorý sa bude viazať ako (ak existuje) používateľ, ktory bude  použitý na vyhľadávanie informácií o iných používateľoch."
+msgstr "Rozlišujúci názov, ktorý sa bude viazať ako (ak existuje) používateľ, ktory bude použitý na vyhľadávanie informácií o iných používateľoch."
 
 #: metabase/sso/settings.clj:201
 msgid "Should new email notifications be sent to admins, for all new SSO users?"
@@ -26246,4 +26247,1055 @@ msgstr "Akvizícia používateľa podľa krajiny"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 krajín podľa predaja"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "Pevný rozsah dátumov…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "Relatívny rozsah dátumov…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "Smerovanie databázy nie je možné povoliť, ak sú povolené akcie modelu a pretrvávanie."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "Smerovanie databázy nemožno povoliť, ak sú povolené akcie modelu."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "Smerovanie databázy nemožno povoliť, ak je povolená stálosť modelu."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "Smerovanie databázy nemožno povoliť, ak je pre túto databázu povolené nahrávanie."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "Aby bola táto funkcia dostupná, musíte pre používateľov nastaviť používateľské atribúty"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Ak chcete povoliť smerovanie DB, musíte vybrať atribút používateľa"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Povoliť funkcie röntgenového žiarenia"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "Chyba pri povolení nahrávania"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "Chyba pri zakázaní nahrávania"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "Nenašli sme žiadnu schému"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "Filtrujte podľa úlohy"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "Filtrujte podľa stavu"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "Začaté"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "Pozrite si denníky"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "Prehliadajte svoje zbierky, nájdite a pridajte existujúce otázky."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Upravte poradie stĺpcov"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "Potom vyberte metriku a viacero stĺpcov na zoskupenie."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "Napr. počet objednávok zoskupených podľa roku a kategórie produktu"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "Potom vyberte metriku a stĺpec, podľa ktorého chcete zoskupiť."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "Napr. počet používateľov zoskupených podľa krajiny"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "Potom vyberte dve alebo viac metrík a jeden alebo dva stĺpce na zoskupenie."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "Napr. počet objednávok a priemerné hodnotenie zoskupené podľa roku"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "Grafy zúženia zobrazujú, ako je hodnota rozdelená do série krokov a percentuálnu zmenu medzi jednotlivými krokmi."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "Potom vyberte súhrnnú metriku (napríklad Priemer alebo Súčet) a prispôsobte meradlo v nastaveniach vizualizácie."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "Napr. Priemerné hodnotenie hviezdičkami"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "Potom vyberte jednu alebo viacero metrík a stĺpec času, podľa ktorého ich chcete zoskupiť."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "Napr. počet objednávok zoskupených podľa roku"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Vytvárajte vizualizácie máp s geopriestorovými údajmi: Mapy Pin a Grid vyžadujú stĺpce zemepisnej dĺžky a šírky, mapy regiónov vyžadujú stĺpec s názvami regiónov v USA."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "Napr. počet používateľov zoskupených podľa plánu predplatného"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "Potom vyberte súhrnnú metriku (napríklad Priemer alebo Súčet) a viacero stĺpcov, podľa ktorých sa má zoskupiť."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "Napr. počet objednávok zoskupených podľa štátu, roku a kategórie produktu"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "Potom vyberte súhrnnú metriku (napríklad Počet alebo Súčet) a prispôsobte indikátor priebehu v nastaveniach vizualizácie."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "Napr. počet objednávok"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "Napr. počet zákazníkov zoskupených podľa štátu"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "Sankey grafy ukazujú, ako dáta prechádzajú cez viacrozmerné kroky. Sú užitočné na zobrazenie toho, ktoré prvky, nazývané uzly, prispievajú k celkovému toku."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "Potom vyberte súhrnnú metriku (napríklad Priemer alebo Súčet)."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "Potom vyberte stĺpce metriky a čísla, podľa ktorých chcete zoskupiť."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "Napr. počet objednávok zoskupených podľa veku zákazníka"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "Potom vyberte súhrnnú metriku (napríklad Priemer alebo Súčet) a stĺpec času, podľa ktorého sa má zoskupiť."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "Napr. počet objednávok zoskupených podľa mesiaca"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "Potom vyberte metriku a jeden stĺpec na zoskupenie podľa: času alebo kategórie."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "Napr. súčet príjmov zoskupených podľa krajiny"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "Očakávaný operátor, ale namiesto toho dostal {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "Cieľová databáza bola úspešne vytvorená"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "Cieľová databáza bola úspešne aktualizovaná"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "Pridať cieľovú databázu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "Upravte cieľovú databázu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "Databázy môžete pridávať aj programovo cez API."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "Zatiaľ neboli pridané žiadne cieľové databázy"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "Cieľové databázy"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "Chcete odstrániť cieľovú databázu {0} ?"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "Ak budete pokračovať, používatelia presmerovaní do tejto databázy stratia prístup ku každej otázke, modelu, metrike a segmentu."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "Slimák"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabáza mapuje túto hodnotu k vami zvolenému užívateľskému atribútu na výmenu dotazov za behu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Napríklad pro-užívatelia"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-mail sa nenašiel"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "Neplatný odkaz Google"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "Celý priečinok"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "Jeden list"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "Vyberte **Povolenia pre čitateľa** a kliknite na **Odoslať**"
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "Ak chyba pretrváva, môžete si stiahnuť diagnostické informácie"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "Skratky"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "Prehľadávať metriky"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Záložka Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "Pri prezeraní"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Pridať filter"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "Pri úprave"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Pridať otázku o notebooku"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Pridať natívnu otázku"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Zrušiť Upraviť informačný panel"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Odoslať tabuľu do koša"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Prepnúť informácie o informačnom paneli"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Upraviť informačný panel"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Uložiť informačný panel"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "Vytvorte otázku"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "Vytvorte natívny dotaz"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "Vytvorte informačný panel"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "Vytvorte zbierku"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "Vytvorte model"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "Vytvorte metriku"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Prepnúť modálne skratky"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "Otvoriť kôš"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "Otvoriť osobný odber"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "Prejsť na admin"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "Prejdite do používateľských nastavení"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "Choďte domov"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Prepnúť Poznámkový blok"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "Otvoriť rozbaľovaciu ponuku filtra"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "Otvoriť bočný panel súhrnu"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Otázka na záložku"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "Informácie o otvorenej otázke"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Znova načítať údaje otázky"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "Prepnúť nastavenia viz"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "Prepínať typy viz"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "Odoslať otázku do koša"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "Skonvertuje reťazec na číslo s pohyblivou rádovou čiarkou."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "Stĺpec reťazca, ktorý sa má previesť na plávajúce."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "Musí to byť koreňový uzol"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "Root musí mať jedno dieťa"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Neplatný názov dimenzie: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "Hodnota prázdneho poľa"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "Prázdny text tokenu"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "Skupina musí mať jedno dieťa"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "Žiadny text tokenu"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "Neplatný operátor: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "Prvý argument musí byť arglist"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "Neznámy operátor {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "Očakávaná výrazová klauzula"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "Klauzula o očakávanej hodnote"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "Očakávané číslo alebo reťazec"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "Neočakávaný výraz"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "Smerovanie databázy povolené"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "Smerovanie databázy bolo aktualizované"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "Smerovanie databázy je zakázané"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "Smerovanie databázy"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Keď niekto zobrazí otázku pomocou údajov z tejto databázy, metabáza odošle dotazy do cieľovej databázy nastavenej podľa používateľského atribútu danej osoby. Každá cieľová databáza musí mať rovnakú schému."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "Povoliť smerovanie databázy"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Atribút používateľa na zhodu s cieľovou databázou"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "Tento atribút určuje, v ktorej cieľovej databáze môže osoba vyhľadávať. Hodnota sa musí zhodovať so slug cieľovej databázy."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "Vyberte atribút"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "Najprv vyberte atribút používateľa"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "Na Disku Google kliknite pravým tlačidlom myši na súbor a kliknite na položku Zdieľať"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "Prilepte odkaz na zdieľanie súboru"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "Na Disku Google kliknite pravým tlačidlom myši na súbor → Zdieľať → Kopírovať odkaz"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "Importovať súbor"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "Na Disku Google kliknite pravým tlačidlom myši na priečinok a kliknite na položku Zdieľať"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "Importovať priečinok"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "Presuňte položky zbierky do koša"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "Trvalosť modelu nie je možné povoliť, ak je povolené smerovanie databázy."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "Akcie modelu nie je možné povoliť, ak je povolené smerovanie databázy."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Nastavenie tabuľky"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "Typy vydaní, ktoré treba skontrolovať"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "Chyba pri ukladaní adresy URL stránok"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Adresa URL stránky"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabáza {0} je k dispozícii. Spúšťate {1}."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "Nič nezodpovedá vašim filtrom."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "Filtrovať denníky"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "Stiahnuť ako PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "Umožnite ľuďom kliknúť a preskúmať."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "sťahovanie"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "Exportovať do PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "Výsledky (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "Stiahnuť (csv, xlsx, json, png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "Hľadajte podľa {0} alebo zadajte ID"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "pondelok, utorok"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "Jan, feb"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "Zadajte: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} ilustrácia príkladu grafu"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "Kliknite na {0} v pravom hornom rohu. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "Vkladanie {0} do agregačných funkcií nie je podporované"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Ďalší {0} týždeň"
+msgstr[1] "Ďalších {0} týždňov"
+msgstr[2] "Ďalších {0} týždňov"
+msgstr[3] "Ďalších {0} týždňov"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "počnúc {0} sekundy odteraz"
+msgstr[1] "počnúc {0} sekúnd odteraz"
+msgstr[2] "počnúc {0} sekúnd odteraz"
+msgstr[3] "počnúc {0} sekúnd odteraz"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "začína pred {0} minútou"
+msgstr[1] "začína pred {0} minútami"
+msgstr[2] "začína pred {0} minútami"
+msgstr[3] "začína pred {0} minútami"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "Tento mesiac"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Ďalšia {0} minúta"
+msgstr[1] "Ďalších {0} minút"
+msgstr[2] "Ďalších {0} minút"
+msgstr[3] "Ďalších {0} minút"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "Ďalšia milisekunda"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Ďalší {0} štvrťrok"
+msgstr[1] "Ďalších {0} štvrťrokov"
+msgstr[2] "Ďalších {0} štvrťrokov"
+msgstr[3] "Ďalších {0} štvrťrokov"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "Ďalšia hodina"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Ďalší {0} rok"
+msgstr[1] "Ďalších {0} rokov"
+msgstr[2] "Ďalších {0} rokov"
+msgstr[3] "Ďalších {0} rokov"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Ďalšia {0} sekunda"
+msgstr[1] "Ďalších {0} sekúnd"
+msgstr[2] "Ďalších {0} sekúnd"
+msgstr[3] "Ďalších {0} sekúnd"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "Túto sekundu"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Ďalších {0} milisekúnd"
+msgstr[1] "Ďalších {0} milisekúnd"
+msgstr[2] "Ďalších {0} milisekúnd"
+msgstr[3] "Ďalších {0} milisekúnd"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "Tento štvrťrok"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "odteraz od {0} týždňa"
+msgstr[1] "odteraz od {0} týždňov"
+msgstr[2] "odteraz od {0} týždňov"
+msgstr[3] "odteraz od {0} týždňov"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "odteraz od {0} štvrťroku"
+msgstr[1] "odteraz od {0} štvrťrokov"
+msgstr[2] "odteraz od {0} štvrťrokov"
+msgstr[3] "odteraz od {0} štvrťrokov"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "Túto milisekundu"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "začína pred {0} dňom"
+msgstr[1] "začína pred {0} dňami"
+msgstr[2] "začína pred {0} dňami"
+msgstr[3] "začína pred {0} dňami"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "Predchádzajúca milisekunda"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Predchádzajúci {0} deň"
+msgstr[1] "Predchádzajúcich {0} dní"
+msgstr[2] "Predchádzajúcich {0} dní"
+msgstr[3] "Predchádzajúcich {0} dní"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "odteraz od {0} minúty"
+msgstr[1] "odteraz za {0} minút"
+msgstr[2] "odteraz za {0} minút"
+msgstr[3] "odteraz za {0} minút"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Ďalší {0} deň"
+msgstr[1] "Ďalších {0} dní"
+msgstr[2] "Ďalších {0} dní"
+msgstr[3] "Ďalších {0} dní"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Ďalší {0} mesiac"
+msgstr[1] "Ďalších {0} mesiacov"
+msgstr[2] "Ďalších {0} mesiacov"
+msgstr[3] "Ďalších {0} mesiacov"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "začína pred {0} mesiacom"
+msgstr[1] "začína pred {0} mesiacmi"
+msgstr[2] "začína pred {0} mesiacmi"
+msgstr[3] "začína pred {0} mesiacmi"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "Budúci rok"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Predchádzajúci {0} štvrťrok"
+msgstr[1] "Predchádzajúce {0} štvrťroky"
+msgstr[2] "Predchádzajúce {0} štvrťroky"
+msgstr[3] "Predchádzajúce {0} štvrťroky"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "Zajtra"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Ďalšia {0} hodina"
+msgstr[1] "Ďalších {0} hodín"
+msgstr[2] "Ďalších {0} hodín"
+msgstr[3] "Ďalších {0} hodín"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Predchádzajúci {0} rok"
+msgstr[1] "Predchádzajúcich {0} rokov"
+msgstr[2] "Predchádzajúcich {0} rokov"
+msgstr[3] "Predchádzajúcich {0} rokov"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Predchádzajúci {0} mesiac"
+msgstr[1] "Predchádzajúcich {0} mesiacov"
+msgstr[2] "Predchádzajúcich {0} mesiacov"
+msgstr[3] "Predchádzajúcich {0} mesiacov"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "Budúci týždeň"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "Budúci mesiac"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "začína pred {0} sekundou"
+msgstr[1] "začína pred {0} sekundami"
+msgstr[2] "začína pred {0} sekundami"
+msgstr[3] "začína pred {0} sekundami"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Predchádzajúcich {0} milisekúnd"
+msgstr[1] "Predchádzajúcich {0} milisekúnd"
+msgstr[2] "Predchádzajúcich {0} milisekúnd"
+msgstr[3] "Predchádzajúcich {0} milisekúnd"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Predchádzajúca {0} hodina"
+msgstr[1] "Predchádzajúcich {0} hodín"
+msgstr[2] "Predchádzajúcich {0} hodín"
+msgstr[3] "Predchádzajúcich {0} hodín"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "Ďalšia minúta"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "počnúc teraz"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "Túto hodinu"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "Túto minútu"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Predchádzajúca {0} sekunda"
+msgstr[1] "Predchádzajúcich {0} sekúnd"
+msgstr[2] "Predchádzajúcich {0} sekúnd"
+msgstr[3] "Predchádzajúcich {0} sekúnd"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "počnúc {0} dňom odteraz"
+msgstr[1] "počnúc {0} dňami odteraz"
+msgstr[2] "počnúc {0} dňami odteraz"
+msgstr[3] "počnúc {0} dňami odteraz"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "od {0} pred rokom"
+msgstr[1] "počnúc {0} rokmi"
+msgstr[2] "počnúc {0} rokmi"
+msgstr[3] "počnúc {0} rokmi"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "od {0} pred štvrťrokom"
+msgstr[1] "od {0} pred štvrťrokmi"
+msgstr[2] "od {0} pred štvrťrokmi"
+msgstr[3] "od {0} pred štvrťrokmi"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Predchádzajúci {0} týždeň"
+msgstr[1] "Predchádzajúcich {0} týždňov"
+msgstr[2] "Predchádzajúcich {0} týždňov"
+msgstr[3] "Predchádzajúcich {0} týždňov"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "začína pred {0} milisekundou"
+msgstr[1] "začína pred {0} milisekundami"
+msgstr[2] "začína pred {0} milisekundami"
+msgstr[3] "začína pred {0} milisekundami"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "Tento týždeň"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "začína pred {0} týždňom"
+msgstr[1] "začína pred {0} týždňami"
+msgstr[2] "začína pred {0} týždňami"
+msgstr[3] "začína pred {0} týždňami"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "počnúc {0} rokom odteraz"
+msgstr[1] "počnúc {0} rokov odteraz"
+msgstr[2] "počnúc {0} rokov odteraz"
+msgstr[3] "počnúc {0} rokov odteraz"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "Predchádzajúca sekunda"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "počnúc {0} milisekúnd odteraz"
+msgstr[1] "počnúc {0} milisekúnd odteraz"
+msgstr[2] "počnúc {0} milisekúnd odteraz"
+msgstr[3] "počnúc {0} milisekúnd odteraz"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Predchádzajúca {0} minúta"
+msgstr[1] "Predchádzajúcich {0} minút"
+msgstr[2] "Predchádzajúcich {0} minút"
+msgstr[3] "Predchádzajúcich {0} minút"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "Neznáma jednotka"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "Tento rok"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "začína pred {0} hodinou"
+msgstr[1] "začína pred {0} hodinami"
+msgstr[2] "začína pred {0} hodinami"
+msgstr[3] "začína pred {0} hodinami"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "Ďalší štvrťrok"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "Ďalšia sekunda"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "počnúc {0} mesiacom odteraz"
+msgstr[1] "počnúc {0} mesiacov odteraz"
+msgstr[2] "počnúc {0} mesiacov odteraz"
+msgstr[3] "počnúc {0} mesiacov odteraz"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "odteraz od {0} hodiny"
+msgstr[1] "odteraz od {0} hodín"
+msgstr[2] "odteraz od {0} hodín"
+msgstr[3] "odteraz od {0} hodín"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Frekvencia spúšťania úloh s identifikátormi entít zálohovania a odčerpávaním entít v ms. Minimálna hodnota je 1 000 a akákoľvek hodnota rovnajúca sa 0 alebo menej úlohu úplne zakáže."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "Vylúčiť {0} výberov"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "Smerovanie databázy"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "Chyba smerovania databázy: Nenašla sa žiadna cieľová databáza so slimákom `{0}`."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "Chýba povinný atribút používateľa. Nie je možné smerovať do cieľovej databázy."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "Anonymní používatelia nemajú prístup k databáze s povoleným smerovaním."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "Neplatná adresa URL: {0}"
 

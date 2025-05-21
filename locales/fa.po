@@ -1,9 +1,8 @@
-# #-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#
+# #-#-#-#-# metabase-backend.pot (1.0) #-#-#-#-#
 # Copyright (C) 2022 Metabase <docs@metabase.com>
 # This file is distributed under the same license as the Metabase package
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
@@ -657,7 +656,7 @@ msgstr "نمایش مقادیر"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:303
 msgid "Choose to show the original value from the database, or have this field display associated or custom information."
-msgstr "انتخاب کنید که مقداراصلی را از پایگاه داده نشان بدهد یا این اطلاعات دلخواه  را."
+msgstr "انتخاب کنید که مقداراصلی را از پایگاه داده نشان بدهد یا این اطلاعات دلخواه را."
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
@@ -3111,7 +3110,7 @@ msgstr "تهی"
 #: frontend/src/metabase/visualizations/lib/errors.js:6
 #, javascript-format
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
-msgstr "خظا! داده های درخواستی شما متناسب با نوع نمایش انتخاب شده  همخوانی ندارد. این نمایش نیاز به حداقل {0} {1} داده دارد."
+msgstr "خظا! داده های درخواستی شما متناسب با نوع نمایش انتخاب شده همخوانی ندارد. این نمایش نیاز به حداقل {0} {1} داده دارد."
 
 #: frontend/src/metabase/visualizations/lib/errors.js:18
 #, javascript-format
@@ -13152,11 +13151,11 @@ msgstr "مقدار"
 msgid "The number of units to be added."
 msgstr "تعداد واحدهایی که باید اضافه شوند."
 
-#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1327
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1352
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1377
 #, javascript-format
 msgid "Choose from: {0}, {1}, {2}, {3}, {4}, {5}, {6}, ${ 7 }, or {8}."
-msgstr ""
+msgstr "."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1338
 msgid "Subtracts some units of time to a date or timestamp value."
@@ -14054,7 +14053,7 @@ msgid "Include User ID and query hash in queries"
 msgstr "شامل شناسه کاربر و هش پرس و جو در سوالات"
 
 #: frontend/src/metabase/databases/constants.tsx:74
-msgid "This can be useful for auditing and debugging, but prevents  databases from caching results and may increase your costs."
+msgid "This can be useful for auditing and debugging, but prevents databases from caching results and may increase your costs."
 msgstr "این می تواند برای ممیزی و اشکال زدایی مفید باشد، اما از ذخیره نتایج توسط پایگاه داده ها جلوگیری می کند و ممکن است هزینه های شما را افزایش دهد."
 
 #: frontend/src/metabase/databases/constants.tsx:77
@@ -16259,13 +16258,13 @@ msgstr "اطمینان حاصل کنید که اعتبار پایگاه داده
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:26
 #, javascript-format
-msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work,  {2} must be a superuser in Redshift."
-msgstr "شما در حال اتصال Metabase به پایگاه داده {0} با استفاده از اطلاعات کاربری برای کاربر Redshift {1}هستید. برای اینکه جعل هویت کار کند،  {2} باید یک ابرکاربر در Redshift باشد."
+msgid "You’re connecting Metabase to the {0} database using the credentials for the Redshift user {1}. For impersonation to work, {2} must be a superuser in Redshift."
+msgstr "شما در حال اتصال Metabase به پایگاه داده {0} با استفاده از اطلاعات کاربری برای کاربر Redshift {1}هستید. برای اینکه جعل هویت کار کند، {2} باید یک ابرکاربر در Redshift باشد."
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationWarning/ImpersonationWarning.tsx:41
 #, javascript-format
-msgid "{0} is the database user Metabase is using to connect to your  {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
-msgstr "{0} پایگاه داده ای است که کاربر Metabase از آن برای اتصال به پایگاه داده  {1} شما استفاده می کند. مطمئن شوید که {2} به همه چیزهایی در {3} دسترسی دارد که همه گروه های Metabase ممکن است نیاز به دسترسی داشته باشند، زیرا این حساب کاربری پایگاه داده همان چیزی است که Metabase برای همگام سازی اطلاعات جدول استفاده می کند."
+msgid "{0} is the database user Metabase is using to connect to your {1} database. Make sure that {2} has access to everything in {3} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information."
+msgstr "{0} پایگاه داده ای است که کاربر Metabase از آن برای اتصال به پایگاه داده {1} شما استفاده می کند. مطمئن شوید که {2} به همه چیزهایی در {3} دسترسی دارد که همه گروه های Metabase ممکن است نیاز به دسترسی داشته باشند، زیرا این حساب کاربری پایگاه داده همان چیزی است که Metabase برای همگام سازی اطلاعات جدول استفاده می کند."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SessionTimeoutSetting/SessionTimeoutSetting.tsx:17
 msgid "minutes"
@@ -16682,7 +16681,7 @@ msgstr "نام بخش خود را بنویسید"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:86
 msgid "Give your segment a name to help others find it."
-msgstr "بخش خود را  نام گذاری کنید تا به دیگران جهت یافتن آن  کمک کنید."
+msgstr "بخش خود را نام گذاری کنید تا به دیگران جهت یافتن آن کمک کنید."
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:92
 msgid "Something descriptive but not too long"
@@ -16706,7 +16705,7 @@ msgstr "دلیل تغییرات"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:111
 msgid "Leave a note to explain what changes you made and why they were required."
-msgstr "یک یادداشت برای توضیح  علت تغییرات ایجادشده بنویسید."
+msgstr "یک یادداشت برای توضیح علت تغییرات ایجادشده بنویسید."
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:117
 msgid "This will show up in the revision history for this segment to help everyone remember why things changed"
@@ -17245,7 +17244,7 @@ msgstr "Postgres، MySQL و H2"
 
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:83
 msgid "Seconds and year properties are not allowed"
-msgstr "ویژگی های سال  ثانیه ها مجاز نیست"
+msgstr "ویژگی های سال ثانیه ها مجاز نیست"
 
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
 msgid "cron syntax"
@@ -19954,7 +19953,7 @@ msgid "Host ''{0}'' is not reachable"
 msgstr "میزبان '' {0}'' قابل دسترسی نیست"
 
 #: metabase/api/database.clj:616
-msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off."
+msgid "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". Larger instances can have performance issues matching using substring, so can use prefix matching, or turn autocompletions off."
 msgstr "تطبیق سبک برای تکمیل خودکار ویرایشگر پرس و جو بومی. می تواند \"زیر رشته\"، \"پیشوند\" یا \"خاموش\" باشد. نمونه‌های بزرگ‌تر می‌توانند در تطبیق با استفاده از رشته فرعی مشکلات عملکردی داشته باشند، بنابراین می‌توانند از تطبیق پیشوند استفاده کنند یا تکمیل خودکار را خاموش کنند."
 
 #: metabase/api/database.clj:629
@@ -20253,9 +20252,9 @@ msgstr "آدرس سرور SMTP که ایمیل های شما را مدیریت �
 
 #: metabase/channel/email.clj:101
 msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
-"                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
+" Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
 msgstr "حداکثر تعداد گیرنده‌هایی که در ایمیل‌ها خلاصه می‌شود، که می‌توان در هر ثانیه ارسال کرد.\n"
-"                توجه داشته باشید که ایمیل نهایی ارسال شده قبل از رسیدن به حد مجاز، اگر چندین گیرنده داشته باشد، می تواند از آن فراتر رود."
+" توجه داشته باشید که ایمیل نهایی ارسال شده قبل از رسیدن به حد مجاز، اگر چندین گیرنده داشته باشد، می تواند از آن فراتر رود."
 
 #: metabase/channel/email.clj:69
 msgid "SMTP username."
@@ -20824,7 +20823,7 @@ msgstr "قادر به حل قطعه نیست: `:آی‌دی-قطعه` مفقود
 
 #: metabase/driver/common/parameters/values.clj:123
 msgid "You''ll need to pick a value for ''{0}'' before this query can run."
-msgstr "قبل از اجرای این درخواست باید مقداری برای  \"{0}\" انتخاب کنید."
+msgstr "قبل از اجرای این درخواست باید مقداری برای \"{0}\" انتخاب کنید."
 
 #: metabase/driver/common/parameters/values.clj:206
 msgid "Invalid :card parameter: missing `:card-id`"
@@ -22103,7 +22102,7 @@ msgid "Stage {0} does not exist"
 msgstr "مرحله {0} وجود ندارد"
 
 #: metabase/lib_be/task/backfill_entity_ids.clj:29
-msgid "Frequency for running backfill entity ids job in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgid "Frequency for running backfill entity ids job in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
 msgstr "فرکانس برای اجرای backfill entity id job در ms. حداقل مقدار 1000 است و هر مقداری در 0 یا کمتر از آن کار را به طور کامل غیرفعال می کند."
 
 #: metabase/login_history/models/login_history.clj:79
@@ -23231,7 +23230,7 @@ msgstr "شناسه جدول FK که مطابق برای فیلد FK {0} باشد
 
 #: metabase/query_processor/middleware/annotate.clj:412
 msgid "Expected: {0}"
-msgstr "توقع :  {0}"
+msgstr "توقع : {0}"
 
 #: metabase/query_processor/middleware/annotate.clj:74
 msgid "Query processor error: number of columns returned by driver does not match results."
@@ -23354,11 +23353,13 @@ msgstr "پرس و جو از این پایگاه داده به پرچم ویژگ�
 
 #: metabase/query_processor/middleware/process_userland_query.clj:41
 msgid "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
-"    application database.\n\n"
-"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+" application database.\n"
+"\n"
+" Turn off by default since we haven''t had an user-facing feature that uses this data yet."
 msgstr "تجزیه و تحلیل استفاده از فیلد را برای پرس و جوها فعال کنید. با این کار فیلدهای مورد استفاده در پرس و جوها تجزیه و تحلیل شده و آنها در پایگاه داده برنامه\n"
-"    ذخیره می شود.\n\n"
-"    به‌طور پیش‌فرض غیرفعال شود، زیرا هنوز یک ویژگی روبه‌روی کاربر که از این داده‌ها استفاده کند، نداشته‌ایم."
+" ذخیره می شود.\n"
+"\n"
+" به‌طور پیش‌فرض غیرفعال شود، زیرا هنوز یک ویژگی روبه‌روی کاربر که از این داده‌ها استفاده کند، نداشته‌ایم."
 
 #: metabase/query_processor/middleware/resolve_fields.clj:59
 msgid "Error resolving Fields in query: {0}"
@@ -24022,7 +24023,7 @@ msgstr "''{0}'' یک عدد قابل تشخیص نیست"
 
 #: metabase/util.cljc:513
 msgid "Not something with an ID: {0}"
-msgstr "اطلاعاتی با این ID: {0}  وجود ندارد "
+msgstr "اطلاعاتی با این ID: {0} وجود ندارد "
 
 #: metabase/util/cron.clj:32
 msgid "value must be a valid Quartz cron schedule string."
@@ -26071,4 +26072,983 @@ msgstr "کسب کاربر توسط کشور"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 کشور برتر با فروش"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:92
+msgid "Fixed date range…"
+msgstr "محدوده تاریخ ثابت…"
+
+#: frontend/src/metabase/querying/filters/components/DatePicker/DateShortcutPicker/constants.ts:97
+msgid "Relative date range…"
+msgstr "محدوده تاریخ نسبی…"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:16
+msgid "Database routing can't be enabled if model actions and persistence are enabled."
+msgstr "اگر اقدامات مدل و تداوم فعال باشد، مسیریابی پایگاه داده را نمی توان فعال کرد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:20
+msgid "Database routing can't be enabled if model actions are enabled."
+msgstr "اگر اقدامات مدل فعال باشد، مسیریابی پایگاه داده را نمی توان فعال کرد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:25
+msgid "Database routing can't be enabled if model persistence is enabled."
+msgstr "اگر تداوم مدل فعال باشد، مسیریابی پایگاه داده را نمی توان فعال کرد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:30
+msgid "Database routing can't be enabled if uploads are enabled for this database."
+msgstr "اگر آپلود برای این پایگاه داده فعال باشد، مسیریابی پایگاه داده نمی تواند فعال شود."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:47
+msgid "You must set user attributes on users for this feature to be available"
+msgstr "برای در دسترس بودن این ویژگی باید ویژگی های کاربر را روی کاربران تنظیم کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "برای فعال کردن مسیریابی DB باید یک ویژگی کاربر انتخاب کنید"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "ویژگی های X-Ray را فعال کنید"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:114
+msgid "Error enabling uploads"
+msgstr "خطا در فعال کردن آپلودها"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:133
+msgid "Error disabling uploads"
+msgstr "خطا در غیرفعال کردن آپلودها"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:216
+msgid "We couldn't find any schema"
+msgstr "هیچ طرحی پیدا نکردیم"
+
+#: frontend/src/metabase/admin/tasks/components/TaskPicker/TaskPicker.tsx:31
+msgid "Filter by task"
+msgstr "فیلتر بر اساس کار"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:29
+msgid "Filter by status"
+msgstr "فیلتر بر اساس وضعیت"
+
+#: frontend/src/metabase/admin/tasks/components/TaskStatusPicker/TaskStatusPicker.tsx:45
+#: frontend/src/metabase/admin/tasks/containers/TasksApp/TasksTable.tsx:75
+msgid "Started"
+msgstr "شروع شد"
+
+#: frontend/src/metabase/admin/tasks/containers/TaskModal/TaskModal.tsx:70
+msgid "See logs"
+msgstr "سیاههها را ببینید"
+
+#: frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx:57
+msgid "Browse your collections to find and add existing questions."
+msgstr "مجموعه های خود را مرور کنید تا سوالات موجود را بیابید و اضافه کنید."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "ترتیب ستون را ویرایش کنید"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:41
+msgid "Then pick a metric and multiple columns to group by."
+msgstr "سپس یک متریک و چندین ستون را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:42
+msgid "E.g., Count of orders grouped by Year and Product category"
+msgstr "به عنوان مثال، تعداد سفارشات گروه بندی شده بر اساس سال و دسته محصول"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:46
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:78
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:93
+msgid "Then pick a metric and a column to group by."
+msgstr "سپس یک متریک و یک ستون را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:47
+msgid "E.g., Count of users grouped by Country"
+msgstr "به عنوان مثال، تعداد کاربران گروه بندی شده بر اساس کشور"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:51
+msgid "Then pick two or more metrics and one or two columns to group by."
+msgstr "سپس دو یا چند معیار و یک یا دو ستون را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:52
+msgid "E.g., Count of orders and Average rating grouped by Year"
+msgstr "به عنوان مثال، تعداد سفارشات و میانگین رتبه بندی بر اساس سال"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:56
+msgid "Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps."
+msgstr "نمودارهای قیفی نحوه شکسته شدن یک مقدار توسط یک سری مراحل و درصد تغییر بین مراحل را تجسم می کنند."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:62
+msgid "Then pick an aggregate metric (such as Average or Sum) and customize the gauge in the visualization settings."
+msgstr "سپس یک متریک مجموع (مانند میانگین یا مجموع) را انتخاب کنید و گیج را در تنظیمات تجسم سفارشی کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:63
+msgid "E.g. Average star rating"
+msgstr "به عنوان مثال میانگین امتیاز ستاره"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:67
+msgid "Then pick one or more metrics and a time column to group by."
+msgstr "سپس یک یا چند معیار و یک ستون زمانی را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:68
+msgid "E.g., Count of orders grouped by Year"
+msgstr "به عنوان مثال، تعداد سفارشات گروه بندی شده بر اساس سال"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "ایجاد تجسم نقشه با داده‌های مکانی: نقشه‌های پین و گرید به ستون‌های طول و عرض جغرافیایی نیاز دارند، نقشه‌های منطقه به ستون نام‌های منطقه ایالات متحده نیاز دارند."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:79
+msgid "E.g., Count of users grouped by Subscription plan"
+msgstr "به عنوان مثال، تعداد کاربران گروه بندی شده بر اساس طرح اشتراک"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:83
+msgid "Then pick an aggregate metric (such as Average or Sum) and multiple columns to group by."
+msgstr "سپس یک متریک مجموع (مانند میانگین یا مجموع) و چندین ستون را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:84
+msgid "E.g. Count of orders grouped by State, Year, and Product category"
+msgstr "به عنوان مثال تعداد سفارشات گروه بندی شده بر اساس ایالت، سال و دسته بندی محصول"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:88
+msgid "Then pick an aggregate metric (such as Count or Sum) and customize the progress bar in the visualization settings."
+msgstr "سپس یک متریک مجموع (مانند تعداد یا جمع) را انتخاب کنید و نوار پیشرفت را در تنظیمات تجسم سفارشی کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:89
+msgid "E.g. Count of orders"
+msgstr "به عنوان مثال تعداد سفارشات"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:94
+msgid "E.g., Count of customers grouped by State"
+msgstr "به عنوان مثال، تعداد مشتریان گروه بندی شده بر اساس ایالت"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:98
+msgid "Sankey charts show how data flows through multi-dimensional steps. They're useful for showing which elements, called nodes, contribute to the overall flow."
+msgstr "نمودارهای Sankey نشان می دهد که چگونه داده ها از طریق مراحل چند بعدی جریان می یابند. آنها برای نشان دادن عناصری که گره نامیده می شوند، به جریان کلی کمک می کنند مفید هستند."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:104
+msgid "Then pick an aggregate metric (such as Average or Sum)."
+msgstr "سپس یک متریک مجموع (مانند میانگین یا مجموع) انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:109
+msgid "Then pick a metric and a number columns to group by."
+msgstr "سپس یک متریک و یک ستون عددی را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:110
+msgid "E.g. Count of orders grouped by Customer age"
+msgstr "به عنوان مثال تعداد سفارشات گروه بندی شده بر اساس سن مشتری"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:114
+msgid "Then pick an aggregate metric (such as the Average or Sum) and a time column to group by."
+msgstr "سپس یک متریک مجموع (مانند میانگین یا مجموع) و یک ستون زمانی را برای گروه بندی انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:115
+msgid "E.g. Count of orders grouped by Month"
+msgstr "به عنوان مثال تعداد سفارشات گروه بندی شده بر اساس ماه"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:119
+msgid "Then pick a metric and a single column to group by: either time or category."
+msgstr "سپس یک متریک و یک ستون را برای گروه بندی بر اساس: زمان یا دسته انتخاب کنید."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:120
+msgid "E.g. Sum of revenue grouped by Country"
+msgstr "به عنوان مثال مجموع درآمد گروه بندی شده بر اساس کشور"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-missing-comma-in-argument-list.ts:52
+#, javascript-format
+msgid "Expecting operator but got {0} instead"
+msgstr "در انتظار اپراتور بود اما در عوض {0} دریافت کرد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:90
+msgid "Destination database created successfully"
+msgstr "پایگاه داده مقصد با موفقیت ایجاد شد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:91
+msgid "Destination database updated successfully"
+msgstr "پایگاه داده مقصد با موفقیت به روز شد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:101
+msgid "Add destination database"
+msgstr "افزودن پایگاه داده مقصد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:102
+msgid "Edit destination database"
+msgstr "ویرایش پایگاه داده مقصد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabaseConnectionModal/DestinationDatabaseConnectionModal.tsx:124
+msgid "You can also add databases programmatically via the API."
+msgstr "همچنین می توانید پایگاه های داده را به صورت برنامه نویسی از طریق API اضافه کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx:46
+msgid "No destination databases added yet"
+msgstr "هنوز پایگاه داده مقصد اضافه نشده است"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:159
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesModal/DestinationDatabasesModal.tsx:27
+msgid "Destination databases"
+msgstr "پایگاه های داده مقصد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:43
+#, javascript-format
+msgid "Delete the {0} destination database?"
+msgstr "پایگاه داده مقصد {0} حذف شود؟"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/RemoveDestinationDatabaseModal.tsx:44
+msgid "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+msgstr "اگر ادامه دهید، کاربرانی که به این پایگاه داده هدایت می شوند، دسترسی به هر سؤال، مدل، متریک و بخش را از دست خواهند داد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:22
+msgid "Slug"
+msgstr "حلزون حرکت کردن"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase این مقدار را به ویژگی کاربر انتخابی شما برای جابجایی پرس و جوها در زمان اجرا نگاشت می کند"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "به عنوان مثال طرفدار کاربران"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "ایمیل پیدا نشد"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:108
+msgid "Invalid Google link"
+msgstr "لینک گوگل نامعتبر است"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:141
+msgid "Entire folder"
+msgstr "کل پوشه"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:142
+msgid "Single Sheet"
+msgstr "تک برگه"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:168
+msgid "Select **Viewer** permissions, and click on **Send**"
+msgstr "مجوزهای **Viewer** را انتخاب کرده و روی **ارسال** کلیک کنید."
+
+#: frontend/src/metabase/components/ErrorPages/ErrorDiagnosticModal.tsx:272
+msgid "If the error persists, you can download diagnostic information"
+msgstr "اگر خطا ادامه داشت، می‌توانید اطلاعات تشخیصی را دانلود کنید"
+
+#: frontend/src/metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal.tsx:39
+msgid "Shortcuts"
+msgstr "میانبرها"
+
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx:198
+msgid "Browse Metrics"
+msgstr "معیارها را مرور کنید"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "داشبورد نشانک"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:8
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:38
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:44
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:50
+msgid "When viewing"
+msgstr "هنگام مشاهده"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "افزودن فیلتر"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:14
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:20
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:26
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:32
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:56
+msgid "When editing"
+msgstr "هنگام ویرایش"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "اضافه کردن سوال نوت بوک"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "اضافه کردن سوال بومی"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "لغو ویرایش داشبورد"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "ارسال تاشبورد به سطل زباله"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "اطلاعات داشبورد را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "ویرایش داشبورد"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "ذخیره داشبورد"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:5
+msgid "Create a question"
+msgstr "یک سوال ایجاد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:10
+msgid "Create a native query"
+msgstr "یک پرس و جو بومی ایجاد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:15
+msgid "Create a dashboard"
+msgstr "داشبورد ایجاد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:20
+msgid "Create a collection"
+msgstr "یک مجموعه ایجاد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:25
+msgid "Create a model"
+msgstr "یک مدل ایجاد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:30
+msgid "Create a metric"
+msgstr "یک متریک ایجاد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "کلیدهای میانبر را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:62
+msgid "Open trash"
+msgstr "سطل زباله را باز کنید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:67
+msgid "Open personal collection"
+msgstr "باز کردن مجموعه شخصی"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:78
+msgid "Go to admin"
+msgstr "برو به ادمین"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:84
+msgid "Go to user settings"
+msgstr "به تنظیمات کاربر بروید"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:90
+msgid "Go to home"
+msgstr "برو به خانه"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "نوت بوک را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:10
+msgid "Open filter dropdown"
+msgstr "باز کردن منوی کشویی فیلتر"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:15
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:113
+msgid "Open summarize sidebar"
+msgstr "نوار کناری خلاصه را باز کنید"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "سوال نشانک"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:25
+msgid "Open question info"
+msgstr "باز کردن اطلاعات سوال"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "بازیابی داده های سوال"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:35
+#: frontend/src/metabase/palette/shortcuts/question.ts:40
+msgid "Toggle viz settings"
+msgstr "تنظیمات viz را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:45
+msgid "Toggle viz types"
+msgstr "انواع viz را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:50
+msgid "Send question to trash"
+msgstr "ارسال سوال به سطل زباله"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:325
+msgid "Converts a string to a floating-point number."
+msgstr "یک رشته را به عدد ممیز شناور تبدیل می کند."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:329
+msgid "The string column to convert to floats."
+msgstr "ستون رشته برای تبدیل به شناور."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:92
+msgid "Must be root node"
+msgstr "باید گره ریشه باشد"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:93
+msgid "Root must have one child"
+msgstr "روت باید یک فرزند داشته باشد"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "نام بعد نامعتبر: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:159
+msgid "Empty field value"
+msgstr "مقدار فیلد خالی"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:169
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:215
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:223
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:231
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:352
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:366
+msgid "Empty token text"
+msgstr "متن نشانه خالی"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:180
+msgid "Group must have one child"
+msgstr "گروه باید یک فرزند داشته باشد"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:187
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:289
+msgid "No token text"
+msgstr "بدون متن رمزی"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:216
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:224
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:353
+#, javascript-format
+msgid "Invalid operator: {0}"
+msgstr "عملگر نامعتبر: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:234
+msgid "First argument must be an arglist"
+msgstr "آرگومان اول باید یک آرگلیست باشد"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:274
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:380
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:401
+#, javascript-format
+msgid "Unknown operator {0}"
+msgstr "عملگر ناشناس {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:321
+msgid "Expected expression clause"
+msgstr "عبارت مورد انتظار"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:322
+msgid "Expected value clause"
+msgstr "بند ارزش مورد انتظار"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:341
+msgid "Expected number or string"
+msgstr "عدد یا رشته مورد انتظار"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:399
+msgid "Unxpected expression"
+msgstr "عبارت غیر منتظره"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:71
+msgid "Database routing enabled"
+msgstr "مسیریابی پایگاه داده فعال شد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:73
+msgid "Database routing updated"
+msgstr "مسیریابی پایگاه داده به روز شد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:84
+msgid "Database routing disabled"
+msgstr "مسیریابی پایگاه داده غیرفعال است"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:95
+msgid "Database routing"
+msgstr "مسیریابی پایگاه داده"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "هنگامی که شخصی با استفاده از داده‌های این پایگاه داده سؤالی را مشاهده می‌کند، Metabase پرسش‌ها را به پایگاه داده مقصد که توسط ویژگی کاربر آن شخص تنظیم شده است ارسال می‌کند. هر پایگاه داده مقصد باید یک طرح یکسان داشته باشد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:103
+msgid "Enable database routing"
+msgstr "فعال کردن مسیریابی پایگاه داده"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "ویژگی کاربر برای مطابقت با پایگاه داده مقصد"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:141
+msgid "This attribute determines which destination database the person can query. The value must match the slug of the destination database."
+msgstr "این ویژگی تعیین می‌کند که فرد در کدام پایگاه داده مقصد می‌تواند پرس و جو کند. مقدار باید با اسلاگ پایگاه داده مقصد مطابقت داشته باشد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:147
+msgid "Choose an attribute"
+msgstr "یک ویژگی را انتخاب کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:169
+msgid "Please choose a user attribute first"
+msgstr "لطفا ابتدا یک ویژگی کاربر را انتخاب کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:6
+msgid "In Google Drive, right-click on the file and click Share"
+msgstr "در گوگل درایو روی فایل کلیک راست کرده و روی Share کلیک کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:7
+msgid "Paste the sharing link for the file"
+msgstr "پیوند اشتراک گذاری فایل را جایگذاری کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:8
+msgid "In Google Drive, right-click on the file → Share → Copy link"
+msgstr "در گوگل درایو، روی فایل → اشتراک گذاری → کپی پیوند کلیک راست کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:9
+msgid "Import file"
+msgstr "فایل وارد کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:14
+msgid "In Google Drive, right-click on the folder and click Share"
+msgstr "در گوگل درایو، روی پوشه کلیک راست کرده و روی Share کلیک کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.strings.ts:17
+msgid "Import folder"
+msgstr "پوشه وارد کنید"
+
+#: frontend/src/metabase/palette/shortcuts/collection.ts:5
+msgid "Move collection items to trash"
+msgstr "موارد مجموعه را به سطل زباله منتقل کنید"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelCachingControl/ModelCachingControl.tsx:72
+msgid "Model persistence can not be enabled if database routing is enabled."
+msgstr "اگر مسیریابی پایگاه داده فعال باشد، ماندگاری مدل را نمی توان فعال کرد."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseModelFeaturesSection/ModelActionsSection/ModelActionsSection.tsx:36
+msgid "Model actions can not be enabled if database routing is enabled."
+msgstr "اگر مسیریابی پایگاه داده فعال باشد، اقدامات مدل را نمی توان فعال کرد."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "تنظیمات جدول"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/UpdatesSettingsPage.tsx:31
+msgid "Types of releases to check for"
+msgstr "انواع انتشار برای بررسی"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:27
+msgid "Error saving Site URL"
+msgstr "خطا در ذخیره URL سایت"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "آدرس سایت"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:91
+#, javascript-format
+msgid "Metabase {0} is available. You're running {1}."
+msgstr "Metabase {0} در دسترس است. شما در حال اجرا {1}هستید."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:56
+msgid "Nothing matches your filters."
+msgstr "هیچ چیز با فیلترهای شما مطابقت ندارد."
+
+#: frontend/src/metabase/admin/tasks/components/Logs/Logs.tsx:73
+msgid "Filter logs"
+msgstr "سیاهههای مربوط به فیلتر"
+
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:53
+#: frontend/src/metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton.tsx:62
+msgid "Download as PDF"
+msgstr "دانلود به صورت PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/SelectEmbedTypePane.tsx:148
+msgid "Let people click to explore."
+msgstr "به افراد اجازه دهید برای کاوش کلیک کنند."
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:24
+msgid "Downloads"
+msgstr "دانلودها"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:27
+msgid "Export to PDF"
+msgstr "صادرات به PDF"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:41
+msgid "Results (csv, xlsx, json, png)"
+msgstr "نتایج (csv، xlsx، json، png)"
+
+#: frontend/src/metabase/public/components/EmbedModal/StaticEmbedSetupPane/DownloadSettings.tsx:68
+msgid "Download (csv, xlsx, json, png)"
+msgstr "دانلود (csv، xlsx، json، png)"
+
+#: frontend/src/metabase/querying/filters/components/FilterValuePicker/utils.ts:65
+#, javascript-format
+msgid "Search by {0} or enter an ID"
+msgstr "جستجو بر اساس {0} یا یک شناسه وارد کنید"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:82
+msgctxt "Example of days of the week"
+msgid "Monday, Tuesday"
+msgstr "دوشنبه، سه شنبه"
+
+#: frontend/src/metabase/querying/drills/utils/column-extract-drill.tsx:84
+msgctxt "Example of months in the year"
+msgid "Jan, Feb"
+msgstr "ژانویه، فوریه"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:159
+#, javascript-format
+msgctxt "{0} is an email address"
+msgid "Enter: {0}"
+msgstr "وارد کنید: {0}"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:73
+#, javascript-format
+msgctxt "{0} refers to the chart type"
+msgid "{0} chart example illustration"
+msgstr "{0} تصویر نمونه نمودار"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/EmptyVizState.tsx:94
+#, javascript-format
+msgctxt "{0} refers to the 'Summarize'. {1} refers to the follow up instructions."
+msgid "Click on {0} at the top right corner. {1}"
+msgstr "روی {0} در گوشه بالا سمت راست کلیک کنید. {1}"
+
+#: metabase/lib/expression.cljc:572
+msgid "Embedding {0} in aggregation functions is not supported"
+msgstr "جاسازی {0} در توابع تجمع پشتیبانی نمی شود"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "هفته آینده {0}"
+msgstr[1] "{0} هفته های بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:172
+msgid "starting {0} second from now"
+msgid_plural "starting {0} seconds from now"
+msgstr[0] "شروع {0} ثانیه از هم اکنون"
+msgstr[1] "شروع {0} ثانیه از هم اکنون"
+
+#: metabase/lib/temporal_bucket.cljc:174
+msgid "starting {0} minute ago"
+msgid_plural "starting {0} minutes ago"
+msgstr[0] "شروع {0} دقیقه قبل"
+msgstr[1] "شروع {0} دقیقه قبل"
+
+#: metabase/lib/temporal_bucket.cljc:125
+msgid "This month"
+msgstr "این ماه"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "{0} دقیقه بعد"
+msgstr[1] "{0} دقیقه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:92
+msgid "Next millisecond"
+msgstr "میلی ثانیه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "سه ماهه {0} بعدی"
+msgstr[1] "چهارمین {0} بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:110
+msgid "Next hour"
+msgstr "ساعت بعد"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "{0} سال آینده"
+msgstr[1] "{0} سال آینده"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "بعد {0} ثانیه"
+msgstr[1] "{0} ثانیه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:95
+msgid "This second"
+msgstr "این ثانیه"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "بعدی {0} میلی ثانیه"
+msgstr[1] "بعدی {0} میلی ثانیه"
+
+#: metabase/lib/temporal_bucket.cljc:131
+msgid "This quarter"
+msgstr "این سه ماهه"
+
+#: metabase/lib/temporal_bucket.cljc:184
+msgid "starting {0} week from now"
+msgid_plural "starting {0} weeks from now"
+msgstr[0] "شروع {0} هفته از هم اکنون"
+msgstr[1] "شروع {0} هفته از هم اکنون"
+
+#: metabase/lib/temporal_bucket.cljc:190
+msgid "starting {0} quarter from now"
+msgid_plural "starting {0} quarters from now"
+msgstr[0] "شروع {0} سه ماهه از هم اکنون"
+msgstr[1] "از هم اکنون {0} شروع می شود"
+
+#: metabase/lib/temporal_bucket.cljc:89
+msgid "This millisecond"
+msgstr "این میلی ثانیه"
+
+#: metabase/lib/temporal_bucket.cljc:180
+msgid "starting {0} day ago"
+msgid_plural "starting {0} days ago"
+msgstr[0] "از {0} روز قبل شروع می شود"
+msgstr[1] "شروع {0} روز پیش"
+
+#: metabase/lib/temporal_bucket.cljc:90
+msgid "Previous millisecond"
+msgstr "میلی ثانیه قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "{0} روز قبل"
+msgstr[1] "{0} روز گذشته"
+
+#: metabase/lib/temporal_bucket.cljc:175
+msgid "starting {0} minute from now"
+msgid_plural "starting {0} minutes from now"
+msgstr[0] "از {0} دقیقه از هم اکنون شروع می شود"
+msgstr[1] "شروع {0} دقیقه از هم اکنون"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "{0} روز بعد"
+msgstr[1] "{0} روز آینده"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "{0} ماه بعد"
+msgstr[1] "{0} ماه های بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:186
+msgid "starting {0} month ago"
+msgid_plural "starting {0} months ago"
+msgstr[0] "شروع {0} ماه پیش"
+msgstr[1] "شروع {0} ماه پیش"
+
+#: metabase/lib/temporal_bucket.cljc:140
+msgid "Next year"
+msgstr "سال آینده"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "سه ماهه قبلی {0}"
+msgstr[1] "{0} سه ماهه قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:116
+msgid "Tomorrow"
+msgstr "فردا"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "{0} ساعت بعد"
+msgstr[1] "{0} ساعت بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} سال قبل"
+msgstr[1] "{0} سال های قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "{0} ماه قبل"
+msgstr[1] "{0} ماه های قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:122
+msgid "Next week"
+msgstr "هفته آینده"
+
+#: metabase/lib/temporal_bucket.cljc:128
+msgid "Next month"
+msgstr "ماه آینده"
+
+#: metabase/lib/temporal_bucket.cljc:171
+msgid "starting {0} second ago"
+msgid_plural "starting {0} seconds ago"
+msgstr[0] "شروع {0} ثانیه قبل"
+msgstr[1] "شروع {0} ثانیه قبل"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "قبلی {0} میلی ثانیه"
+msgstr[1] "قبلی {0} میلی ثانیه"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "{0} ساعت قبلی"
+msgstr[1] "{0} ساعت قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:104
+msgid "Next minute"
+msgstr "دقیقه بعد"
+
+#: metabase/lib/temporal_bucket.cljc:154
+msgid "starting now"
+msgstr "اکنون شروع می شود"
+
+#: metabase/lib/temporal_bucket.cljc:107
+msgid "This hour"
+msgstr "این ساعت"
+
+#: metabase/lib/temporal_bucket.cljc:101
+msgid "This minute"
+msgstr "این دقیقه"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "قبلی {0} ثانیه"
+msgstr[1] "{0} ثانیه قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:181
+msgid "starting {0} day from now"
+msgid_plural "starting {0} days from now"
+msgstr[0] "از {0} روز از هم اکنون شروع می شود"
+msgstr[1] "شروع {0} روز از هم اکنون"
+
+#: metabase/lib/temporal_bucket.cljc:192
+msgid "starting {0} year ago"
+msgid_plural "starting {0} years ago"
+msgstr[0] "شروع {0} سال پیش"
+msgstr[1] "شروع {0} سال پیش"
+
+#: metabase/lib/temporal_bucket.cljc:189
+msgid "starting {0} quarter ago"
+msgid_plural "starting {0} quarters ago"
+msgstr[0] "شروع {0} ربع پیش"
+msgstr[1] "شروع {0} سه ماه پیش"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "{0} هفته قبل"
+msgstr[1] "{0} هفته های قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:168
+msgid "starting {0} millisecond ago"
+msgid_plural "starting {0} milliseconds ago"
+msgstr[0] "شروع {0} میلی ثانیه قبل"
+msgstr[1] "از {0} میلی ثانیه قبل شروع می شود"
+
+#: metabase/lib/temporal_bucket.cljc:119
+msgid "This week"
+msgstr "این هفته"
+
+#: metabase/lib/temporal_bucket.cljc:183
+msgid "starting {0} week ago"
+msgid_plural "starting {0} weeks ago"
+msgstr[0] "شروع {0} هفته پیش"
+msgstr[1] "شروع {0} هفته پیش"
+
+#: metabase/lib/temporal_bucket.cljc:193
+msgid "starting {0} year from now"
+msgid_plural "starting {0} years from now"
+msgstr[0] "شروع {0} سال از هم اکنون"
+msgstr[1] "از {0} سال بعد شروع می شود"
+
+#: metabase/lib/temporal_bucket.cljc:96
+msgid "Previous second"
+msgstr "دوم قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:169
+msgid "starting {0} millisecond from now"
+msgid_plural "starting {0} milliseconds from now"
+msgstr[0] "از هم اکنون {0} میلی ثانیه شروع می شود"
+msgstr[1] "از هم اکنون {0} میلی ثانیه شروع می شود"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "{0} دقیقه قبلی"
+msgstr[1] "{0} دقیقه قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:143 metabase/lib/temporal_bucket.cljc:195
+msgid "Unknown unit"
+msgstr "واحد ناشناخته"
+
+#: metabase/lib/temporal_bucket.cljc:137
+msgid "This year"
+msgstr "امسال"
+
+#: metabase/lib/temporal_bucket.cljc:177
+msgid "starting {0} hour ago"
+msgid_plural "starting {0} hours ago"
+msgstr[0] "شروع {0} ساعت قبل"
+msgstr[1] "شروع {0} ساعت قبل"
+
+#: metabase/lib/temporal_bucket.cljc:134
+msgid "Next quarter"
+msgstr "سه ماهه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:98
+msgid "Next second"
+msgstr "ثانیه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:187
+msgid "starting {0} month from now"
+msgid_plural "starting {0} months from now"
+msgstr[0] "از {0} ماه از هم اکنون شروع می شود"
+msgstr[1] "شروع {0} ماه از هم اکنون"
+
+#: metabase/lib/temporal_bucket.cljc:178
+msgid "starting {0} hour from now"
+msgid_plural "starting {0} hours from now"
+msgstr[0] "شروع {0} ساعت از هم اکنون"
+msgstr[1] "شروع {0} ساعت از هم اکنون"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms. Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "فرکانس اجرای شناسه‌های موجودیت پس‌پر و تخلیه کار شناسه موجودیت در ms. حداقل مقدار 1000 است و هر مقداری در 0 یا کمتر از آن کار را به طور کامل غیرفعال می کند."
+
+#: metabase/models/params/shared.cljc:117
+msgid "Exclude {0} selections"
+msgstr "انتخاب های {0} را حذف کنید"
+
+#: metabase_enterprise/api/routes.clj:43
+msgid "Database Routing"
+msgstr "مسیریابی پایگاه داده"
+
+#: metabase_enterprise/database_routing/common.clj:47
+msgid "Database Routing error: No Destination Database with slug `{0}` found."
+msgstr "خطای مسیریابی پایگاه داده: پایگاه داده مقصد با اسلاگ `{0}` یافت نشد."
+
+#: metabase_enterprise/database_routing/common.clj:38
+msgid "Required user attribute is missing. Cannot route to a Destination Database."
+msgstr "ویژگی کاربر مورد نیاز وجود ندارد. نمی توان به پایگاه داده مقصد مسیریابی کرد."
+
+#: metabase_enterprise/database_routing/common.clj:26
+msgid "Anonymous users cannot access a database with routing enabled."
+msgstr "کاربران ناشناس نمی توانند به پایگاه داده با مسیریابی فعال دسترسی پیدا کنند."
+
+#: metabase_enterprise/gsheets/api.clj:195
+msgid "Invalid URL: {0}"
+msgstr "URL نامعتبر: {0}"
 
