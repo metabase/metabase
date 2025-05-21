@@ -11558,17 +11558,39 @@ databaseChangeLog:
   # use numeric card IDs with padding to set entity_id.
   - changeSet:
       id: v55.2025-05-20T20:00:00
-      validCheckSum: 9:acb2d9c3a9cfe969d6742c63615eaac5
+      validCheckSum: ANY
       author: ranquild
       comment: Best-effort backfill of report_card.entity_id
       preConditions:
         - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: >-
-              SELECT COUNT(*)
-              FROM report_card
-              WHERE entity_id IS NOT NULL AND REGEXP_LIKE(entity_id, '^[-0-9]*$');
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT COUNT(*)
+                      FROM report_card
+                      WHERE entity_id IS NOT NULL AND entity_id SIMILAR TO '^[-0-9]*$';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT COUNT(*)
+                      FROM report_card
+                      WHERE entity_id IS NOT NULL AND entity_id REGEXP '^[-0-9]*$';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT COUNT(*)
+                      FROM report_card
+                      WHERE entity_id IS NOT NULL AND REGEXP_LIKE(entity_id, '^[-0-9]*$');
       changes:
         - sql:
             sql: >-
