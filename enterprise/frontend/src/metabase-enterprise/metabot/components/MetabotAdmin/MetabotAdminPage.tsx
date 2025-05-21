@@ -13,11 +13,21 @@ import { useToast } from "metabase/common/hooks";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
+import Markdown from "metabase/core/components/Markdown";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { modelToUrl } from "metabase/lib/urls";
 import { getLocation } from "metabase/selectors/routing";
-import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from "metabase/ui";
 import {
   useAddMetabotEntitiesMutation,
   useDeleteMetabotEntitiesMutation,
@@ -25,6 +35,8 @@ import {
   useListMetabotsQuery,
 } from "metabase-enterprise/api";
 import type { MetabotEntity, MetabotId } from "metabase-types/api";
+
+import MetabotWithStuff from "./MetabotWithStuff.svg?component";
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
@@ -175,10 +187,6 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
     }
   };
 
-  if (!entities.length) {
-    return null;
-  }
-
   return (
     <Table
       columns={[
@@ -187,6 +195,7 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
         { key: "delete", name: t`` },
       ]}
       rows={entities}
+      emptyBody={<EmptyTable />}
       rowRenderer={(row) => (
         <tr key={row.id}>
           <td style={{ padding: "8px 16px" }}>
@@ -216,9 +225,11 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
           </td>
           <td style={{ padding: "8px" }}>
             <Flex justify="end">
-              <Button variant="subtle" onClick={() => handleDelete(row)}>
-                <Icon name="trash" />
-              </Button>
+              <Tooltip label={t`Remove`}>
+                <Button variant="subtle" onClick={() => handleDelete(row)}>
+                  <Icon name="close" c="text-medium" />
+                </Button>
+              </Tooltip>
             </Flex>
           </td>
         </tr>
@@ -232,3 +243,15 @@ function useMetabotIdPath() {
   const metabotId = Number(location?.pathname?.split("/").pop());
   return Number.isNaN(metabotId) ? null : metabotId;
 }
+
+const EmptyTable = () => (
+  <Stack py="6rem" gap="md" align="center">
+    <MetabotWithStuff />
+    <Title order={4}>{t`There's nothing here, yet`}</Title>
+    <Text>
+      <Markdown>
+        {t`Click on the **Add items** button to add models or metrics.`}
+      </Markdown>
+    </Text>
+  </Stack>
+);
