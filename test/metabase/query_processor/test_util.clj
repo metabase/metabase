@@ -66,13 +66,6 @@
                           (every? #(driver.u/supports? driver % db) features)))]
            driver))))
 
-(defn normal-drivers-with-connection-property
-  [property]
-  (into #{}
-        (filter (fn [driver]
-                  (some (comp #(= property %) :name) (driver/connection-properties driver))))
-        (normal-drivers)))
-
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-without-feature
