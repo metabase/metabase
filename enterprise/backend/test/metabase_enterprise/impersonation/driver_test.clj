@@ -208,57 +208,64 @@
 (deftest conn-impersonation-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/column-level-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
-      (tx/with-temp-roles! driver/*driver*
-        (impersonation-granting-details driver/*driver* (mt/db))
-        {"user_a" {(sql.tx/qualify-and-quote driver/*driver* "test-data" "venues") {:columns ["id" "price"]}}
-         "user_b" {(sql.tx/qualify-and-quote driver/*driver* "test-data" "categories") {:columns ["id"]}}}
-        (impersonation-default-user driver/*driver*)
-        (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                 :details (impersonation-details driver/*driver* (mt/db))}]
-          (mt/with-db database
-            (sync/sync-database! database {:scan :schema})
-            (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                           :attributes     {"impersonation_attr" "user_a"}}
-              (is (= [[1 3]]
-                     (mt/rows (mt/run-mbql-query venues {:fields [$id $price]
-                                                         :filter [:= $id 1]}))))
-              (is (thrown?
-                   clojure.lang.ExceptionInfo
-                   (mt/rows (mt/run-mbql-query venues {:fields [$name]}))))
-              (is (thrown?
-                   clojure.lang.ExceptionInfo
-                   (mt/rows (mt/run-mbql-query categories)))))
-            (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                           :attributes     {"impersonation_attr" "user_b"}}
-              (is (= [[1]]
-                     (mt/rows (mt/run-mbql-query categories {:fields [$id]
-                                                             :filter [:= $id 1]}))))
-              (is (thrown?
-                   clojure.lang.ExceptionInfo
-                   (mt/rows (mt/run-mbql-query categories {:fields [$name]}))))
-              (is (thrown?
-                   clojure.lang.ExceptionInfo
-                   (mt/rows (mt/run-mbql-query venues {:fields [$name]})))))))))))
+      (let [role-a (u/lower-case-en (mt/random-name))
+            role-b (u/lower-case-en (mt/random-name))
+            venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+            categories-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "categories")]
+        (tx/with-temp-roles! driver/*driver*
+          (impersonation-granting-details driver/*driver* (mt/db))
+          {role-a {venues-table {:columns ["id" "price"]}}
+           role-b {categories-table {:columns ["id"]}}}
+          (impersonation-default-user driver/*driver*)
+          nil
+          (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                   :details (impersonation-details driver/*driver* (mt/db))}]
+            (mt/with-db database
+              (sync/sync-database! database {:scan :schema})
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" role-a}}
+                (is (= [[1 3]]
+                       (mt/rows (mt/run-mbql-query venues {:fields [$id $price]
+                                                           :filter [:= $id 1]}))))
+                (is (thrown?
+                     clojure.lang.ExceptionInfo
+                     (mt/rows (mt/run-mbql-query venues {:fields [$name]}))))
+                (is (thrown?
+                     clojure.lang.ExceptionInfo
+                     (mt/rows (mt/run-mbql-query categories)))))
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" role-b}}
+                (is (= [[1]]
+                       (mt/rows (mt/run-mbql-query categories {:fields [$id]
+                                                               :filter [:= $id 1]}))))
+                (is (thrown?
+                     clojure.lang.ExceptionInfo
+                     (mt/rows (mt/run-mbql-query categories {:fields [$name]}))))
+                (is (thrown?
+                     clojure.lang.ExceptionInfo
+                     (mt/rows (mt/run-mbql-query venues {:fields [$name]}))))))))))))
 
 (deftest conn-impersonation-row-level-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/rls-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
-      (tx/with-temp-roles! driver/*driver*
-        (impersonation-granting-details driver/*driver* (mt/db))
-        {"impersonation.role" {(sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
-                               {:columns [] :rls [:= :name "Red Medicine"]}}}
-        (impersonation-default-user driver/*driver*)
-        (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                 :details (impersonation-details driver/*driver* (mt/db))}]
-          (mt/with-db database
-            (sync/sync-database! database {:scan :schema})
-            (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                           :attributes     {"impersonation_attr" "impersonation.role"}}
-              (is (= [[1 3]]
-                     (mt/rows (mt/run-mbql-query venues {:fields [$id $price]}))))
-              (is (thrown?
-                   clojure.lang.ExceptionInfo
-                   (mt/rows (mt/run-mbql-query categories)))))))))))
+      (let [impersonation-role "impersonation.role"
+            venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")]
+        (tx/with-temp-roles! driver/*driver*
+          (impersonation-granting-details driver/*driver* (mt/db))
+          {impersonation-role {venues-table {:columns [] :rls [:= :name "Red Medicine"]}}}
+          (impersonation-default-user driver/*driver*)
+          nil
+          (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                   :details (impersonation-details driver/*driver* (mt/db))}]
+            (mt/with-db database
+              (sync/sync-database! database {:scan :schema})
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" impersonation-role}}
+                (is (= [[1 3]]
+                       (mt/rows (mt/run-mbql-query venues {:fields [$id $price]}))))
+                (is (thrown?
+                     clojure.lang.ExceptionInfo
+                     (mt/rows (mt/run-mbql-query categories))))))))))))
 
 (deftest conn-impersonation-with-db-routing
   (mt/test-driver :postgres
