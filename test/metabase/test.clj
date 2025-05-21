@@ -16,7 +16,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.driver.test-util :as driver.test-util]
    [metabase.http-client :as client]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.model-persistence.test-util]
@@ -66,7 +65,6 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
-  driver.test-util/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   lib.metadata.jvm/keep-me
@@ -116,6 +114,7 @@
   $ids
   dataset
   db
+  driver-select
   format-name
   id
   ident
@@ -137,9 +136,6 @@
 
  [driver
   with-driver]
-
- [driver.test-util
-  driver-select]
 
  [metabase.channel.email-test
   email-to

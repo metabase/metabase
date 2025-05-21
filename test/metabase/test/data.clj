@@ -34,18 +34,23 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
+   [clojure.set :as set]
    [clojure.test :as t]
    [colorize.core :as colorize]
    [mb.hawk.init]
+   [mb.hawk.init :as hawk.init]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
@@ -312,3 +317,45 @@
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
      (mdb/finish-db-setup!)
      ~@body))
+
+(defn driver-select
+  "Select drivers to be tested.
+
+   +features - a list of features that the drivers should support.
+   -features - a list of features that drivers should not support.
+
+   +conn-props - a list of connection-property names that drivers should have.
+   -conn-props - a list of connection-property names that drivers should not have.
+
+   +parent - only include drivers whose parent is this.
+   -parent - do not include drivers whose parent is this."
+  ([]
+   (driver-select {}))
+  ([{:keys [+features -features +conn-props -conn-props +parent -parent] :as args}]
+   (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers args)))
+   (set
+    (for [driver (tx.env/test-drivers)
+          :let   [driver (tx/the-driver-with-test-extensions driver)
+                  conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
+                                    (into #{} (map :name (driver/connection-properties driver))))]
+          :when  (driver/with-driver driver
+                   (let [the-db (db)]
+                     (cond-> true
+                       (seq +features)
+                       (and (every? #(driver.u/supports? driver % the-db) +features))
+
+                       (seq -features)
+                       (and (not (some #(driver.u/supports? driver % the-db) -features)))
+
+                       (seq +conn-props)
+                       (and (set/superset? conn-prop-names (set +conn-props)))
+
+                       (seq -conn-props)
+                       (and (empty? (set/intersection conn-prop-names (set -conn-props))))
+
+                       +parent
+                       (and (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver +parent)))
+
+                       -parent
+                       (and (not (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver -parent)))))))]
+      driver))))
