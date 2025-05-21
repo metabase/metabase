@@ -176,21 +176,23 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
-            checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")]
+            checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
+            db-role (u/lower-case-en (mt/random-name))
+            full-access-role (u/lower-case-en (mt/random-name))]
         (tx/with-temp-roles! driver/*driver*
           (impersonation-granting-details driver/*driver* (mt/db))
           ;; todo: Swap hardcoded role strings with roles named with similar convention to databases/tables (for snowflake and redshift)
-          {"user_a" {venues-table {:columns []}}
-           "full_access_role" {venues-table [] checkins-table []}}
+          {db-role {venues-table {:columns []}}
+           full-access-role {venues-table [] checkins-table []}}
           (impersonation-default-user driver/*driver*)
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
               (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] "full_access_role")))
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] full-access-role)))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" "user_a"}}
+                                                             :attributes     {"impersonation_attr" db-role}}
                 (is (= [[100]]
                        (mt/rows
                         (mt/run-mbql-query venues
