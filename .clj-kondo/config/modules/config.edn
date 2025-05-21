@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           public-sharing
            queries
            query-processor
            search
@@ -114,7 +115,6 @@
    :uses #{analytics
            classloader
            config
-           embedding
            events
            models
            premium-features
@@ -333,6 +333,7 @@
            channel
            collections
            config
+           embedding
            events
            lib
            lib-be
@@ -417,7 +418,8 @@
   {:api  #{metabase.embedding.api
            metabase.embedding.app-origins-sdk
            metabase.embedding.init
-           metabase.embedding.settings}
+           metabase.embedding.settings
+           metabase.embedding.validation}
    :uses #{analytics
            api
            config
@@ -729,7 +731,8 @@
   public-sharing
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
-           metabase.public-sharing.init}
+           metabase.public-sharing.init
+           metabase.public-sharing.validation}
    :uses #{actions
            analytics
            api
@@ -788,6 +791,7 @@
            config
            content-verification
            dashboards
+           embedding
            events
            legacy-mbql
            lib
