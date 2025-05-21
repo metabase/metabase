@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -208,8 +208,8 @@
    :timestamp))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
-  [_]
-  :%getdate)
+  [_driver]
+  :%getdate) ; TODO -- this should include type info
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]

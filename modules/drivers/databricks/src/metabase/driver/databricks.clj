@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

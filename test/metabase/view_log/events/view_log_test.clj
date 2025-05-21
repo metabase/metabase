@@ -5,11 +5,11 @@
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.events.core :as events]
-   [metabase.http-client :as client]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.view-log.events.view-log :as events.view-log]
    [toucan2.core :as t2]))

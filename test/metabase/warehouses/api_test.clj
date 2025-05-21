@@ -11,7 +11,6 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.http-client :as client]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -32,6 +31,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -80,7 +80,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults :model/Database)
-    (select-keys db [:created_at :id :entity_id :details :updated_at :timezone :name :dbms_version
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
     {:engine                (u/qualified-name (:engine db))
      :settings              {}
@@ -90,7 +90,7 @@
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
-             (select-keys table [:active :created_at :db_id :description :display_name :entity_id :entity_type
+             (select-keys table [:active :created_at :db_id :description :display_name :entity_type
                                  :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))
@@ -108,7 +108,7 @@
     {:target nil}
     (select-keys
      field
-     [:updated_at :id :entity_id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
+     [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
       :position]))))
 
 (defn- card-with-native-query [card-name & {:as kvs}]
@@ -635,7 +635,7 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at :entity_id] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :created_at :updated_at] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"

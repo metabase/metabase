@@ -18,7 +18,7 @@
    [metabase.channel.slack :as channel.slack]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]

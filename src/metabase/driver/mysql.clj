@@ -10,7 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
@@ -211,8 +211,8 @@
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
-  [_]
-  (h2x/with-database-type-info [:now [:inline 6]] "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]

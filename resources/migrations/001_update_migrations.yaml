@@ -11323,6 +11323,236 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  # Add a unique constraint on metabase_table(db_id, schema, name). Before, there was no constraint, so we need to
+  # handle potential duplicates.
+  # v55.2025-05-19T01:00:00 - Make metabase_table.name and schema case-sensitive for MySQL
+  # v55.2025-05-19T02:00:00 - Add is_defective_duplicate, FALSE by default
+  # v55.2025-05-19T03:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
+  # take priority over inactive ones.
+  # v55.2025-05-19T04:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. We need to
+  # handle 3 cases - H2 doesn't support WHERE in indexes, metabase_table.schema is a nullable field and needs to
+  # be coalesced to an empty string, ignore duplicate tables.
+  # v55.2025-05-19T05:00:00 - Add a unique constraint (db_id, name, unique_table_helper)
+
+  # This is necessary to make unique indexes using metabase_table.name and schema case-sensitive for MySQL.
+  - changeSet:
+      id: v55.2025-05-19T01:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Make metabase_table.name and schema use case-sensitive collation for MySQL
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table MODIFY
+              `name` varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+
+              ALTER TABLE metabase_table MODIFY
+              `schema` varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table MODIFY
+              `name` VARCHAR(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+              ALTER TABLE metabase_table MODIFY
+              `schema` varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v55.2025-05-19T02:00:00
+      validCheckSum: 9:85e9ad7b60db0cd795254ca52d6dd5a7
+      author: ranquild
+      comment: Add metabase_table.is_defective_duplicate
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: is_defective_duplicate
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_defective_duplicate
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the table is a defective duplicate that should never have been created."
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  # metabase_table.schema is nullable
+  - changeSet:
+      id: v55.2025-05-19T03:00:00
+      validCheckSum: 9:bece48e1dd30c59d4dae56346363f5b4
+      author: ranquild
+      comment: Compute metabase_table.is_defective_duplicate based on (db_id, schema, name) uniqueness
+      changes:
+        - sql:
+            UPDATE metabase_table mt
+            SET is_defective_duplicate = TRUE
+            WHERE mt.id IN (
+                SELECT id
+                FROM (
+                    SELECT
+                        mt.id,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY mt.db_id, COALESCE(mt.schema, ''), mt.name
+                            ORDER BY
+                                CASE WHEN mt.active THEN 0 ELSE 1 END,
+                                mt.created_at
+                        ) AS row_num
+                    FROM metabase_table mt
+                ) x
+                WHERE x.row_num > 1
+            );
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET is_defective_duplicate = FALSE;
+
+  - changeSet:
+      id: v55.2025-05-19T04:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Add metabase_table.unique_table_helper to create an index that ignores EXISTING duplicates
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: unique_table_helper
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper CHARACTER VARYING(254) GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper VARCHAR(254) GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(`schema`, '') END
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper CHARACTER VARYING(254) GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE metabase_table DROP COLUMN unique_table_helper;
+
+  - changeSet:
+      id: v55.2025-05-19T05:00:00
+      validCheckSum: 9:848d1cb748064b5de423139fbbbc2876
+      author: ranquild
+      comment: Add unique constraint on metabase_table(db_id, name, unique_table_helper)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: metabase_table
+                constraintName: idx_unique_table
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+            columnNames: db_id, name, unique_table_helper
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+
+  - changeSet:
+      id: v55.2025-05-20T10:00:00
+      validCheckSum: 9:1ed306a6b2573b7b140275e5319fae2c
+      author: ranquild
+      comment: Drop metabase_database.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T11:00:00
+      validCheckSum: 9:b03020b86a754abc46edca465f91eb6f
+      author: ranquild
+      comment: Drop metabase_table.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_table
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T12:00:00
+      validCheckSum: 9:70285cb34c7e9e4dd25f322a46e21c04
+      author: ranquild
+      comment: Drop metabase_field.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_field
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

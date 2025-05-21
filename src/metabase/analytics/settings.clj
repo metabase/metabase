@@ -1,7 +1,7 @@
 (ns metabase.analytics.settings
   (:require
    [metabase.appearance.core :as appearance]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]))

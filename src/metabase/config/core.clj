@@ -1,4 +1,4 @@
-(ns metabase.config
+(ns metabase.config.core
   (:require
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]

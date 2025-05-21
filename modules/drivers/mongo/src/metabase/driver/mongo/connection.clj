@@ -2,7 +2,7 @@
   "This namespace contains code responsible for connecting to mongo deployment."
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]

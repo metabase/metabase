@@ -10,7 +10,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]

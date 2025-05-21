@@ -1,4 +1,4 @@
-(ns metabase.cmd
+(ns metabase.cmd.core
   "Functions for commands that can be ran from the command-line with the Clojure CLI or the Metabase JAR. These are ran
   as follows:
 
@@ -19,7 +19,7 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [metabase.classloader.core :as classloader]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -39,7 +39,7 @@
 (defn- cmd->var
   "Looks up a command var by name"
   [command-name]
-  (ns-resolve 'metabase.cmd (symbol command-name)))
+  (ns-resolve 'metabase.cmd.core (symbol command-name)))
 
 (defn- call-enterprise
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
@@ -61,7 +61,8 @@
 ;; Command implementations
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `down-force`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `down-force`, `print`, or
+  `release-locks`."
   [direction]
   (classloader/require 'metabase.cmd.migrate)
   ((resolve 'metabase.cmd.migrate/migrate!) direction))
@@ -114,7 +115,7 @@
          (println "\t" opt-line)))))
   ([]
    (println "Valid commands are:")
-   (doseq [[symb varr] (sort (ns-interns 'metabase.cmd))
+   (doseq [[symb varr] (sort (ns-interns 'metabase.cmd.core))
            :when       (:command (meta varr))]
      (help symb)
      (println))
@@ -299,7 +300,7 @@
     (cond
       (not command)
       [(str "Unrecognized command: '" command-name "'")
-       (str "Valid commands: " (str/join ", " (map key (filter (comp :command meta val) (ns-interns 'metabase.cmd)))))]
+       (str "Valid commands: " (str/join ", " (map key (filter (comp :command meta val) (ns-interns 'metabase.cmd.core)))))]
 
       err
       [err]

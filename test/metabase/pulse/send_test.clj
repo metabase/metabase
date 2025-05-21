@@ -1,6 +1,6 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
-  [[metabase.dashboard-subscription-test]]."
+  [[metabase.pulse.dashboard-subscription-test]]."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

@@ -10,8 +10,13 @@ import {
   getDatasets,
   getLoadingDatasets,
   getReferencedColumns,
+  getVisualizationType,
+  getVisualizerComputedSettings,
+  getVisualizerComputedSettingsForFlatSeries,
+  getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
+import { findSlotForColumn } from "metabase/visualizer/visualizations/compat";
 import {
   addColumn,
   removeColumn,
@@ -34,6 +39,10 @@ export interface ColumnListProps {
 export const ColumnsList = (props: ColumnListProps) => {
   const { collapsedDataSources, toggleDataSource } = props;
 
+  const display = useSelector(getVisualizationType) ?? null;
+  const columns = useSelector(getVisualizerDatasetColumns);
+  const settings = useSelector(getVisualizerComputedSettings);
+  const flatSettings = useSelector(getVisualizerComputedSettingsForFlatSeries);
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const loadingDatasets = useSelector(getLoadingDatasets);
@@ -107,11 +116,21 @@ export const ColumnsList = (props: ColumnListProps) => {
                     isReferenceToColumn(column, source.id, ref),
                   );
                   const isSelected = !!columnReference;
+
+                  const isUsable = !!findSlotForColumn(
+                    { display, columns, settings },
+                    flatSettings,
+                    datasets,
+                    dataset.data.cols,
+                    column,
+                  );
+
                   return (
                     <DraggableColumnListItem
                       key={column.name}
                       column={column}
                       dataSource={source}
+                      isDisabled={!isSelected && !isUsable}
                       isSelected={isSelected}
                       onClick={() => {
                         if (!isSelected) {
