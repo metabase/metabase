@@ -48,7 +48,7 @@ export const BrowseNavSection = ({
         gap="0.5rem"
         onClick={handleToggle}
         component="button"
-        c="var(--mb-color-text-medium)"
+        c="text-medium"
         mb="sm"
       >
         <SidebarHeading>{c("A verb, shown in the sidebar")
