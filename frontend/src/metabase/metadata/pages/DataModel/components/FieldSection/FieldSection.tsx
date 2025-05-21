@@ -1,12 +1,17 @@
+import { t } from "ttag";
+
+import { useUpdateFieldMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import {
   DiscardFieldValuesButton,
+  NameDescriptionInput,
   RescanFieldButton,
 } from "metabase/metadata/components";
 import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Stack, Title } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { BehaviorSection } from "./BehaviorSection";
@@ -20,11 +25,29 @@ interface Props {
 }
 
 export const FieldSection = ({ databaseId, field }: Props) => {
+  const [updateField] = useUpdateFieldMutation();
+  const id = getRawTableFieldId(field);
+  const [sendToast] = useToast();
+  function confirm(message: string) {
+    sendToast({ message });
+  }
+
   return (
-    <Stack gap={0} h="100%">
-      <Title order={2} pb="md">
-        {getFieldDisplayName(field)}
-      </Title>
+    <Stack gap="lg" h="100%">
+      <NameDescriptionInput
+        name={field.display_name}
+        namePlaceholder={t`Give this field a name`}
+        onNameChange={async (display_name) => {
+          await updateField({ id, display_name });
+          confirm(t`Display name for ${display_name} updated`);
+        }}
+        description={field.description ?? ""}
+        descriptionPlaceholder={t`Give this field a description`}
+        onDescriptionChange={async (description) => {
+          await updateField({ id, description });
+          confirm(t`Description for ${getFieldDisplayName(field)} updated`);
+        }}
+      />
 
       <Stack gap="xl">
         <DataSection field={field} />
