@@ -540,7 +540,6 @@
    :uses #{lib
            models
            settings
-           task
            util}}
 
   logger
@@ -683,8 +682,8 @@
            premium-features
            query-processor
            request
-           server
            settings
+           users
            util}}
 
   pivot
@@ -979,7 +978,6 @@
            session
            settings
            system
-           users
            util
            enterprise/sso}}
 
@@ -1327,13 +1325,13 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
-           enterprise/impersonation
            lib
            permissions
            premium-features
            query-processor
            util
-           warehouses}}
+           warehouses
+           enterprise/impersonation}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}

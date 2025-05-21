@@ -104,8 +104,8 @@
 
 (mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
-  works just like the function of the same name in `metabase.permissions.models.permissions`; see also the documentation for that
-  function.
+  works just like the function of the same name in `metabase.permissions.models.permissions`; see also the documentation
+  for that function.
 
   The graph is restricted to a given namespace by the optional `collection-namespace` param; by default, `nil`, which
   restricts it to the 'default' namespace containing normal Card/Dashboard/Pulse Collections.

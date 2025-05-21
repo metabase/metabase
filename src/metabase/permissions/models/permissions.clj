@@ -170,12 +170,14 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -185,6 +187,8 @@
    [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -377,10 +381,14 @@
 
 (defn- clear-current-user-cached-permissions!
   "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
-  Called by [[delete-related-permissions!]] and [[grant-permissions!]] below, mostly as a convenience for tests that
-  bind a current user and then grant or revoke permissions for that user without rebinding it."
+  Called by [[metabase.permissions.models.permissions/delete-related-permissions!]]
+  and [[metabase.permissions.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a
+  current user and then grant or revoke permissions for that user without rebinding it."
   []
-  ((requiring-resolve 'metabase.server.middleware.session/clear-current-user-cached-permissions-set!))
+  (when-let [current-user-id api/*current-user-id*]
+    ;; [[api/*current-user-permissions-set*]] is dynamically bound
+    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
+      (.set #'api/*current-user-permissions-set* (delay (user/permissions-set current-user-id)))))
   nil)
 
 (mu/defn delete-related-permissions!
