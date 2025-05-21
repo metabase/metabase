@@ -84,15 +84,6 @@ function getSdkIframeEmbedHtml({
     <head>
       <title>Metabase Embed Test</title>
       ${insertHtml?.head ?? ""}
-    </head>
-    <body>
-      <script src="${EMBED_JS_PATH}"></script>
-
-      ${insertHtml?.beforeEmbed ?? ""}
-      <div id="metabase-embed-container"></div>
-      ${insertHtml?.afterEmbed ?? ""}
-
-      <div id="debug">MetabaseEmbed missing</div>
 
       <style>
         body {
@@ -103,6 +94,15 @@ function getSdkIframeEmbedHtml({
           height: 100vh;
         }
       </style>
+    </head>
+    <body>
+      ${insertHtml?.beforeEmbed ?? ""}
+      <div id="metabase-embed-container"></div>
+      ${insertHtml?.afterEmbed ?? ""}
+
+      <div id="debug">MetabaseEmbed missing</div>
+
+      <script src="${EMBED_JS_PATH}"></script>
 
       <script>
         const { MetabaseEmbed } = window["metabase.embed"] ?? {};
