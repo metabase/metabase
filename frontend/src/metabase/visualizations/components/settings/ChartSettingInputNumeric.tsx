@@ -84,10 +84,6 @@ export const ChartSettingInputNumeric = ({
           handleChangeDebounced(e);
         }
       }}
-      onBlur={(e) => {
-        handleChangeDebounced.cancel();
-        handleChangeRef.current(e);
-      }}
       className={className}
     />
   );
