@@ -1,6 +1,6 @@
 (ns metabase.server.streaming-response.thread-pool
   (:require
-   [metabase.config :as config])
+   [metabase.config.core :as config])
   (:import
    (java.util.concurrent Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))

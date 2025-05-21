@@ -12,8 +12,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -828,11 +828,11 @@
                                       :active   true
                                       :table_id (mt/id :coll)
                                       {:order-by [:database_position]}))]
-          (is (=? [{:name "_id",    :database_type "long",   :base_type :type/Integer,   :semantic_type :type/PK}
+          (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
                    {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type nil}
                    {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]

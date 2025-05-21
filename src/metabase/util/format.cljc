@@ -1,7 +1,7 @@
 (ns metabase.util.format
   #?(:clj  (:require
             [colorize.core :as colorize]
-            [metabase.config :as config])
+            [metabase.config.core :as config])
      :cljs (:require
             [goog.string :as gstring])))
 

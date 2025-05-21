@@ -10,6 +10,7 @@ import {
   PRODUCTS_COUNT_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
   PRODUCTS_COUNT_BY_CREATED_AT,
+  PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY,
   SCALAR_CARD,
   STEP_COLUMN_CARD,
   VIEWS_COLUMN_CARD,
@@ -45,6 +46,11 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT, {
       idAlias: "productsCountByCreatedAtQuestionId",
       entityIdAlias: "productsCountByCreatedAtQuestionEntityId",
+      wrapId: true,
+    });
+    H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
+      idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
+      entityIdAlias: "productsCountByCreatedAtAndCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
@@ -223,7 +229,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name);
       H.switchToColumnsList();
 
       H.selectVisualization("area");
@@ -242,12 +248,16 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       );
 
       H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
         "Count",
       );
       H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT.name,
+        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
         "Created At: Month",
+      );
+      H.assertDataSourceColumnSelected(
+        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
+        "Category",
       );
     });
   });

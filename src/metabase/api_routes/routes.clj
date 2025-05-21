@@ -5,14 +5,11 @@
    [metabase.activity-feed.api]
    [metabase.analytics.api]
    [metabase.api-keys.api]
-   [metabase.api.database]
-   [metabase.api.dataset]
    [metabase.api.docs]
    [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
-   [metabase.api.user]
    [metabase.api.util]
    [metabase.api.util.handlers :as handlers]
    [metabase.bookmarks.api]
@@ -21,7 +18,7 @@
    [metabase.channel.api]
    [metabase.cloud-migration.api]
    [metabase.collections.api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.dashboards.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
@@ -37,6 +34,7 @@
    [metabase.public-sharing.api]
    [metabase.pulse.api]
    [metabase.queries.api]
+   [metabase.query-processor.api]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
@@ -52,18 +50,17 @@
    [metabase.timeline.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
+   [metabase.users.api]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.warehouse-schema.api]
+   [metabase.warehouses.api]
    [metabase.xrays.api]))
 
 (comment metabase.actions.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
-         metabase.api.database/keep-me
-         metabase.api.dataset/keep-me
          metabase.api.logger/keep-me
-         metabase.api.user/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
          metabase.bug-reporting.api/keep-me
@@ -80,6 +77,7 @@
          metabase.permissions.api/keep-me
          metabase.product-feedback.api/keep-me
          metabase.public-sharing.api/keep-me
+         metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
          metabase.settings.api/keep-me
@@ -88,7 +86,9 @@
          metabase.testing-api.api/keep-me
          metabase.tiles.api/keep-me
          metabase.upload.api/keep-me
-         metabase.user-key-value.api/keep-me)
+         metabase.user-key-value.api/keep-me
+         metabase.users.api/keep-me
+         metabase.warehouses.api/keep-me)
 
 (def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
   "Always 'falls thru' to the next handler."
@@ -141,8 +141,8 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections.api)
    "/dashboard"            (+auth 'metabase.dashboards.api)
-   "/database"             (+auth 'metabase.api.database)
-   "/dataset"              (+auth 'metabase.api.dataset)
+   "/database"             (+auth 'metabase.warehouses.api)
+   "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
@@ -178,7 +178,7 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/upload"               (+auth 'metabase.upload.api)
-   "/user"                 (+auth 'metabase.api.user)
+   "/user"                 (+auth 'metabase.users.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
    "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑

@@ -1,12 +1,12 @@
 (ns metabase.lib.schema.common
   (:require
    [clojure.string :as str]
-   [metabase.types]
+   [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 #?(:clj (set! *warn-on-reflection* true))
 

@@ -10,7 +10,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.audit-app.core :as audit]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -295,7 +295,7 @@
       :else
       nil)))
 
-;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
+;; called [[from metabase.warehouses.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]

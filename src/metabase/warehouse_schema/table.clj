@@ -6,7 +6,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru deferred-trun]]
    [metabase.warehouse-schema.models.field-values :as field-values]

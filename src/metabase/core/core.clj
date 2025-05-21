@@ -6,20 +6,19 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.api-routes.core :as api-routes]
+   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db :as mdb]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.logger :as logger]
-   [metabase.models.database :as database]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -33,7 +32,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
-   [metabase.util.system-info :as u.system-info])
+   [metabase.util.system-info :as u.system-info]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.lang.management ManagementFactory)))
 
@@ -213,8 +213,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
-  (classloader/require 'metabase.cmd)
-  ((resolve 'metabase.cmd/run-cmd) cmd init-fn args))
+  ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------
 

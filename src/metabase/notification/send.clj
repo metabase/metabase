@@ -3,7 +3,7 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.settings.core :as setting]

@@ -3,7 +3,7 @@
   (:require
    [clojure.test]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test.util.random :as tu.rng]
    [metabase.util :as u]
    [metabase.util.log :as log])

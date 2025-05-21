@@ -10,7 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.dashboards.api :as api.dashboard]
    [metabase.events.core :as events]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
@@ -68,7 +68,7 @@
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card

@@ -36,7 +36,6 @@ export const Default = {
 
   args: {
     dashboardId: DASHBOARD_ID,
-    withFooter: true,
   },
 };
 

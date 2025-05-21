@@ -6,14 +6,14 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.models.user :as user]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -304,6 +304,15 @@
         (do-login)
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
+
+(api.macros/defendpoint :post "/password-check"
+  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+  {:valid true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec
