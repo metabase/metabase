@@ -138,7 +138,7 @@ function MetabotConfigurationPane({
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
         <Button onClick={open}>
-          {collection ? t`Pick a different Collection` : t`Pick a collection`}
+          {collection ? t`Pick a different collection` : t`Pick a collection`}
         </Button>
         {collection && (
           <Button onClick={handleDelete}>
@@ -148,7 +148,7 @@ function MetabotConfigurationPane({
       </Flex>
       {isOpen && (
         <CollectionPickerModal
-          title={t`Select items`}
+          title={t`Select a collection`}
           value={{
             id: collection?.id ?? null,
             model: "collection",

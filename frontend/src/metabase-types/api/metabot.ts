@@ -144,7 +144,7 @@ export type MetabotInfo = {
 
 export type MetabotEntity = {
   name: string;
-  id: CardId;
+  id: CollectionId;
   model: Extract<SearchModel, "collection">;
   collection_id: CollectionId;
   collection_name: string;

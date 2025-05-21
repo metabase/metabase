@@ -3,6 +3,7 @@ import { Route } from "react-router";
 
 import {
   findRequests,
+  setupCollectionByIdEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -11,7 +12,7 @@ import {
   setupMetabotEntitiesEndpoint,
   setupMetabotsEndpoint,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   MetabotApiEntity,
   MetabotEntity,
@@ -41,52 +42,38 @@ const entities = {
   1: [
     {
       model_id: 11,
-      name: "Model One",
-      model: "dataset",
-      collection_id: 1,
-      collection_name: "Collection One",
-    },
-    {
-      model_id: 12,
-      name: "Metric One",
-      model: "metric",
-      collection_id: 2,
-      collection_name: "Collection Two",
+      name: "Collection One",
+      model: "collection",
+      collection_id: 12,
+      collection_name: "Collection One Prime",
     },
   ],
   2: [
     {
       model_id: 21,
-      name: "Model Two",
-      model: "dataset",
-      collection_id: 1,
-      collection_name: "Collection One",
-    },
-    {
-      model_id: 22,
-      name: "Metric Two",
-      model: "metric",
-      collection_id: 2,
-      collection_name: "Collection Two",
+      name: "Collection Two",
+      model: "collection",
+      collection_id: 22,
+      collection_name: "Collection Two Prime",
     },
   ] as MetabotApiEntity[],
   recents: [
     {
       id: 31,
-      name: "Model Three",
-      model: "dataset",
+      name: "Collection Three",
+      model: "collection",
       parent_collection: {
         id: 3,
-        name: "Collection Three",
+        name: "Collection Three Prime",
       },
     },
     {
       id: 32,
-      name: "Metric Three",
-      model: "metric",
+      name: "Collection Four",
+      model: "collection",
       parent_collection: {
         id: 3,
-        name: "Collection Three",
+        name: "Collection Four Prime",
       },
     },
   ],
@@ -95,6 +82,11 @@ const entities = {
 const setup = async (initialPathParam: MetabotId = 1, seedData = entities) => {
   mockPathParam(initialPathParam);
   setupMetabotsEndpoint(metabots);
+  const collections = [...seedData[1], ...seedData[2], ...seedData.recents];
+  setupCollectionByIdEndpoint({
+    collections: collections.map((c: any) => ({ id: c.model_id, ...c })),
+  });
+
   metabots.forEach((metabot) => {
     setupMetabotEntitiesEndpoint(
       metabot.id,
@@ -129,65 +121,56 @@ describe("MetabotAdminPage", () => {
     expect(screen.getByText("Metabot Two")).toBeInTheDocument();
   });
 
-  it("should render table of entities", async () => {
+  it("should render a selected collection", async () => {
     await setup();
-    expect(await screen.findByText("Model One")).toBeInTheDocument();
-    expect(screen.getByText("Metric One")).toBeInTheDocument();
-
-    expect(screen.getByText("Collection Two")).toBeInTheDocument();
-    expect(screen.getByText("Collection One")).toBeInTheDocument();
-
-    expect(screen.getByText("2 items")).toBeInTheDocument();
+    expect(await screen.findByText("Collection One")).toBeInTheDocument();
   });
 
   it("should be able to switch between metabots", async () => {
     await setup(1);
-    await screen.findByText("Model One");
-    expect(screen.getByText("Metric One")).toBeInTheDocument();
+    await screen.findByText("Collection One");
 
     mockPathParam(2);
     await userEvent.click(await screen.findByText("Metabot Two"));
-    expect(await screen.findByText("Model Two")).toBeInTheDocument();
-    expect(screen.getByText("Metric Two")).toBeInTheDocument();
+    expect(await screen.findByText("Collection Two")).toBeInTheDocument();
   });
 
-  it("should add entities to the metabot context", async () => {
+  it("should change selected collection", async () => {
     await setup(1);
-    expect(await screen.findByText("Model One")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Add items"));
+    expect(await screen.findByText("Collection One")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Pick a different collection"));
 
-    await screen.findByText("Select items");
-    await userEvent.click(screen.getByText("Model Three"));
+    await screen.findByText("Select a collection");
+    await userEvent.click(screen.getByText("Collection Three"));
+    await userEvent.click(screen.getByText("Select"));
 
-    const puts = await findRequests("PUT");
-    expect(puts.length).toBe(1);
-    const [{ url, body }] = puts;
+    await waitFor(async () => {
+      const deletes = await findRequests("DELETE");
+      expect(deletes.length).toBe(1);
+    });
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts.length).toBe(1);
+    });
 
+    const [{ url, body }] = await findRequests("PUT");
     expect(url).toMatch(/\/api\/ee\/metabot-v3\/metabots\/1\/entities/);
-    expect(body.items).toHaveLength(3); // 2 existing + 1 new
+    expect(body.items).toHaveLength(1); // 1 new
 
     expect(
       body.items.find((item: MetabotEntity) => item.id === 31),
     ).toBeTruthy();
   });
 
-  it("should delete entities from the metabot context", async () => {
+  it("should delete the selected collection", async () => {
     await setup(1);
-    expect(await screen.findByText("Model One")).toBeInTheDocument();
-    expect(await screen.findByText("Metric One")).toBeInTheDocument();
-
-    setupMetabotEntitiesEndpoint(
-      1,
-      entities[1].slice(1, 2) as MetabotApiEntity[],
-    );
-    const [deleteButton] = await screen.findAllByLabelText("close icon");
+    expect(await screen.findByText("Collection One")).toBeInTheDocument();
+    const [deleteButton] = await screen.findAllByLabelText("trash icon");
     await userEvent.click(deleteButton);
 
     const [{ url: deleteUrl }, ...rest] = await findRequests("DELETE");
-    expect(deleteUrl).toContain("metabots/1/entities/dataset/11");
+    expect(deleteUrl).toContain("metabots/1/entities/collection/11");
     expect(rest).toHaveLength(0); // only 1 delete
-    expect(await screen.findByText("1 item")).toBeInTheDocument();
-    expect(screen.queryByText("Model One")).not.toBeInTheDocument(); // should be gone
   });
 
   it("should show an empty state when no entities", async () => {
@@ -196,9 +179,8 @@ describe("MetabotAdminPage", () => {
       2: [],
       recents: [],
     });
-    expect(await screen.findByText("0 items")).toBeInTheDocument();
-    expect(
-      await screen.findByText("There's nothing here, yet"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Pick a collection")).toBeInTheDocument();
+
+    expect(screen.queryByLabelText("trash icon")).not.toBeInTheDocument();
   });
 });
