@@ -84,17 +84,13 @@ export function Table<Row extends BaseRow>({
           </tr>
         </thead>
         <tbody>
-          {rows.length > 0 ? (
-            rows.map((row, index) => (
-              <React.Fragment key={String(row.id) || index}>
-                {rowRenderer(row)}
-              </React.Fragment>
-            ))
-          ) : (
-            <tr className={CS.EmptyTableRow}>
-              <td colSpan={columns.length}>{emptyBody}</td>
-            </tr>
-          )}
+          {rows.length > 0
+            ? rows.map((row, index) => (
+                <React.Fragment key={String(row.id) || index}>
+                  {rowRenderer(row)}
+                </React.Fragment>
+              ))
+            : emptyBody}
         </tbody>
       </table>
 

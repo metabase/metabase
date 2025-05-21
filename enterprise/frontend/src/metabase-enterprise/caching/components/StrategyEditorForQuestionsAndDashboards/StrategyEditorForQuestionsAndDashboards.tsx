@@ -359,7 +359,11 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
 );
 
 const NoResultsTableRow = () => (
-  <Center fw="bold" c="text-light">
-    {t`No dashboards or questions have their own caching policies yet.`}
-  </Center>
+  <tr className={Styles.NoResultsTableRow}>
+    <td colSpan={3}>
+      <Center fw="bold" c="text-light">
+        {t`No dashboards or questions have their own caching policies yet.`}
+      </Center>
+    </td>
+  </tr>
 );
