@@ -37,7 +37,11 @@
 
 (defmethod serdes/dependencies "Metabot"
   [{:keys [entities]}]
-  (set (map #(vector (assoc {:model "Card"} :id (:model_id %)))
+  (set (map (fn [{:keys [model model_id]}]
+              [{:model (case model
+                         "collection" "Collection"
+                         ("dataset" "metric") "Card")
+                :id model_id}])
             entities)))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]

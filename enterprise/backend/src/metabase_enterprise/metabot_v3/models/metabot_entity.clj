@@ -32,7 +32,16 @@
    (serdes/infer-self-path "MetabotEntity" entity)])
 
 (defmethod serdes/make-spec "MetabotEntity" [_model-name _opts]
-  {:copy      [:model :entity_id]
+  {:copy      [:entity_id]
    :transform {:created_at (serdes/date)
-               :model_id  (serdes/fk :model/Card)
+               :model      (serdes/kw)
+               :model_id   {::fk true
+                            :export-with-context (fn [{:keys [model model_id]} _ _]
+                                                   (serdes/*export-fk* model_id (case model
+                                                                                  :collection         :model/Collection
+                                                                                  (:dataset :metric) :model/Card)))
+                            :import-with-context (fn [{:keys [model model_id]} _ _]
+                                                   (serdes/*import-fk* model_id (case model
+                                                                                  "collection"         :model/Collection
+                                                                                  ("dataset" "metric") :model/Card)))}
                :metabot_id (serdes/parent-ref)}})
