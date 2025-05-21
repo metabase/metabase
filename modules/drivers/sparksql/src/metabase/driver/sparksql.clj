@@ -103,7 +103,9 @@
         url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
         properties  (connection-pool/map->properties (dissoc opts :host :port :jdbc-flags))
         data-source (->SparkSQLDataSource url properties)]
-    {:datasource data-source}))
+    (merge
+     opts
+     {:datasource data-source})))
 
 (defn- dash-to-underscore [s]
   (when s
