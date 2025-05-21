@@ -922,6 +922,23 @@ export const getNativeEditorSelectedText = createSelector(
   },
 );
 
+export const getNativeEditorFirstCommentText = createSelector(
+  [getNextRunDatasetQuery],
+  (query) => {
+    if (query == null || query.native == null) {
+      return null;
+    }
+
+    const queryText = query.native.query;
+    const commentPrefix = "--";
+    return queryText
+      .split("\n")
+      .find((line) => line.startsWith(commentPrefix))
+      ?.substring(commentPrefix.length)
+      ?.trim();
+  },
+);
+
 export const getAllNativeEditorSelectedText = createSelector(
   [getNativeEditorSelectedRanges, getNextRunDatasetQuery],
   (selectedRanges, query) => {

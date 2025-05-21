@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
@@ -10,6 +11,10 @@ import { NativeVariablesButton } from "metabase/query_builder/components/view/Na
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import {
+  getNativeEditorFirstCommentText,
+  getNativeEditorSelectedText,
+} from "metabase/query_builder/selectors";
 import { Box, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -30,7 +35,6 @@ export type Features = {
 
 interface NativeQueryEditorSidebarProps {
   question: Question;
-  nativeEditorSelectedText?: string;
   features: Features;
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
@@ -61,7 +65,6 @@ export const NativeQueryEditorSidebar = (
     isResultDirty,
     isRunnable,
     isRunning,
-    nativeEditorSelectedText,
     runQuery,
     snippetCollections,
     snippets,
@@ -69,6 +72,10 @@ export const NativeQueryEditorSidebar = (
     onFormatQuery,
     onGenerateQuery,
   } = props;
+
+  const selectedText = useSelector(getNativeEditorSelectedText);
+  const firstCommentText = useSelector(getNativeEditorFirstCommentText);
+  const promptText = selectedText || firstCommentText;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
   // and the root collection isn't writable
@@ -79,12 +86,8 @@ export const NativeQueryEditorSidebar = (
   );
 
   const getTooltip = () => {
-    const command = nativeEditorSelectedText
-      ? t`Run selected text`
-      : t`Run query`;
-
+    const command = selectedText ? t`Run selected text` : t`Run query`;
     const shortcut = isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`;
-
     return command + " " + shortcut;
   };
 
@@ -124,10 +127,10 @@ export const NativeQueryEditorSidebar = (
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
-      {nativeEditorSelectedText != null && databaseId != null && (
+      {promptText != null && databaseId != null && (
         <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
           className={CS.mt3}
-          prompt={nativeEditorSelectedText}
+          prompt={promptText}
           databaseId={databaseId}
           onGenerateQuery={onGenerateQuery}
         />
