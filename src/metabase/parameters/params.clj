@@ -182,10 +182,12 @@
         ;; a query against that model or metric.
         query (lib/query metadata-provider (if (= :question (:type card))
                                              (:dataset_query card)
-                                             (lib.metadata/card metadata-provider (:id card))))]
-    (-> query
-        lib/ensure-filter-stage
-        (lib/filterable-columns stage-number))))
+                                             (lib.metadata/card metadata-provider (:id card))))
+        ;; for backward compatibility, append a filter stage only with explicit stage numbers
+        query (cond-> query (>= stage-number 0) lib/ensure-filter-stage)]
+    (if (and (>= stage-number -1) (< stage-number (lib/stage-count query)))
+      (lib/filterable-columns query stage-number)
+      [])))
 
 (defn- ensure-filterable-columns-for-card
   [ctx
