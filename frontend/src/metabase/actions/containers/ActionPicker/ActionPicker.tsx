@@ -17,19 +17,22 @@ import {
   EditButton,
   EmptyModelStateContainer,
   EmptyState,
-  ModelCollapseSection,
   NewActionButton,
 } from "./ActionPicker.styled";
-import { sortAndGroupActions } from "./utils";
+import { sortAndGroupActions, sortAndGroupTableActions } from "./utils";
+import { Divider, Stack, Text, Title } from "metabase/ui";
+import CollapseSection from "metabase/components/CollapseSection";
 
 export function ActionPicker({
   models,
-  actions,
+  actions: modelActions,
+  editableActions = [],
   onClick,
   currentAction,
 }: {
   models: Card[];
   actions: WritebackAction[];
+  editableActions?: WritebackAction[];
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
@@ -39,27 +42,58 @@ export function ActionPicker({
       [models],
     ) ?? [];
 
-  const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
+  const actionsByModel = useMemo(
+    () => sortAndGroupActions(modelActions),
+    [modelActions],
+  );
+
+  const actionsByTable = useMemo(
+    () => sortAndGroupTableActions(editableActions),
+    [editableActions],
+  );
+
+  const hasTwoActionGroups =
+    sortedModels.length > 0 && editableActions?.length > 0;
 
   return (
-    <div className={CS.scrollY}>
-      {sortedModels.map((model) => (
-        <ModelActionPicker
-          key={model.id}
-          model={model}
-          actions={actionsByModel[model.id] ?? []}
-          onClick={onClick}
-          currentAction={currentAction}
-        />
-      ))}
-      {!sortedModels.length && (
-        <EmptyState
-          message={t`No models found`}
-          action={t`Create new model`}
-          link={"/model/new"}
-        />
+    <Stack gap="md" className={CS.scrollY}>
+      {hasTwoActionGroups && (
+        <>
+          <Title order={4}>{t`Table actions`}</Title>
+          <Stack gap="xs">
+            {Object.keys(actionsByTable).map((tableId) => (
+              <TableActionPicker
+                key={tableId}
+                title={actionsByTable[tableId][0].table_name}
+                actions={actionsByTable[tableId]}
+                onClick={onClick}
+                currentAction={currentAction}
+              />
+            ))}
+          </Stack>
+          <Divider />
+          <Title order={4}>{t`Model actions`}</Title>
+        </>
       )}
-    </div>
+      <Stack gap="xs">
+        {sortedModels.map((model) => (
+          <ModelActionPicker
+            key={model.id}
+            model={model}
+            actions={actionsByModel[model.id] ?? []}
+            onClick={onClick}
+            currentAction={currentAction}
+          />
+        ))}
+        {!sortedModels.length && (
+          <EmptyState
+            message={t`No models found`}
+            action={t`Create new model`}
+            link={"/model/new"}
+          />
+        )}
+      </Stack>
+    </Stack>
   );
 }
 
@@ -96,8 +130,8 @@ function ModelActionPicker({
 
   return (
     <>
-      <ModelCollapseSection
-        header={<h4>{model.name}</h4>}
+      <CollapseSection
+        header={<Title order={5}>{model.name}</Title>}
         initialState={hasCurrentAction ? "expanded" : "collapsed"}
       >
         {actions.length ? (
@@ -137,7 +171,7 @@ function ModelActionPicker({
             </NewActionButton>
           </EmptyModelStateContainer>
         )}
-      </ModelCollapseSection>
+      </CollapseSection>
       {isActionCreatorOpen && (
         <Modal wide onClose={closeModal}>
           <ActionCreator
@@ -149,6 +183,49 @@ function ModelActionPicker({
           />
         </Modal>
       )}
+    </>
+  );
+}
+
+function TableActionPicker({
+  onClick,
+  title,
+  actions,
+  currentAction,
+}: {
+  onClick: (newValue: WritebackAction) => void;
+  title: string;
+  actions: WritebackAction[];
+  currentAction?: WritebackAction;
+}) {
+  return (
+    <>
+      <CollapseSection
+        header={
+          <Title tt="capitalize" order={5}>
+            {title}
+          </Title>
+        }
+      >
+        {
+          <ActionsList>
+            {actions.map((action) => {
+              return (
+                <ActionItem
+                  key={action.id}
+                  role="button"
+                  isSelected={currentAction?.id === action.id}
+                  aria-selected={currentAction?.id === action.id}
+                  onClick={() => onClick(action)}
+                  data-testid={`table-action-item-${action.name}`}
+                >
+                  <Text c="var(--mb-color-brand)">{action.name}</Text>
+                </ActionItem>
+              );
+            })}
+          </ActionsList>
+        }
+      </CollapseSection>
     </>
   );
 }

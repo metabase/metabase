@@ -18,3 +18,17 @@ export const sortAndGroupActions = (
 
   return sortedGroupedActions;
 };
+
+export const sortAndGroupTableActions = (actions?: WritebackAction[]) => {
+  if (!actions) {
+    return {};
+  }
+
+  const sortedActions = _.sortBy(actions, (a: WritebackAction) =>
+    a.name.toLowerCase(),
+  );
+
+  const sortedGroupedActions = _.groupBy(sortedActions, "table_id");
+
+  return sortedGroupedActions;
+};

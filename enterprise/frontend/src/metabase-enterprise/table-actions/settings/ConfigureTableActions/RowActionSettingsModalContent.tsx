@@ -31,12 +31,14 @@ interface Props {
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
+  tableActions?: WritebackAction[];
 }
 
 export function RowActionSettingsModalContent({
   action: editedAction,
   rowActionSettings,
   tableColumns,
+  tableActions,
   onClose,
   onSubmit,
 }: Props) {
@@ -48,6 +50,7 @@ export function RowActionSettingsModalContent({
   const [actionName, setActionName] = useState<string | undefined>(
     rowActionSettings?.name || selectedAction?.name,
   );
+  console.log({ rowActionSettings, selectedAction, actionName });
 
   const hasParameters = !!selectedAction?.parameters?.length;
 
@@ -109,6 +112,11 @@ export function RowActionSettingsModalContent({
   const handleSubmit = useCallback(
     (values: { parameters: RowActionFieldSettings[] }) => {
       if (selectedAction) {
+        const name =
+          "table_name" in selectedAction
+            ? actionName ||
+              `${selectedAction.table_name} (${selectedAction.name})`
+            : actionName;
         onSubmit({
           id: rowActionSettings?.id,
           action: selectedAction,
@@ -131,10 +139,11 @@ export function RowActionSettingsModalContent({
     >
       {!isEditMode && (
         <Box className={S.ParametersModalModalLeftSection}>
-          <h4 className={CS.pb2}>{t`Action Library`}</h4>
+          <Title order={3} className={CS.pb2}>{t`Action Library`}</Title>
           <ConnectedActionPicker
             currentAction={selectedAction}
             onClick={handlePickAction}
+            editableActions={tableActions}
           />
         </Box>
       )}

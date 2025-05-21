@@ -167,6 +167,7 @@ export const EditTableDataGrid = ({
   );
 
   const columnRowSelectOptions = useTableColumnRowSelect();
+  console.log({ onActionRun });
 
   const tableProps = useDataGridInstance({
     data: rows,

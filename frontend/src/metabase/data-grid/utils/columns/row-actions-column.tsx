@@ -9,7 +9,7 @@ import {
   ROW_ACTIONS_COLUMN_ID,
 } from "metabase/data-grid/constants";
 import type { RowActionsColumnConfig } from "metabase/data-grid/types";
-import { Button, Group } from "metabase/ui";
+import { Button, Group, Stack } from "metabase/ui";
 
 export const getActionsIdColumn = <TRow, TValue>({
   actions,
@@ -23,13 +23,14 @@ export const getActionsIdColumn = <TRow, TValue>({
     enablePinning: true,
     cell: ({ row }) => (
       <BaseCell data-testid="row-id-cell" className={S.cellRoot}>
-        <Group wrap="nowrap">
+        <Stack>
           {actions.map((action) => (
             <Button
               key={action.id}
               size="compact-sm"
               variant="subtle"
               onClick={(e) => {
+                debugger;
                 e.stopPropagation();
                 onActionRun(action, row);
               }}
@@ -37,7 +38,7 @@ export const getActionsIdColumn = <TRow, TValue>({
               {action.name}
             </Button>
           ))}
-        </Group>
+        </Stack>
       </BaseCell>
     ),
     header: () => (

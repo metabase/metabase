@@ -10,6 +10,7 @@ import type {
 } from "metabase-enterprise/data_editing/tables/types";
 
 import { EnterpriseApi } from "./api";
+import { WritebackAction } from "metabase-types/api/actions";
 
 export const tableDataEditApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -57,6 +58,14 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         body: { "table-id": tableId, scope, "no-op": noOp },
       }),
     }),
+    getActions: builder.query<WritebackAction[], void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/data-editing/tmp-action`,
+      }),
+      transformResponse: (response) =>
+        (response as { actions: unknown[] })?.actions,
+    }),
   }),
 });
 
@@ -66,4 +75,5 @@ export const {
   useDeleteTableRowsMutation,
   useTableUndoMutation,
   useTableRedoMutation,
+  useGetActionsQuery,
 } = tableDataEditApi;
