@@ -2618,7 +2618,7 @@
 
 (deftest backfill-card-entity-ids-test
   (testing "Backfill report_card.entity_id"
-    (impl/test-migrations "v55.2025-05-20T15:00:00" [migrate!]
+    (impl/test-migrations "v55.2025-05-20T21:00:00" [migrate!]
       (let [user-id (t2/insert-returning-pks! :core_user
                                               {:first_name  "Howard"
                                                :last_name   "Hughes"
