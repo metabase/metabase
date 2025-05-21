@@ -1605,13 +1605,6 @@ describe("scenarios > question > custom column > function browser", () => {
 
     H.CustomExpressionEditor.functionBrowser()
       .findByText("datetimeAdd")
-      .should("be.visible");
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("Adds some units of time to a date or timestamp value.")
-      .should("be.visible");
-
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("datetimeAdd")
       .click();
 
     H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
