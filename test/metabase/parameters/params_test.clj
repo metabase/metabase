@@ -129,13 +129,13 @@
                                                                   {:id "p5" :type :string/=}
                                                                   {:id "p6" :type :string/=}
                                                                   {:id "p7" :type :number/=}]}
-                     :model/Card          card       {:dataset_query
-                                                      {:database (mt/id)
-                                                       :type     :query
-                                                       :query    {:source-table (mt/id :products)
-                                                                  :aggregation [[:count]]
-                                                                  :breakout [[:field (mt/id :products :category) nil]]}}}
-                     :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                     :model/Card          card      {:dataset_query
+                                                     {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :products)
+                                                                 :aggregation [[:count]]
+                                                                 :breakout [[:field (mt/id :products :category) nil]]}}}
+                     :model/DashboardCard _dashcard {:dashboard_id       (u/the-id dashboard)
                                                      :card_id            (u/the-id card)
                                                      :parameter_mappings [;; p1 - no :stage-number, -1 is implied, id-based ref
                                                                           {:card_id (u/the-id card)
