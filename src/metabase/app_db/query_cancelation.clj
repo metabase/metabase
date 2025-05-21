@@ -46,7 +46,8 @@
 (defn query-canceled-exception?
   "Whether exception `e` represents a query cancelation."
   [db-type ^Throwable e]
-  (or (when (instance? java.sql.SQLException e)
-        (query-canceled-exception?* db-type e))
-      (when-let [cause (ex-cause e)]
-        (recur db-type cause))))
+  (boolean
+   (or (when (instance? java.sql.SQLException e)
+         (query-canceled-exception?* db-type e))
+       (when-let [cause (ex-cause e)]
+         (query-canceled-exception? db-type cause)))))
