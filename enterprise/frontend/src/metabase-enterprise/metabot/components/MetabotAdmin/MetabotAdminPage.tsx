@@ -109,14 +109,8 @@ function MetabotConfigurationPane({
     const result = await addEntities({
       id: metabotId,
       entities: [
-        ...entityList?.items.map((e) =>
-          _.pick(e, ["model", "id", "metabot_model_entity_id"]),
-        ),
-        {
-          metabot_model_entity_id: entity.id,
-          id: entity.id,
-          model: entity.model,
-        },
+        ...entityList?.items.map((e) => _.pick(e, ["model", "id"])),
+        _.pick(entity, ["model", "id"]),
       ],
     });
 
@@ -167,7 +161,7 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
       const result = await deleteEntity({
         metabotId,
         entityModel: entity.model,
-        entityId: entity.metabot_model_entity_id,
+        entityId: entity.id,
       });
 
       if (result.error) {
@@ -196,15 +190,7 @@ function MetabotEntitiesTable({ entities }: { entities: MetabotEntity[] }) {
       rowRenderer={(row) => (
         <tr key={row.id}>
           <td style={{ padding: "8px 16px" }}>
-            <Link
-              to={
-                modelToUrl({
-                  ...row,
-                  id: row.metabot_model_entity_id,
-                }) as string
-              }
-              variant="brand"
-            >
+            <Link to={String(modelToUrl(row))} variant="brand">
               <Flex align="center" gap="sm">
                 <Icon {...getIcon(row)} />
                 <Text>{row.name}</Text>
