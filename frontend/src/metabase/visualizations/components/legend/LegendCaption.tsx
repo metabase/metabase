@@ -99,7 +99,9 @@ export const LegendCaption = ({
       {titleMenuItems ? (
         <Menu>
           <Menu.Target>{titleElement}</Menu.Target>
-          <Menu.Dropdown>{titleMenuItems}</Menu.Dropdown>
+          <Menu.Dropdown data-testid="legend-caption-menu">
+            {titleMenuItems}
+          </Menu.Dropdown>
         </Menu>
       ) : (
         titleElement
