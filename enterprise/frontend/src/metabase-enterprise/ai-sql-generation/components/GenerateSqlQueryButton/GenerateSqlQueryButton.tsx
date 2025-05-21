@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getEngineNativeType } from "metabase/lib/engine";
 import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import { useGenerateSqlQueryMutation } from "metabase-enterprise/api";
@@ -16,7 +15,6 @@ export function GenerateSqlQueryButton({
   const prompt = getPrompt(query, selectedQueryText);
   const databaseId = Lib.databaseID(query);
   const isEmpty = databaseId == null || prompt == null;
-  const isVisible = canGenerateQuery(query);
 
   const handleClick = async () => {
     if (isEmpty) {
@@ -28,10 +26,6 @@ export function GenerateSqlQueryButton({
     }
     onGenerateQuery(getQueryText(prompt, data.generated_sql));
   };
-
-  if (!isVisible) {
-    return null;
-  }
 
   return (
     <Tooltip label={t`Generate SQL based on the prompt selected in the editor`}>
@@ -48,11 +42,6 @@ export function GenerateSqlQueryButton({
 }
 
 const COMMENT_PREFIX = "--";
-
-function canGenerateQuery(query: Lib.Query) {
-  const engine = Lib.engine(query);
-  return engine != null && getEngineNativeType(engine) === "sql";
-}
 
 function getPrompt(query: Lib.Query, selectedQueryText: string | null) {
   const prompt =

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isMac } from "metabase/lib/browser";
+import { getEngineNativeType } from "metabase/lib/engine";
 import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
 import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
@@ -89,6 +90,8 @@ export const NativeQueryEditorSidebar = (
   const canRunQuery = runQuery && cancelQuery;
   const engine = question.database?.()?.engine;
   const canFormatQuery = engine != null && canFormatForEngine(engine);
+  const canGenerateQuery =
+    engine != null && getEngineNativeType(engine) === "sql";
 
   return (
     <Box
@@ -120,13 +123,14 @@ export const NativeQueryEditorSidebar = (
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}
-      {engine}
-      <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
-        className={CS.mt3}
-        query={query}
-        selectedQueryText={nativeEditorSelectedText}
-        onGenerateQuery={onGenerateQuery}
-      />
+      {canGenerateQuery && (
+        <PLUGIN_AI_SQL_GENERATION.GenerateSqlQueryButton
+          className={CS.mt3}
+          query={query}
+          selectedQueryText={nativeEditorSelectedText}
+          onGenerateQuery={onGenerateQuery}
+        />
+      )}
       {!!canRunQuery && (
         <RunButtonWithTooltip
           className={NativeQueryEditorSidebarS.RunButtonWithTooltipStyled}
