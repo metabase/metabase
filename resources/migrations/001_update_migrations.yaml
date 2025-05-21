@@ -11477,7 +11477,6 @@ databaseChangeLog:
             constraintName: idx_unique_table
 
   - changeSet:
-<<<<<<< HEAD
       id: v55.2025-05-19T16:46:48
       author: edpaget
       comment: Add metabot table
@@ -11667,6 +11666,7 @@ databaseChangeLog:
                   , now()
               );
 
+  - changeSet:
       id: v55.2025-05-20T10:00:00
       validCheckSum: 9:1ed306a6b2573b7b140275e5319fae2c
       author: ranquild
