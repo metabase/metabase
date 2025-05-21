@@ -1188,3 +1188,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))
