@@ -1710,7 +1710,7 @@
 
        :model/MetabotEntity {metabot-entity-eid :entity_id} {:metabot_id metabot-id
                                                              :model :dataset
-                                                             :metabot_model_entity_id model-id}]
+                                                             :model_id model-id}]
 
       (testing "metabot extraction"
         (let [ser (ts/extract-one "Metabot" metabot-id)]
@@ -1719,7 +1719,7 @@
                    :description "A test metabot"
                    :entity_id metabot-eid
                    :entities [{:model :dataset
-                               :metabot_model_entity_id model-eid
+                               :model_id model-eid
                                :entity_id metabot-entity-eid
                                :serdes/meta [{:model "Metabot" :id metabot-eid} {:model "MetabotEntity" :id metabot-entity-eid}]
                                :created_at string?}]

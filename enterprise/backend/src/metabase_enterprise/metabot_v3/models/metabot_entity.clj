@@ -23,7 +23,7 @@
 
 (defmethod serdes/hash-fields :model/MetabotEntity
   [_table]
-  [:metabot_id :model :metabot_model_entity_id])
+  [:metabot_id :model :model_id])
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
@@ -34,5 +34,5 @@
 (defmethod serdes/make-spec "MetabotEntity" [_model-name _opts]
   {:copy      [:model :entity_id]
    :transform {:created_at (serdes/date)
-               :metabot_model_entity_id  (serdes/fk :model/Card)
+               :model_id  (serdes/fk :model/Card)
                :metabot_id (serdes/parent-ref)}})
