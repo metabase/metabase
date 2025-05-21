@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
@@ -177,7 +177,7 @@
                                                                       [:= :p.group_id :pg.id]
                                                                       [:= :p.object monitoring]]}]]
                                          :group-by [:pgm.user_id]}
-                                        mdb.query/query
+                                        app-db/query
                                         (mapv :user_id)))
         user-ids (filter
                   #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)

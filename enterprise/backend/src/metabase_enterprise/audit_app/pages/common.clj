@@ -8,7 +8,6 @@
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
     :as qp.middleware.audit]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.schema :as qp.schema]
@@ -94,7 +93,7 @@
     (let [honeysql-query (cond-> honeysql-query
                            ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
                            (= driver :mysql) CTEs->subselects)]
-      (mdb.query/compile (add-default-params honeysql-query)))
+      (mdb/compile (add-default-params honeysql-query)))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling audit query: {0}" (ex-message e))
                       {:driver driver, :honeysql-query honeysql-query}

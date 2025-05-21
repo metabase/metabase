@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.permissions.api.permission-graph :as api.permission-graph]
    [metabase.permissions.core :as perms]
@@ -119,7 +119,7 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (let [results (mdb.query/query
+  (let [results (mdb/query
                  {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
                   :from      [[:permissions_group_membership :pgm]]
                   :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]

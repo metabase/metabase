@@ -776,10 +776,10 @@
      toucan2.core               {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
 
     :discouraged-var
-    {medley.core/map-keys                  {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals                  {:message "Use clojure.core/update-vals"}
-     metabase.app-db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.app-db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+    {medley.core/map-keys                 {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals                 {:message "Use clojure.core/update-vals"}
+     metabase.app-db.core/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
 
   general-qp-and-driver-test-namespaces
   {:linters
