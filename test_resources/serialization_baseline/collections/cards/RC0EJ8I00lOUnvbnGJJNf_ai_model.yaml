@@ -1,7 +1,7 @@
 name: AI Model
 description: null
-entity_id: 9Fjfq-q420jgdA9_WlNh1
-created_at: '2025-05-20T20:19:06.247019Z'
+entity_id: RC0EJ8I00lOUnvbnGJJNf
+created_at: '2025-05-21T13:50:19.349587Z'
 creator_id: rasta@metabase.com
 display: table
 archived: false
@@ -23,7 +23,7 @@ visualization_settings:
   column_settings: null
 card_schema: 22
 serdes/meta:
-- id: 9Fjfq-q420jgdA9_WlNh1
+- id: RC0EJ8I00lOUnvbnGJJNf
   label: ai_model
   model: Card
 archived_directly: false
