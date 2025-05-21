@@ -343,27 +343,8 @@
                               ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::test-ssh-tunnel-connection]
-  [_driver _feature _database]
-  false)
-
-;;; for now, run against Postgres and mysql, although in theory it could run against many different kinds
-(doseq [driver [:postgres :mysql :snowflake]]
-  (defmethod driver/database-supports? [driver ::test-ssh-tunnel-connection]
-    [_driver _feature _database]
-    true))
-
 (deftest test-ssh-tunnel-connection
-  ;; TODO: Formerly this test ran against "all JDBC drivers except this big list":
-  ;; (apply disj (sql-jdbc.tu/sql-jdbc-drivers)
-  ;;        :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena
-  ;;        (tqpt/timeseries-drivers))
-  ;; which does not leave very many drivers!
-  ;; That form is not extensible by 3P driver authors who need to exclude their driver as well. Since some drivers
-  ;; (eg. Oracle) do seem to support SSH tunnelling but still fail on this test, it's not clear if this should be
-  ;; controlled by a driver feature, a ^:dynamic override, or something else.
-  ;; For now I'm making this test run against only `#{:postgres :mysql :snowflake}` like the below.
-  (mt/test-drivers (mt/normal-drivers-with-feature ::test-ssh-tunnel-connection)
+  (mt/test-drivers (mt/normal-drivers-with-connection-property "tunnel-enabled")
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
@@ -379,8 +360,32 @@
             (is (= [["Polo Lounge"]]
                    (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
 
+(deftest test-ssh-server-reconnection
+  (mt/test-drivers (mt/normal-drivers-with-connection-property "tunnel-enabled")
+    (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
+      (let [tunnel-db-details (assoc (:details (mt/db))
+                                     :tunnel-enabled true
+                                     :tunnel-host "localhost"
+                                     :tunnel-auth-option "password"
+                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
+                                     :tunnel-user ssh-test/ssh-username
+                                     :tunnel-pass ssh-test/ssh-password)]
+        (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+          (mt/with-db tunneled-db
+            (sync/sync-database! (mt/db))
+            (letfn [(check-row []
+                      (is (= [["Polo Lounge"]]
+                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
+              ;; check that some data can be queried
+              (check-row)
+              ;; restart the ssh server
+              (ssh-test/stop-mock-servers!)
+              (ssh-test/start-mock-servers!)
+              ;; check the query again; the tunnel should have been reestablished
+              (check-row))))))))
+
 (deftest test-ssh-tunnel-reconnection
-  (mt/test-drivers (mt/normal-drivers-with-feature ::test-ssh-tunnel-connection)
+  (mt/test-drivers (mt/normal-drivers-with-connection-property "tunnel-enabled")
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true

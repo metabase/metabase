@@ -219,6 +219,7 @@
   metadata->native-form
   nest-query
   normal-drivers
+  normal-drivers-with-connection-property
   normal-drivers-with-feature
   normal-drivers-without-feature
   rows
