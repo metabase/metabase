@@ -43,9 +43,9 @@ const FILTER_MODEL_MAP: Record<EntityTypeFilterKeys, DataPickerValue["model"]> =
     metric: "metric",
   };
 const mapEntityTypeFilterToDataPickerModels = (
-  entityTypeFilter: InteractiveQuestionProviderProps["entityTypeFilter"],
+  entityTypes: InteractiveQuestionProviderProps["entityTypes"],
 ): InteractiveQuestionContextType["modelsFilterList"] => {
-  return entityTypeFilter?.map((entityType) => FILTER_MODEL_MAP[entityType]);
+  return entityTypes?.map((entityType) => FILTER_MODEL_MAP[entityType]);
 };
 
 export const InteractiveQuestionProvider = ({
@@ -58,7 +58,7 @@ export const InteractiveQuestionProvider = ({
   onBeforeSave,
   onSave,
   isSaveEnabled = true,
-  entityTypeFilter,
+  entityTypes,
   targetCollection,
   initialSqlParameters,
   withDownloads,
@@ -154,7 +154,7 @@ export const InteractiveQuestionProvider = ({
     mode,
     onSave: handleSave,
     onCreate: handleCreate,
-    modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
+    modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypes),
     isSaveEnabled,
     targetCollection,
     withDownloads,
@@ -165,18 +165,18 @@ export const InteractiveQuestionProvider = ({
     loadAndQueryQuestion();
   }, [loadAndQueryQuestion]);
 
-  const previousEntityTypeFilter = usePrevious(entityTypeFilter);
+  const previousEntityTypeFilter = usePrevious(entityTypes);
   const dispatch = useSdkDispatch();
 
   useEffect(() => {
-    if (!_.isEqual(previousEntityTypeFilter, entityTypeFilter)) {
+    if (!_.isEqual(previousEntityTypeFilter, entityTypes)) {
       dispatch(
         setOptions({
-          entity_types: entityTypeFilter,
+          entity_types: entityTypes,
         }),
       );
     }
-  }, [dispatch, entityTypeFilter, previousEntityTypeFilter]);
+  }, [dispatch, entityTypes, previousEntityTypeFilter]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

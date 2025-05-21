@@ -35,7 +35,7 @@ export default {
       control: { type: "radio" },
     },
     questionId: questionIdArgType,
-    entityTypeFilter: {
+    entityTypes: {
       options: [
         "model",
         "table",
@@ -114,6 +114,6 @@ export const CreateQuestion = {
   },
   args: {
     questionId: "new",
-    entityTypeFilter: ["model"],
+    entityTypes: ["model"],
   },
 };

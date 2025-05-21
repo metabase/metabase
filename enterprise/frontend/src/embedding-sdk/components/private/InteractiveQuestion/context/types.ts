@@ -18,7 +18,7 @@ type InteractiveQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypeFilter?: EmbeddingEntityType[];
+  entityTypes?: EmbeddingEntityType[];
 
   /**
    * Whether to show the save button.
