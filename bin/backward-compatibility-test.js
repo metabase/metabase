@@ -96,9 +96,8 @@ function build() {
 
   console.log("Building frontend...");
   executeCommand("yarn install", FE_FOLDER);
-  executeCommand("yarn build", FE_FOLDER, {
+  executeCommand("yarn build-release", FE_FOLDER, {
     MB_EDITION: "ee",
-    NODE_ENV: "production",
   });
 
   printStep("Copying frontend build to backend...");
