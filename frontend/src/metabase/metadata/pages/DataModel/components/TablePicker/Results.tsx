@@ -1,12 +1,16 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { Fragment, useEffect, useRef } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
+import { useUpdateTableMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { Box, Flex, Icon, Skeleton } from "metabase/ui";
+import type { Table, TableId } from "metabase-types/api";
 
 import S from "./Results.module.css";
-import type { FlatItem, TreePath } from "./types";
+import type { FlatItem, ItemType, TreePath } from "./types";
 import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
@@ -92,6 +96,7 @@ export function Results({
             key,
             level,
             parent,
+            data,
           } = item;
           const isActive = type === "table" && _.isEqual(path, value);
 
@@ -174,6 +179,9 @@ export function Results({
               )}
               <Flex
                 key={key}
+                align="center"
+                justify="space-between"
+                gap="sm"
                 ref={virtual.measureElement}
                 className={cx(S.item, S[type], {
                   [S.active]: isActive,
@@ -220,12 +228,72 @@ export function Results({
                     </Box>
                   )}
                 </Flex>
+                {value && (
+                  <VisibilityToggle type={type} path={value} data={data} />
+                )}
               </Flex>
             </Fragment>
           );
         })}
       </Box>
     </Box>
+  );
+}
+
+function VisibilityToggle({
+  type,
+  path,
+  data,
+}: {
+  type: ItemType;
+  path: TreePath;
+  data?: FlatItem["data"];
+}) {
+  if (!data) {
+    return null;
+  }
+  if (type === "table" && path?.tableId !== undefined) {
+    return <TableVisibilityToggle id={path.tableId} table={data as Table} />;
+  }
+  return null;
+}
+
+function TableVisibilityToggle({ id, table }: { id: TableId; table?: Table }) {
+  const [updateTable] = useUpdateTableMutation();
+  const [sendToast] = useToast();
+
+  if (!table) {
+    return null;
+  }
+
+  const isHidden = table?.visibility_type === "hidden";
+
+  return (
+    <Icon
+      name={isHidden ? "eye_crossed_out" : "eye"}
+      className={S.visibilityToggle}
+      onClick={async (evt) => {
+        evt.stopPropagation();
+        const hide = () => updateTable({ id, visibility_type: "hidden" });
+        const unhide = () => updateTable({ id, visibility_type: null });
+
+        if (isHidden) {
+          await unhide();
+          sendToast({
+            message: t`Unhid ${table.display_name}`,
+            actionLabel: t`Undo`,
+            action: hide,
+          });
+        } else {
+          await hide();
+          sendToast({
+            message: t`Hid ${table.display_name}`,
+            actionLabel: t`Undo`,
+            action: unhide,
+          });
+        }
+      }}
+    />
   );
 }
 

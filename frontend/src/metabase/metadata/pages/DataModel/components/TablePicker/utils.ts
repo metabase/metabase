@@ -79,6 +79,7 @@ export function useTableLoader(path: TreePath) {
           type: "database",
           label: database.name,
           value: { databaseId: database.id },
+          data: database,
         }),
       ) ?? []
     );
@@ -102,6 +103,7 @@ export function useTableLoader(path: TreePath) {
             type: "table",
             label: table.display_name,
             value: { databaseId, schemaId, tableId: table.id },
+            data: table,
           }),
         ) ?? []
       );
@@ -124,6 +126,7 @@ export function useTableLoader(path: TreePath) {
             type: "schema",
             label: schema,
             value: { databaseId, schemaId: schema },
+            data: schema,
           });
 
           // If the schema is unnamed, or if it's the only schema in the database,
