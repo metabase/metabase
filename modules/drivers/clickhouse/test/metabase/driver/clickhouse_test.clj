@@ -11,11 +11,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [taoensso.nippy :as nippy]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -229,12 +227,3 @@
                 ["2016-05-01T00:00:00Z" 81.892]
                 ["2016-06-01T00:00:00Z" 71.954]]
                (mt/rows (qp/process-query q))))))))
-
-(deftest clickhouse-sync-fields-resilient-to-non-existence-test
-  (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table"
-    (mt/test-driver
-      :clickhouse
-      (let [table (t2/instance :model/Table {:id 321 :name "tbl"})]
-        (is (not= ::thrown
-                  (try (sync-fields/sync-fields-for-table! (mt/db) table)
-                       (catch Throwable _ ::thrown))))))))

@@ -387,7 +387,7 @@
                   frequencies))))))
 
 (deftest sync-fields-resilient-to-non-existence-test
-  (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table"
+  (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
     (mt/test-drivers (mt/normal-drivers)
       (let [table (t2/instance :model/Table {:id 321 :name "tbl"})]
         (is (not= ::thrown
