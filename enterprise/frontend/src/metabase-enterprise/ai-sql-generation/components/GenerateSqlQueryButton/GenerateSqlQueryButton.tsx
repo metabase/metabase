@@ -14,7 +14,7 @@ export function GenerateSqlQueryButton({
   const [generateSql, { isLoading }] = useGenerateSqlQueryMutation();
   const prompt = getPrompt(query, selectedQueryText);
   const databaseId = Lib.databaseID(query);
-  const isEmpty = databaseId == null || prompt == null;
+  const isEmpty = prompt == null || databaseId == null;
 
   const handleClick = async () => {
     if (isEmpty) {
