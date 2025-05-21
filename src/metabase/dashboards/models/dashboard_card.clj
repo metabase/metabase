@@ -37,7 +37,9 @@
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
-  (update dashcard :visualization_settings serdes/import-visualizer-settings))
+  (if (contains? dashcard :visualization_settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    dashcard))
 
 (declare series)
 
