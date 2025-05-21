@@ -45,7 +45,7 @@ export const BrowseNavSection = ({
     <div aria-selected={opened} role="tab">
       <Group
         align="center"
-        gap="0.5rem"
+        gap="sm"
         onClick={handleToggle}
         component="button"
         c="text-medium"
