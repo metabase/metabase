@@ -7,6 +7,9 @@ import {
 
 import { useMantineTheme } from "metabase/ui";
 
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
 import { generateGridBackground } from "./utils";
 
 // We need to omit onLayoutChange and margin from the props of ReactGridLayout
