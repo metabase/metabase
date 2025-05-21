@@ -8,7 +8,7 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement SQLTimeoutException)))
+   (java.sql Connection PreparedStatement)))
 
 (set! *warn-on-reflection* true)
 
