@@ -1380,3 +1380,11 @@
   :hierarchy #'hierarchy)
 
 (defmethod query-canceled? ::driver [_ _] false)
+
+(defmulti table-known-to-not-exist?
+  "Test if an exception is due to a table not existing."
+  {:added "0.54.10" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-known-to-not-exist? ::driver [_ _] false)
