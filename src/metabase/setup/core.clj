@@ -1,8 +1,8 @@
 (ns metabase.setup.core
   (:require
    [environ.core :as env]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))

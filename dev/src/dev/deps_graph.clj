@@ -150,7 +150,7 @@
   ;; uses require
   (find-dynamically-loaded-namespaces "src/metabase/core/init.clj")
   ;; uses classloader/require
-  (find-dynamically-loaded-namespaces "src/metabase/db/setup.clj")
+  (find-dynamically-loaded-namespaces "src/metabase/app_db/setup.clj")
   ;; uses requiring-resolve, has more than one.
   (find-dynamically-loaded-namespaces "src/metabase/users/api.clj")
   ;; has require inside of a `comment` form, should ignore it.
@@ -252,7 +252,7 @@
                       e)))))
 
 (comment
-  (file-dependencies "src/metabase/db/setup.clj")
+  (file-dependencies "src/metabase/app_db/setup.clj")
   ;; should ignore the entries from [[ignored-dependencies]]
   (file-dependencies "src/metabase/config.clj")
 
@@ -430,3 +430,8 @@
   reality ([[kondo-config]]). Use this to suggest updates to make to the config file."
   []
   (ddiff/pretty-print (kondo-config-diff)))
+
+(comment
+  (module-dependencies 'lib)
+
+  (module-usages-of-other-module 'lib 'models))

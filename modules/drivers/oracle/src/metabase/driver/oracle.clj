@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
@@ -26,8 +27,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.malli.registry :as mr])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
@@ -725,3 +725,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :oracle [_ ^SQLException e]
   (= (.getErrorCode e) 1013))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :oracle
+  [_ ^SQLException e]
+  (= (.getErrorCode e) 942))

@@ -3,11 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.http-client :as client]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

@@ -23,8 +23,8 @@ const RENDER_DELAY_MS = 100;
 
 export function AIQuestionAnalysisSidebar({
   question,
-  timelines = [],
-  visibleTimelineEvents = [],
+  timelines,
+  visibleTimelineEvents,
   className,
   onClose,
 }: AIQuestionAnalysisSidebarProps) {
@@ -54,8 +54,8 @@ export function AIQuestionAnalysisSidebar({
       questionCollectionId == null
         ? []
         : getTimelineEventsForAnalysis(
-            visibleTimelineEvents,
-            timelines,
+            visibleTimelineEvents ?? [],
+            timelines ?? [],
             questionCollectionId,
           );
 

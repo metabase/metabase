@@ -65,22 +65,22 @@
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.channel.email :as email]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
-   [metabase.db.env :as mdb.env]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.env :as mdb.env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.core :as server]
+   [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -355,9 +355,9 @@
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one :model/Database :name "Application Database")
         #_:clj-kondo/ignore
-        (let [details (#'metabase.db.env/broken-out-details
+        (let [details (#'metabase.app-db.env/broken-out-details
                        (mdb/db-type)
-                       @#'metabase.db.env/env)
+                       @#'metabase.app-db.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
@@ -405,9 +405,9 @@
 
   You can also run it with `clojure -X`:
 
-    clojure -X:dev dev/find-root-test-failure! \
-     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test \
-     :scope :full-suite \
+    clojure -X:dev dev/find-root-test-failure!
+     :failing-test-var metabase.users.models.user-parameter-value-test/user-parameter-value-store-test
+     :scope :full-suite
      :find-tests-options '{:exclude-tags [:mb/driver-tests] :only [\"test\"] :partition/total 2 :partition/index 1}'"
   ([opts]
    (find-root-test-failure! (requiring-resolve (:failing-test-var opts)) opts))

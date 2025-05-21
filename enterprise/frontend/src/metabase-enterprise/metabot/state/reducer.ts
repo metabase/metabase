@@ -2,16 +2,25 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotChatContext, MetabotHistory } from "metabase-types/api";
+import type { MetabotChatContext } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
+
+export type MetabotAgentChatMessage =
+  | { actor: "agent"; message: string; type: "reply" }
+  | { actor: "agent"; message: string; type: "error" };
+
+export type MetabotUserChatMessage = { actor: "user"; message: string };
+
+export type MetabotChatMessage =
+  | MetabotAgentChatMessage
+  | MetabotUserChatMessage;
 
 export interface MetabotState {
   isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
-  lastHistoryValue: MetabotHistory | undefined;
   conversationId: string | undefined;
-  userMessages: string[];
+  messages: MetabotChatMessage[];
   visible: boolean;
   state: any;
 }
@@ -19,9 +28,8 @@ export interface MetabotState {
 export const metabotInitialState: MetabotState = {
   isProcessing: false,
   lastSentContext: undefined,
-  lastHistoryValue: undefined,
   conversationId: undefined,
-  userMessages: [],
+  messages: [],
   visible: false,
   state: {},
 };
@@ -31,13 +39,20 @@ export const metabot = createSlice({
   initialState: metabotInitialState,
   reducers: {
     addUserMessage: (state, action: PayloadAction<string>) => {
-      state.userMessages.push(action.payload);
+      state.messages.push({ actor: "user", message: action.payload });
     },
-    clearUserMessages: (state) => {
-      state.userMessages = [];
+    addAgentMessage: (
+      state,
+      action: PayloadAction<Omit<MetabotAgentChatMessage, "actor">>,
+    ) => {
+      state.messages.push({
+        actor: "agent",
+        message: action.payload.message,
+        type: action.payload.type,
+      });
     },
-    dismissUserMessage: (state, action: PayloadAction<number>) => {
-      state.userMessages.splice(action.payload, 1);
+    clearMessages: (state) => {
+      state.messages = [];
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -45,23 +60,14 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
-    setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
-      if (visible) {
-        state.visible = true;
-        state.conversationId = uuid();
-      } else {
-        return metabotInitialState;
-      }
+    setVisible: (state, action: PayloadAction<boolean>) => {
+      state.visible = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(sendMessageRequest.pending, (state, action) => {
         state.lastSentContext = action.meta.arg.context;
-        state.lastHistoryValue = action.meta.arg.history;
-      })
-      .addCase(sendMessageRequest.fulfilled, (state, action) => {
-        state.lastHistoryValue = action.payload?.data?.history;
       })
       .addCase(logout.pending, () => metabotInitialState);
   },

@@ -12,7 +12,7 @@
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.core :as analytics]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]

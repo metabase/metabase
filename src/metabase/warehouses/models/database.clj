@@ -5,9 +5,9 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
@@ -467,7 +467,7 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :entity_id :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
                :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field

@@ -2,9 +2,9 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.cmd :as cmd]
+   [metabase.app-db.core :as mdb]
+   [metabase.cmd.core :as cmd]
    [metabase.cmd.remove-encryption :refer [remove-encryption!]]
-   [metabase.db :as mdb]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
