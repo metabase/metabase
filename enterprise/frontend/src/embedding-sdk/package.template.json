@@ -7,16 +7,18 @@
     "url": "git+https://github.com/metabase/metabase.git"
   },
   "license": "SEE LICENSE IN LICENSE.txt",
-  "main": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.mjs"
+      "import":  "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types":   "./dist/index.d.ts"
     },
     "./nextjs": {
-      "types": "./dist/nextjs.d.ts",
+      "import": "./dist/nextjs.js",
       "require": "./dist/nextjs.cjs",
-      "import": "./dist/nextjs.js"
+      "types": "./dist/nextjs.d.ts"
     },
     "./package.json": "./package.json"
   },

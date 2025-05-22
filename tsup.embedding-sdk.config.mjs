@@ -77,11 +77,16 @@ const GIT_COMMIT = execSync("git rev-parse HEAD").toString().trim();
 await build({
   entry: [path.join(SDK_SRC_PATH, "index.ts")],
   outDir: BUILD_PATH,
+  outExtension({ format }) {
+    return {
+      js: `.${format === "esm" ? "js" : "cjs"}`,
+    };
+  },
   bundle: true,
   tsconfig: "./tsconfig.sdk.json",
   platform: "browser",
   target: "esnext",
-  format: "esm",
+  format: ["cjs", "esm"],
   shims: true,
   splitting: !isDevMode,
   treeshake: !isDevMode,
@@ -139,10 +144,6 @@ await build({
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,
       style: ROOT_CSS_FILE_PATH,
-      icepick: path.resolve(
-        import.meta.dirname,
-        "node_modules/icepick/icepick.min",
-      ),
       "sdk-ee-plugins": path.join(ENTERPRISE_SRC_PATH, "sdk-plugins"),
       "ee-overrides": path.join(ENTERPRISE_SRC_PATH, "overrides"),
       "embedding-sdk": SDK_SRC_PATH,

@@ -24,14 +24,14 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] =
 
 // END OF CONFIGURATION
 
-const MetabaseProviderCode = `
+const getMetabaseProviderCode = (type: "cjs" | "js") => `
 const MetabaseProvider = ({
   children,
   ...providerProps,
 }) => {
   const Provider = dynamic(
     () =>
-      import("./index.mjs").then((m) => {
+      import("./index.${type}").then((m) => {
         return { default: m.MetabaseProvider };
       }),
     {
@@ -83,7 +83,7 @@ const generateCodeFor = ({
 
 const ${mainComponent} = dynamic(
   () =>
-    import("./index.mjs").then((m) => {
+    import("./index.${type}").then((m) => {
       return { default: m.${mainComponent} };
     }),
   { ssr: false, loading: () => "Loading..." }
@@ -93,7 +93,7 @@ ${subComponents
   .map(
     (subComponent) => `${mainComponent}.${subComponent} = dynamic(
 () =>
-  import("./index.mjs").then((m) => {
+  import("./index.${type}").then((m) => {
     return { default: m.${mainComponent}.${subComponent} };
     }),
   { ssr: false, loading: () => "Loading..." }
@@ -143,7 +143,7 @@ const React = require("react");
 
 const dynamic = require("next/dynamic").default;
 
-${MetabaseProviderCode}
+${getMetabaseProviderCode("cjs")}
 module.exports.MetabaseProvider = MetabaseProvider;
 
 
@@ -152,11 +152,11 @@ ${generateAllComponents("cjs")}
 
 const nextjs_no_ssr_js = `"use client";
 
-import dynamic from "next/dynamic";
+import dynamic from "next/dynamic.js";
 
-const React = require("react");
+import React from "react";
 
-${MetabaseProviderCode}
+${getMetabaseProviderCode("js")}
 export { MetabaseProvider };
 
 ${generateAllComponents("js")}

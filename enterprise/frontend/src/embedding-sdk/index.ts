@@ -1,7 +1,5 @@
-// Mantine styles need to be imported before any of our components so that our styles win over
-// the default mantine styles
-import "@mantine/core/styles.css";
-import "@mantine/dates/styles.css";
+import "metabase/css/vendor.css";
+import "metabase/css/index.module.css";
 
 import "metabase/lib/dayjs";
 

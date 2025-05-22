@@ -61,6 +61,7 @@ function generateSdkPackage() {
 
   const mergedContent = {
     ...sdkPackageTemplateJsonContent,
+    type: "module",
     dependencies: filterOuDependencies(mainPackageJsonContent.dependencies),
     resolutions: filterOuDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash

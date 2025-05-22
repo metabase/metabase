@@ -1,1 +1,6 @@
 @import "tippy.js/dist/tippy.css";
+@import "@mantine/core/styles.css";
+@import "@mantine/dates/styles.css";
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
+@import "leaflet/dist/leaflet.css";

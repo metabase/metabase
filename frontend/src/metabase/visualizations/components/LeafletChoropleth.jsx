@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 import CS from "metabase/css/core/index.css";

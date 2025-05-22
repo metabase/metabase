@@ -37,9 +37,6 @@ import {
 } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
-import "metabase/css/index.module.css";
-import "metabase/css/vendor.css";
-
 /**
  * @expand
  * @category MetabaseProvider

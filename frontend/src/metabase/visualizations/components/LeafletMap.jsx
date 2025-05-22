@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import "leaflet-draw";
-import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
 
 import L from "leaflet";
