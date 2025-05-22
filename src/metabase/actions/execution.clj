@@ -205,16 +205,8 @@
       (execute-custom-action! action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
-(defn- execute-table-action!
-  [kind table-id request-parameters]
-  (let [args
-        {:table-id table-id
-         :database (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
-         :arg      request-parameters}
-
-        opts
-        {:policy :data-editing}]
-    (actions/perform-action-with-single-input-and-output kind args opts)))
+(defn- execute-table-action! [kind table-id request-parameters]
+  (actions/perform-action-with-single-input-and-output kind {:table-id table-id :arg request-parameters}))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
