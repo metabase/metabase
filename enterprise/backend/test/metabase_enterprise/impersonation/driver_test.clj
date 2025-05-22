@@ -184,7 +184,7 @@
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
 (deftest conn-impersonation-test-four
-  (mt/test-drivers #{:sqlserver} (mt/normal-drivers-with-feature :connection-impersonation)
+  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
