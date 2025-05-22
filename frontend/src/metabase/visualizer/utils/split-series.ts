@@ -26,6 +26,7 @@ export function shouldSplitVisualizerSeries(
 export function splitVisualizerSeries(
   series: RawSeries,
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
+  dataSourceNameMap: Record<string, string>,
 ): RawSeries {
   if (!series || series.length === 0 || series.some((s) => !s.data)) {
     return series;
@@ -47,57 +48,64 @@ export function splitVisualizerSeries(
       .filter(isNotNull),
   );
 
-  const allMetrics = mainCard.visualization_settings["graph.metrics"] ?? [];
-  const allDimensions =
-    mainCard.visualization_settings["graph.dimensions"] ?? [];
+  const allMetrics = mainCard.visualization_settings["graph.metrics"];
+  const allDimensions = mainCard.visualization_settings["graph.dimensions"];
 
-  return dataSourceIds.map((dataSourceId, i) => {
-    const columnNames = Object.keys(columnValuesMapping).filter((columnName) =>
-      columnValuesMapping[columnName].some(
-        (valueSource) =>
-          !isDataSourceNameRef(valueSource) &&
-          valueSource.sourceId === dataSourceId,
-      ),
-    );
-
-    const cols = series[0].data.cols.filter((col) =>
-      columnNames.includes(col.name),
-    );
-
-    const rows = series[0].data.rows.map((row) =>
-      row.filter((_, i) => columnNames.includes(data.cols[i].name)),
-    );
-
-    const metrics = allMetrics.filter((columnName) =>
-      columnNames.includes(columnName),
-    );
-    const [mainMetric] = metrics;
-
-    const seriesName =
-      cols.find((col) => col.name === mainMetric)?.display_name ??
-      `Series ${i + 1}`;
-
-    return {
-      card: {
-        ...mainCard,
-        id: getVisualizerSeriesCardId(i),
-        name: seriesName,
-        visualization_settings: {
-          ...mainCard.visualization_settings,
-          "graph.metrics": metrics,
-          "graph.dimensions": allDimensions.filter((columnName) =>
-            columnNames.includes(columnName),
+  return dataSourceIds
+    .map((dataSourceId, i) => {
+      const columnNames = Object.keys(columnValuesMapping).filter(
+        (columnName) =>
+          columnValuesMapping[columnName].some(
+            (valueSource) =>
+              !isDataSourceNameRef(valueSource) &&
+              valueSource.sourceId === dataSourceId,
           ),
+      );
+
+      const cols = series[0].data.cols.filter((col) =>
+        columnNames.includes(col.name),
+      );
+
+      if (cols.length === 0) {
+        return null;
+      }
+
+      const rows = series[0].data.rows.map((row) =>
+        row.filter((_, i) => columnNames.includes(data.cols[i].name)),
+      );
+
+      const metrics = allMetrics?.filter((columnName) =>
+        columnNames.includes(columnName),
+      );
+      const [mainMetric] = metrics ?? [];
+
+      const seriesName =
+        dataSourceNameMap[dataSourceId] ??
+        cols.find((col) => col.name === mainMetric)?.display_name ??
+        `Series ${i + 1}`;
+
+      return {
+        card: {
+          ...mainCard,
+          id: getVisualizerSeriesCardId(i),
+          name: seriesName,
+          visualization_settings: {
+            ...mainCard.visualization_settings,
+            "graph.metrics": metrics,
+            "graph.dimensions": allDimensions?.filter((columnName) =>
+              columnNames.includes(columnName),
+            ),
+          },
         },
-      },
-      data: {
-        cols,
-        rows,
-        results_metadata: { columns: cols },
-      },
-      started_at: new Date().toISOString(),
-    };
-  }) as RawSeries;
+        data: {
+          cols,
+          rows,
+          results_metadata: { columns: cols },
+        },
+        started_at: new Date().toISOString(),
+      };
+    })
+    .filter(isNotNull) as RawSeries;
 }
 
 function getVisualizerSeriesCardId(seriesIndex: number) {

@@ -230,9 +230,16 @@ export function DashCardVisualization({
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+      shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      return splitVisualizerSeries(series, columnValuesMapping);
+      const dataSourceNameMap = Object.fromEntries(
+        dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+      );
+      return splitVisualizerSeries(
+        series,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
 
     return series;

@@ -107,6 +107,13 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
 
   // If this is a visualizer card, we need to merge the data and split the series if needed
   if ("visualization" in dashcardSettings) {
+    const dataSourceNameMap = Object.fromEntries(
+      rawSeries.map((series) => {
+        const { card } = series;
+        const source = createDataSource("card", card.entity_id, card.name);
+        return [source.id, card.name];
+      }),
+    );
     rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
     const { display, columnValuesMapping } = dashcardSettings.visualization;
     if (
@@ -114,7 +121,11 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
       isCartesianChart(display) &&
       shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      rawSeries = splitVisualizerSeries(rawSeries, columnValuesMapping);
+      rawSeries = splitVisualizerSeries(
+        rawSeries,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
   }
 
