@@ -109,9 +109,12 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
   if ("visualization" in dashcardSettings) {
     const dataSourceNameMap = Object.fromEntries(
       rawSeries.map((series) => {
-        const { card } = series;
-        const source = createDataSource("card", card.entity_id, card.name);
-        return [source.id, card.name];
+        const source = createDataSource(
+          "card",
+          series.card.entity_id,
+          series.card.name,
+        );
+        return [source.id, source.name];
       }),
     );
     rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
