@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -16,9 +17,10 @@ import type { SelectedItem } from "../types";
 
 export const GettingStartedSection = ({
   nonEntityItem,
-}: {
+  children,
+}: PropsWithChildren<{
   nonEntityItem: SelectedItem;
-}) => {
+}>) => {
   const [opened, { toggle }] = useDisclosure(true);
 
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -54,6 +56,7 @@ export const GettingStartedSection = ({
             {t`How to use Metabase`}
           </PaddedSidebarLink>
         )}
+        {children}
       </Collapse>
     </SidebarSection>
   );
