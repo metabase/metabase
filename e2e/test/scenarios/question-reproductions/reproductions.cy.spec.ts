@@ -128,7 +128,7 @@ describe("issue 39487", () => {
       .findAllByTestId("notebook-cell-item")
       .first()
       .click();
-    H.popover().scrollTo("bottom");
+    H.popover().findByTestId("popover-content").scrollTo("bottom");
     H.popover().button("Update filter").should("be.visible").click();
   });
 
