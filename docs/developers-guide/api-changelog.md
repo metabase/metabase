@@ -20,6 +20,9 @@ title: API changelog
 
 - `GET /api/util/logs` has been renamed to `GET /api/logger/logs`.
 
+- `GET /api/util/openapi` has been removed; you can use `GET /api/docs/openapi.json` instead, which does the same
+  thing.
+
 ## Metabase 0.54.0
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
