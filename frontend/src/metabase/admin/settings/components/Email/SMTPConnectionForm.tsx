@@ -11,6 +11,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import {
+  useDeleteEmailSMTPSettingsMutation,
   useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
@@ -34,7 +35,6 @@ import type {
   Settings,
 } from "metabase-types/api";
 
-import { clearEmailSettings } from "../../settings";
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
 const getBreadcrumbs = () => [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
@@ -92,14 +92,12 @@ const getFormValueSchema = (
 export const SMTPConnectionForm = () => {
   const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
-  // const [deleteEmailSMTPSettings, deleteEmailSMTPSettingsResult] = useDeleteEmailSMTPSettingsMutation();
+  const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
   const isHosted = useSetting("is-hosted?");
-  const isEmailConfigured = useSetting("email-configured?");
   const dispatch = useDispatch();
-
   const initialValues = useMemo<FormValueProps>(
     () => ({
       "email-smtp-host": settingValues?.["email-smtp-host"] ?? null,
@@ -111,27 +109,41 @@ export const SMTPConnectionForm = () => {
     [settingValues],
   );
   const handleClearEmailSettings = useCallback(async () => {
-    await dispatch(clearEmailSettings());
-  }, [dispatch]);
+    await deleteEmailSMTPSettings();
+  }, [deleteEmailSMTPSettings]);
 
   const handleUpdateEmailSettings = useCallback(
     async (formData: EmailSMTPSettings) => {
-      await updateEmailSMTPSettings(formData);
-
-      if (!isEmailConfigured) {
-        dispatch(push("/admin/settings/email"));
+      try {
+        await updateEmailSMTPSettings(formData).unwrap();
+        sendToast({
+          message: t`Email settings updated successfully!`,
+          toastColor: "success",
+        });
+      } catch (error) {
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: isErrorWithMessage(error)
+            ? error.data.message
+            : t`Error updating email settings`,
+        });
       }
     },
-    [dispatch, isEmailConfigured, updateEmailSMTPSettings],
+    [updateEmailSMTPSettings, sendToast],
   );
 
   const handleSendTestEmail = useCallback(async () => {
     try {
       await sendTestEmail().unwrap();
-      sendToast({ message: t`Email sent successfully!` });
+      sendToast({
+        message: t`Email sent successfully!`,
+        toastColor: "success",
+      });
     } catch (error) {
       sendToast({
         icon: "warning",
+        toastColor: "error",
         message: isErrorWithMessage(error)
           ? error.data.message
           : t`Error sending test email`,
@@ -157,9 +169,7 @@ export const SMTPConnectionForm = () => {
   return (
     <Flex justify="space-between">
       <Stack gap="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
-        {isEmailConfigured && (
-          <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
-        )}
+        <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
         <FormProvider
           initialValues={initialValues}
           validationSchema={getFormValueSchema(settingsDetails)}
@@ -290,7 +300,9 @@ export const SMTPConnectionForm = () => {
                   color="error"
                   mb="1rem"
                 >
-                  Hi
+                  {isErrorWithMessage(sendTestEmailResult.error)
+                    ? sendTestEmailResult.error.data.message
+                    : t`Error sending test email`}
                 </Text>
               )}
               <Flex mt="1rem" gap="1.5rem">
