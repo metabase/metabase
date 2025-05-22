@@ -234,13 +234,13 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     // Series 2
     H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
-    cy.url().should("contain", "82-products-by-created-at-month");
+    cy.url().should("contain", "83-products-by-created-at-month");
     cy.findByLabelText("Back to Test Dashboard").click();
     cy.url().should("contain", "10-test-dashboard");
 
     // Click on the fifth chart (a funnel)
     H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
-    cy.url().should("contain", "88-step-column");
+    cy.url().should("contain", "89-step-column");
     cy.findByLabelText("Back to Test Dashboard").click();
     cy.url().should("contain", "10-test-dashboard");
   });
