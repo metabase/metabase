@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.sync.sync-metadata.indexes-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

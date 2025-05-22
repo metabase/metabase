@@ -4,7 +4,6 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [toucan2.core :as t2]))
 
 (deftest dataset-with-custom-pk-test
