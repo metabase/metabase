@@ -340,28 +340,27 @@
                  {:name "r"
                   :database-type "RECORD",
                   :base-type :type/Dictionary,
-                  :database-position 2
-                  :nested-fields [{:name "a",
-                                   :database-type "INTEGER",
-                                   :base-type :type/Integer,
-                                   :database-position 2,
-                                   :nfc-path ["r"]}
-                                  {:name "b",
-                                   :database-type "STRING",
-                                   :base-type :type/Text,
-                                   :database-position 2,
-                                   :nfc-path ["r"]}
-                                  {:name "rr",
-                                   :database-type "RECORD",
-                                   :base-type :type/Dictionary,
-                                   :database-position 2,
-                                   :nfc-path ["r"],
-                                   :nested-fields
-                                   [{:name "aa",
-                                     :database-type "INTEGER",
-                                     :base-type :type/Integer,
-                                     :database-position 2,
-                                     :nfc-path ["r" "rr"]}]}]}]
+                  :database-position 2}
+                 {:name "a",
+                  :database-type "INTEGER",
+                  :base-type :type/Integer,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "b",
+                  :database-type "STRING",
+                  :base-type :type/Text,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "rr",
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "aa",
+                  :database-type "INTEGER",
+                  :base-type :type/Integer,
+                  :database-position 2,
+                  :nfc-path ["r" "rr"]}]
                 (walk/postwalk
                  (fn [n]
                    (if (set? n)
@@ -378,10 +377,10 @@
               :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
              (mt/rows+column-names
               (mt/run-mbql-query records
-                {:fields [(mt/id :records :r :a)
-                          (mt/id :records :r :b)
-                          (mt/id :records :r :rr :aa)
-                          (mt/id :records :r :rr)]})))))))
+                {:fields [(mt/id :records :a)
+                          (mt/id :records :b)
+                          (mt/id :records :aa)
+                          (mt/id :records :rr)]})))))))
 
 (deftest sync-table-with-required-filter-test
   (mt/test-driver :bigquery-cloud-sdk
