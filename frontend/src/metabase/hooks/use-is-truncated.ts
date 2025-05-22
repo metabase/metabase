@@ -9,7 +9,8 @@ type UseIsTruncatedProps = {
 
 /** To avoid false positives, the text may exceed the container by this many
  * pixels without triggering ellipsification */
-const TOLERANCE = 0.01;
+const HORIZONTAL_TOLERANCE = 0.01;
+const VERTICAL_TOLERANCE = 0.01;
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
@@ -46,8 +47,8 @@ const getIsTruncated = (element: Element): boolean => {
   const textRect = range.getBoundingClientRect();
   const verticalOverflow = textRect.height - elementRect.height;
   const horizOverflow = textRect.width - elementRect.width;
-  const isTextTooTall = verticalOverflow > TOLERANCE;
-  const isTextTooWide = horizOverflow > TOLERANCE;
+  const isTextTooTall = verticalOverflow > VERTICAL_TOLERANCE;
+  const isTextTooWide = horizOverflow > HORIZONTAL_TOLERANCE;
   return isTextTooTall || isTextTooWide;
 };
 
