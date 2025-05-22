@@ -24,6 +24,12 @@ export const GettingStartedSection = ({
   const ONBOARDING_URL = "/getting-started";
   const isOnboardingPageSelected = nonEntityItem?.url === ONBOARDING_URL;
 
+  const isEmpty = !children && !canAccessOnboarding;
+
+  if (isEmpty) {
+    return null;
+  }
+
   return (
     <div aria-selected={opened} role="tab">
       <Group
