@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -17,60 +17,83 @@ import type { Table } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
+const MAX_RETRIES = 10;
+const RETRY_DELAY = 30000; // 30 seconds
+
 export const TableSelectionStep = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const dispatch = useDispatch();
   const { database, selectedTables, setSelectedTables, setProcessingStatus } =
     useEmbeddingSetup();
 
-  useEffect(() => {
-    const fetchTables = async () => {
-      if (!database?.id) {
-        setError("No database selected");
-        setLoading(false);
-        return;
+  const fetchTables = useCallback(async () => {
+    if (!database?.id) {
+      setError("No database selected");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/database/${database.id}/metadata`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch tables");
+      }
+      const data = await response.json();
+
+      // Check if we have tables in the response
+      const tables = data.tables || [];
+      if (tables.length === 0) {
+        if (retryCount < MAX_RETRIES) {
+          setRetryCount((prev) => prev + 1);
+          return;
+        } else {
+          throw new Error("No tables found after multiple attempts");
+        }
       }
 
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `/api/database/${database.id}/metadata?include_hidden=true`,
-        );
-        if (!response.ok) {
-          throw new Error("Failed to fetch tables");
-        }
-        const data = await response.json();
+      setTables(tables);
+      setLoading(false);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setLoading(false);
+    }
+  }, [database?.id, retryCount]);
 
-        if (!data.tables || !Array.isArray(data.tables)) {
-          throw new Error("Invalid response format");
-        }
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
 
-        setTables(data.tables);
-        setError(null);
-      } catch (err) {
-        setError("Failed to load tables. Please try again.");
-      } finally {
-        setLoading(false);
+    const startFetching = async () => {
+      await fetchTables();
+      if (loading && retryCount < MAX_RETRIES) {
+        timeoutId = setTimeout(startFetching, RETRY_DELAY);
       }
     };
 
+    startFetching();
+
+    // Cleanup timeout on unmount or when dependencies change
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [database?.id, retryCount, fetchTables, loading]);
+
+  const handleManualRefresh = () => {
+    setRetryCount(0);
     fetchTables();
-  }, [database?.id]);
+  };
 
   const handleTableToggle = (table: Table) => {
-    setSelectedTables((prev: Table[]) => {
-      const isSelected = prev.some((t: Table) => t.id === table.id);
-      if (isSelected) {
-        return prev.filter((t: Table) => t.id !== table.id);
-      } else {
-        if (prev.length >= 3) {
-          return prev;
-        }
-        return [...prev, table];
-      }
-    });
+    if (selectedTables.some((t) => t.id === table.id)) {
+      setSelectedTables(selectedTables.filter((t) => t.id !== table.id));
+    } else if (selectedTables.length < 3) {
+      setSelectedTables([...selectedTables, table]);
+    }
   };
 
   const handleSubmit = () => {
@@ -82,7 +105,21 @@ export const TableSelectionStep = () => {
     return (
       <Box ta="center" py="xl">
         <Loader size="lg" />
-        <Text mt="md">{t`Loading tables...`}</Text>
+        <Stack gap="md" mt="md">
+          <Text>
+            {retryCount > 0
+              ? t`Waiting for tables to be available... (Attempt ${retryCount} of ${MAX_RETRIES})`
+              : t`Loading tables...`}
+          </Text>
+          {retryCount > 0 && (
+            <Text size="sm" c="dimmed">
+              {t`This may take a few minutes as we wait for the database to sync.`}
+            </Text>
+          )}
+          <Button variant="outline" onClick={handleManualRefresh} mt="md">
+            {t`Refresh Now`}
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -91,12 +128,16 @@ export const TableSelectionStep = () => {
     return (
       <Box ta="center" py="xl">
         <Text color="error">{error}</Text>
-        <Button
-          mt="md"
-          onClick={() => dispatch(push("/setup/embedding/data-connection"))}
-        >
-          {t`Go Back`}
-        </Button>
+        <Stack gap="md" mt="md">
+          <Button variant="outline" onClick={handleManualRefresh}>
+            {t`Try Again`}
+          </Button>
+          <Button
+            onClick={() => dispatch(push("/setup/embedding/data-connection"))}
+          >
+            {t`Go Back`}
+          </Button>
+        </Stack>
       </Box>
     );
   }
