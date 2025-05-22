@@ -1,4 +1,4 @@
-import { type ChangeEvent, useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import type {
@@ -7,8 +7,9 @@ import type {
 } from "metabase/browse/metrics";
 import { useUserSetting } from "metabase/common/hooks";
 import { getSetting } from "metabase/selectors/settings";
-import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 import type { State } from "metabase-types/store";
+
+import { VerifiedToggle } from "./VerifiedFilter/VerifiedToggle";
 
 const USER_SETTING_KEY = "browse-filter-only-verified-metrics";
 
@@ -18,65 +19,34 @@ export function getDefaultMetricFilters(state: State): MetricFilterSettings {
   };
 }
 
-// This component is similar to the ModelFilterControls component from ./ModelFilterControls.tsx
-// merging them might be a good idea in the future.
+/**
+ * This was originally designed to support multiple filters but it currently
+ * just supports one.
+ *
+ * The "Browse models" page has a similar component
+ */
 export const MetricFilterControls = ({
   metricFilters,
   setMetricFilters,
 }: MetricFilterControlsProps) => {
-  const areAnyFiltersActive = Object.values(metricFilters).some(Boolean);
-
   const [_userSetting, setUserSetting] = useUserSetting(USER_SETTING_KEY);
 
   const handleVerifiedFilterChange = useCallback(
-    function (evt: ChangeEvent<HTMLInputElement>) {
-      setMetricFilters({ ...metricFilters, verified: evt.target.checked });
-      setUserSetting(evt.target.checked);
+    function (verified: boolean) {
+      setMetricFilters({ ...metricFilters, verified });
+      setUserSetting(verified);
     },
     [metricFilters, setMetricFilters, setUserSetting],
   );
 
-  return (
-    <Popover position="bottom-end">
-      <Popover.Target>
-        <Button
-          p="sm"
-          lh={0}
-          variant="subtle"
-          color="text-dark"
-          pos="relative"
-          aria-label={t`Filters`}
-        >
-          {areAnyFiltersActive && <Dot />}
-          <Icon name="filter" />
-        </Button>
-      </Popover.Target>
-      <Popover.Dropdown p="lg">
-        <Switch
-          label={
-            <Text ta="end" fw="bold">{t`Show verified metrics only`}</Text>
-          }
-          role="switch"
-          checked={Boolean(metricFilters.verified)}
-          onChange={handleVerifiedFilterChange}
-          labelPosition="left"
-        />
-      </Popover.Dropdown>
-    </Popover>
-  );
-};
+  const { verified } = metricFilters;
 
-const Dot = () => {
   return (
-    <Paper
-      pos="absolute"
-      right="0px"
-      top="7px"
-      radius="50%"
-      bg={"var(--mb-color-brand)"}
-      w="sm"
-      h="sm"
-      data-testid="filter-dot"
+    <VerifiedToggle
+      verified={verified}
+      handleVerifiedFilterChange={handleVerifiedFilterChange}
+      labelWhenOn={t`Show unverified metrics, too`}
+      labelWhenOff={t`Only show verified metrics`}
     />
   );
 };

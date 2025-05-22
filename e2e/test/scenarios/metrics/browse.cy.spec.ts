@@ -383,13 +383,15 @@ describe("scenarios > browse > metrics", () => {
       H.setTokenFeatures("all");
     });
 
-    it("should not the verified metrics filter when there are no verified metrics", () => {
+    it("should not show the verified metrics filter when there are no verified metrics", () => {
       createMetrics();
       cy.visit("/browse/metrics");
 
       cy.findByLabelText("Table of metrics").should("be.visible");
 
-      cy.findByLabelText("Filters").should("not.exist");
+      cy.findByLabelText(
+        /Only show verified metrics|Show verified metrics, too/,
+      ).should("not.exist");
     });
 
     it("should show the verified metrics filter when there are verified metrics", () => {
@@ -521,7 +523,7 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
 }
 
 function toggleVerifiedMetricsFilter() {
-  cy.findByLabelText("Filters").should("be.visible").click();
-  H.popover().findByText("Show verified metrics only").click();
-  cy.findByLabelText("Filters").should("be.visible").click();
+  cy.findByLabelText(
+    /Only show verified metrics|Show verified metrics, too/,
+  ).click();
 }

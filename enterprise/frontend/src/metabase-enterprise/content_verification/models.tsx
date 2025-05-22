@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { t } from "ttag";
 
 import type {
   ModelFilterControlsProps,
@@ -18,8 +19,12 @@ export function getDefaultModelFilters(state: State): ModelFilterSettings {
   };
 }
 
-// This component is similar to the MetricFilterControls component from ./MetricFilterControls.tsx
-// merging them might be a good idea in the future.
+/**
+ * This was originally designed to support multiple filters but it currently
+ * just supports one.
+ *
+ * The Browse metrics page has a similar component
+ */
 export const ModelFilterControls = ({
   modelFilters,
   setModelFilters,
@@ -39,6 +44,8 @@ export const ModelFilterControls = ({
     <VerifiedToggle
       verified={verified}
       handleVerifiedFilterChange={handleVerifiedFilterChange}
+      labelWhenOn={t`Show unverified models, too`}
+      labelWhenOff={t`Only show verified models`}
     />
   );
 };
