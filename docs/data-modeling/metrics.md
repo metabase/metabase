@@ -37,7 +37,9 @@ You can use custom expressions to combine multiple metrics, or perform calculati
 
 ## Creating a metric
 
-You can create a metric by first creating a question, then converting it to a metric. To do this:
+To create a metric, bring up the command palette with cmd/ctrl + k. That’s cmd + k for Macs, or ctrl + k for Windows PCs. Search for New metric.
+
+You can also create a metric by first creating a question, then converting it to a metric:
 
 1. Click on **+ New** and select **Question**
 2. Build your query using the query builder
