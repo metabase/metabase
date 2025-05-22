@@ -296,6 +296,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                 (let [ba (byte-array 32)
                       _  (.nextBytes (java.security.SecureRandom.) ba)]
                   (codecs/bytes->b64-str ba)))
+  :export?    false
   :sensitive? true
   :visibility :internal
   :audit      :no-value)

@@ -139,7 +139,7 @@
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
-      (str (acs-url) "?token=" (token-utils/generate-token) "&origin=" (java.net.URLEncoder/encode origin "UTF-8"))
+      (str (acs-url) "?token=" (token-utils/generate-token) "&origin=" (java.net.URLEncoder/encode ^String origin "UTF-8"))
 
       ;; Case 2: No redirect parameter
       (nil? redirect)
@@ -162,6 +162,7 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
+        _ (prn (:headers req))
         embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)
         redirect-url (construct-redirect-url req)]
     (sso-utils/check-sso-redirect redirect)
@@ -215,8 +216,7 @@
 (defn- process-relay-state-params
   "Process the RelayState to extract continue URL and related parameters"
   [relay-state]
-  (let [;; Extract and decode continue URL
-        continue-url (u/ignore-exceptions
+  (let [continue-url (u/ignore-exceptions
                        (when-let [s (some-> relay-state u/decode-base64)]
                          (when-not (str/blank? s)
                            s)))
@@ -234,7 +234,7 @@
                        (second (re-find #"[?&]origin=([^&]+)" url-without-token)))
         origin (if origin-param
                  (try
-                   (java.net.URLDecoder/decode origin-param "UTF-8")
+                   (java.net.URLDecoder/decode ^String origin-param "UTF-8")
                    (catch Exception _
                      "*"))
                  "*")

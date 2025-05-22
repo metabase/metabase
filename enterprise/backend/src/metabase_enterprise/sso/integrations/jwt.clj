@@ -123,6 +123,13 @@
                :status-code 402})))
   true)
 
+(defn- throw-embedding-disabled
+  []
+  (throw
+   (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
+            {:status      "error-embedding-sdk-disabled"
+             :status-code 402})))
+
 (defn ^:private generate-response-token
   [session jwt-data]
   (if  (embed.settings/enable-embedding-sdk)
@@ -132,10 +139,7 @@
       :id     (:key session)
       :exp    (:exp jwt-data)
       :iat    (:iat jwt-data)})
-    (throw
-     (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
-              {:status      "error-embedding-sdk-disabled"
-               :status-code 402}))))
+    (throw-embedding-disabled)))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
@@ -152,6 +156,7 @@
   (let [jwt-data (when jwt (session-data jwt request))
         is-sdk? (sso-utils/is-embedding-sdk-header? request)]
     (cond
+      (and is-sdk? (not (embed.settings/enable-embedding-sdk))) (throw-embedding-disabled)
       (and is-sdk? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))
       is-sdk?           (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"}))
       jwt               (request/set-session-cookies request

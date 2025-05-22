@@ -1,36 +1,43 @@
 (ns metabase-enterprise.sso.integrations.token-utils
   "Functions for handling validation tokens when working with SDK calls"
-  (:require [metabase-enterprise.sso.integrations.sso-settings :refer [sdk-encryption-validation-key]]
-            [metabase.util.encryption :as encryption]))
+  (:require
+   [clojure.string :as str]
+   [java-time.api :as t]
+   [metabase-enterprise.sso.integrations.sso-settings :refer [sdk-encryption-validation-key]]
+   [metabase.util.encryption :as encryption])
+  (:import
+   (java.net URLEncoder URLDecoder)
+   (java.time Instant)))
 
-(defn- current-timestamp []
-  "Get the current Unix timestamp in seconds"
-  (str (quot (System/currentTimeMillis) 1000)))
+(set! *warn-on-reflection* true)
+
+(defn- hashed-key
+  []
+  (encryption/secret-key->hash (sdk-encryption-validation-key)))
 
 (defn generate-token
   "Generate a cryptographically secure token with built-in expiration."
-  []
-  (println (sdk-encryption-validation-key))
-  (let [timestamp (current-timestamp)
-        expiration (str (+ (Long/parseLong timestamp) 300))
-        nonce (str (java.util.UUID/randomUUID))
-        payload (str timestamp "." expiration "." nonce)
-        hashed-key (encryption/secret-key->hash (sdk-encryption-validation-key))
-        encrypted-payload (encryption/encrypt hashed-key payload)]
-    encrypted-payload))
+  ^String []
+  (let [timestamp  (t/instant)
+        expiration (t/instant (t/plus timestamp (t/seconds 300)))
+        nonce      (random-uuid)
+        payload    (str (.getEpochSecond timestamp) "." (.getEpochSecond expiration) "." nonce)
+        encrypted  (encryption/encrypt (hashed-key) payload)]
+    (URLEncoder/encode encrypted "UTF-8")))
 
 (defn validate-token
   "Validate that a token is authentic and not expired."
   [token]
-  (when token
-    (try
-      (let [hashed-key (encryption/secret-key->hash (sdk-encryption-validation-key))
-            decrypted-payload (encryption/decrypt hashed-key token)
-            [timestamp expiration nonce] (clojure.string/split decrypted-payload #"\." 3)
-            current-time (Long/parseLong (current-timestamp))]
-        (< current-time (Long/parseLong expiration)))
-      (catch Exception _
-        false))))
+  (boolean
+   (and token
+        (not-empty token)
+        (try
+          (let [decoded-token     (URLDecoder/decode ^String token "UTF-8")
+                decrypted-payload (encryption/decrypt (hashed-key) decoded-token)
+                [_ expiration _]  (str/split decrypted-payload #"\." 3)]
+            (t/< (t/instant) (Instant/ofEpochSecond (Long/parseLong expiration))))
+          (catch Exception _
+            false)))))
 
 (defn- get-token-from-header
   "Extract the token from the request headers"
