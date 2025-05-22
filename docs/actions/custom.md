@@ -12,7 +12,6 @@ Write SQL to update records in your databases.
 
 > You must be in a group with Native query editing access to create an action.
 
-
 There are two ways to create a custom action:
 
 From the command palette:
