@@ -9,13 +9,13 @@ type UseIsTruncatedProps = {
 
 /** To avoid false positives, the text may exceed the container horizontally by
  * this many pixels without triggering ellipsification */
-const HORIZONTAL_OVERFLOW_TOLERANCE = 0.01;
+const OVERFLOW_TOLERANCE_X = 0.01;
 
 /** To avoid false positives, the text may exceed the container vertically by
  * this many pixels without triggering ellipsification. When vertical overflow
  * occurs, it happens because the text wraps to the next line. So the vertical
  * overflow tolerance can be larger than the horizontal one. */
-const VERTICAL_OVERFLOW_TOLERANCE = 5;
+const OVERFLOW_TOLERANCE_Y = 5;
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
@@ -55,16 +55,16 @@ const getIsTruncated = (element: Element): boolean => {
   const elementRect = element.getBoundingClientRect();
 
   // Calculate how much the text node overflows its container
-  const verticalOverflow = textRect.height - elementRect.height;
-  const horizOverflow = textRect.width - elementRect.width;
+  const yOverflow = textRect.height - elementRect.height;
+  const xOverflow = textRect.width - elementRect.width;
 
   // NOTE: To debug truncation, you can add something here like:
   // if (element.innerHTML.match(/Doohickey/g)) {
-  //   console.log(horizOverflow);
+  //   console.log("overflow: ", xOverflow, yOverflow);
   // }
 
-  const isTextTooTall = verticalOverflow > VERTICAL_OVERFLOW_TOLERANCE;
-  const isTextTooWide = horizOverflow > HORIZONTAL_OVERFLOW_TOLERANCE;
+  const isTextTooTall = yOverflow > OVERFLOW_TOLERANCE_Y;
+  const isTextTooWide = xOverflow > OVERFLOW_TOLERANCE_X;
   return isTextTooTall || isTextTooWide;
 };
 
