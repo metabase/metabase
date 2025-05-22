@@ -446,6 +446,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             rowIndex,
             col.name,
           ) ??
+          // we can't use CSS variables here.
+          // fn.themeColor allows us to default to "background" when on the SDK and still accept hex/rgb values.
           (tableTheme?.cell?.backgroundColor &&
             theme.fn.themeColor(tableTheme?.cell?.backgroundColor)),
       );
