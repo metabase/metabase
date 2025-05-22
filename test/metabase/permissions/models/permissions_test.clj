@@ -15,35 +15,6 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
-
-(deftest ^:parallel collection-path-test
-  (doseq [[perms-type f-symb] {:read      'collection-read-path
-                               :readwrite 'collection-readwrite-path}
-          :let                [f (ns-resolve 'metabase.permissions.models.permissions f-symb)]]
-    (doseq [[input expected]
-            {1                                                        {:read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
-             {:id 1}                                                  {:read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
-             collection/root-collection                               {:read      "/collection/root/read/"
-                                                                       :readwrite "/collection/root/"}
-             (assoc collection/root-collection :namespace "snippets") {:read      "/collection/namespace/snippets/root/read/"
-                                                                       :readwrite "/collection/namespace/snippets/root/"}
-             (assoc collection/root-collection :namespace "a/b")      {:read      "/collection/namespace/a\\/b/root/read/"
-                                                                       :readwrite "/collection/namespace/a\\/b/root/"}
-             (assoc collection/root-collection :namespace :a/b)       {:read      "/collection/namespace/a\\/b/root/read/"
-                                                                       :readwrite "/collection/namespace/a\\/b/root/"}}
-            :let [expected (get expected perms-type)]]
-      (testing (pr-str (list f-symb input))
-        (is (= expected
-               (f input)))))
-    (doseq [input [{} nil "1"]]
-      (testing (pr-str (list f-symb input))
-        (is (thrown?
-             Exception
-             (f input)))))))
-
 ;;; This originally lived in [[metabase.permissions.models.permissions]] but it is only used in tests these days so I moved it here.
 (defn is-permissions-set?
   "Is `permissions-set` a valid set of permissions object paths?"

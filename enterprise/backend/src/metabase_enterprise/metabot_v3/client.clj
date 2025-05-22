@@ -75,10 +75,10 @@
   (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/generate"))
 
 (defn- analyze-chart-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/chart/"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/chart"))
 
 (defn- analyze-dashboard-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/dashboard/"))
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/dashboard"))
 
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a V2 request to the AI Proxy."

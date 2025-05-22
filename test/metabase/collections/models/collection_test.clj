@@ -10,8 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -211,7 +210,7 @@
           write-paths (map perms/collection-readwrite-path collections-or-ids)]
       (t2/delete! :model/Permissions :object [:in (concat read-paths write-paths)])
       (t2/insert! :model/Permissions (map (fn [c-or-id]
-                                            {:group_id (u/the-id (perms-group/all-users))
+                                            {:group_id (u/the-id (perms/all-users-group))
                                              :object (perms/collection-read-path c-or-id)})
                                           collections-or-ids))
       (mt/with-test-user :rasta

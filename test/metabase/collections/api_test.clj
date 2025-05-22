@@ -9,11 +9,10 @@
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.permissions.models.collection.graph-test :as graph.test]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
    [metabase.revisions.models.revision :as revision]
@@ -38,7 +37,7 @@
          (every? symbol? collection-bindings)]}
   `(collection-test/with-collection-hierarchy! [{:keys ~collection-bindings}]
      ~@(for [collection-symb collection-bindings]
-         `(perms/grant-collection-read-permissions! (perms-group/all-users) ~collection-symb))
+         `(perms/grant-collection-read-permissions! (perms/all-users-group) ~collection-symb))
      ~@body))
 
 (defn- do-with-french-user-and-personal-collection! [f]
@@ -120,7 +119,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection-1 {:name "Collection 1"}
                        :model/Collection _            {:name "Collection 2"}]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection-1)
           (is (= ["Collection 1"
                   "Rasta Toucan's Personal Collection"]
                  (->> (mt/user-http-request :rasta :get 200 "collection")
@@ -133,7 +132,7 @@
   (testing "GET /api/collection?personal-only=true check that we don't see collections that you don't have access to or aren't personal."
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection-1 {:name "Collection 1"}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection-1)
         (is (= ["Rasta Toucan's Personal Collection"]
                (->> (mt/user-http-request :rasta :get 200 "collection" :personal-only true)
                     (filter (fn [{collection-name :name}]
@@ -144,7 +143,7 @@
 (deftest list-collections-personal-only-admin-test
   (testing "GET /api/collection?personal-only=true check that we see all personal collections if you are an admin."
     (mt/with-temp [:model/Collection collection-1 {:name "Collection 1"}]
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection-1)
       (is (= (->> (t2/select :model/Collection {:where [:!= :personal_owner_id nil]})
                   (map :name)
                   (into #{}))
@@ -192,7 +191,7 @@
             (is (= ["Normal Collection"]
                    (collection-names (mt/user-http-request :rasta :get 200 "collection")))))
 
-          (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
@@ -465,8 +464,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection parent-collection {:name "Parent"}
                        :model/Collection child-collection  {:name "Child", :location (format "/%d/" (:id parent-collection))}]
-          (perms/revoke-collection-permissions! (perms-group/all-users) parent-collection)
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
+          (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-view (map :id [parent-collection child-collection])
                                        (mt/user-http-request :rasta :get 200 "collection/tree"))))
@@ -485,7 +484,7 @@
             (is (= [{:name "Normal Collection", :children []}]
                    (collection-tree-view ids (mt/user-http-request :rasta :get 200 "collection/tree")))))
 
-          (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= [{:name "Coin Collection", :children []}]
@@ -515,7 +514,7 @@
       ;;     +-> F* -> G*
       (collection-test/with-collection-hierarchy! [{:keys [a b e f g], :as collections}]
         (doseq [collection [a b e f g]]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection))
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection))
         (is (= [{:name     "A"
                  :children [{:name "B", :children []}
                             {:name "E", :children []}
@@ -740,7 +739,7 @@
   (testing "GET /api/collection/:id/items"
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp [:model/Collection collection {:name "Debt Collection"}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
         (with-some-children-of-collection! collection
           (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
                                                 {:name               "Birthday Card", :description nil,     :model     "card",
@@ -753,7 +752,7 @@
 
       (testing "...and that you can also filter so that you only see the children you want to see"
         (mt/with-temp [:model/Collection collection {:name "Art Collection"}]
-          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
           (with-some-children-of-collection! collection
             (is (partial= ()
                           (mt/boolean-ids-and-timestamps
@@ -781,10 +780,10 @@
                                              :location (path c1 c2)}
                        :model/Collection c4 {:name "C4"
                                              :location (path c1 c2 c3)}]
-          (perms/revoke-collection-permissions! (perms-group/all-users) c1)
-          (perms/revoke-collection-permissions! (perms-group/all-users) c2)
-          (perms/grant-collection-read-permissions! (perms-group/all-users) c3)
-          (perms/grant-collection-read-permissions! (perms-group/all-users) c4)
+          (perms/revoke-collection-permissions! (perms/all-users-group) c1)
+          (perms/revoke-collection-permissions! (perms/all-users-group) c2)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) c3)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) c4)
           ;; user can see c3 and c4
           (let [response (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id c3)))]
             (is (= 1 (:total response)))
@@ -808,7 +807,7 @@
       (mt/with-temp [:model/Collection collection {:name "Art Collection"}
                      :model/Collection _ {:name "Baby Collection"
                                           :location (collection/children-location collection)}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
         (is (partial= [{:name "Art Collection", :description nil, :model "collection"}]
                       (get-items :crowberto (collection/trash-collection-id))))
@@ -816,7 +815,7 @@
                       (get-items :crowberto collection)))))
     (testing "I can untrash something by marking it as not archived"
       (mt/with-temp [:model/Collection collection {:name "A"}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
         (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" (collection/trash-collection-id) "/items"))))))
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived false})
@@ -825,9 +824,9 @@
       (mt/with-temp [:model/Collection collection-a {:name "A"}
                      :model/Collection collection-b {:name "B" :location (collection/children-location collection-a)}
                      :model/Collection destination {:name "Destination"}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-a)
-        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
-        (perms/grant-collection-read-permissions! (perms-group/all-users) destination)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection-a)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection-b)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) destination)
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
         (is (= #{"A"} (set-of-item-names :crowberto (collection/trash-collection-id))))
         (is (= #{} (set-of-item-names :crowberto destination)))
@@ -856,11 +855,11 @@
                    :model/Collection subcollection-b {:name "sub-B" :location (collection/children-location collection-b)}
                    :model/Collection collection-c {:name "C"}
                    :model/Collection subcollection-c {:name "sub-C" :location (collection/children-location collection-c)}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-a)
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-b)
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-c)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-c)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-a)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-b)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-c)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection-b)
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-c)
       (testing "i can't archive from a collection I have no permissions on"
         (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-a)) {:archived true}))
       (testing "i can't archive from a collection I have read permissions on"
@@ -876,11 +875,11 @@
                    :model/Collection collection-c {:name "C"}
                    :model/Collection subcollection-c {:name "sub-C" :location (collection/children-location collection-c)}
                    :model/Dashboard  dashboard-c {:name "dashboard-C" :collection_id (u/the-id collection-c)}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-a)
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-b)
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-c)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-c)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-a)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-b)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-c)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection-b)
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-c)
       (doseq [coll [subcollection-a subcollection-b subcollection-c]]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id coll)) {:archived true}))
       (doseq [dashboard [dashboard-a dashboard-b dashboard-c]]
@@ -2214,7 +2213,7 @@
     (testing "\n?namespace= parameter"
       (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
                      :model/Collection {coins-id :id}  {:name "Coin Collection", :namespace "currency"}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
         (letfn [(collection-names [items]
                   (->> (:data items)
                        (filter #(and (= (:model %) "collection")
@@ -2428,7 +2427,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection collection-a  {}
                          :model/Collection _collection-b {:location (collection/children-location collection-a)}]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-a)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-a)
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:archived true})))))))))
@@ -2456,7 +2455,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection collection-a {}
                          :model/Collection collection-b {}]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-a)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection-a)
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:parent_id (u/the-id collection-b)}))))))
@@ -2471,7 +2470,7 @@
                              :model/Collection collection-b {:location (collection/children-location collection-a)}
                              :model/Collection collection-c {}]
                 (doseq [collection [collection-a collection-b]]
-                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
+                  (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)}))))))
@@ -2484,7 +2483,7 @@
                              :model/Collection _collection-b {:location (collection/children-location collection-a)}
                              :model/Collection collection-c  {}]
                 (doseq [collection [collection-a collection-c]]
-                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
+                  (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)}))))))
@@ -2497,7 +2496,7 @@
                              :model/Collection collection-b {:location (collection/children-location collection-a)}
                              :model/Collection collection-c {}]
                 (doseq [collection [collection-b collection-c]]
-                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
+                  (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
@@ -2589,14 +2588,14 @@
                                 :type :model}]
 
     (testing "`can_write` is `true` when appropriate"
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection)
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
       (is (= #{[true "card"] [true "dataset"] [true "dashboard"]}
              (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))
 
     (testing "and `false` when appropriate"
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
       (is (= #{[false "card"] [false "dataset"] [false "dashboard"]}
              (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))))
 

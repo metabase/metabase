@@ -681,6 +681,9 @@
     ;; Does this driver support casting text to dates? (`date()` custom expression function)
     :expressions/date
 
+    ;; Does this driver support casting text to datetimes?? (`datetime()` custom expression function)
+    :expressions/datetime
+
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float
 

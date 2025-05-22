@@ -1,4 +1,4 @@
-(ns metabase.util.grouper
+(ns metabase.batch-processing.impl
   "Our wrapper for grouper -- the batch processing utility.
 
   Note:
@@ -9,34 +9,19 @@
     grouper since it's important to have the data immediately available.
 
 
-  Batch processing can be disabled by setting the environment variable `MB_DISABLE_GROUPER_BATCH_PROCESSING=true`."
+  Batch processing can be disabled by setting the environment variable `MB_SYNCHRONOUS_BATCH_UPDATES=true`"
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
    [metabase.app-db.core :as mdb]
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.batch-processing.settings :as batch-processing.settings]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [potemkin :as p])
+   [metabase.util.malli.schema :as ms])
   (:import
    (grouper.core Grouper)))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  p/keep-me
-  Grouper/keep-me)
-
-(defsetting synchronous-batch-updates
-  (deferred-tru "Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.")
-  ;; Should be used for testing purposes only, currently set by some e2e tests
-  :type       :boolean
-  :default    false
-  :export?    true
-  ;; :admin instead of :internal because we want to change this during e2e testing
-  :visibility :admin)
 
 ;;; the sole purpose of this wrapper is so we can keep the original function around so we can call it directly on the
 ;;; current thread if we're processing stuff synchronously
@@ -67,7 +52,7 @@
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
    We use grouper for fire-and-forget scenarios, so we don't care about the result."
   [grouper-wrapper :- ::grouper-wrapper object & options]
-  (let [synchronous? (or (synchronous-batch-updates)
+  (let [synchronous? (or (batch-processing.settings/synchronous-batch-updates)
                          ;; if we're in the middle of a transaction, we need to do this synchronously in case we roll
                          ;; back the transaction at the end (as we do in tests)
                          (mdb/in-transaction?))]

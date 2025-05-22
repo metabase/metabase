@@ -103,14 +103,17 @@
            sync
            util}}
 
+  ;; TODO -- consolidate these into a `.core` API namespace.
   api
-  {:api #{metabase.api.auth
-          metabase.api.common
+  {:api #{metabase.api.common
+          metabase.api.common.internal
           metabase.api.common.validation
           metabase.api.docs
+          metabase.api.init
           metabase.api.macros
           metabase.api.open-api
           metabase.api.routes.common
+          metabase.api.settings
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{analytics
@@ -119,7 +122,7 @@
            events
            models
            premium-features
-           server
+           request
            settings
            util
            enterprise/advanced-permissions}}
@@ -167,6 +170,13 @@
   auth-provider
   {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
+
+  batch-processing
+  {:api  #{metabase.batch-processing.core
+           metabase.batch-processing.init}
+   :uses #{app-db
+           settings
+           util}}
 
   bookmarks
   {:api  #{metabase.bookmarks.api}
@@ -675,6 +685,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.models.query.permissions
+           metabase.permissions.path
            metabase.permissions.util}
    :uses #{api
            app-db
@@ -687,7 +698,6 @@
            premium-features
            query-processor
            request
-           server
            settings
            util}}
 
@@ -865,6 +875,7 @@
            app-db
            appearance
            audit-app
+           batch-processing
            cache
            config
            driver
@@ -985,7 +996,6 @@
            session
            settings
            system
-           users
            util
            enterprise/sso}}
 
@@ -1177,8 +1187,8 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
-           app-db
            appearance
+           batch-processing
            channel
            collections
            config
@@ -1197,8 +1207,7 @@
 
   util
   {:api :any
-   :uses #{app-db
-           classloader
+   :uses #{classloader
            config
            legacy-mbql
            lib
@@ -1221,6 +1230,7 @@
            api
            app-db
            audit-app
+           batch-processing
            events
            models
            permissions
@@ -1332,13 +1342,13 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
-           enterprise/impersonation
            lib
            permissions
            premium-features
            query-processor
            util
-           warehouses}}
+           warehouses
+           enterprise/impersonation}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}

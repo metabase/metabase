@@ -773,6 +773,34 @@
       (when-not (= <> honeysql-form)
         (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>))))))
 
+(defmethod ->honeysql [:sql :datetime]
+  [driver [_ value mode]]
+  (let [honeysql-form (->honeysql driver value)
+        coercion-strategy (case (or mode :iso)
+                            ;; String
+                            :iso              :Coercion/ISO8601->DateTime
+                            :simple           :Coercion/YYYYMMDDHHMMSSString->DateTime
+                            ;; Number
+                            :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime
+                            :unixseconds      :Coercion/UNIXSeconds->DateTime
+                            :unixmicroseconds :Coercion/UNIXMicroSeconds->DateTime
+                            :unixnanoseconds  :Coercion/UNIXNanoSeconds->DateTime)]
+    (cond
+      (isa? coercion-strategy :Coercion/UNIXTime->Temporal)
+      (unix-timestamp->honeysql driver
+                                (semantic-type->unix-timestamp-unit coercion-strategy)
+                                honeysql-form)
+
+      (isa? coercion-strategy :Coercion/String->Temporal)
+      (cast-temporal-string driver coercion-strategy honeysql-form)
+
+      :else
+      (throw (ex-info "Don't know how to convert the value to datetime."
+                      {:value value
+                       :honeysql honeysql-form
+                       :mode mode
+                       :coercion-strategy coercion-strategy})))))
+
 ;;; it's a little weird that we're calling [[->honeysql]] on an identifier, which is a Honey SQL form and not an MBQL
 ;;; form. See [[throw-double-compilation-error]] for more info.
 (defmethod ->honeysql [:sql ::h2x/identifier]
