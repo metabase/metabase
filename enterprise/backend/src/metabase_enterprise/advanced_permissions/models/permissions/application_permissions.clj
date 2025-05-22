@@ -5,6 +5,7 @@
    [clojure.data :as data]
    [metabase.permissions.models.application-permissions-revision :as a-perm-revision]
    [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.path :as permissions.path]
    [metabase.permissions.util :as perms.u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -38,7 +39,7 @@
 
 (defn- permission-for-type
   [permissions-set perm-type]
-  (if (perms/set-has-full-permissions? permissions-set (perms/application-perms-path perm-type))
+  (if (perms/set-has-full-permissions? permissions-set (permissions.path/application-perms-path perm-type))
     :yes
     :no))
 
@@ -50,9 +51,9 @@
    :subscription (permission-for-type permission-set :subscription)})
 
 (mu/defn graph :- ApplicationPermissionsGraph
-  "Fetch a graph representing the application permissions status for groups that has at least one application permission enabled.
-  This works just like the function of the same name in `metabase.permissions.models.permissions`;
-  see also the documentation for that function."
+  "Fetch a graph representing the application permissions status for groups that has at least one application permission
+  enabled. This works just like the function of the same name in `metabase.permissions.models.permissions`; see also the
+  documentation for that function."
   []
   {:revision (a-perm-revision/latest-id)
    :groups   (into {} (for [[group-id perms] (group-id->permissions-set)]

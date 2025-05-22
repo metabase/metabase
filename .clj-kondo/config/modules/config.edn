@@ -685,6 +685,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.models.query.permissions
+           metabase.permissions.path
            metabase.permissions.util}
    :uses #{api
            app-db
@@ -697,7 +698,6 @@
            premium-features
            query-processor
            request
-           server
            settings
            util}}
 
@@ -997,7 +997,6 @@
            session
            settings
            system
-           users
            util
            enterprise/sso}}
 
@@ -1188,7 +1187,6 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
-           app-db
            appearance
            batch-processing
            channel
@@ -1344,13 +1342,13 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
-           enterprise/impersonation
            lib
            permissions
            premium-features
            query-processor
            util
-           warehouses}}
+           warehouses
+           enterprise/impersonation}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
