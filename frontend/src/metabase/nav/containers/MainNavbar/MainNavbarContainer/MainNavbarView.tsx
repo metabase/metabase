@@ -109,10 +109,18 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [[trashCollection], collectionsWithoutTrash] = useMemo(
-    () => _.partition(collections, (c) => c.type === "trash"),
-    [collections],
-  );
+  const [regularCollections, trashCollection, examplesCollection] =
+    useMemo(() => {
+      const isTrash = (c: CollectionTreeItem) => c.type === "trash";
+      const isExamples = (c: CollectionTreeItem) =>
+        !!c.is_sample && c.name === "Examples";
+
+      return [
+        collections.filter((c) => !isTrash(c) && !isExamples(c)),
+        collections.find(isTrash),
+        collections.find(isExamples),
+      ];
+    }, [collections]);
 
   const isNewInstance = useSelector(getIsNewInstance);
 
@@ -161,7 +169,18 @@ export function MainNavbarView({
           </SidebarSection>
 
           {isNewInstance && (
-            <GettingStartedSection nonEntityItem={nonEntityItem} />
+            <GettingStartedSection nonEntityItem={nonEntityItem}>
+              {examplesCollection && (
+                <Tree
+                  data={[examplesCollection]}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="examples-collection-tree"
+                />
+              )}
+            </GettingStartedSection>
           )}
 
           {bookmarks.length > 0 && (
@@ -186,7 +205,7 @@ export function MainNavbarView({
               />
 
               <Tree
-                data={collectionsWithoutTrash}
+                data={regularCollections}
                 selectedId={collectionItem?.id}
                 onSelect={onItemSelect}
                 TreeNode={SidebarCollectionLink}
