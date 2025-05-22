@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library",
-    "hash": "c7122fd23341b6089e37d1f333a80499ae83a648"
+    "hash": "0c1a173665427d53152091c9213a493e50b559e8"
   },
   "upstream": {
     "branch": "emb-408-add-embed-options-for-questions-dashboards-and-exploration"
