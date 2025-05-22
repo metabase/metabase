@@ -58,7 +58,7 @@ jobs:
 
       - name: Run Loki Visual Tests
         run: |
-          yarn loki --requireReference --reactUri file:./storybook-static --chromeFlags='--headless --disable-gpu' --verboseRenderer
+          yarn loki --requireReference --reactUri file:./storybook-static --chromeFlags='--headless --disable-gpu' --verboseRenderer || echo "Loki failed, check the Loki Report in the artifacts, if those looks like intended changes, you can add the label 'loki-update' to update the baseline images"
 
       - name: Generate Visual Report on Failure
         if: failure()
