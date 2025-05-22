@@ -83,10 +83,10 @@
     (when-not (= uses :any)
       (into (sorted-set) uses))))
 
-(defn indirect-deps-chain
+(defn indirect-deps
   "For a module, get a map of dependency => path to this dependency
 
-    (indirect-deps-chain (deps) 'api)
+    (indirect-deps (deps) 'api)
     ;; =>
     {permissions [api settings permissions]
      ...}"
@@ -184,7 +184,7 @@
   [deps module]
   (into (sorted-set)
         (mapcat (fn [user]
-                  (disj (set (keys (indirect-deps-chain deps user))) module)))
+                  (disj (set (keys (indirect-deps deps user))) module)))
         (direct-users deps module)))
 
 (defn info [deps config module]
@@ -193,7 +193,7 @@
     (ordered-map/ordered-map
      :direct-deps               direct-deps
      :undeclared-deps           (set/difference direct-deps (direct-deps-from-config config module))
-     :indirect-deps             (indirect-deps-chain deps module)
+     :indirect-deps             (indirect-deps deps module)
      :namespaces                (namespaces deps module)
      :api-namespaces            api-namespaces
      :unexpected-api-namespaces (unexpected-api-namespaces deps module)
