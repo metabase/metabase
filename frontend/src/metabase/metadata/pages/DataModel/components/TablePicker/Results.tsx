@@ -247,12 +247,9 @@ function VisibilityToggle({
 }: {
   type: ItemType;
   path: TreePath;
-  data?: FlatItem["data"];
+  data: FlatItem["data"];
 }) {
-  if (!data) {
-    return null;
-  }
-  if (type === "table" && path?.tableId !== undefined) {
+  if (type === "table" && path?.tableId !== undefined && data) {
     return <TableVisibilityToggle id={path.tableId} table={data as Table} />;
   }
   return null;
