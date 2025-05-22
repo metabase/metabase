@@ -360,7 +360,7 @@
                    (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
 
 (deftest test-ssh-server-reconnection
-  (mt/test-drivers (mt/driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
+  (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
@@ -384,9 +384,7 @@
               (check-row))))))))
 
 (deftest test-ssh-tunnel-reconnection
-  (mt/test-drivers (mt/driver-select {:+conn-props ["tunnel-enabled"]
-                                      :-features [:timeseries]
-                                      :+parent :sql-jdbc})
+  (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
