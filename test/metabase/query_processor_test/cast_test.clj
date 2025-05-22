@@ -797,7 +797,12 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/datetime)
     (let [mp (mt/metadata-provider)]
       (doseq [[table expressions] [[:people [{:expression (lib/concat "2025-05-15T22:20:01" "")
-                                              :mode :iso
+                                              :mode nil
+                                              :expected #{"2025-05-15T22:20:01Z"
+                                                          "2025-05-15 22:20:01"}
+                                              :limit 1}
+                                             {:expression (lib/concat "2025-05-15 22:20:01" "")
+                                              :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
                                                           "2025-05-15 22:20:01"}
                                               :limit 1}]]]
