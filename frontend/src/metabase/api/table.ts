@@ -99,6 +99,18 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    syncTableSchema: builder.mutation<void, TableId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/table/${id}/sync_schema`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("table", id),
+          listTag("field"),
+          tag("card"),
+        ]),
+    }),
     discardTableFieldValues: builder.mutation<void, TableId>({
       query: (id) => ({
         method: "POST",
@@ -119,5 +131,6 @@ export const {
   useUpdateTableListMutation,
   useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
+  useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;
