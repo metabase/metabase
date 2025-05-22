@@ -394,7 +394,7 @@ export function createDashboardWithVisualizerDashcards(
       viewsColumnQuestionId,
     } = this;
 
-    H.createDashboard({ enable_embedding }).then(
+    H.createDashboard({ enable_embedding }, { wrapId: true }).then(
       ({ body: { id: dashboardId } }) => {
         const dc1 = createVisualizerDashcardWithTimeseriesBreakout(
           ordersCountByCreatedAtQuestionId,
