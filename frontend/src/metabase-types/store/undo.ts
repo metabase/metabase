@@ -1,3 +1,5 @@
+import type { RefObject } from "react";
+
 import type { IconName } from "metabase/ui";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
 
@@ -26,6 +28,7 @@ export interface Undo {
   count?: number;
   verb?: string;
   subject?: string;
+  ref?: RefObject<HTMLDivElement>;
 }
 
 export type UndoState = Undo[];
