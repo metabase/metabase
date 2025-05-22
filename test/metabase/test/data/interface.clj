@@ -1043,7 +1043,7 @@
    order by 1 asc
    limit 2;")
 
-(doseq [driver [:postgres]]
+(doseq [driver [:postgres :clickhouse]]
   (defmethod driver/database-supports? [driver :test/rls-impersonation]
     [_driver _feature _database]
     true))

@@ -169,7 +169,7 @@
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
-          (let [rls-perms (if (:rls perms) (:rls perms) [true])
+          (let [rls-perms (get perms :rls [true])
                 policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
                                      (sql.qp/format-honeysql driver rls-perms)))]
             (doseq [statement [(format "ALTER TABLE %s ENABLE ROW LEVEL SECURITY" table-name)

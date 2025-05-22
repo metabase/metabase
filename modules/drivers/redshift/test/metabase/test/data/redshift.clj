@@ -304,7 +304,7 @@
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (doseq [[table-name perms] table-perms]
+        (doseq [[table-name _perms] table-perms]
           (doseq [statement [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)
                              (format "GRANT SELECT ON %s TO %s" table-name role-name)]]
             (jdbc/execute! spec [statement] {:transaction? false})))))))

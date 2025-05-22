@@ -2,7 +2,6 @@
   "Common test extension functionality for SQL-JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]

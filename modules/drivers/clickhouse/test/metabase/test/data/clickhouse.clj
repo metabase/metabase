@@ -236,9 +236,9 @@
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
           (jdbc/execute! spec [(format "GRANT SELECT ON %s TO %s" table-name role-name)] {:transaction? false})
-          (when (:rls perms)
+          (when-let [rls-perms (:rls perms)]
             (let [policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
-                                       (sql.qp/format-honeysql driver (:rls perms))))]
+                                       (sql.qp/format-honeysql driver rls-perms)))]
               (jdbc/execute! spec [(format "CREATE ROW POLICY role_policy_%s ON %s AS RESTRICTIVE FOR SELECT USING %s TO %s"
                                            (mt/random-name) table-name policy-cond role-name)] {:transaction? false}))))))))
 
