@@ -1,9 +1,9 @@
-(ns metabase.util.grouper-test
+(ns metabase.batch-processing.impl-test
   (:require
    [clojure.test :refer :all]
+   [metabase.batch-processing.impl :as grouper]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.grouper :as grouper]))
+   [metabase.util :as u]))
 
 (deftest synchronous-batch-updates-test
   (testing "with grouper disabled, the submitted item should be processed immediately"
