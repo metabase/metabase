@@ -126,6 +126,10 @@
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
+(defn- name-for-joined-field
+  [name {:keys [fk-field-id], join-alias :alias}]
+  (str join-alias "__" name))
+
 (defn- display-name-for-joined-field
   "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
   alias; for implicitly joined fields, it is the display name of the foreign key used to create the join."
@@ -311,6 +315,9 @@
 
       (or (:join-alias opts) (:alias join))
       (assoc :source_alias (or (:join-alias opts) (:alias join)))
+
+      join
+      (update :name name-for-joined-field join)
 
       join
       (update :display_name display-name-for-joined-field join)
