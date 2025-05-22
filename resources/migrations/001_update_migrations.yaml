@@ -11629,7 +11629,7 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - sqlCheck:
-            expectedResult: 2
+            expectedResult: 0
             sql: >-
               SELECT COUNT(*) FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
       rollback:
