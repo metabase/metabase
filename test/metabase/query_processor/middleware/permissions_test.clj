@@ -464,7 +464,8 @@
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
-      (let [bad-query {:database 1, :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT !" ::query-perms/gtapped-table 5}}
+      (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT !"
+                                                                               ::query-perms/gtapped-table (mt/id :venues)}}
                        ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
                                                     :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
