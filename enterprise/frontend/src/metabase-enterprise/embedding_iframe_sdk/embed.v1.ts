@@ -113,7 +113,7 @@ class MetabaseEmbed {
 
   private _validateEmbedSettings(settings: SdkIframeEmbedTagSettings) {
     if (!settings.apiKey || !settings.instanceUrl) {
-      raiseError("api key and instance url must be provided");
+      raiseError("API key and instance URL must be provided");
     }
 
     if (

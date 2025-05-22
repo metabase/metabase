@@ -27,14 +27,14 @@ describe("embed.v1.js script tag for sdk iframe embedding", () => {
     expect(() => {
       // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({ ...defaultSettings, apiKey: undefined });
-    }).toThrow("api key and instance url must be provided");
+    }).toThrow("API key and instance URL must be provided");
   });
 
   it("throws when instance url is not provided", () => {
     expect(() => {
       // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({ ...defaultSettings, instanceUrl: undefined });
-    }).toThrow("api key and instance url must be provided");
+    }).toThrow("API key and instance URL must be provided");
   });
 
   it("throws when both question id and dashboard id are provided", () => {
