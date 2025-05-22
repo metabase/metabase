@@ -164,8 +164,8 @@ describe(
           .findAllByRole("gridcell")
           .first()
           .should(($el) => {
-            // cell color should be transparent
-            assertBackgroundColorEqual($el, "rgba(0, 0, 0, 0)");
+            // cell color should also be solid
+            assertBackgroundColorEqual($el, BACKGROUND_COLOR);
           });
       });
     });
