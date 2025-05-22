@@ -117,7 +117,7 @@
    {:keys [items]} :- [:map
                        [:items [:sequential [:map
                                              [:id pos-int?]
-                                             [:model [:enum "dataset" "metric" "collection"]]]]]]]
+                                             [:model [:enum "collection"]]]]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (t2/with-transaction [_conn]
@@ -132,11 +132,11 @@
                      :model_id model-id}))))
   api/generic-204-no-content)
 
-(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:model-id" :model #"dataset|metric|collection"]
+(api.macros/defendpoint :delete ["/metabots/:id/entities/:model/:model-id" :model #"collection"]
   "Remove an entity from this metabot's access list"
   [{:keys [id model model-id]} :- [:map
                                    [:id pos-int?]
-                                   [:model [:enum "dataset" "metric" "collection"]]
+                                   [:model [:enum "collection"]]
                                    [:model-id pos-int?]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
