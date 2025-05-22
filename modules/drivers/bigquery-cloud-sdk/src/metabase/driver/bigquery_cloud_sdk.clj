@@ -307,11 +307,10 @@
         maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
                                   (let [new-path ((fnil conj []) nfc-path (:name col))
                                         nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
-                                    (cond-> (assoc col :database-position root-database-position)
+                                    (cond-> [(assoc col :database-position root-database-position)]
                                       (and (= :type/Dictionary (:base-type col)) nested-fields)
-                                      (assoc :nested-fields (into #{}
-                                                                  (map #(maybe-add-nested-fields % new-path root-database-position))
-                                                                  nested-fields)))))
+                                      (into (mapcat #(maybe-add-nested-fields % new-path root-database-position))
+                                            nested-fields))))
         max-position-per-table (reduce
                                 (fn [accum {table-name :table_name pos :ordinal_position}]
                                   (if (> (or pos 0) (get accum table-name -1))
@@ -327,16 +326,16 @@
               (let [database-position (or (some-> database-position dec)
                                           (get max-position-per-table table-name 0))
                     [database-type base-type] (raw-type->database+base-type data-type)]
-                (cond-> [(maybe-add-nested-fields
-                          {:name column-name
-                           :table-name table-name
-                           :table-schema dataset-id
-                           :database-type database-type
-                           :base-type base-type
-                           :database-partitioned partitioned?
-                           :database-position database-position}
-                          nil
-                          database-position)]
+                (cond-> (maybe-add-nested-fields
+                         {:name column-name
+                          :table-name table-name
+                          :table-schema dataset-id
+                          :database-type database-type
+                          :base-type base-type
+                          :database-partitioned partitioned?
+                          :database-position database-position}
+                         nil
+                         database-position)
                   ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
                   (= column-name partitioned-time-field-name)
                   (conj {:name partitioned-date-field-name
