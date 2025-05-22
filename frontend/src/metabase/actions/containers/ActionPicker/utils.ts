@@ -24,9 +24,7 @@ export const sortAndGroupTableActions = (actions?: WritebackAction[]) => {
     return {};
   }
 
-  const sortedActions = _.sortBy(actions, (a: WritebackAction) =>
-    a.name.toLowerCase(),
-  );
+  const sortedActions = _.sortBy(actions, (a) => a.name.toLowerCase());
 
   const sortedGroupedActions = _.groupBy(sortedActions, "table_id");
 

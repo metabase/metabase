@@ -1,6 +1,7 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type { EditableTableActionsVizOverride } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionFormInitialValues,
@@ -15,7 +16,6 @@ import type {
 } from "metabase-types/api";
 
 import { remapRowActionMappingsToActionOverride } from "./utils";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 
 export const useTableActions = ({
   visualizationSettings,

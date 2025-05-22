@@ -9,7 +9,7 @@ import Modal from "metabase/components/Modal";
 import Search from "metabase/entities/search";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Divider, Stack, Text, Title } from "metabase/ui";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { Card, TableAction, WritebackAction } from "metabase-types/api";
 
 import {
   ActionItem,
@@ -71,8 +71,8 @@ export function ActionPicker({
             {Object.keys(actionsByTable).map((tableId) => (
               <TableActionPicker
                 key={tableId}
-                title={actionsByTable[tableId][0].table_name}
-                actions={actionsByTable[tableId]}
+                title={(actionsByTable[tableId][0] as TableAction).table_name}
+                actions={actionsByTable[tableId] as TableAction[]}
                 onClick={onClick}
                 currentAction={currentAction}
               />
@@ -202,7 +202,7 @@ function TableActionPicker({
 }: {
   onClick: (newValue: WritebackAction) => void;
   title: string;
-  actions: WritebackAction[];
+  actions: TableAction[];
   currentAction?: WritebackAction;
 }) {
   return (
@@ -223,18 +223,7 @@ function TableActionPicker({
                   role="button"
                   isSelected={currentAction?.id === action.id}
                   aria-selected={currentAction?.id === action.id}
-                  // onClick={() => onClick(action)}
-                  onClick={() =>
-                    onClick({
-                      ...action,
-                      // name: `${action.table_name} (${action.name})`,
-                      visualization_settings: {
-                        ...action.visualization_settings,
-                        // TODO: Ask if this looks better.
-                        name: `${action.table_name} (${action.name})`,
-                      },
-                    })
-                  }
+                  onClick={() => onClick(action as WritebackAction)}
                   data-testid={`table-action-item-${action.name}`}
                 >
                   <Text c="var(--mb-color-brand)">{action.name}</Text>

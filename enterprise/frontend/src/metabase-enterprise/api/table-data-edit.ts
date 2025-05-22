@@ -8,9 +8,9 @@ import type {
   TableUpdateRowsRequest,
   TableUpdateRowsResponse,
 } from "metabase-enterprise/data_editing/tables/types";
+import type { WritebackAction } from "metabase-types/api/actions";
 
 import { EnterpriseApi } from "./api";
-import { WritebackAction } from "metabase-types/api/actions";
 
 export const tableDataEditApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -63,8 +63,8 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/data-editing/tmp-action`,
       }),
-      transformResponse: (response) =>
-        (response as { actions: unknown[] })?.actions,
+      transformResponse: (response: { actions: WritebackAction[] }) =>
+        response?.actions,
     }),
   }),
 });

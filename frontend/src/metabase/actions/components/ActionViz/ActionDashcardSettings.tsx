@@ -7,6 +7,8 @@ import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
+// TODO: Remove this once we have a proper API for actions.
+// eslint-disable-next-line no-restricted-imports
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionDashboardCard,
@@ -57,8 +59,6 @@ export function ActionDashcardSettings({
   const { data: actions } = useGetActionsQuery();
 
   const setAction = (newAction: WritebackAction) => {
-    debugger;
-    console.log({ newAction });
     setActionForDashcard(dashcard, newAction);
   };
 

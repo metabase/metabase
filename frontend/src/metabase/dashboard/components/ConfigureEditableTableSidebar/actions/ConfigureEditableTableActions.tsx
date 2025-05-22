@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListActionsQuery } from "metabase/api";
 import { onUpdateDashCardVisualizationSettings } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Checkbox, Modal, Stack } from "metabase/ui";
+// TODO: Remove this once we have a proper API for actions.
+// eslint-disable-next-line no-restricted-imports
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   Dashboard,
   DashboardCard,
@@ -17,7 +19,6 @@ import type {
 import { RowActionItem } from "./RowActionItem";
 import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
 import { useRowActionEditingModal } from "./use-row-action-editing-modal";
-import { useGetActionsQuery } from "metabase-enterprise/api";
 
 const DEFAULT_ACTIONS = [
   {
@@ -80,9 +81,6 @@ export const ConfigureEditableTableActions = ({
   const addedRowActions =
     actions?.filter(({ id }) => enabledActionsMap.get(id)) || [];
 
-  console.log({ enabledActions, enabledActionsMap, addedRowActions });
-  console.log({ actions });
-
   const editingActionSetting = editingAction
     ? enabledActionsMap.get(editingAction.id)
     : undefined;
@@ -90,7 +88,6 @@ export const ConfigureEditableTableActions = ({
   const handleToggleAction = useCallback(
     ({ id, enabled }: EditableTableRowActionDisplaySettings) => {
       const newArray = [...enabledActions];
-      debugger;
 
       const actionIndex = enabledActions.findIndex(
         (action) => action.id === id,
@@ -193,8 +190,6 @@ export const ConfigureEditableTableActions = ({
     },
     [dashcard.id, dispatch, enabledActions],
   );
-
-  // console.log({ addedRowActions, dashcard });
 
   return (
     <>
