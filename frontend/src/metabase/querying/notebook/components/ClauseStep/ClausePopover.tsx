@@ -46,12 +46,13 @@ export function ClausePopover({
         offset={{ mainAxis: 4 }}
         trapFocus
         onChange={handleChange}
-        floatingStrategy="fixed"
         classNames={{ dropdown: S.dropdown }}
       >
         <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">
-          <Box className={S.dropdownContent}>{renderPopover(handleClose)}</Box>
+          <Box className={S.dropdownContent} data-testid="popover-content">
+            {renderPopover(handleClose)}
+          </Box>
         </Popover.Dropdown>
       </Popover>
     </PreventPopoverExitProvider>
