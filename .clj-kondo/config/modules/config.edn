@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           public-sharing
            queries
            query-processor
            search
@@ -101,27 +102,27 @@
            sync
            util}}
 
+  ;; TODO -- consolidate these into a `.core` API namespace.
   api
-  {:api #{metabase.api.auth
-          metabase.api.common
+  {:api #{metabase.api.common
+          metabase.api.common.internal
           metabase.api.common.validation
           metabase.api.docs
-          metabase.api.logger
+          metabase.api.init
           metabase.api.macros
           metabase.api.open-api
           metabase.api.routes.common
+          metabase.api.settings
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{analytics
            api-routes
            classloader
            config
-           embedding
            events
-           logger
            models
            premium-features
-           server
+           request
            settings
            util
            enterprise/advanced-permissions}}
@@ -142,14 +143,14 @@
    :uses :any}
 
   app-db
-  {:api  #{metabase.app-db.core
-           metabase.app-db.query
+  {:api  #{metabase.app-db.cluster-lock ; TODO FIXME
+           metabase.app-db.core
+           metabase.app-db.init
            metabase.app-db.setup}
    :uses #{auth-provider
            classloader
            config
            connection-pool
-           driver
            task
            util}}
 
@@ -213,7 +214,8 @@
            metabase.channel.render.core
            metabase.channel.settings
            metabase.channel.slack
-           metabase.channel.template.core}
+           metabase.channel.template.core
+           metabase.channel.urls}
    :uses #{analytics
            api
            app-db
@@ -322,6 +324,7 @@
 
   dashboards
   {:api  #{metabase.dashboards.api
+           metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
@@ -334,6 +337,7 @@
            channel
            collections
            config
+           embedding
            events
            lib
            lib-be
@@ -418,7 +422,8 @@
   {:api  #{metabase.embedding.api
            metabase.embedding.app-origins-sdk
            metabase.embedding.init
-           metabase.embedding.settings}
+           metabase.embedding.settings
+           metabase.embedding.validation}
    :uses #{analytics
            api
            config
@@ -539,14 +544,17 @@
    :uses #{lib
            models
            settings
-           task
            util}}
 
   logger
-  {:api  #{metabase.logger
+  {:api  #{metabase.logger.api
+           metabase.logger.core
            metabase.logger.init}
-   :uses #{classloader
-           config}}
+   :uses #{analytics
+           api
+           classloader
+           config
+           util}}
 
   login-history
   {:api #{metabase.login-history.api
@@ -727,7 +735,8 @@
   public-sharing
   {:api  #{metabase.public-sharing.api
            metabase.public-sharing.core
-           metabase.public-sharing.init}
+           metabase.public-sharing.init
+           metabase.public-sharing.validation}
    :uses #{actions
            analytics
            api
@@ -785,6 +794,8 @@
            collections
            config
            content-verification
+           dashboards
+           embedding
            events
            legacy-mbql
            lib
@@ -855,6 +866,7 @@
    :uses #{analytics
            analyze
            api
+           app-db
            appearance
            audit-app
            cache
@@ -1188,15 +1200,11 @@
 
   util
   {:api :any
-   :uses #{classloader
-           app-db
-           channel
+   :uses #{app-db
+           classloader
            config
-           dashboards
-           driver
            legacy-mbql
            lib
-           parameters
            settings
            system}}
 
@@ -1214,6 +1222,7 @@
            metabase.view-log.init}
    :uses #{analytics
            api
+           app-db
            audit-app
            events
            models

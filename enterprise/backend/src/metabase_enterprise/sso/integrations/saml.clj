@@ -36,6 +36,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
+   [metabase.channel.urls :as urls]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -46,7 +47,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.urls :as urls]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
    [toucan2.core :as t2]))

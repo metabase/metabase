@@ -16,6 +16,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
+   [metabase.channel.urls :as urls]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -32,7 +33,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))

@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor.store :as qp.store]
@@ -157,10 +157,10 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.query/isa :semantic_type :type/PK)]
+    [:not (app-db/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (mdb.query/type-keyword->descendants :type/fingerprint-unsupported)
+   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
                              (u/qualified-name :type/*))]])
 
 (def ^:dynamic *refingerprint?*
