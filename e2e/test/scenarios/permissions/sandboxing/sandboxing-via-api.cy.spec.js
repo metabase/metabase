@@ -224,7 +224,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
       );
-      H.modifyPermission("collection", 0, "Sandboxed");
+      H.modifyPermission("collection", 0, "Row and level security");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
       H.modal().findByText("Pick a user attribute").click();
@@ -933,7 +933,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.icon("eye")
         .eq(1) // No better way of doing this, unfortunately (see table above)
         .click();
-      H.popover().findByText("Sandboxed").click();
+      H.popover().findByText("Row and column security").click();
       cy.button("Change").click();
       H.modal()
         .findByText(
@@ -1260,7 +1260,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
         H.popover()
-          .findByText("Configure row and column security for this table")
+          .findByText("Edit row and column security for this table")
           .click();
         H.modal().findAllByTestId("select-button").contains("Category").click();
         H.popover()
