@@ -85,7 +85,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       H.modifyPermission(
         tableName,
         EE_DATA_ACCESS_PERMISSION_INDEX,
-        "Sandboxed",
+        "Row and column security",
       );
 
       cy.findByText("Pick a column").click();
