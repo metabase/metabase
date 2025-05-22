@@ -73,7 +73,17 @@
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
-   :metabase.lib.schema.common/non-blank-string
+   ;; this is directly copied from [[:metabase.lib.schema.common/non-blank-string]] -- unfortunately using it here would
+   ;; mean we need a dependency of `util` on `lib` -- not worth it to save ~6 duplicate LoC. At some point in the future
+   ;; maybe we can get everyone to use one or the other or better yet make more specific schemas that describe their
+   ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
+   [:and
+    {:error/message "non-blank string"
+     :json-schema   {:type "string" :minLength 1}}
+    [:string {:min 1}]
+    [:fn
+     {:error/message "non-blank string"}
+     (complement str/blank?)]]
    (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
