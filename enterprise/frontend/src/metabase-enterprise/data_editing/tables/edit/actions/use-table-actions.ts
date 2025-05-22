@@ -8,8 +8,8 @@ import type {
   DashCardVisualizationSettings,
   DatasetData,
   EditableTableRowActionDisplaySettings,
-  EditableTableRowActionId,
   RowValues,
+  TableActionId,
   VisualizationSettings,
   WritebackAction,
   WritebackActionId,
@@ -39,7 +39,7 @@ export const useTableActions = ({
     enabledActionsVizSettingsSet,
   } = useMemo(() => {
     const enabledActionsVizSettingsSet = new Map<
-      EditableTableRowActionId,
+      TableActionId,
       EditableTableRowActionDisplaySettings
     >();
 

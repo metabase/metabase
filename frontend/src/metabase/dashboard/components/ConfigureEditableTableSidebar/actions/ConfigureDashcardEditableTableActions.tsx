@@ -9,8 +9,8 @@ import type {
   Dashboard,
   DashboardCard,
   EditableTableRowActionDisplaySettings,
-  EditableTableRowActionId,
   RowActionFieldSettings,
+  TableActionId,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -33,7 +33,7 @@ const DEFAULT_ACTIONS = [
   },
 ];
 
-export const ConfigureEditableTableActions = ({
+export const ConfigureDashcardEditableTableActions = ({
   dashboard,
   dashcard,
 }: {
@@ -57,7 +57,7 @@ export const ConfigureEditableTableActions = ({
     const enabledActionsMap = enabledActions.reduce((result, item) => {
       result.set(item.id, item);
       return result;
-    }, new Map<EditableTableRowActionId, EditableTableRowActionDisplaySettings>());
+    }, new Map<TableActionId, EditableTableRowActionDisplaySettings>());
 
     return { enabledActions, enabledActionsMap };
   }, [dashcard.visualization_settings]);

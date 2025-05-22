@@ -14,6 +14,7 @@ import type {
   ParameterValueOrArray,
   RowActionFieldSettings,
   Table,
+  TableActionId,
   TableColumnOrderSetting,
   UserId,
   VirtualCardDisplay,
@@ -121,13 +122,8 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
-export type EditableTableRowActionId =
-  | WritebackActionId
-  | "row/create"
-  | "row/delete";
-
 export type EditableTableRowActionDisplaySettings = {
-  id: EditableTableRowActionId;
+  id: TableActionId;
   enabled: boolean;
   name?: string;
   parameterMappings?: RowActionFieldSettings[];
