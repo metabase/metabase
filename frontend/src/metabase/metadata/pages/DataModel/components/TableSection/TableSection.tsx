@@ -11,6 +11,7 @@ import {
   NameDescriptionInput,
   RescanTableFieldsButton,
   SortableFieldList,
+  SyncTableSchemaButton,
 } from "metabase/metadata/components";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
@@ -113,6 +114,7 @@ export const TableSection = ({ params, table }: Props) => {
           </Text>
 
           <RescanTableFieldsButton tableId={table.id} />
+          <SyncTableSchemaButton tableId={table.id} />
 
           <DiscardTableFieldValuesButton tableId={table.id} />
         </Stack>
