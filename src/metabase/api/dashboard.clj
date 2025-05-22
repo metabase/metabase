@@ -943,7 +943,10 @@
                     identity
                     ;; Generate initial ids in the BE, preparing for a time when these are first-class db records.
                     ;; FE needs to rename "id" to "action_id", and then this can be renamed to "id"
-                    (update :actual_id #(or % (u/generate-nano-id)))
+                    ;; NOTE: it's possible that the dashcard has not been saved to the database yet, and there does not
+                    ;;       have an id. this will create a cosmetic blemish for now, but will cause more serious
+                    ;;       issues when we try to make these actions first-class database records. have fun!
+                    (update :actual_id #(or % (str "dashcard:" (:id dashcard) ":" (u/generate-nano-id))))
                     ;; At the time of writing, the FE only allows the creation of row actions.
                     (update :type #(or % "grid/row-action"))
                     ;; By default actions are enabled.
