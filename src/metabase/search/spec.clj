@@ -5,7 +5,7 @@
    [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -44,7 +44,6 @@
    :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
-   :entity-id           :text
    :id                  :text
    :last-edited-at      :timestamp
    :last-editor-id      :pk
@@ -68,7 +67,6 @@
        ;; identifiers and rankers
        (into
         [:id                                                ;;  in addition to being a filter, this is a key property
-         :entity-id
          :name
          :official-collection
          :dashboard-id

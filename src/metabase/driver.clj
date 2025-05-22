@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.driver
   "Metabase Drivers handle various things we need to do with connected data warehouse databases, including things like
   introspecting their schemas and processing and running MBQL queries. Drivers must implement some or all of the
@@ -745,6 +746,9 @@
     ;; Does this driver support casting text to dates? (`date()` custom expression function)
     :expressions/date
 
+    ;; Does this driver support casting text to datetimes?? (`datetime()` custom expression function)
+    :expressions/datetime
+
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float
 
@@ -1379,3 +1383,11 @@
   :hierarchy #'hierarchy)
 
 (defmethod query-canceled? ::driver [_ _] false)
+
+(defmulti table-known-to-not-exist?
+  "Test if an exception is due to a table not existing."
+  {:added "0.54.10" :arglists '([driver ^Throwable e])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-known-to-not-exist? ::driver [_ _] false)

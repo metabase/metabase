@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase.geojson.api :as api.geojson]
    [metabase.geojson.settings :as geojson.settings]
-   [metabase.http-client :as client]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [ring.adapter.jetty :as ring-jetty])
   (:import

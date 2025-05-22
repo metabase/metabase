@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import { ProfileLink } from "../ProfileLink";
-import { SearchButton } from "../search/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
@@ -87,7 +87,7 @@ const AppBarSmall = ({
                   />
                 ) : (
                   <Flex justify="end">
-                    <SearchButton />
+                    <PLUGIN_METABOT.SearchButton />
                   </Flex>
                 ))}
             </AppBarSearchContainer>

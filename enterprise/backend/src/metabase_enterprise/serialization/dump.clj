@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
    [metabase-enterprise.serialization.serialize :as serialize]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]

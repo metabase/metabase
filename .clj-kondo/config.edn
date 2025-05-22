@@ -61,6 +61,7 @@
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
   :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
+  :metabase/namespace-name                             {:level :warning}
   :metabase/require-shape-checker                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/validate-logging                           {:level :warning}
@@ -240,8 +241,8 @@
 
   :deprecated-var
   {:exclude
-   {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
-    metabase.cmd/load                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
+   {metabase.cmd.core/dump                                                       {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
+    metabase.cmd.core/load                                                       {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
@@ -378,7 +379,6 @@
     metabase.util.markdown                    markdown
     metabase.util.password                    u.password
     metabase.util.ui-logic                    ui-logic
-    metabase.util.urls                        urls
     metabase.xrays.core                       xrays
     monger.collection                         mcoll
     ring.mock.request                         ring.mock
@@ -774,10 +774,10 @@
      toucan2.core               {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
 
     :discouraged-var
-    {medley.core/map-keys                  {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals                  {:message "Use clojure.core/update-vals"}
-     metabase.app-db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.app-db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+    {medley.core/map-keys                 {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals                 {:message "Use clojure.core/update-vals"}
+     metabase.app-db.core/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
+     metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
 
   general-qp-and-driver-test-namespaces
   {:linters

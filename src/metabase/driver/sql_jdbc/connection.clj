@@ -4,7 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -12,7 +12,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]

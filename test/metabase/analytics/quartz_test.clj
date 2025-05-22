@@ -1,7 +1,6 @@
 (ns metabase.analytics.quartz-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.analytics.quartz :as analytics.quartz]
    [metabase.test :as mt])
   (:import
@@ -104,11 +103,7 @@
             (is (= 1.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed tags))
                 "Counter should increment for successful job with correct tags")
             (is (= 0.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed {:status "failed" :job-name job-name}))
-                "Failed counter should remain 0 for the specific job")
-            (is (prometheus-test/approx= run-time (:sum (mt/metric-value system :metabase-tasks/quartz-tasks-execution-time-ms tags)))
-                "Histogram sum should record the job run time for successful job")
-            (is (= 1.0 (:count (mt/metric-value system :metabase-tasks/quartz-tasks-execution-time-ms tags)))
-                "Histogram count should increment for successful job")))
+                "Failed counter should remain 0 for the specific job")))
 
         (testing "Failed execution"
           (let [ctx (mock-job-execution-context job-name run-time)
@@ -118,15 +113,7 @@
             (is (= 1.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed success-tags))
                 "Successful counter should remain unchanged")
             (is (= 1.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed fail-tags))
-                "Counter should increment for failed job with correct tags")
-            (is (prometheus-test/approx= run-time (:sum (mt/metric-value system :metabase-tasks/quartz-tasks-execution-time-ms fail-tags)))
-                "Histogram sum should record the job run time even for failed job")
-            (is (= 1.0 (:count (mt/metric-value system :metabase-tasks/quartz-tasks-execution-time-ms fail-tags)))
-                "Histogram count should increment for failed job")
-            (is (prometheus-test/approx= run-time (:sum (mt/metric-value system :metabase-tasks/quartz-tasks-execution-time-ms success-tags)))
-                "Successful histogram sum should remain unchanged")
-            (is (= 1.0 (:count (mt/metric-value system :metabase-tasks/quartz-tasks-execution-time-ms success-tags)))
-                "Successful histogram count should remain unchanged")))))))
+                "Counter should increment for failed job with correct tags")))))))
 
 (deftest trigger-listener-test
   (testing "Trigger listener should set the correct gauge values for task states"
