@@ -96,6 +96,7 @@ export const ExportSettingsWidget = ({
           checked={isFormattingEnabled}
           onChange={() => onToggleFormatting()}
           description={formattingLabel}
+          styles={{ inner: { alignSelf: "flex-start" } }}
         />
       ) : null}
       {arePivotedExportsEnabled && canConfigurePivoting ? (
