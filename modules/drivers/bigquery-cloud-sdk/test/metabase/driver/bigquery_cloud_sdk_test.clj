@@ -335,37 +335,33 @@
       (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
             table (first (:tables database))]
         (is (=? {:name "records"} table))
-        (is (=? [{:name "id"}
-                 {:name "name"}
-                 {:name "r"
-                  :database-type "RECORD",
-                  :base-type :type/Dictionary,
-                  :database-position 2}
-                 {:name "a",
-                  :database-type "INTEGER",
-                  :base-type :type/Integer,
-                  :database-position 2,
-                  :nfc-path ["r"]}
-                 {:name "b",
-                  :database-type "STRING",
-                  :base-type :type/Text,
-                  :database-position 2,
-                  :nfc-path ["r"]}
-                 {:name "rr",
-                  :database-type "RECORD",
-                  :base-type :type/Dictionary,
-                  :database-position 2,
-                  :nfc-path ["r"]}
-                 {:name "aa",
-                  :database-type "INTEGER",
-                  :base-type :type/Integer,
-                  :database-position 2,
-                  :nfc-path ["r" "rr"]}]
-                (walk/postwalk
-                 (fn [n]
-                   (if (set? n)
-                     (sort-by :name n)
-                     n))
+        (is (=? #{{:name "id"}
+                  {:name "name"}
+                  {:name "r"
+                   :database-type "RECORD",
+                   :base-type :type/Dictionary,
+                   :database-position 2}
+                  {:name "a",
+                   :database-type "INTEGER",
+                   :base-type :type/Integer,
+                   :database-position 2,
+                   :nfc-path ["r"]}
+                  {:name "b",
+                   :database-type "STRING",
+                   :base-type :type/Text,
+                   :database-position 2,
+                   :nfc-path ["r"]}
+                  {:name "rr",
+                   :database-type "RECORD",
+                   :base-type :type/Dictionary,
+                   :database-position 2,
+                   :nfc-path ["r"]}
+                  {:name "aa",
+                   :database-type "INTEGER",
+                   :base-type :type/Integer,
+                   :database-position 2,
+                   :nfc-path ["r" "rr"]}}
+                (set
                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]}))))))))
 
 (deftest query-nested-fields-test
