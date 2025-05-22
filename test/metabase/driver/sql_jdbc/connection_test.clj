@@ -398,7 +398,7 @@
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
                       (is (= [["Polo Lounge"]]
-                             (mt/rows (mt/run-mbql-query checkins {:filter [:= $id 60] :fields [$name]})))))]
+                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
               ;; check that some data can be queried
               (check-row)
               ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
