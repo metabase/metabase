@@ -73,7 +73,6 @@ function ProfileLink({
     const showAdminSettingsItem = adminItems?.length > 0;
 
     return [
-      // Account/User settings
       {
         title: t`Account settings`,
         icon: null,
@@ -91,11 +90,9 @@ function ProfileLink({
         icon: null,
         action: () => dispatch(setOpenModal("help")),
       },
-      // Separator between Account and Help sections
       {
         separator: true,
       },
-      // Help/Support section
       helpLink.visible && {
         title: t`Help`,
         icon: null,
@@ -126,11 +123,9 @@ function ProfileLink({
         action: () => openModal("about"),
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
-      // Separator before Sign out
       {
         separator: true,
       },
-      // Sign out section
       {
         title: t`Sign out`,
         icon: null,
