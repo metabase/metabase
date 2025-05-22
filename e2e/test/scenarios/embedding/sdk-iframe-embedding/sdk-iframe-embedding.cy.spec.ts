@@ -77,7 +77,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     const frame = H.loadSdkIframeEmbedTestPage({ template: "exploration" });
 
     frame.within(() => {
-      H.assertSdkNotebookEditorUsable(frame);
+      H.assertSdkNotebookEditorUsable();
 
       // We hide the "Save" button for now. This will definitely be changed in the future.
       cy.findByRole("button", { name: "Save" }).should("not.exist");

@@ -1,10 +1,10 @@
 import { popover, tableInteractive } from "./e2e-ui-elements-helpers";
 
-export function assertSdkNotebookEditorUsable(root: Cypress.Chainable) {
+export function assertSdkNotebookEditorUsable() {
   cy.findByText("Orders").should("be.visible");
 
   // Wait until the entity picker modal is visible
-  root.contains("Pick your starting data");
+  cy.contains("Pick your starting data");
 
   popover().within(() => {
     cy.findByText("Orders").click();
