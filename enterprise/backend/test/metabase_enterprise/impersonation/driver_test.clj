@@ -134,6 +134,11 @@
   [driver]
   (tx/db-test-env-var driver :user))
 
+(doseq [driver [:clickhouse :mysql :sqlserver]]
+  (defmethod impersonation-default-user driver
+    [_driver]
+    "default_impersonation_user"))
+
 (defmethod impersonation-default-user :postgres
   [_driver]
   (tx/db-test-env-var :postgresql :user))
@@ -144,35 +149,22 @@
   ;; the role in this test (and from the snowflake console)
   "METABASECI")
 
-(defmethod impersonation-default-user :clickhouse
-  [_driver]
-  ;; need to create a new user because the user 'default' is read only
-  "metabase")
-
-(defmethod impersonation-default-user :sqlserver
-  [_driver]
-  "default_role_user")
-
-(defmethod impersonation-default-user :mysql
-  [_driver]
-  "default_mysql_user")
-
-(defmulti impersonation-details
-  {:arglists '([driver db])}
+(defmulti impersonation-default-role
+  {:arglists '([driver])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod impersonation-details :default
-  [driver db]
-  (assoc (:details db) :user (impersonation-default-user driver)))
+(defmethod impersonation-default-role :default
+  [driver]
+  nil)
 
-(defmethod impersonation-details :postgres
-  [_driver db]
-  (:details db))
+(defmethod impersonation-default-role :mysql
+  [driver]
+  "default_mysql_role")
 
-(defmethod impersonation-details :snowflake
-  [_driver db]
-  (:details db))
+(defmethod impersonation-default-role :snowflake
+  [driver]
+  "ACCOUNTADMIN")
 
 (defmulti impersonation-granting-details
   {:arglists '([driver db])}
@@ -187,6 +179,20 @@
   [_driver db]
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
+(defmulti impersonation-details
+  {:arglists '([driver db])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impersonation-details :default
+  [driver db]
+  (assoc (:details db) :user (impersonation-default-user driver)))
+
+(doseq [driver [:postgres :snowflake]]
+  (defmethod impersonation-details driver
+    [_driver db]
+    (:details db)))
+
 (deftest conn-impersonation-test-five
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
@@ -199,13 +205,13 @@
           {db-role {venues-table {:columns []}}
            full-access-role {venues-table [] checkins-table []}}
           (impersonation-default-user driver/*driver*)
-          full-access-role
+          (impersonation-default-role driver/*driver*)
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
               (sync/sync-database! database {:scan :schema})
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] full-access-role)))
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" db-role}}
                 (is (= [[100]]

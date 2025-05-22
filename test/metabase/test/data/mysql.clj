@@ -28,8 +28,12 @@
 (defmethod tx/create-and-grant-roles! :mysql
   [driver details roles user-name default-role]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [statement [(format "drop user if exists '%s'@'%%';" user-name)
-                       (format "create user '%s'@'%%' identified by '';" user-name)]]
+    (doseq [statement [(format "DROP USER IF EXISTS '%s'@'%%';" user-name)
+                       (format "CREATE USER '%s'@'%%' IDENTIFIED BY '';" user-name)
+                       (format "DROP ROLE IF EXISTS %s;" default-role)
+                       (format "CREATE ROLE %s;" default-role)
+                       (format "GRANT SELECT ON *.* TO %s;" default-role)
+                       (format "GRANT %s TO %s" default-role user-name)]]
       (jdbc/execute! spec [statement]))
     (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
     (grant-select-table-to-role! driver details roles)
