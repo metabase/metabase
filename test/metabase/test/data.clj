@@ -334,29 +334,29 @@
    (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers args)))
    (set
     (for [driver (tx.env/test-drivers)
-          :let   [driver (tx/the-driver-with-test-extensions driver)
-                  conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
-                                    (into #{} (map :name (driver/connection-properties driver))))]
-          :when  (driver/with-driver driver
-                   (let [the-db (db)]
-                     (cond-> true
-                       (seq +features)
-                       (and (every? #(driver.u/supports? driver % the-db) +features))
+          :let [driver (tx/the-driver-with-test-extensions driver)
+                conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
+                                  (into #{} (map :name (driver/connection-properties driver))))]
+          :when (driver/with-driver driver
+                  (let [the-db (delay (db))]
+                    (cond-> true
+                      +parent
+                      (and (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver +parent)))
 
-                       (seq -features)
-                       (and (not (some #(driver.u/supports? driver % the-db) -features)))
+                      -parent
+                      (and (not (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver -parent))))
 
-                       (seq +conn-props)
-                       (and (set/superset? conn-prop-names (set +conn-props)))
+                      (seq +conn-props)
+                      (and (set/superset? conn-prop-names (set +conn-props)))
 
-                       (seq -conn-props)
-                       (and (empty? (set/intersection conn-prop-names (set -conn-props))))
+                      (seq -conn-props)
+                      (and (empty? (set/intersection conn-prop-names (set -conn-props))))
 
-                       +parent
-                       (and (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver +parent)))
+                      (seq +features)
+                      (and (every? #(driver.u/supports? driver % @the-db) +features))
 
-                       -parent
-                       (and (not (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver -parent)))))))]
+                      (seq -features)
+                      (and (not (some #(driver.u/supports? driver % @the-db) -features))))))]
       driver))))
 
 (defn normal-driver-select
