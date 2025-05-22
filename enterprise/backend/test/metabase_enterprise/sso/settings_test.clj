@@ -1,7 +1,7 @@
-(ns metabase-enterprise.sso.integrations.sso-settings-test
+(ns metabase-enterprise.sso.settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.test :as mt]
    [metabase.test.util :as tu]))
 

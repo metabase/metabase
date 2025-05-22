@@ -1,4 +1,4 @@
-(ns metabase-enterprise.enhancements.integrations.google
+(ns metabase-enterprise.sso.integrations.google
   (:require
    [metabase.settings.core :as setting :refer [define-multi-setting-impl]]))
 
