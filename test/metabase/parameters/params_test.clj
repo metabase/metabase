@@ -120,7 +120,7 @@
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
                   mt/derecordize)))))
-  (testing "should ignore parameter targets with incorrect :stage-number"
+  (testing "should ignore invalid parameter mappings"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard    dashboard  {:parameters [{:id "p1" :type :number/=}
                                                                   {:id "p2" :type :number/=}
@@ -128,13 +128,10 @@
                                                                   {:id "p4" :type :number/=}
                                                                   {:id "p5" :type :string/=}
                                                                   {:id "p6" :type :string/=}
-                                                                  {:id "p7" :type :number/=}]}
-                     :model/Card          card      {:dataset_query
-                                                     {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :products)
-                                                                 :aggregation [[:count]]
-                                                                 :breakout [[:field (mt/id :products :category) nil]]}}}
+                                                                  {:id "p7" :type :number/=}
+                                                                  {:id "p8" :type :number/=}]}
+                     :model/Card          card      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                                                                             :breakout    [$category]})}
                      :model/DashboardCard _dashcard {:dashboard_id       (u/the-id dashboard)
                                                      :card_id            (u/the-id card)
                                                      :parameter_mappings [;; p1 - no :stage-number, -1 is implied, id-based ref
@@ -171,14 +168,19 @@
                                                                            :target  [:dimension
                                                                                      [:field "CATEGORY" {:base-type :type/Text}]
                                                                                      {:stage-number 2}]}]}]
-        (is (=? {"p1" [{:id (mt/id :products :id)}]
-                 "p2" [{:id (mt/id :products :id)}]
-                 "p3" [{:id (mt/id :products :id)}]
-                 "p4" [{:id (mt/id :products :id)}]
-                 "p5" [{:id (mt/id :products :category)}]}
-                (-> (t2/hydrate dashboard :param_fields)
-                    :param_fields
-                    mt/derecordize)))))))
+        (let [param-fields (-> (t2/hydrate dashboard :param_fields) :param_fields)]
+          (is (=? {"p1" [{:id (mt/id :products :id)}]
+                   "p2" [{:id (mt/id :products :id)}]
+                   "p3" [{:id (mt/id :products :id)}]
+                   "p4" [{:id (mt/id :products :id)}]
+                   "p5" [{:id (mt/id :products :category)}]}
+                  param-fields))
+          ;; invalid :stage-number
+          (is (not (contains? param-fields "p6")))
+          ;; invalid :card_id
+          (is (not (contains? param-fields "p7")))
+          ;; no mapping
+          (is (not (contains? param-fields "p8"))))))))
 
 (deftest ^:parallel card->template-tag-test
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
