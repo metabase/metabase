@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -932,8 +933,8 @@
    dashcard
    [:visualization_settings :editableTable.enabledActions]
    (partial map
-            (fn [{:keys [id] :as grid-action}]
-              (if (contains? #{"row/create" "row/delete"} id)
+            (fn [{action-id :id :as grid-action}]
+              (if (contains? #{"row/create" "row/delete"} action-id)
                 ;; Certain ids correspond not to primitive actions, but to hard-coded handlers in the FE.
                 ;; Leave them alone.
                 grid-action
@@ -944,11 +945,16 @@
                     ;; Generate initial ids in the BE, preparing for a time when these are first-class db records.
                     ;; FE needs to rename "id" to "action_id", and then this can be renamed to "id"
                     ;; NOTE: it's possible that the dashcard has not been saved to the database yet, and there does not
-                    ;;       have an id. this will create a cosmetic blemish for now, but will cause more serious
-                    ;;       issues when we try to make these actions first-class database records. have fun!
-                    (update :actual_id #(or % (str "dashcard:" (:id dashcard) ":" (u/generate-nano-id))))
-                    ;; At the time of writing, the FE only allows the creation of row actions.
-                    (update :type #(or % "grid/row-action"))
+                    ;;       have an id. in this case, we'll have to use the action execution scope to find the dashcard
+                    ;;       which contains this JSON defining the relevant grid action. that isn't great, so we'll
+                    ;;       try to heal such under-defined actions when the dashboard is next saved. once these actions
+                    ;;       are first-class database records, we won't have this problem.
+                    (update :actual_id (fn [id]
+                                         (if (or (int? id) (not (str/includes? (str id) ":unknown:")))
+                                           id
+                                           (str "dashcard:" (:id dashcard "unknown") ":" (u/generate-nano-id)))))
+                    ;; At the time of writing, the FE only allows the creation of row actions. Make this explicit.
+                    (update :type #(or % "row-action"))
                     ;; By default actions are enabled.
                     (update :enabled #(if (some? %) % true))))))))
 
