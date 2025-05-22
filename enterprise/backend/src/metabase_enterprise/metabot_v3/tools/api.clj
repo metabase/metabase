@@ -718,18 +718,16 @@
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
   [handler]
-  (with-meta
-   (fn [{:keys [headers] :as request} respond raise]
-     (if-let [{:keys [user metabot-id]} (-> headers
-                                            (get "x-metabase-session")
-                                            decode-ai-service-token)]
-       (request/with-current-user user
-         (handler (assoc request :metabot-v3/metabot-id metabot-id) respond raise))
-       (if (:metabase-user-id request)
-         ;; request relying on metabot-id are going to fail
-         (handler request respond raise)
-         (respond request/response-unauthentic))))
-   (meta handler)))
+  (fn [{:keys [headers] :as request} respond raise]
+    (if-let [{:keys [user metabot-id]} (-> headers
+                                           (get "x-metabase-session")
+                                           decode-ai-service-token)]
+      (request/with-current-user user
+        (handler (assoc request :metabot-v3/metabot-id metabot-id) respond raise))
+      (if (:metabase-user-id request)
+        ;; request relying on metabot-id are going to fail
+        (handler request respond raise)
+        (respond request/response-unauthentic)))))
 
 (def ^{:arglists '([handler])} +tool-session
   "Wrap `routes` so they may only be accessed with proper authentication credentials."
