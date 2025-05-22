@@ -73,7 +73,7 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
-    (-> (dissoc details :dbname :host :port)
+    (-> (dissoc details :dbname :host :port :clickhouse-settings)
         (merge
          {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
           :subprotocol                    "clickhouse"

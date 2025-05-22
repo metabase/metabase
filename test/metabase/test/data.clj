@@ -358,3 +358,19 @@
                        -parent
                        (and (not (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver -parent)))))))]
       driver))))
+
+(defn normal-driver-select
+  "Select drivers to be tested. Excludes timeseries drivers because they can only be tested with special datasets.
+
+   +features - a list of features that the drivers should support.
+   -features - a list of features that drivers should not support.
+
+   +conn-props - a list of connection-property names that drivers should have.
+   -conn-props - a list of connection-property names that drivers should not have.
+
+   +parent - only include drivers whose parent is this.
+   -parent - do not include drivers whose parent is this."
+  ([]
+   (driver-select {:-features [:timeseries]}))
+  ([selector]
+   (driver-select (update selector :-features (fnil conj []) :timeseries))))

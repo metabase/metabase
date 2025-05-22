@@ -634,8 +634,8 @@
           (tx/destroy-db! driver/*driver* dataset))))))
 
 (deftest describe-table-indexes-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info]})
     (do-with-temporary-dataset
      (mt/dataset-definition "indexes"
                             ["single_index"
@@ -670,8 +670,8 @@
     false))
 
 (deftest describe-table-indexes-unique-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::unique-index)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::unique-index]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-unique"
@@ -687,8 +687,8 @@
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index))))))))))
 
 (deftest describe-table-indexes-hashed-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-hashed"
@@ -712,8 +712,8 @@
   true)
 
 (deftest describe-table-indexes-clustered-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::clustered-index)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::clustered-index]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-clustered"
@@ -741,8 +741,8 @@
   true)
 
 (deftest describe-table-indexes-conditional-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::conditional-index)
-                                     (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::conditional-index]})
     (do-with-temporary-dataset
      (mt/dataset-definition
       "advanced-indexes-conditional"

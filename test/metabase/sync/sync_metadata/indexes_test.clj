@@ -67,10 +67,8 @@
         (is (seq field-ids))))))
 
 (deftest sync-all-indexes!-test
-  (mt/test-drivers
-    (set/intersection (mt/normal-drivers-with-feature :index-info)
-                      (mt/normal-drivers-with-feature :describe-indexes)
-                      (mt/sql-jdbc-drivers))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info :describe-indexes]})
     (let [ds-to-index-def (mt/dataset-definition
                            "ds_to_index"
                            ["first_table"

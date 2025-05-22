@@ -13,7 +13,6 @@
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -89,7 +88,7 @@
                  (is @destroyed?))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
     (testing "The dataSourceName c3p0 property is set properly for a database"
       (let [db         (mt/db)
             props      (sql-jdbc.conn/data-warehouse-connection-pool-properties driver/*driver* db)
@@ -103,7 +102,7 @@
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
     ;; maps -- those DataSources need to be considered equal based on the connection string/properties
-    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
       (let [details (:details (mt/db))
             spec-1  (sql-jdbc.conn/connection-details->spec driver/*driver* details)
             spec-2  (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
@@ -134,7 +133,7 @@
                 (assoc :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
     (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes\n"
       (let [db                       (mt/db)
             hash-change-called-times (atom 0)
@@ -385,7 +384,9 @@
               (check-row))))))))
 
 (deftest test-ssh-tunnel-reconnection
-  (mt/test-drivers (mt/driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
+  (mt/test-drivers (mt/driver-select {:+conn-props ["tunnel-enabled"]
+                                      :-features [:timeseries]
+                                      :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
@@ -399,7 +400,7 @@
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
                       (is (= [["Polo Lounge"]]
-                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
+                             (mt/rows (mt/run-mbql-query checkins {:filter [:= $id 60] :fields [$name]})))))]
               ;; check that some data can be queried
               (check-row)
               ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
