@@ -238,6 +238,7 @@
   (let [action      (-> (actions/select-action :id (parse-long action-id) :archived false)
                         (t2/hydrate :creator)
                         api/read-check)
+        ;; TODO flatten this into a single query
         card-id     (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
         table-id    (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
         fields      (t2/select [:model/Field :name] :table_id table-id)

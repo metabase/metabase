@@ -337,13 +337,9 @@
 ;; we will use an integer with an op (15 bits) and param (32 bits)
 ;; to start with table actions, the param is the table-id.
 (def ^:private primitive-action-kind->int
-  {:table.row/create       0
-   :table.row/update       1
-   :table.row/delete       2
-   ;; not kinds, strictly speaking. id namespaces.
-   :dashcard/card-action   3
-   :dashcard/header-action 4
-   :dashcard/row-action    5})
+  {:table.row/create 0
+   :table.row/update 1
+   :table.row/delete 2})
 
 (def ^:private int->primitive-action-kind (set/map-invert primitive-action-kind->int))
 

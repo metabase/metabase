@@ -1007,30 +1007,23 @@
                                                                         card)))
                                                                true
                                                                (map (fn [dashcard]
-                                                                      (cond
-                                                                        (pos-int? (:action_id dashcard))
+                                                                      (if-not (neg-int? (:action_id dashcard))
                                                                         (u/update-if-exists dashcard :visualization_settings dissoc :table_action)
-                                                                        (neg-int? (:action_id dashcard))
                                                                         (let [[op param] (actions/unpack-table-primitive-action-id (:action_id dashcard))]
-                                                                          (cond
-                                                                            (= "table.row" (namespace op))
-                                                                            (-> dashcard
+                                                                          (if (= "table.row" (namespace op))
+                                                                            (-> (dissoc dashcard :action_id)
                                                                                 (assoc-in [:visualization_settings :table_action]
                                                                                           {:kind     (u/qualified-name op)
-                                                                                           :table_id param})
-                                                                                (dissoc :action_id))
-                                                                            :else
-                                                                            ;; FE should not be able to create these,
-                                                                            ;; and won't handle them either,
-                                                                            ;; but return the unpacking anyway for
-                                                                            ;; easy debugging.
-                                                                            (-> dashcard
-                                                                                (assoc-in [:visualization_settings :_action]
-                                                                                          {:type  (u/qualified-name op)
-                                                                                           :param param})
-                                                                                (dissoc :action_id))))
-                                                                        :else
-                                                                        dashcard))))
+                                                                                           :table_id param}))
+                                                                            ;; should not be possible, but give it an
+                                                                            ;; easy-to-diagnose shape.
+                                                                            (do
+                                                                              (log/warn "Unsupported packed action-id on dashcard: "
+                                                                                        (pr-str {:op op :param param}))
+                                                                              (-> (dissoc dashcard :action_id)
+                                                                                  (assoc-in [:visualization_settings :unsupported_action]
+                                                                                            {:op    op
+                                                                                             :param param})))))))))
 
                    new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
