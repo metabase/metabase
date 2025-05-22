@@ -462,8 +462,8 @@
 (deftest e2e-ignore-user-supplied-gtapped-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/gtapped-table` in the query"
     (mt/with-no-data-perms-for-all-users!
-      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
-      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
       (let [bad-query {:database 1, :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT !" ::query-perms/gtapped-table 5}}
                        ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
                                                     :perms/create-queries :query-builder-and-native}}}]

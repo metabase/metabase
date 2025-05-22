@@ -1,6 +1,6 @@
 (ns metabase.permissions.user
   (:require
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.permissions.path :as permissions.path]
    [metabase.util :as u]))
 
@@ -16,10 +16,10 @@
                      ((requiring-resolve 'metabase.collections.models.collection/user->personal-collection-and-descendant-ids)
                       user-or-id))
                 ;; include the other Perms entries for any Group this User is in (1 DB Call)
-                (map :object (mdb.query/query {:select [:p.object]
-                                               :from   [[:permissions_group_membership :pgm]]
-                                               :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                                        [:permissions :p]        [:= :p.group_id :pg.id]]
-                                               :where  [:= :pgm.user_id user-id]})))))]
+                (map :object (app-db/query {:select [:p.object]
+                                            :from   [[:permissions_group_membership :pgm]]
+                                            :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                                     [:permissions :p]        [:= :p.group_id :pg.id]]
+                                            :where  [:= :pgm.user_id user-id]})))))]
     ;; Append permissions as a vector for more efficient iteration in checks that go over each permission linearly.
     (with-meta s {:as-vec (vec s)})))
