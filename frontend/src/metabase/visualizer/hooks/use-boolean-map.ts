@@ -8,20 +8,34 @@ export const useBooleanMap = () => {
 
   const toggle = useCallback(
     (key: string) => {
-      setValues((prev) => ({
-        ...prev,
-        [key]: !prev[key],
-      }));
+      setValues((prev) => {
+        if (prev[key] === true) {
+          const { [key]: _, ...rest } = prev;
+          return rest;
+        }
+
+        return {
+          ...prev,
+          [key]: true,
+        };
+      });
     },
     [setValues],
   );
 
   const setValue = useCallback(
     (key: string, value: boolean) => {
-      setValues((prev) => ({
-        ...prev,
-        [key]: value,
-      }));
+      setValues((prev) => {
+        if (value) {
+          return {
+            ...prev,
+            [key]: true,
+          };
+        }
+
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      });
     },
     [setValues],
   );

@@ -4,7 +4,7 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import undoable, { includeAction } from "redux-undo";
+import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
@@ -443,8 +443,14 @@ const visualizerSlice = createSlice({
         pieDropHandler(state, event);
       }
     },
-    removeDataSource: (state, action: PayloadAction<VisualizerDataSource>) => {
-      const source = action.payload;
+    removeDataSource: (
+      state,
+      action: PayloadAction<{
+        source: VisualizerDataSource;
+        forget?: boolean;
+      }>,
+    ) => {
+      const { source } = action.payload;
       if (source.type === "card") {
         const cardEntityId = source.sourceId;
         state.cards = state.cards.filter(
@@ -614,17 +620,20 @@ export const {
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
-  filter: includeAction([
-    initializeVisualizer.fulfilled.type,
-    addColumn.type,
-    setTitle.type,
-    updateSettings.type,
-    removeColumn.type,
-    setDisplay.type,
-    handleDrop.type,
-    removeDataSource.type,
-    addDataSource.fulfilled.type,
-  ]),
+  filter: combineFilters(
+    includeAction([
+      initializeVisualizer.fulfilled.type,
+      addColumn.type,
+      setTitle.type,
+      updateSettings.type,
+      removeColumn.type,
+      setDisplay.type,
+      handleDrop.type,
+      removeDataSource.type,
+      addDataSource.fulfilled.type,
+    ]),
+    (action) => action.payload.forget !== true,
+  ),
   undoType: undo.type,
   redoType: redo.type,
   clearHistoryType: CLEAR_HISTORY,
