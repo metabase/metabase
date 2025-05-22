@@ -10,6 +10,7 @@ import {
   Flex,
   Icon,
   Loader,
+  Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -124,7 +125,12 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           className={`${S.SwapAffordance} ${isSwapAffordanceVisible ? S.visible : ""}`}
         >
           <Center className={S.SwapAffordanceIcon}>
-            <Icon name="sync" />
+            <Stack align="center" gap="xs" p="xs">
+              <Icon name="sync" />
+              <Text c="white" size="sm">
+                {t`Replace`}
+              </Text>
+            </Stack>
           </Center>
         </Center>
       </Box>
