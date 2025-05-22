@@ -1053,12 +1053,12 @@
     [_driver _feature _database]
     false))
 
-(doseq [driver [:postgres]]
-  (defmethod driver/database-supports? [driver :test/column-level-impersonation]
+(doseq [driver [:postgres :sqlserver :mysql]]
+  (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     true))
 
-(doseq [driver [:redshift :sqlserver]]
-  (defmethod driver/database-supports? [driver :test/column-level-impersonation]
+(doseq [driver [:redshift]]
+  (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))

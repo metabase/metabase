@@ -236,7 +236,7 @@
                        {:aggregation [[:count]]})))))))))))
 
 (deftest conn-impersonation-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :test/column-level-impersonation)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/column-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             products-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "products")
@@ -252,6 +252,8 @@
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
               (sync/sync-database! database {:scan :schema})
+              (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]
@@ -292,6 +294,8 @@
                                                    :details (impersonation-details driver/*driver* (mt/db))}]
             (mt/with-db database
               (sync/sync-database! database {:scan :schema})
+              (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" role-a}}
                 (is (= [[1 3]]

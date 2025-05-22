@@ -2,6 +2,7 @@
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -30,6 +31,19 @@
                            (format "CREATE ROLE %s;" role-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
 
+(defn grant-select-table-to-role!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name perms] table-perms]
+          (let [columns (:columns perms)
+                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
+                grant-stmt (if (not= select-cols "")
+                             (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name))]
+            (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
+
 (defn grant-role-to-user!
   [driver details roles db-user]
   (let [db-user (sql.tx/qualify-and-quote driver db-user)
@@ -54,7 +68,7 @@
                        (format "EXEC sp_addrolemember 'db_owner', %s;" user-name)]]
       (jdbc/execute! spec [statement])))
   (drop-if-exists-and-create-role! driver details roles)
-  (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
+  (grant-select-table-to-role! driver details roles)
   (grant-role-to-user! driver details roles user-name))
 
 (defmethod tx/drop-roles! :sqlserver
