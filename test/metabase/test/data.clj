@@ -49,6 +49,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -327,10 +328,13 @@
    -conn-props - a list of connection-property names that drivers should not have.
 
    +parent - only include drivers whose parent is this.
-   -parent - do not include drivers whose parent is this."
+   -parent - do not include drivers whose parent is this.
+
+   +fns - only include drivers that returns truthy for each fn `(fn driver)`.
+   -fns - exclude drivers that returns truthy for any fn `(fn driver)`."
   ([]
    (driver-select {}))
-  ([{:keys [+features -features +conn-props -conn-props +parent -parent] :as args}]
+  ([{:keys [+features -features -fns +fns +conn-props -conn-props +parent -parent] :as args}]
    (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers args)))
    (set
     (for [driver (tx.env/test-drivers)
@@ -345,6 +349,12 @@
 
                       -parent
                       (and (not (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver -parent))))
+
+                      (seq +fns)
+                      (and (every? (fn [f] (f driver)) +fns))
+
+                      (seq -fns)
+                      (and (not (some (fn [f] (f driver)) -fns)))
 
                       (seq +conn-props)
                       (and (set/superset? conn-prop-names (set +conn-props)))
@@ -369,8 +379,11 @@
    -conn-props - a list of connection-property names that drivers should not have.
 
    +parent - only include drivers whose parent is this.
-   -parent - do not include drivers whose parent is this."
+   -parent - do not include drivers whose parent is this.
+
+   +fns - only include drivers that returns truthy for each fn `(f driver)`.
+   -fns - exclude drivers that returns truthy for any fn `(f driver)`."
   ([]
-   (driver-select {:-features [:timeseries]}))
+   (normal-driver-select {}))
   ([selector]
-   (driver-select (update selector :-features (fnil conj []) :timeseries))))
+   (driver-select (update selector :-fns (fnil conj []) #(contains? qp.test-util/abnormal-drivers %)))))

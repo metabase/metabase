@@ -736,10 +736,6 @@
     ;; Does this driver support sandboxing with saved questions?
     :saved-question-sandboxing
 
-    ;; Is this database event-based and different enough that it doesn't support our database definitions
-    ;; Currently only druid, druid-jdbc
-    :timeseries
-
     ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 

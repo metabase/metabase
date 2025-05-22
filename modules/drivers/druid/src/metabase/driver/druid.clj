@@ -17,8 +17,7 @@
                               :expression-literals            true
                               :schemas                        false
                               :set-timezone                   true
-                              :temporal/requires-default-unit true
-                              :timeseries                     true}]
+                              :temporal/requires-default-unit true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid
