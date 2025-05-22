@@ -79,8 +79,7 @@
       ;; open
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
-                 custom-migrations.util/*allow-temp-scheduling* false
-                 ]
+                 custom-migrations.util/*allow-temp-scheduling* false]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db
