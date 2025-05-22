@@ -331,30 +331,22 @@
                           (-> (lib/query mp query) lib/append-stage)]))]
     (cond
       model-id
-      (if-let [model (metabot-v3.tools.u/get-card model-id)]
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id model))]
-          [(metabot-v3.tools.u/card-field-id-prefix model-id)
-           (lib/query mp (lib.metadata/card mp model-id))])
+      (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
+        [(metabot-v3.tools.u/card-field-id-prefix model-id) model-query]
         (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
                                                                         :data-source data-source})))
 
       table-id
       (let [table-id (cond-> table-id
                        (string? table-id) parse-long)]
-        (if-let [table (metabot-v3.tools.u/get-table table-id :db_id)]
-          (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
-            [(metabot-v3.tools.u/table-field-id-prefix table-id)
-             (lib/query mp (lib.metadata/table mp table-id))])
+        (if-let [table-query (metabot-v3.tools.u/table-query table-id)]
+          [(metabot-v3.tools.u/table-field-id-prefix table-id) table-query]
           (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
                                                                           :data-source data-source}))))
 
       report-id
-      (if-let [card (metabot-v3.tools.u/get-card report-id)]
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
-          [(metabot-v3.tools.u/card-field-id-prefix report-id)
-           (lib/query mp (cond-> (lib.metadata/card mp report-id)
-                           ;; pivot questions have strange result-columns so we work with the dataset-query
-                           (#{:question} (:type card)) (get :dataset-query)))])
+      (if-let [query (metabot-v3.tools.u/card-query report-id)]
+        [(metabot-v3.tools.u/card-field-id-prefix report-id) query]
         (throw (ex-info (str "No report found with report_id " report-id) {:agent-error? true
                                                                            :data-source data-source})))
 

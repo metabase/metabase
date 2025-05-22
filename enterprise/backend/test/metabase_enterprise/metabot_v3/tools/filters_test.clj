@@ -287,10 +287,10 @@
 
 (deftest ^:parallel filter-records-table-test
   (testing "User has to have execution rights, otherwise the table should be invisible."
-    (is (= {:output (str "No table found with table_id " (mt/id :orders))}
-           (metabot-v3.tools.filters/filter-records
-            {:data-source {:table-id (mt/id :orders)}
-             :filters []}))))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                          (metabot-v3.tools.filters/filter-records
+                           {:data-source {:table-id (mt/id :orders)}
+                            :filters []}))))
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           table-id (mt/id :orders)
@@ -334,9 +334,9 @@
                              :operation :number-greater-than
                              :value 3}]})))))
     (testing "Missing table results in an error."
-      (is (= {:output (str "No table found with table_id " Integer/MAX_VALUE)}
-             (metabot-v3.tools.filters/filter-records
-              {:data-source {:table-id Integer/MAX_VALUE}}))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
+                            (metabot-v3.tools.filters/filter-records
+                             {:data-source {:table-id Integer/MAX_VALUE}}))))))
 
 (deftest ^:parallel filter-records-model-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
