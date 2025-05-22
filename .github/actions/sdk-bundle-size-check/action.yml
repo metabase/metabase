@@ -46,19 +46,10 @@ runs:
         sum_js_file_sizes() {
           dir="$1"
           total=0
-          files=$(find "$dir" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) 2>/dev/null)
 
-          # Detect OS for stat option
-          if stat --version >/dev/null 2>&1; then
-            # GNU stat (Linux)
-            size_cmd="stat -c '%s'"
-          else
-            # BSD stat (macOS)
-            size_cmd="stat -f '%z'"
-          fi
-
-          for f in $files; do
-            [ -f "$f" ] && size=$(eval $size_cmd "\"$f\"") && total=$((total + size))
+          for file in $(find "$dir" -type f -name '*.js' 2>/dev/null); do
+            size=$(stat -c %s "$file")
+            total=$((total + size))
           done
 
           echo "$total"
@@ -92,3 +83,4 @@ runs:
         else
           echo "size_increased=false" >> $GITHUB_OUTPUT
         fi
+        echo "size_increase_percent=$percent" >> $GITHUB_OUTPUT

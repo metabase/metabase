@@ -67,6 +67,8 @@ jobs:
       needs.build-base-ref.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
+    env:
+      MAX_BUNDLE_SIZE_DIFF_PERCENT: 5
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/sdk-bundle-size-check
@@ -76,6 +78,7 @@ jobs:
           current-dist-path: temp/embedding-sdk-current
           base-ref-artifact-name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
           base-ref-dist-path: temp/embedding-sdk-base-ref
+          max-bundle-size-diff-percent: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}
 
       - name: Comment on PR if bundle size has increased
         uses: ./.github/actions/notify-pull-request
@@ -85,7 +88,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "⚠️ Embedding SDK bundle size increased by more than ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%."
+          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_increase_percent }}% (limit: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}%)."
           include-log: false
 
   embedding-sdk-cli-snippets-type-check:
