@@ -7,11 +7,7 @@ import { getCanAccessOnboardingPage } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
 
-import {
-  PaddedSidebarLink,
-  SidebarHeading,
-  SidebarSection,
-} from "../MainNavbar.styled";
+import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
@@ -29,7 +25,7 @@ export const GettingStartedSection = ({
   const isOnboardingPageSelected = nonEntityItem?.url === ONBOARDING_URL;
 
   return (
-    <SidebarSection aria-selected={opened} role="tab">
+    <div aria-selected={opened} role="tab">
       <Group
         align="center"
         gap="sm"
@@ -57,6 +53,6 @@ export const GettingStartedSection = ({
         )}
         {children}
       </Collapse>
-    </SidebarSection>
+    </div>
   );
 };

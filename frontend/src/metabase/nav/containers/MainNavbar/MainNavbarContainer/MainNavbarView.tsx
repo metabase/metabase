@@ -169,18 +169,22 @@ export function MainNavbarView({
           </SidebarSection>
 
           {isNewInstance && (
-            <GettingStartedSection nonEntityItem={nonEntityItem}>
-              {examplesCollection && (
-                <Tree
-                  data={[examplesCollection]}
-                  selectedId={collectionItem?.id}
-                  onSelect={onItemSelect}
-                  TreeNode={SidebarCollectionLink}
-                  role="tree"
-                  aria-label="examples-collection-tree"
-                />
-              )}
-            </GettingStartedSection>
+            <SidebarSection>
+              <ErrorBoundary>
+                <GettingStartedSection nonEntityItem={nonEntityItem}>
+                  {examplesCollection && (
+                    <Tree
+                      data={[examplesCollection]}
+                      selectedId={collectionItem?.id}
+                      onSelect={onItemSelect}
+                      TreeNode={SidebarCollectionLink}
+                      role="tree"
+                      aria-label="examples-collection-tree"
+                    />
+                  )}
+                </GettingStartedSection>
+              </ErrorBoundary>
+            </SidebarSection>
           )}
 
           {bookmarks.length > 0 && (
