@@ -116,7 +116,6 @@
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{analytics
-           api-routes
            classloader
            config
            events
