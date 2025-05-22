@@ -11,7 +11,13 @@ export const ProcessingStep = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const dispatch = useDispatch();
-  const { database, selectedTables, setProcessingStatus } = useEmbeddingSetup();
+  const {
+    database,
+    selectedTables,
+    processingStatus,
+    setProcessingStatus,
+    setCreatedDashboardIds,
+  } = useEmbeddingSetup();
 
   useEffect(() => {
     const processTables = async () => {
@@ -56,6 +62,7 @@ export const ProcessingStep = () => {
 
         // Create x-ray dashboards for each model
         setProcessingStatus("Creating dashboards...");
+        const dashboardIds = [];
         for (const model of models) {
           // Get the x-ray dashboard layout
           const xrayResponse = await fetch(
@@ -79,8 +86,13 @@ export const ProcessingStep = () => {
             throw new Error(`Failed to save dashboard for ${model.name}`);
           }
 
+          const savedDashboard = await saveResponse.json();
+          dashboardIds.push(savedDashboard.id);
           setCurrentStep((prev) => prev + 1);
         }
+
+        // Store the created dashboard IDs
+        setCreatedDashboardIds(dashboardIds);
 
         // Move to final step
         dispatch(push("/setup/embedding/final"));
@@ -90,7 +102,13 @@ export const ProcessingStep = () => {
     };
 
     processTables();
-  }, [database?.id, selectedTables, dispatch, setProcessingStatus]);
+  }, [
+    database?.id,
+    selectedTables,
+    dispatch,
+    setProcessingStatus,
+    setCreatedDashboardIds,
+  ]);
 
   if (error) {
     return (
@@ -111,7 +129,7 @@ export const ProcessingStep = () => {
           <Loader size="lg" />
           <Text mt="md">{t`${progress.toFixed(0)}% Complete`}</Text>
         </Box>
-        <Text>{t`We're creating models and dashboards for your selected tables. This may take a few minutes.`}</Text>
+        <Text ta="center">{t`${processingStatus}`}</Text>
       </Stack>
     </Box>
   );

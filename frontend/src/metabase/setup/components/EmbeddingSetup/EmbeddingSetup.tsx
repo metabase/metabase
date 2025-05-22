@@ -5,13 +5,6 @@ import { setupEmbeddingSettings } from "metabase/setup/actions";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Table } from "metabase-types/api";
 
-export const STEPS = {
-  WELCOME: "welcome",
-  DATA_CONNECTION: "data-connection",
-  PROCESSING: "processing",
-  FINAL: "final",
-} as const;
-
 type EmbeddingSetupProps = {
   children: React.ReactNode;
 };
@@ -21,6 +14,7 @@ export const EmbeddingSetup = ({ children }: EmbeddingSetupProps) => {
   const [processingStatus, setProcessingStatus] = useState("");
   const [sandboxingColumn, setSandboxingColumn] = useState<Table | null>(null);
   const [error, setError] = useState("");
+  const [selectedTables, setSelectedTables] = useState<Table[]>([]);
 
   const dispatch = useDispatch();
 
@@ -85,6 +79,11 @@ export const EmbeddingSetup = ({ children }: EmbeddingSetupProps) => {
     );
   };
 
+  const handleTableSelection = (tables: Table[]) => {
+    setSelectedTables(tables);
+    setProcessingStatus("Creating models and dashboards...");
+  };
+
   const sharedProps = {
     database,
     processingStatus,
@@ -96,7 +95,11 @@ export const EmbeddingSetup = ({ children }: EmbeddingSetupProps) => {
   return (
     <Box p="xl" maw={800} mx="auto">
       {children &&
-        React.cloneElement(children as React.ReactElement, sharedProps)}
+        React.cloneElement(children as React.ReactElement, {
+          ...sharedProps,
+          selectedTables,
+          onTableSelection: handleTableSelection,
+        })}
     </Box>
   );
 };
