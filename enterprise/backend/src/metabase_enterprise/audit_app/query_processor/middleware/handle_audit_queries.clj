@@ -40,7 +40,7 @@
   (:require
    [clojure.data :as data]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase.api.common.validation :as validation]
+   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]

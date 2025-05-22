@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.common.validation :as validation]
    [metabase.driver.h2 :as h2]
+   [metabase.permissions.validation :as validation]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting-test :as models.setting-test]
    [metabase.test :as mt]

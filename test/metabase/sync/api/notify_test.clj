@@ -3,10 +3,10 @@
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
@@ -26,7 +26,7 @@
                (client/client :post 403 "notify/db/100")))))
     (testing "endpoint requires authentication"
       (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev
-        (is (= (get request/response-forbidden :body)
+        (is (= (get api.response/response-forbidden :body)
                (client/client :post 403 "notify/db/100")))))))
 
 (def ^:private api-headers {:headers {"x-metabase-apikey" "test-api-key"

@@ -4,8 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.api.open-api :as open-api]
+   [metabase.api.response :as api.response]
    [metabase.api.settings :as api.settings]
-   [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-trs deferred-tru]]
    [metabase.util.log :as log]))
 
@@ -75,13 +75,13 @@
           (respond key-not-set-response)
 
           (not static-metabase-api-key)
-          (respond request/response-forbidden)
+          (respond api.response/response-forbidden)
 
           (= (api.settings/api-key) static-metabase-api-key)
           (handler request respond raise)
 
           :else
-          (respond request/response-forbidden))))
+          (respond api.response/response-forbidden))))
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if `request` has no associated `:metabase-user-id`."
@@ -89,7 +89,7 @@
   (fn [{:keys [metabase-user-id] :as request} respond raise]
     (if metabase-user-id
       (handler request respond raise)
-      (respond request/response-unauthentic))))
+      (respond api.response/response-unauthentic))))
 
 (def ^{:arglists '([handler])} +public-exceptions
   "Wrap `routes` so any Exception except 404 thrown is just returned as a generic 400, to prevent details from leaking

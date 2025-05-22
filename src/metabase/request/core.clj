@@ -51,6 +51,4 @@
   geocode-ip-addresses
   https?
   ip-address
-  public?
-  response-forbidden
-  response-unauthentic])
+  public?])

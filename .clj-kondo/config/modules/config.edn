@@ -44,6 +44,7 @@
            lib
            model-persistence
            models
+           permissions
            public-sharing
            queries
            query-processor
@@ -82,6 +83,7 @@
            internal-stats
            lib-be
            models
+           permissions
            premium-features
            session
            settings
@@ -106,25 +108,20 @@
   api
   {:api #{metabase.api.common
           metabase.api.common.internal
-          metabase.api.common.validation
           metabase.api.docs
           metabase.api.init
           metabase.api.macros
           metabase.api.open-api
+          metabase.api.response
           metabase.api.routes.common
           metabase.api.settings
           metabase.api.util
           metabase.api.util.handlers}
-   :uses #{analytics
-           classloader
-           config
+   :uses #{config
            events
            models
-           premium-features
-           request
            settings
-           util
-           enterprise/advanced-permissions}}
+           util}}
 
   api-keys
   {:api  #{metabase.api-keys.api
@@ -192,6 +189,7 @@
            app-db
            config
            driver
+           permissions
            premium-features
            settings
            util}}
@@ -466,6 +464,7 @@
   {:api  #{metabase.geojson.api
            metabase.geojson.init}
    :uses #{api
+           permissions
            settings
            util}}
 
@@ -560,6 +559,7 @@
            api
            classloader
            config
+           permissions
            util}}
 
   login-history
@@ -583,6 +583,7 @@
            events
            lib
            models
+           permissions
            premium-features
            settings
            queries
@@ -685,7 +686,8 @@
            metabase.permissions.models.permissions-group
            metabase.permissions.models.query.permissions
            metabase.permissions.path
-           metabase.permissions.util}
+           metabase.permissions.util
+           metabase.permissions.validation}
    :uses #{api
            app-db
            audit-app
@@ -698,7 +700,8 @@
            query-processor
            request
            settings
-           util}}
+           util
+           enterprise/advanced-permissions}}
 
   pivot
   {:api #{metabase.pivot.core}
@@ -904,7 +907,7 @@
            metabase.request.init}
    :uses #{api
            config
-           permissions
+           permissions ; FIXME
            session
            settings
            users
@@ -1029,6 +1032,7 @@
            config
            events
            models
+           permissions
            premium-features
            util
            enterprise/advanced-permissions}}
@@ -1521,6 +1525,7 @@
            lib
            lib-be
            models
+           permissions
            premium-features
            pulse
            query-processor

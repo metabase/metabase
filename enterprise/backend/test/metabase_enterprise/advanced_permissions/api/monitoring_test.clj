@@ -79,12 +79,12 @@
               (get-bug-report-detail user 200))))))))
 
 (deftest connection-pool-info-permissions-test
-  (testing "GET /api/util/diagnostic_info/connection_pool_info"
+  (testing "GET /api/bug-reporting/connection-pool-details"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
       (letfn [(get-db-connection-info [user status]
                 (testing (format "get db connection info with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "util/diagnostic_info/connection_pool_info")))]
+                  (mt/user-http-request user :get status "bug-reporting/connection-pool-details")))]
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
             (get-db-connection-info user 403)

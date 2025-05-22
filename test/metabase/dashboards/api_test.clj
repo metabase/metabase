@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -34,7 +35,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
-   [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -180,7 +180,7 @@
 ;; authentication test on every single individual endpoint
 
 (deftest ^:parallel auth-test
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "dashboard")
          (client/client :put 401 "dashboard/13"))))
 

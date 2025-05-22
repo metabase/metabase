@@ -11,8 +11,8 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
-   [metabase-enterprise.metabot-v3.reactions]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
+    :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -20,6 +20,7 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -727,7 +728,7 @@
       (if (:metabase-user-id request)
         ;; request relying on metabot-id are going to fail
         (handler request respond raise)
-        (respond request/response-unauthentic)))))
+        (respond api.response/response-unauthentic)))))
 
 (def ^{:arglists '([handler])} +tool-session
   "Wrap `routes` so they may only be accessed with proper authentication credentials."

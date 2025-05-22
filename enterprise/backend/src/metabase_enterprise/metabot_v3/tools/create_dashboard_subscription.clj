@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
+   [metabase.permissions.validation :as validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.util :as u]
