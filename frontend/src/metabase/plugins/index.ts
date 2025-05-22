@@ -777,6 +777,7 @@ export const PLUGIN_DATA_EDITING = {
     className?: string;
     visualizationSettings?: VisualizationSettings;
     question: Question;
+    isEditing?: boolean;
   }>,
 };
 
