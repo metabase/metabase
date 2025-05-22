@@ -106,6 +106,10 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.em,
+
+      // Defaults to `theme.fn.themeColor("background")`
+      // We cannot use CSS variables like `var(--mb-color-background)` as the cell color must be a hex value.
+      backgroundColor: "background",
     },
   },
   pivotTable: {

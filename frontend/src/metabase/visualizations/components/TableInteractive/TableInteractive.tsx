@@ -445,7 +445,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             value,
             rowIndex,
             col.name,
-          ) ?? tableTheme?.cell?.backgroundColor,
+          ) ??
+          (tableTheme?.cell?.backgroundColor &&
+            theme.fn.themeColor(tableTheme?.cell?.backgroundColor)),
       );
 
       const formatter = columnFormatters[columnIndex];
