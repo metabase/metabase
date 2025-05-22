@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { PropsWithChildren } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { getCanAccessOnboardingPage } from "metabase/home/selectors";
@@ -39,8 +39,7 @@ export const GettingStartedSection = ({
         mb="sm"
         className={CS.cursorPointer}
       >
-        <SidebarHeading>{c("A verb, shown in the sidebar")
-          .t`Getting Started`}</SidebarHeading>
+        <SidebarHeading>{t`Getting Started`}</SidebarHeading>
         <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
       </Group>
 
