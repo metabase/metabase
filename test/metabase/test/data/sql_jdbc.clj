@@ -84,14 +84,18 @@
   (grant-select-table-to-role! driver details roles)
   (grant-role-to-user! driver details roles user-name))
 
-(defmethod tx/drop-roles! :sql-jdbc/test-extensions
-  [driver details roles _user-name]
+(defn drop-roles!
+  [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (jdbc/execute! spec
                        [(format "DROP ROLE IF EXISTS %s;" role-name)]
                        {:transaction? false})))))
+
+(defmethod tx/drop-roles! :sql-jdbc/test-extensions
+  [driver details roles _user-name]
+  (drop-roles! driver details roles))
 
 (defmethod tx/create-db! :sql-jdbc/test-extensions
   [& args]

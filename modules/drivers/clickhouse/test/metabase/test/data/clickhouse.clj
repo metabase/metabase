@@ -229,67 +229,34 @@
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
 
-(defn drop-if-exists-and-create-role!
-  [driver details roles user-name]
-  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
-    (jdbc/execute! spec
-                   [(format "DROP USER IF EXISTS %s" user-name)]
-                   {:transaction? false})
-    (jdbc/execute! spec
-                   [(format "CREATE USER IF NOT EXISTS %s NOT IDENTIFIED;" user-name)]
-                   {:transaction? false})
-    (doseq [[role-name _] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (jdbc/execute! spec
-                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
-                       {:transaction? false})
-        (jdbc/execute! spec
-                       [(format "CREATE ROLE %s;" role-name)]
-                       {:transaction? false})))))
-
 (defn grant-select-table-to-role!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
+          (jdbc/execute! spec [(format "GRANT SELECT ON %s TO %s" table-name role-name)] {:transaction? false})
           (when (:rls perms)
             (let [policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
                                        (sql.qp/format-honeysql driver (:rls perms))))]
-              (doseq [statement [(format "CREATE ROW POLICY role_policy_%s ON %s AS RESTRICTIVE FOR SELECT USING %s TO %s"
-                                         (mt/random-name) table-name policy-cond role-name)]]
-                (jdbc/execute! spec [statement] {:transaction? false}))))
-          (let [columns (:columns perms)
-                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
-                grant-stmt (if (seq columns)
-                             (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
-                             (format "GRANT SELECT ON %s TO %s" table-name role-name))]
-            (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
-
-(defn grant-role-to-user!
-  [driver details roles user-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)
-            user-name (sql.tx/qualify-and-quote driver user-name)]
-        (jdbc/execute! spec
-                       [(format "GRANT %s TO %s" role-name user-name)]
-                       {:transaction? false})))))
+              (jdbc/execute! spec [(format "CREATE ROW POLICY role_policy_%s ON %s AS RESTRICTIVE FOR SELECT USING %s TO %s"
+                                           (mt/random-name) table-name policy-cond role-name)] {:transaction? false}))))))))
 
 (defmethod tx/create-and-grant-roles! :clickhouse
   [driver details roles user-name _default-role]
-  (drop-if-exists-and-create-role! driver details roles user-name)
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    ;; create a new user because the 'default' user is read only
+    (doseq [statement [(format "DROP USER IF EXISTS %s" user-name)
+                       (format "CREATE USER IF NOT EXISTS %s NOT IDENTIFIED;" user-name)]]
+      (jdbc/execute! spec [statement] {:transaction? false})))
+  (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
   (grant-select-table-to-role! driver details roles)
-  (grant-role-to-user! driver details roles user-name))
+  (sql-jdbc.tx/grant-role-to-user! driver details roles user-name))
 
 (defmethod tx/drop-roles! :clickhouse
   [driver details roles user-name]
+  (sql-jdbc.tx/drop-roles! driver details roles)
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (jdbc/execute! spec
                    [(format "DROP USER IF EXISTS %s;" user-name)]
-                   {:transaction? false})
-    (doseq [[role-name _] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (jdbc/execute! spec
-                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
-                       {:transaction? false})))))
+                   {:transaction? false})))

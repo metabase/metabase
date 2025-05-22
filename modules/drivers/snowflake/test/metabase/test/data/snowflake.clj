@@ -234,21 +234,21 @@
 (defn drop-if-exists-and-create-role!
   [driver details roles]
   (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
-      (jdbc/execute! spec
-                     [(format "DROP ROLE IF EXISTS %s;" role-name)]
-                     {:transaction? false})
-      (jdbc/execute! spec
-                     [(format "CREATE ROLE %s;" role-name)]
-                     {:transaction? false}))))
+    (doseq [[role-name _table-perms] roles]
+      (doseq [statement [(format "DROP ROLE IF EXISTS %s;" role-name)
+                         (format "CREATE ROLE %s;" role-name)]]
+        (jdbc/execute! spec [statement] {:transaction? false})))))
 
 (defn grant-select-table-to-role!
   [driver details roles]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        wh-name (tx/db-test-env-var :snowflake :warehouse)
+        db-name (sql.tx/qualify-and-quote :snowflake "test-data")
+        schema-name (format "%s.\"PUBLIC\"" db-name)]
     (doseq [[role-name table-perms] roles]
-      (doseq [statement [(format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" (tx/db-test-env-var :snowflake :warehouse) role-name)
-                         (format "GRANT USAGE ON DATABASE %s TO ROLE %s" (sql.tx/qualify-and-quote :snowflake "test-data") role-name)
-                         (format "GRANT USAGE ON SCHEMA %s.\"PUBLIC\" TO ROLE %s" (sql.tx/qualify-and-quote :snowflake "test-data") role-name)]]
+      (doseq [statement [(format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" wh-name role-name)
+                         (format "GRANT USAGE ON DATABASE %s TO ROLE %s" db-name role-name)
+                         (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" schema-name role-name)]]
         (jdbc/execute! spec [statement] {:transaction? false}))
       (doseq [[table-name _perms] table-perms]
         (jdbc/execute! spec
@@ -258,7 +258,7 @@
 (defn grant-role-to-user!
   [driver details roles user-name]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
+    (doseq [[role-name _table-perms] roles]
       (jdbc/execute! spec
                      [(format "GRANT ROLE %s TO USER \"%s\"" role-name user-name)]
                      {:transaction? false}))))
@@ -272,7 +272,7 @@
 (defmethod tx/drop-roles! :snowflake
   [driver details roles _user-name]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
+    (doseq [[role-name _table-perms] roles]
       (jdbc/execute! spec
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))

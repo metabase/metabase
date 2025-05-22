@@ -292,7 +292,7 @@
 (defn drop-if-exists-and-create-role!
   [driver details roles]
   (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
+    (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [statement [(format "DROP USER IF EXISTS %s;" role-name)
                            (format "CREATE USER %s WITH PASSWORD '%s';" role-name (:password details))]]
@@ -305,13 +305,9 @@
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
-          (let [columns (:columns perms)
-                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))]
-            (doseq [statement [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)
-                               (if (seq columns)
-                                 (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
-                                 (format "GRANT SELECT ON %s TO %s" table-name role-name))]]
-              (jdbc/execute! spec [statement] {:transaction? false}))))))))
+          (doseq [statement [(format "GRANT USAGE ON SCHEMA %s TO %s" schema role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name)]]
+            (jdbc/execute! spec [statement] {:transaction? false})))))))
 
 (defmethod tx/create-and-grant-roles! :redshift
   [driver details roles _user-name _default-role]
@@ -322,7 +318,7 @@
   [driver details roles _user-name]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
-    (doseq [[role-name _] roles]
+    (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %s FROM %s" schema role-name)
                            (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)

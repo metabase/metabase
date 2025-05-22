@@ -144,7 +144,7 @@
   ;; the role in this test (and from the snowflake console)
   "METABASECI")
 
-;; Need to use a new user for clickhouse because the default user is read only
+;; Need to use a new user for clickhouse because the 'default' user is read only
 ;; Need to use a non-superuser for mysql and sqlserver
 (doseq [driver [:clickhouse :mysql :sqlserver]]
   (defmethod impersonation-default-user driver
