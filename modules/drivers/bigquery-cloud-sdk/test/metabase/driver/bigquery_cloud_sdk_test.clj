@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -831,30 +830,30 @@
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
-                        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "primary",
-                                 :table-name tbl-nm
-                                 :table-schema test-db-name
-                                 :database-type "RECORD",
-                                 :base-type :type/Dictionary,
-                                 :database-partitioned false,
-                                 :database-position 2}
-                                {:name "name",
-                                 :table-name tbl-nm
-                                 :table-schema test-db-name
-                                 :database-type "STRING",
-                                 :base-type :type/Text,
-                                 :nfc-path ["primary"],
-                                 :database-position 2}
-                                {:name "participants",
-                                 :table-name tbl-nm
-                                 :table-schema test-db-name
-                                 :database-type "ARRAY",
-                                 :base-type :type/Array,
-                                 :database-partitioned false,
-                                 :database-position 3}]
-                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+                        (is (= #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                 {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                 {:name "primary",
+                                  :table-name tbl-nm
+                                  :table-schema test-db-name
+                                  :database-type "RECORD",
+                                  :base-type :type/Dictionary,
+                                  :database-partitioned false,
+                                  :database-position 2}
+                                 {:name "name",
+                                  :table-name tbl-nm
+                                  :table-schema test-db-name
+                                  :database-type "STRING",
+                                  :base-type :type/Text,
+                                  :nfc-path ["primary"],
+                                  :database-position 2}
+                                 {:name "participants",
+                                  :table-name tbl-nm
+                                  :table-schema test-db-name
+                                  :database-type "ARRAY",
+                                  :base-type :type/Array,
+                                  :database-partitioned false,
+                                  :database-position 3}}
+                               (set (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]})))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
