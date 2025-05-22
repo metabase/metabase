@@ -224,7 +224,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
       );
-      H.modifyPermission("collection", 0, "Row and level security");
+      H.modifyPermission("collection", 0, "Row and column security");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
       H.modal().findByText("Pick a user attribute").click();
@@ -1259,9 +1259,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
-        H.popover()
-          .findByText("Edit row and column security for this table")
-          .click();
+        H.popover().findByText("Edit row and column security").click();
         H.modal().findAllByTestId("select-button").contains("Category").click();
         H.popover()
           .findByLabelText("Category")
