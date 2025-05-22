@@ -8,7 +8,6 @@ import {
 
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: process.env.NEXT_PUBLIC_METABASE_INSTANCE_URL,
-  authProviderUri: process.env.NEXT_PUBLIC_METABASE_AUTH_PROVIDER_URI,
 });
 
 export const EmbeddingSdkProvider = ({

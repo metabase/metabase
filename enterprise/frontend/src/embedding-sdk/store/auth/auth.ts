@@ -122,8 +122,8 @@ export const refreshTokenAsync = createAsyncThunk(
     try {
       const session = await getRefreshToken(url, customGetRefreshToken);
       const source = customGetRefreshToken
-        ? '"fetchRequestToken"'
-        : "authProviderUri endpoint";
+        ? '"fetchRequestToken" function'
+        : "JWT server endpoint";
 
       if (!session || typeof session !== "object") {
         if (customGetRefreshToken) {
@@ -133,7 +133,7 @@ export const refreshTokenAsync = createAsyncThunk(
         }
 
         throw new Error(
-          `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
+          `Your ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
       }
       if ("status" in session && session.status !== "ok") {

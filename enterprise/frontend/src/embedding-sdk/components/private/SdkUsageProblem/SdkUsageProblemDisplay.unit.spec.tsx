@@ -10,7 +10,7 @@ import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import {
   createMockApiKeyConfig,
-  createMockAuthProviderUriConfig,
+  createMockSdkConfig,
 } from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
@@ -64,7 +64,7 @@ const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 describe("SdkUsageProblemDisplay", () => {
   it("does not show an error when JWT is provided with a license", () => {
     setup({
-      authConfig: createMockAuthProviderUriConfig(),
+      authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: true,
     });
 
@@ -75,7 +75,7 @@ describe("SdkUsageProblemDisplay", () => {
 
   it("shows an error when JWT is used without a license", async () => {
     setup({
-      authConfig: createMockAuthProviderUriConfig(),
+      authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: false,
     });
 
@@ -185,7 +185,6 @@ describe("SdkUsageProblemDisplay", () => {
       authConfig: {
         apiKey: "TEST_API_KEY",
         metabaseInstanceUrl: "http://localhost",
-        authProviderUri: "http://TEST_URI/sso/metabase",
       },
     });
 
@@ -213,7 +212,7 @@ describe("SdkUsageProblemDisplay", () => {
   // CORS is disabled on /api/session/properties.
   it("shows an error when Embedding SDK is disabled on localhost", async () => {
     setup({
-      authConfig: createMockAuthProviderUriConfig(),
+      authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: true,
       isEmbeddingSdkEnabled: false,
     });
@@ -240,7 +239,7 @@ describe("SdkUsageProblemDisplay", () => {
 
   it("shows a warning when development mode is enabled", async () => {
     setup({
-      authConfig: createMockAuthProviderUriConfig(),
+      authConfig: createMockSdkConfig(),
       isEmbeddingSdkEnabled: true,
       isDevelopmentMode: true,
     });

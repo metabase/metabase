@@ -27,7 +27,6 @@ const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  authProviderUri: AUTH_PROVIDER_URL,
 });
 
 const MOCK_CARD = createMockCard({ id: 1 });
@@ -41,8 +40,8 @@ const setup = async (config: MetabaseAuthConfig) => {
   await waitForLoaderToBeRemoved();
 };
 
-const mockAuthUriProviderResponse = (response: any) =>
-  fetchMock.get(AUTH_PROVIDER_URL, response);
+const mockUserJwtBackendResponse = (response: any) =>
+  fetchMock.get(`${METABASE_INSTANCE_URL}/auth/sso`, response);
 const getLastAuthProviderApiCall = () => fetchMock.lastCall(AUTH_PROVIDER_URL);
 
 let consoleErrorSpy: jest.SpyInstance;
@@ -96,8 +95,8 @@ describe("SDK auth errors", () => {
   });
 
   describe("Auth Provider URI authentication", () => {
-    it("should show a message when the auth provider didn't return a json object", async () => {
-      mockAuthUriProviderResponse({
+    it("should show a message when the user's JWT server endpoint didn't return a json object", async () => {
+      mockUserJwtBackendResponse({
         body: "not a json object",
       });
 
@@ -111,7 +110,7 @@ describe("SDK auth errors", () => {
     });
 
     it("should show a message when the auth provider returns the id as an object", async () => {
-      mockAuthUriProviderResponse({
+      mockUserJwtBackendResponse({
         body: { id: { id: "123" } },
       });
 
@@ -139,7 +138,7 @@ describe("SDK auth errors", () => {
     });
 
     it("should show a useful message if the authProviderUri returned an error code", async () => {
-      mockAuthUriProviderResponse(
+      mockUserJwtBackendResponse(
         JSON.stringify({ status: "error-embedding-sdk-disabled" }),
       );
 

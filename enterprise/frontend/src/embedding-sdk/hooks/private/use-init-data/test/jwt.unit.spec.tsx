@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 
 import {
   type MetabaseConfigProps,
@@ -64,7 +64,7 @@ describe("useInitData - JWT authentication", () => {
       jwt: "TEST_JWT_TOKEN",
     }));
 
-    const authConfig = createMockAuthProviderUriConfig({
+    const authConfig = createMockSdkConfig({
       fetchRequestToken: newFetchRequestToken,
     });
 

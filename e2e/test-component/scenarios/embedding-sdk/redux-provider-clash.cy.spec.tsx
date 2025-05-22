@@ -31,7 +31,6 @@ describe("scenarios > embedding-sdk > the redux provider context should not clas
         </div>
         <MetabaseProvider
           authConfig={{
-            authProviderUri: AUTH_PROVIDER_URL,
             metabaseInstanceUrl: METABASE_INSTANCE_URL,
           }}
         >

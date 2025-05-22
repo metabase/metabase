@@ -33,7 +33,6 @@ function setup({
   cy.mount(
     <MetabaseProvider
       authConfig={{
-        authProviderUri: AUTH_PROVIDER_URL,
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
       }}
       locale={locale}
