@@ -455,5 +455,62 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.chartLegend().should("not.exist");
       });
     });
+
+    it("should show only enabled series in the visualizer based on the card's viz settings", () => {
+      const visualization_settings = {
+        ...ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.visualization_settings,
+        "graph.series_order": [
+          {
+            name: "Gadget",
+            enabled: false,
+            color: "#F9D45C",
+            key: "Gadget",
+          },
+          {
+            key: "Doohickey",
+            color: "#88BF4D",
+            enabled: true,
+            name: "Doohickey",
+          },
+          {
+            key: "Gizmo",
+            color: "#A989C5",
+            enabled: true,
+            name: "Gizmo",
+          },
+          {
+            name: "Widget",
+            enabled: false,
+            color: "#F2A86F",
+            key: "Widget",
+          },
+        ],
+        "graph.series_order_dimension": "CATEGORY",
+      };
+
+      H.createDashboardWithQuestions({
+        questions: [
+          {
+            ...ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
+            visualization_settings,
+          },
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.getDashboardCard(0)
+        .findAllByTestId("legend-item")
+        .should("have.length", 2);
+
+      H.editDashboard();
+      H.showDashcardVisualizerModal(0);
+
+      H.modal().within(() => {
+        cy.findAllByTestId("legend-item").should("have.length", 2);
+        cy.button("Settings").click();
+        cy.findAllByTestId("series-name-input").should("have.length", 2);
+      });
+    });
   });
 });
