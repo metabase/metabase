@@ -13,6 +13,15 @@ export function getColumnGroupIcon(
   if (groupInfo.isImplicitlyJoinable) {
     return "connections";
   }
+  if (groupInfo.isQuestion) {
+    return "question";
+  }
+  if (groupInfo.isModel) {
+    return "model";
+  }
+  if (groupInfo.isMetric) {
+    return "metric";
+  }
   if (groupInfo.isMainGroup) {
     return "sum";
   }
