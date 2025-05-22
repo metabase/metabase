@@ -9,16 +9,13 @@ type UseIsTruncatedProps = {
 
 /** To avoid false positives, the text may exceed the container horizontally by
  * this many pixels without triggering ellipsification */
-const HORIZONTAL_TOLERANCE = 0.01;
+const HORIZONTAL_OVERFLOW_TOLERANCE = 0.01;
 
 /** To avoid false positives, the text may exceed the container vertically by
- * this many pixels without triggering ellipsification. This can be large
- * because vertical overflows always involve the text wrapping, so the overflow
- * will be a number of pixels equal to the line-height. */
-const VERTICAL_TOLERANCE = 5;
-
-// Doohickey not getting ellipsified but instead getting roughly truncated in
-// this branch. On master it gets an ellipsis but no tooltip.
+ * this many pixels without triggering ellipsification. When vertical overflow
+ * occurs, it happens because the text wraps to the next line. So the vertical
+ * overflow tolerance can be larger than the horizontal one. */
+const VERTICAL_OVERFLOW_TOLERANCE = 5;
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
@@ -61,15 +58,13 @@ const getIsTruncated = (element: Element): boolean => {
   const verticalOverflow = textRect.height - elementRect.height;
   const horizOverflow = textRect.width - elementRect.width;
 
-  console.log("@mazrf9y8", "element.innerHTML", element.innerHTML);
-
   // NOTE: To debug truncation, you can add something here like:
-  if (element.innerHTML.match(/Doohickey/g)) {
-    console.log(horizOverflow);
-  }
+  // if (element.innerHTML.match(/Doohickey/g)) {
+  //   console.log(horizOverflow);
+  // }
 
-  const isTextTooTall = verticalOverflow > VERTICAL_TOLERANCE;
-  const isTextTooWide = horizOverflow > HORIZONTAL_TOLERANCE;
+  const isTextTooTall = verticalOverflow > VERTICAL_OVERFLOW_TOLERANCE;
+  const isTextTooWide = horizOverflow > HORIZONTAL_OVERFLOW_TOLERANCE;
   return isTextTooTall || isTextTooWide;
 };
 
