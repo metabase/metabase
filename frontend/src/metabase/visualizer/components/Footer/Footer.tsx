@@ -1,8 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import {
   getDatasets,
   getIsLoading,
@@ -11,6 +11,7 @@ import {
 import { setDisplay } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationDisplay } from "metabase-types/api";
 
+import { TabularPreviewModal } from "../TabularPreviewModal";
 import { VisualizationPicker } from "../VisualizationPicker";
 import { useVisualizerUi } from "../VisualizerUiContext";
 
@@ -18,6 +19,8 @@ import S from "./Footer.module.css";
 
 export function Footer({ className }: { className?: string }) {
   const { setVizSettingsSidebarOpen } = useVisualizerUi();
+  const [isTabularPreviewOpen, setTabularPreviewOpen] = useState(false);
+
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
   const datasets = useSelector(getDatasets);
@@ -32,16 +35,29 @@ export function Footer({ className }: { className?: string }) {
     [dispatch],
   );
   return (
-    <Flex className={`${S.footer} ${className}`} px="xl" py="md">
+    <Flex className={`${S.footer} ${className}`} px="xl" py="md" gap={12}>
       {display && !isLoading && (
         <VisualizationPicker value={display} onChange={handleChangeDisplay} />
       )}
+
+      {/* Spacer */}
+      <Box flex={1} />
+
+      <Button
+        leftSection={<Icon name="table" />}
+        onClick={() => setTabularPreviewOpen(true)}
+      >{t`View as table`}</Button>
+
       {hasDatasets && (
         <Button
-          ml="auto"
+          leftSection={<Icon name="gear" />}
           onClick={() => setVizSettingsSidebarOpen((isOpen) => !isOpen)}
         >{t`Settings`}</Button>
       )}
+      <TabularPreviewModal
+        opened={isTabularPreviewOpen}
+        onClose={() => setTabularPreviewOpen(false)}
+      />
     </Flex>
   );
 }

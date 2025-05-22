@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { useSelector } from "metabase/lib/redux";
@@ -35,10 +34,13 @@ export function VisualizationPicker({
       });
   }, [series]);
 
-  const [sensibleOptions, nonsensibleOptions] = useMemo(
-    () => _.partition(vizOptions, (option) => option.isSensible),
-    [vizOptions],
-  );
+  // Let's not use the ellipsis menu for now (VIZ-1024)
+  // const [sensibleOptions, nonsensibleOptions] = useMemo(
+  //   () => _.partition(vizOptions, (option) => option.isSensible),
+  //   [vizOptions],
+  // );
+  const sensibleOptions = vizOptions;
+  const nonsensibleOptions: typeof vizOptions = [];
 
   const selectedOption = useMemo(
     () => vizOptions.find((option) => option.value === value),
