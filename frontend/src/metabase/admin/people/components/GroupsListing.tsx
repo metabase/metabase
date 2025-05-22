@@ -18,6 +18,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+import { regexpEscape } from "metabase/lib/string";
 import {
   Box,
   Button,
@@ -32,6 +33,7 @@ import type { ApiKey, GroupInfo } from "metabase-types/api";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
+import { SearchFilter } from "./SearchFilter";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -481,42 +483,63 @@ export const GroupsListing = (props: GroupsListingProps) => {
     }
   };
 
-  const { groups, isAdmin } = props;
+  updateSearchInputValue(value: string) {
+    this.setState({ searchInputValue: value });
+  }
 
-  return (
-    <AdminPaneLayout
-      title={t`Groups`}
-      buttonText={isAdmin ? t`Create a group` : undefined}
-      buttonAction={
-        isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
-      }
-      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
-    >
-      <GroupsTable
-        groups={groups}
-        text={text}
-        showAddGroupRow={isShowingAddGroupRow}
-        groupBeingEdited={groupBeingEdited}
-        onAddGroupCanceled={onAddGroupCanceled}
-        onAddGroupCreateButtonClicked={onAddGroupCreateButtonClicked}
-        onAddGroupTextChanged={setText}
-        onEditGroupClicked={onEditGroupClicked}
-        onEditGroupTextChange={onEditGroupTextChange}
-        onEditGroupCancelClicked={onEditGroupCancelClicked}
-        onEditGroupDoneClicked={onEditGroupDoneClicked}
-        onDeleteGroupClicked={(group) => onDeleteGroupClicked(groups, group)}
-      />
-      <ConfirmModal
-        onClose={onDismissAlert}
-        onConfirm={onDismissAlert}
-        opened={!!alertMessage}
-        message={alertMessage}
-        closeButtonText={null}
-        withCloseButton={false}
-        confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "brand" }}
-        data-testid="alert-modal"
-      />
-    </AdminPaneLayout>
-  );
-};
+  render() {
+    const { groups, isAdmin } = this.props;
+    const { alertMessage, searchInputValue } = this.state;
+
+    const groupNameFilter = new RegExp(
+      `\\b${regexpEscape(searchInputValue)}`,
+      "i",
+    );
+    const filteredGroups = groups.filter((g) => groupNameFilter.test(g.name));
+
+    return (
+      <AdminPaneLayout
+        title={t`Groups`}
+        titleActions={
+          isAdmin && !this.state.showAddGroupRow ? (
+            <Button
+              variant="filled"
+              onClick={this.onCreateAGroupButtonClicked.bind(this)}
+            >{t`Create a group`}</Button>
+          ) : null
+        }
+        description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
+        headerContent={
+          <SearchFilter
+            value={this.state.searchInputValue}
+            onChange={this.updateSearchInputValue.bind(this)}
+            placeholder={t`Find a group`}
+          />
+        }
+      >
+        <GroupsTable
+          groups={filteredGroups}
+          text={this.state.text}
+          showAddGroupRow={this.state.showAddGroupRow}
+          groupBeingEdited={this.state.groupBeingEdited}
+          onAddGroupCanceled={this.onAddGroupCanceled.bind(this)}
+          onAddGroupCreateButtonClicked={this.onAddGroupCreateButtonClicked.bind(
+            this,
+          )}
+          onAddGroupTextChanged={this.onAddGroupTextChanged.bind(this)}
+          onEditGroupClicked={this.onEditGroupClicked.bind(this)}
+          onEditGroupTextChange={this.onEditGroupTextChange.bind(this)}
+          onEditGroupCancelClicked={this.onEditGroupCancelClicked.bind(this)}
+          onEditGroupDoneClicked={this.onEditGroupDoneClicked.bind(this)}
+          onDeleteGroupClicked={(group) =>
+            this.onDeleteGroupClicked(groups, group)
+          }
+        />
+        <Alert
+          message={alertMessage}
+          onClose={() => this.setState({ alertMessage: null })}
+        />
+      </AdminPaneLayout>
+    );
+  }
+}

@@ -3,6 +3,7 @@ import type {
   FieldId,
   SchemaId,
   TableId,
+  Tenant,
   UserId,
 } from "metabase-types/api";
 
@@ -28,6 +29,27 @@ export function deactivateUser(userId: UserId) {
 
 export function reactivateUser(userId: UserId) {
   return `/admin/people/${userId}/reactivate`;
+}
+
+// TODO: move to EE urls
+export function viewTenants() {
+  return `/admin/tenants`;
+}
+
+export function newTenant() {
+  return `/admin/tenants/new`;
+}
+
+export function editTenant(tenantId: Tenant["id"]) {
+  return `/admin/tenants/${tenantId}/edit`;
+}
+
+export function deactivateTenant(tenantId: Tenant["id"]) {
+  return `/admin/tenants/${tenantId}/deactivate`;
+}
+
+export function reactivateTenant(tenantId: Tenant["id"]) {
+  return `/admin/tenants/${tenantId}/reactivate`;
 }
 
 export function editUserStrategy() {
