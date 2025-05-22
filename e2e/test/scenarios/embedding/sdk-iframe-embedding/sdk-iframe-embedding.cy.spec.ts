@@ -143,4 +143,44 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
         });
       });
   });
+
+  it("does not allow updating instanceUrl via embed.updateSettings", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+    });
+
+    cy.wait("@getCardQuery");
+
+    cy.log("1. get the original iframe source");
+    cy.get("iframe")
+      .should("be.visible")
+      .invoke("attr", "src")
+      .as("originalSrc");
+
+    cy.log("2. try to update instanceUrl via embed.updateSettings");
+    frame.window().then((win) => {
+      try {
+        // @ts-expect-error -- this is within the iframe
+        win.embed.updateSettings({
+          instanceUrl: "http://some-other-site.com",
+        });
+      } catch (err: any) {
+        cy.wrap(err.message).as("updateSettingsError");
+      }
+    });
+
+    cy.log("3. expect an error to be thrown");
+    cy.get("@updateSettingsError").should(
+      "eq",
+      "instanceUrl cannot be updated after the embed is created",
+    );
+
+    cy.log("4. wait a moment to allow any iframe reloads (should not happen)");
+    cy.wait(200);
+
+    cy.log("5. assert that the iframe source has not changed");
+    cy.get("@originalSrc").then((originalSrc) => {
+      cy.get("iframe").invoke("attr", "src").should("eq", originalSrc);
+    });
+  });
 });
