@@ -153,6 +153,10 @@
   [_driver]
   "default_role_user")
 
+(defmethod impersonation-default-user :mysql
+  [_driver]
+  "default_mysql_user")
+
 (defmulti impersonation-details
   {:arglists '([driver db])}
   tx/dispatch-on-driver-with-test-extensions
@@ -183,7 +187,7 @@
   [_driver db]
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
-(deftest conn-impersonation-test-four
+(deftest conn-impersonation-test-five
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")

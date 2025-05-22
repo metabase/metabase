@@ -156,7 +156,7 @@
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (doseq [[table-name perms] table-perms]
+        (doseq [[table-name _perms] table-perms]
           (jdbc/execute! spec
                          [(format "ALTER TABLE %s DISABLE ROW LEVEL SECURITY" table-name)]
                          {:transaction? false}))
