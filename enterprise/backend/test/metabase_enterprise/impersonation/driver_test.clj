@@ -131,15 +131,22 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod impersonation-default-user :default
+  [driver]
+  (tx/db-test-env-var driver :user))
+
+(defmethod impersonation-default-user :postgres
   [_driver]
-  "metabase")
+  (tx/db-test-env-var :postgresql :user))
 
 (defmethod impersonation-default-user :snowflake
   [_driver]
+  ;; the env var is 'METABASE CI' but it needs to be 'METABASECI' when setting
+  ;; the role in this test (and from the snowflake console)
   "METABASECI")
 
 (defmethod impersonation-default-user :clickhouse
   [_driver]
+  ;; need to create a new user because the user 'default' is read only
   "metabase")
 
 (defmulti impersonation-details
@@ -172,7 +179,7 @@
   [_driver db]
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
-(deftest conn-impersonation-test-zero
+(deftest conn-impersonation-test-one
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -181,7 +188,6 @@
             full-access-role (u/lower-case-en (mt/random-name))]
         (tx/with-temp-roles! driver/*driver*
           (impersonation-granting-details driver/*driver* (mt/db))
-          ;; todo: Swap hardcoded role strings with roles named with similar convention to databases/tables (for snowflake and redshift)
           {db-role {venues-table {:columns []}}
            full-access-role {venues-table [] checkins-table []}}
           (impersonation-default-user driver/*driver*)
