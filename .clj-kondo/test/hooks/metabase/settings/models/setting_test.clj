@@ -1,4 +1,4 @@
-(ns hooks.metabase.models.setting-test
+(ns hooks.metabase.settings.models.setting-test
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.test :refer :all]
@@ -28,7 +28,7 @@
               :active-users-count
               (defn active-users-count "Docstring." [])
               (defn active-users-count! "Docstring." [_value-or-nil]))
-           (-> {:node node}
+           (-> {:node node, :ns 'hooks.metabase.settings.models.setting-test}
                hooks.metabase.settings.models.setting/defsetting
                :node
                hooks/sexpr)))))

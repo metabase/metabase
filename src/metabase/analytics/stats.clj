@@ -519,7 +519,7 @@
         (t2/count :model/User {:where [:and
                                        [:<=
                                         :date_joined
-                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                        (t/plus (t/offset-date-time (analytics.settings/instance-creation))
                                                 (t/days activation-days))]
                                        (mi/exclude-internal-content-hsql :model/User)]
                                :limit (inc num-users)})]

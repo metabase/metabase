@@ -78,14 +78,14 @@
   (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
 
 (defn- -instance-creation []
-  (when-not (t2/exists? :model/Setting :key "instance-creation")
+  (when-not (setting/get-value-of-type :timestamp :instance-creation)
     ;; For instances that were started before this setting was added (in 0.41.3), use the creation
     ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
     ;; is first read.
     (let [value (or (first-user-creation) (t/offset-date-time))]
       (setting/set-value-of-type! :timestamp :instance-creation value)
-      ((requiring-resolve 'metabase.analytics.snowplow/track-event!) :snowplow/account {:event :new_instance_created} nil))
-    (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
+      ((requiring-resolve 'metabase.analytics.snowplow/track-event!) :snowplow/account {:event :new_instance_created} nil)))
+  (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
 
 (defsetting instance-creation
   (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
