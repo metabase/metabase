@@ -14,7 +14,7 @@ import {
 import type {
   Field,
   VisualizationDisplay,
-  VisualizerCardDataSource,
+  VisualizerDataSource,
 } from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
@@ -23,13 +23,13 @@ import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
-  item: VisualizerCardDataSource & {
+  item: VisualizerDataSource & {
     display: VisualizationDisplay | null;
     result_metadata?: Field[];
   };
-  onSwap?: (item: VisualizerCardDataSource) => void;
-  onToggle?: (item: VisualizerCardDataSource) => void;
-  onRemove?: (item: VisualizerCardDataSource) => void;
+  onSwap?: (item: VisualizerDataSource) => void;
+  onToggle?: (item: VisualizerDataSource) => void;
+  onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
 }
 

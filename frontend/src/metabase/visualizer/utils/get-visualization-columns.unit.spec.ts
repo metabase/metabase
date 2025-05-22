@@ -25,7 +25,7 @@ describe("getVisualizationColumns", () => {
 
       const dataSource: VisualizerDataSource = {
         id: "card:1",
-        sourceId: `entity_1`,
+        sourceId: 1,
         name: "Source 1",
         type: "card",
       };
@@ -111,7 +111,7 @@ describe("getVisualizationColumns", () => {
 
       const dataSource: VisualizerDataSource = {
         id: "card:1",
-        sourceId: `entity_1`,
+        sourceId: 1,
         name: "Source 1",
         type: "card",
       };
@@ -183,7 +183,7 @@ describe("getVisualizationColumns", () => {
 
       const dataSource: VisualizerDataSource = {
         id: "card:1",
-        sourceId: `entity_1`,
+        sourceId: 1,
         name: "Source 1",
         type: "card",
       };

@@ -116,7 +116,6 @@
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{analytics
-           api-routes
            classloader
            config
            events
@@ -170,6 +169,13 @@
   auth-provider
   {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
+
+  batch-processing
+  {:api  #{metabase.batch-processing.core
+           metabase.batch-processing.init}
+   :uses #{app-db
+           settings
+           util}}
 
   bookmarks
   {:api  #{metabase.bookmarks.api}
@@ -678,6 +684,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.models.query.permissions
+           metabase.permissions.path
            metabase.permissions.util}
    :uses #{api
            app-db
@@ -690,7 +697,6 @@
            premium-features
            query-processor
            request
-           server
            settings
            util}}
 
@@ -869,6 +875,7 @@
            app-db
            appearance
            audit-app
+           batch-processing
            cache
            config
            driver
@@ -989,7 +996,6 @@
            session
            settings
            system
-           users
            util
            enterprise/sso}}
 
@@ -1180,8 +1186,8 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
-           app-db
            appearance
+           batch-processing
            channel
            collections
            config
@@ -1200,8 +1206,7 @@
 
   util
   {:api :any
-   :uses #{app-db
-           classloader
+   :uses #{classloader
            config
            legacy-mbql
            lib
@@ -1224,6 +1229,7 @@
            api
            app-db
            audit-app
+           batch-processing
            events
            models
            permissions
@@ -1335,13 +1341,13 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
-           enterprise/impersonation
            lib
            permissions
            premium-features
            query-processor
            util
-           warehouses}}
+           warehouses
+           enterprise/impersonation}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}

@@ -319,6 +319,20 @@ const CONVERSION = defineClauses(
         },
       ],
     },
+    datetime: {
+      displayName: "datetime",
+      type: "datetime",
+      requiresFeature: "expressions/datetime",
+      description: () => t`Converts a datetime string to a datetime.`,
+      args: () => [
+        {
+          name: t`value`,
+          type: "expression",
+          description: t`The string to convert to a datetime.`,
+          example: "2025-03-20 12:45:04.55",
+        },
+      ],
+    },
     float: {
       displayName: "float",
       type: "number",

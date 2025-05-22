@@ -101,7 +101,7 @@ export function getInitialStateForCardDataSource(
     settings: {},
   };
 
-  const dataSource = createDataSource("card", card.entity_id, card.name);
+  const dataSource = createDataSource("card", card.id, card.name);
 
   if (card.display === "scalar") {
     const numericColumn = originalColumns.find((col) =>

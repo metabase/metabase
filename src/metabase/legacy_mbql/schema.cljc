@@ -434,7 +434,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -715,8 +715,22 @@
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
   string [:or StringExpressionArg DateTimeExpressionArg])
 
+(def ^:private LiteralDatetimeModeString
+  [:enum {:error/message "datetime mode string"
+          :decode/normalize lib.schema.common/normalize-keyword-lower}
+   :iso
+   :simple
+   :unixmilliseconds
+   :unixseconds
+   :unixmicroseconds
+   :unixnanoseconds])
+
+(defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
+  value  StringExpressionArg ;; normally a string, number, or bytes
+  mode   (optional LiteralDatetimeModeString))
+
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 

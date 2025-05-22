@@ -325,9 +325,6 @@
   [(prometheus/counter :metabase-tasks/quartz-tasks-executed
                        {:description "How many tasks this metabase instance has executed by job-name and status"
                         :labels [:status :job-name]})
-   (prometheus/histogram :metabase-tasks/quartz-tasks-execution-time-ms
-                         {:description "How long a task took to execute in ms by job-name and status"
-                          :labels [:status :job-name]})
    (prometheus/gauge :metabase-tasks/quartz-tasks-states
                      {:description "How many tasks are in a given state in the entire quartz cluster"
                       :labels [:state]})])
