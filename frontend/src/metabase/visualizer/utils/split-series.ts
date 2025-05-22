@@ -4,7 +4,6 @@ import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type {
   RawSeries,
-  VisualizationSettings,
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
@@ -12,21 +11,16 @@ import { isDataSourceNameRef } from "./data-source";
 
 export function shouldSplitVisualizerSeries(
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>,
-  settings: VisualizationSettings,
 ) {
-  const dimensions = settings["graph.dimensions"] ?? [];
-  const dimensionDataSources = _.uniq(
-    dimensions
-      .map((columnName) => {
-        const mapping = columnValuesMapping[columnName];
-        if (!mapping || isDataSourceNameRef(mapping[0])) {
-          return;
-        }
-        return mapping[0]?.sourceId;
-      })
+  const mappings = Object.values(columnValuesMapping).flat();
+  const uniqueDataSources = _.uniq(
+    mappings
+      .map((mapping) =>
+        !isDataSourceNameRef(mapping) ? mapping.sourceId : null,
+      )
       .filter(isNotNull),
   );
-  return dimensionDataSources.length > 1;
+  return uniqueDataSources.length > 1;
 }
 
 export function splitVisualizerSeries(

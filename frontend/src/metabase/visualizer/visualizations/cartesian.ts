@@ -323,7 +323,7 @@ export function removeColumnFromCartesianChart(
   const isMultiseries =
     state.display &&
     isCartesianChart(state.display) &&
-    shouldSplitVisualizerSeries(state.columnValuesMapping, state.settings);
+    shouldSplitVisualizerSeries(state.columnValuesMapping);
 
   if (state.settings["graph.dimensions"]) {
     const dimensions = state.settings["graph.dimensions"];

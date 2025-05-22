@@ -113,15 +113,11 @@ export const getUsedDataSources = createSelector(
 );
 
 export const getIsMultiseriesCartesianChart = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerColumnValuesMapping,
-    getVisualizerRawSettings,
-  ],
-  (display, columnValuesMapping, settings) =>
+  [getVisualizationType, getVisualizerColumnValuesMapping],
+  (display, columnValuesMapping) =>
     display &&
     isCartesianChart(display) &&
-    shouldSplitVisualizerSeries(columnValuesMapping, settings),
+    shouldSplitVisualizerSeries(columnValuesMapping),
 );
 
 const getVisualizerDatasetData = createSelector(
