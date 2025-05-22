@@ -3,8 +3,8 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
@@ -64,6 +64,41 @@
   :getter     #'-report-timezone-long
   :doc        false)
 
+;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
+(defsetting db-connection-timeout-ms
+  "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
+  successfully connect after this many milliseconds. By default, this is 10 seconds."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
+  ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
+  ;;
+  ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
+  :default    (if config/is-test?
+                3000
+                10000)
+  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
+  In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the
+  connections via tunnels have more overhead than connections without.")
+
+;; This is normally set via the env var `MB_DB_QUERY_TIMEOUT_MINUTES`
+(defsetting db-query-timeout-minutes
+  "By default, this is 20 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
+  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
+  ;; code
+  :default    (if config/is-prod?
+                20
+                3)
+  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.")
+
 (defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
   :visibility :internal
@@ -72,13 +107,19 @@
   :audit      :getter
   :doc "Change this to a higher value if you notice that regular usage consumes all or close to all connections.
 
-When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
+  When all connections are in use then Metabase will be slower to return results for queries, since it would have to
+  wait for an available connection before processing the next query in the queue.
 
-For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
+  For setting the maximum,
+  see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
+
+(def ^:dynamic ^Long *query-timeout-ms*
+  "Maximum amount of time query is allowed to run, in ms."
+  (u/minutes->ms (db-query-timeout-minutes)))
 
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-      (long (/ qp.pipeline/*query-timeout-ms* 1000))))
+      (long (/ *query-timeout-ms* 1000))))
 
 (defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
@@ -117,41 +158,6 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   :export?    true
   :type       :integer
   :default    50000)
-
-;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
-(defsetting db-connection-timeout-ms
-  "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
-  successfully connect after this many milliseconds. By default, this is 10 seconds."
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
-  ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
-  ;;
-  ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
-  :default    (if config/is-test?
-                3000
-                10000)
-  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
-        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
-        as the connections via tunnels have more overhead than connections without.")
-
-;; This is normally set via the env var `MB_DB_QUERY_TIMEOUT_MINUTES`
-(defsetting db-query-timeout-minutes
-  "By default, this is 20 minutes."
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
-  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
-  ;; code
-  :default    (if config/is-prod?
-                20
-                3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
-  Please be aware that other services (like Nginx) may still drop long-running queries.")
 
 (defsetting engines
   "Available database engines"

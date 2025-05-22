@@ -2,9 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [metabase.driver :as driver]
-   [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
 
@@ -110,7 +108,3 @@
           ;; duplicate messages don't matter
           (some-> *canceled-chan* (a/>!! ::cancel))
           ::cancel)))))
-
-(def ^:dynamic ^Long *query-timeout-ms*
-  "Maximum amount of time query is allowed to run, in ms."
-  (u/minutes->ms (driver.settings/db-query-timeout-minutes)))

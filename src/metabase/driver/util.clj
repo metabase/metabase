@@ -8,6 +8,7 @@
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -129,7 +130,7 @@
   {:pre [(keyword? driver) (map? details-map)]}
   (if throw-exceptions
     (try
-      (u/with-timeout (db-connection-timeout-ms)
+      (u/with-timeout (driver.settings/db-connection-timeout-ms)
         (or (driver/can-connect? driver details-map)
             (throw (Exception. "Failed to connect to Database"))))
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
