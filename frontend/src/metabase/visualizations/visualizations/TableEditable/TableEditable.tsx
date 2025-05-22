@@ -83,7 +83,7 @@ export class TableEditable extends Component<
   }
 
   render() {
-    const { dashcard, className, metadata } = this.props;
+    const { dashcard, className, metadata, isEditing } = this.props;
     const { data, card, question } = this.state;
 
     if (card?.visualization_settings?.table_id && !data && dashcard?.isAdded) {
@@ -144,6 +144,7 @@ export class TableEditable extends Component<
         tableId={card.table_id}
         visualizationSettings={visualizationSettings}
         question={question}
+        isEditing={isEditing}
       />
     );
   }
