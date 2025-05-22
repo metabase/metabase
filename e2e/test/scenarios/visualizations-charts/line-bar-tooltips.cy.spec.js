@@ -760,8 +760,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
-    // TODO: this card should be converted properly, right now it isn't
-    it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalSeriesColor = "#88BF4D";
       const addedSeriesColor = "#A989C5";
       const originalSeriesName = "Q1";
