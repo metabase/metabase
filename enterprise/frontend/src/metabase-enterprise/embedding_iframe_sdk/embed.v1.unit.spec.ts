@@ -20,7 +20,7 @@ describe("embed.v1.js script tag for sdk iframe embedding", () => {
     expect(() => {
       // @ts-expect-error -- we are testing for incorrect configuration
       new MetabaseEmbed({ ...defaultSettings, target: undefined });
-    }).toThrow('cannot find embed container "undefined"');
+    }).toThrow("target must be provided");
   });
 
   it("throws when api key is not provided", () => {

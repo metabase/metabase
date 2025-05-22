@@ -128,6 +128,10 @@ class MetabaseEmbed {
     if (settings.dashboardId && settings.questionId) {
       raiseError("can't use both dashboardId and questionId at the same time");
     }
+
+    if (!settings.target) {
+      raiseError("target must be provided");
+    }
   }
 
   private _handleMessage = (event: MessageEvent<SdkIframeEmbedTagMessage>) => {
