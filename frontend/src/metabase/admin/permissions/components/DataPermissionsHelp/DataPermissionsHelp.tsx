@@ -79,7 +79,7 @@ export const DataPermissionsHelp = () => {
                   icon="eye"
                   iconColor="accent5"
                   name={t`No self-service (Deprecated)`}
-                  description={t`The group cannot use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. 'Blocked', 'Impersonated' and 'Row and column security' in another group will override 'No self-service'.`}
+                  description={t`The group cannot use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. ‘Blocked‘, ‘Impersonated‘ and ‘Row and column security‘ in another group will override ‘No self-service‘.`}
                 />
               )}
 
