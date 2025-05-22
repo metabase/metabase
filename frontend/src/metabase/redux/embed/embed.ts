@@ -31,7 +31,9 @@ export const DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS: InteractiveEmbeddingOptions 
 
 const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = Object.keys(
   DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
-);
+)
+  // `entity_types` used to be in the embed slice, but it's moved to the embedding data picker slice already.
+  .concat("entity_types");
 
 export const urlParameterToBoolean = (
   urlParameter: string | string[] | boolean | undefined,
