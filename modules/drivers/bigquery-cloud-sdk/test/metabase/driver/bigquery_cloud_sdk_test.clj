@@ -373,7 +373,7 @@
     :bigquery-cloud-sdk
     (mt/dataset
       nested-records
-      (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+      (is (= {:columns ["a" "b" "aa" "rr"]
               :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
              (mt/rows+column-names
               (mt/run-mbql-query records
@@ -843,15 +843,14 @@
                                  :database-type "RECORD",
                                  :base-type :type/Dictionary,
                                  :database-partitioned false,
-                                 :database-position 2,
-                                 :nested-fields
-                                 #{{:name "name",
-                                    :table-name tbl-nm
-                                    :table-schema test-db-name
-                                    :database-type "STRING",
-                                    :base-type :type/Text,
-                                    :nfc-path ["primary"],
-                                    :database-position 2}}}
+                                 :database-position 2}
+                                {:name "name",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "STRING",
+                                 :base-type :type/Text,
+                                 :nfc-path ["primary"],
+                                 :database-position 2}
                                 {:name "participants",
                                  :table-name tbl-nm
                                  :table-schema test-db-name
