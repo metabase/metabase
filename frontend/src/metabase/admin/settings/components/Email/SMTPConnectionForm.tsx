@@ -1,4 +1,3 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
 import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
@@ -38,7 +37,7 @@ import type {
 import { clearEmailSettings } from "../../settings";
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
-const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
+const getBreadcrumbs = () => [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
 const emailSettingKeys = [
   "email-smtp-host",
@@ -159,7 +158,7 @@ export const SMTPConnectionForm = () => {
     <Flex justify="space-between">
       <Stack gap="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
         {isEmailConfigured && (
-          <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.mb3)} />
+          <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
         )}
         <FormProvider
           initialValues={initialValues}
