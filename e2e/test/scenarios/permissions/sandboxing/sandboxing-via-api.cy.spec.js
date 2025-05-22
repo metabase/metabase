@@ -1259,7 +1259,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
         );
         H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
-        H.popover().findByText("Edit sandboxed access").click();
+        H.popover()
+          .findByText("Configure row and column security for this table")
+          .click();
         H.modal().findAllByTestId("select-button").contains("Category").click();
         H.popover()
           .findByLabelText("Category")

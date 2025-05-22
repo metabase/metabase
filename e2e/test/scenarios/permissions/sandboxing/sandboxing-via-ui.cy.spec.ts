@@ -304,7 +304,9 @@ describe(
           cy.button("Change").click();
         });
 
-        H.modal().findByText(/Restrict access to this table/);
+        H.modal().findByText(
+          /Configure row and column security for this table/,
+        );
         cy.findByRole("radio", {
           name: /Filter by a column in the table/,
         }).should("be.checked");

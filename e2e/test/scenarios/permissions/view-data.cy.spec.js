@@ -581,7 +581,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Restrict access to this table");
+    cy.findByText("Configure row and column security for this table");
     cy.button("Save").should("be.disabled");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -623,11 +623,13 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Restrict access to this table");
+    cy.findByText("Configure row and column security for this table");
 
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Restrict access to this table").should("not.exist");
+    cy.findByText("Configure row and column security for this table").should(
+      "not.exist",
+    );
 
     cy.button("Save changes").click();
 
@@ -666,7 +668,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
     H.modal().within(() => {
-      cy.findByText("Restrict access to this table");
+      cy.findByText("Configure row and column security for this table");
       cy.button("Save").should("be.disabled");
       cy.findByText("Pick a column").click();
     });
@@ -706,7 +708,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
 
-    H.modal().findByText("Restrict access to this table");
+    H.modal().findByText("Configure row and column security for this table");
 
     cy.button("Save").click();
 
@@ -758,7 +760,7 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
     );
 
     H.modal().within(() => {
-      cy.findByText("Restrict access to this table");
+      cy.findByText("Configure row and column security for this table");
       cy.button("Save").should("be.disabled");
       cy.findByText("Pick a column").click();
     });
@@ -990,7 +992,7 @@ function makeOrdersSandboxed() {
     `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
   );
 
-  cy.findByText("Restrict access to this table");
+  cy.findByText("Configure row and column security for this table");
   cy.button("Save").should("be.disabled");
 
   cy.findByText("Pick a column").click();

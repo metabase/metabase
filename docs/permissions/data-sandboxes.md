@@ -175,7 +175,7 @@ You can set up an custom sandbox to restrict different rows for each person depe
 5. Go to **Admin settings** > **Permissions**.
 6. Find the group and table for your custom sandbox.
 7. Open the dropdown under **View data**.
-8. Click **Edit sandboxed access**.
+8. Click **Configure row and column security for this table**.
 9. Scroll down and set **Parameter or variable** to the name of the parameter in your saved SQL question (such as "Plan Variable").
 10. Set the **User attribute** to a [user attribute key](#choosing-user-attributes-for-data-sandboxes) (such as the key "User's Plan", _not_ the value "Basic").
 11. Click **Save**.

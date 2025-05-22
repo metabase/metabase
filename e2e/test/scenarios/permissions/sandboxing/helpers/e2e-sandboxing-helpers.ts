@@ -361,7 +361,7 @@ export const configureSandboxPolicy = (
     });
   }
 
-  H.modal().findByText(/Restrict access to this table/);
+  H.modal().findByText(/Configure row and column security for this table/);
 
   if (filterTableBy !== "custom_view") {
     cy.log("Filter by a column in the table");
