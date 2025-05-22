@@ -95,7 +95,7 @@
   [top-header-items left-header-items row-indexes display-name-for-col]
   (let [left-header-depth (->> left-header-items
                                (map :maxDepthBelow)
-                               (apply max)
+                               (reduce max 0)
                                inc)
         top-left-header   (sequence (comp (map display-name-for-col)
                                           (take left-header-depth))
