@@ -134,11 +134,6 @@
   [driver]
   (tx/db-test-env-var driver :user))
 
-(doseq [driver [:clickhouse :mysql :sqlserver]]
-  (defmethod impersonation-default-user driver
-    [_driver]
-    "default_impersonation_user"))
-
 (defmethod impersonation-default-user :postgres
   [_driver]
   (tx/db-test-env-var :postgresql :user))
@@ -149,21 +144,28 @@
   ;; the role in this test (and from the snowflake console)
   "METABASECI")
 
+;; Need to use a new user for clickhouse because the default user is read only
+;; Need to use a non-superuser for mysql and sqlserver
+(doseq [driver [:clickhouse :mysql :sqlserver]]
+  (defmethod impersonation-default-user driver
+    [_driver]
+    "default_impersonation_user"))
+
 (defmulti impersonation-default-role
   {:arglists '([driver])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod impersonation-default-role :default
-  [driver]
+  [_driver]
   nil)
 
 (defmethod impersonation-default-role :mysql
-  [driver]
-  "default_mysql_role")
+  [_driver]
+  "default_impersonation_role")
 
 (defmethod impersonation-default-role :snowflake
-  [driver]
+  [_driver]
   "ACCOUNTADMIN")
 
 (defmulti impersonation-granting-details
@@ -198,12 +200,10 @@
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
-            db-role (u/lower-case-en (mt/random-name))
-            full-access-role (u/lower-case-en (mt/random-name))]
+            role-a (u/lower-case-en (mt/random-name))]
         (tx/with-temp-roles! driver/*driver*
           (impersonation-granting-details driver/*driver* (mt/db))
-          {db-role {venues-table {:columns []}}
-           full-access-role {venues-table [] checkins-table []}}
+          {role-a {venues-table {:columns []}}}
           (impersonation-default-user driver/*driver*)
           (impersonation-default-role driver/*driver*)
           (mt/with-temp [:model/Database database {:engine driver/*driver*,
@@ -213,17 +213,15 @@
               (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                 (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                             :attributes     {"impersonation_attr" db-role}}
+                                                             :attributes     {"impersonation_attr" role-a}}
                 (is (= [[100]]
                        (mt/rows
                         (mt/run-mbql-query venues
                           {:aggregation [[:count]]}))))
                 (is (thrown?
-                     clojure.lang.ExceptionInfo
-                     (-> {:query (format "SELECT * FROM %s;" checkins-table)}
-                         mt/native-query
-                         mt/process-query
-                         mt/rows)))))))))))
+                     java.lang.Exception
+                     (mt/run-mbql-query checkins
+                       {:aggregation [[:count]]})))))))))))
 
 (deftest conn-impersonation-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/column-level-impersonation)
