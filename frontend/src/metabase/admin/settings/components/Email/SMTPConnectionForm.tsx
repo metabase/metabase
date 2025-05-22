@@ -144,9 +144,7 @@ export const SMTPConnectionForm = () => {
       sendToast({
         icon: "warning",
         toastColor: "error",
-        message: isErrorWithMessage(error)
-          ? error.data.message
-          : t`Error sending test email`,
+        message: getTestEmailErrorMessage(error),
       });
     }
   }, [sendTestEmail, sendToast]);
@@ -293,16 +291,16 @@ export const SMTPConnectionForm = () => {
                 </SetByEnvVarWrapper>
               )}
 
-              {(sendTestEmailResult.error as Errors.GenericErrorResponse) && (
+              {Boolean(sendTestEmailResult.error) && (
                 <Text
                   role="alert"
-                  // aria-label={ sendTestEmailResult.error}
+                  aria-label={getTestEmailErrorMessage(
+                    sendTestEmailResult.error,
+                  )}
                   color="error"
                   mb="1rem"
                 >
-                  {isErrorWithMessage(sendTestEmailResult.error)
-                    ? sendTestEmailResult.error.data.message
-                    : t`Error sending test email`}
+                  {getTestEmailErrorMessage(sendTestEmailResult.error)}
                 </Text>
               )}
               <Flex mt="1rem" gap="1.5rem">
@@ -335,3 +333,9 @@ export const SMTPConnectionForm = () => {
     </Flex>
   );
 };
+
+function getTestEmailErrorMessage(error: unknown): string {
+  return isErrorWithMessage(error)
+    ? error.data.message
+    : t`Error sending test email`;
+}
