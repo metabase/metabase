@@ -334,34 +334,35 @@
       (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
             table (first (:tables database))]
         (is (=? {:name "records"} table))
-        (is (=? #{{:name "id"}
-                  {:name "name"}
-                  {:name "r"
-                   :database-type "RECORD",
-                   :base-type :type/Dictionary,
-                   :database-position 2}
-                  {:name "a",
-                   :database-type "INTEGER",
-                   :base-type :type/Integer,
-                   :database-position 2,
-                   :nfc-path ["r"]}
-                  {:name "b",
-                   :database-type "STRING",
-                   :base-type :type/Text,
-                   :database-position 2,
-                   :nfc-path ["r"]}
-                  {:name "rr",
-                   :database-type "RECORD",
-                   :base-type :type/Dictionary,
-                   :database-position 2,
-                   :nfc-path ["r"]}
-                  {:name "aa",
-                   :database-type "INTEGER",
-                   :base-type :type/Integer,
-                   :database-position 2,
-                   :nfc-path ["r" "rr"]}}
-                (set
-                 (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]}))))))))
+        (is (=? [{:name "a",
+                  :database-type "INTEGER",
+                  :base-type :type/Integer,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "b",
+                  :database-type "STRING",
+                  :base-type :type/Text,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "aa",
+                  :database-type "INTEGER",
+                  :base-type :type/Integer,
+                  :database-position 2,
+                  :nfc-path ["r" "rr"]}
+                 {:name "id"}
+                 {:name "name"}
+                 {:name "r"
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :database-position 2}
+                 {:name "rr",
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :database-position 2,
+                  :nfc-path ["r"]}]
+                (->> (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]})
+                     (sort-by :name)
+                     vec)))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
@@ -830,30 +831,32 @@
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
-                        (is (= #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                 {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                 {:name "primary",
-                                  :table-name tbl-nm
-                                  :table-schema test-db-name
-                                  :database-type "RECORD",
-                                  :base-type :type/Dictionary,
-                                  :database-partitioned false,
-                                  :database-position 2}
-                                 {:name "name",
-                                  :table-name tbl-nm
-                                  :table-schema test-db-name
-                                  :database-type "STRING",
-                                  :base-type :type/Text,
-                                  :nfc-path ["primary"],
-                                  :database-position 2}
-                                 {:name "participants",
-                                  :table-name tbl-nm
-                                  :table-schema test-db-name
-                                  :database-type "ARRAY",
-                                  :base-type :type/Array,
-                                  :database-partitioned false,
-                                  :database-position 3}}
-                               (set (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]})))
+                        (is (= [{:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "name",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "STRING",
+                                 :base-type :type/Text,
+                                 :nfc-path ["primary"],
+                                 :database-position 2}
+                                {:name "participants",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "ARRAY",
+                                 :base-type :type/Array,
+                                 :database-partitioned false,
+                                 :database-position 3}
+                                {:name "primary",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "RECORD",
+                                 :base-type :type/Dictionary,
+                                 :database-partitioned false,
+                                 :database-position 2}]
+                               (->> (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]})
+                                    (sort-by :name)
+                                    vec))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
