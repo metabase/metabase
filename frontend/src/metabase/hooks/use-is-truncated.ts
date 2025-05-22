@@ -19,8 +19,6 @@ const VERTICAL_TOLERANCE = 5;
 
 // Doohickey not getting ellipsified but instead getting roughly truncated in
 // this branch. On master it gets an ellipsis but no tooltip.
-//
-// Let's wait for input from Maz, Alex P and Kamil
 
 export const useIsTruncated = <E extends Element>({
   disabled = false,
@@ -63,11 +61,12 @@ const getIsTruncated = (element: Element): boolean => {
   const verticalOverflow = textRect.height - elementRect.height;
   const horizOverflow = textRect.width - elementRect.width;
 
-  // if (element.innerHTML.match(/Doohickey/g)) {
-  //   console.log("@mazp2rig", "elementRect.innerHTML", elementRect.innerHTML);
-  //   console.log("@mazp26og", "horizOverflow", horizOverflow);
-  //   console.log("@mazp2880", "verticalOverflow", verticalOverflow);
-  // }
+  console.log("@mazrf9y8", "element.innerHTML", element.innerHTML);
+
+  // NOTE: To debug truncation, you can add something here like:
+  if (element.innerHTML.match(/Doohickey/g)) {
+    console.log(horizOverflow);
+  }
 
   const isTextTooTall = verticalOverflow > VERTICAL_TOLERANCE;
   const isTextTooWide = horizOverflow > HORIZONTAL_TOLERANCE;

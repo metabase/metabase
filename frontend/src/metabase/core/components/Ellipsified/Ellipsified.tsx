@@ -40,6 +40,9 @@ export const Ellipsified = ({
   const isEnabled =
     (showTooltip && (isTruncated || alwaysShowTooltip)) || false;
 
+  const truncatedProps: Partial<TextProps> =
+    lines > 1 ? { lineClamp: lines } : { truncate: "end" };
+
   return (
     <Tooltip
       data-testid="ellipsified-tooltip"
@@ -50,7 +53,6 @@ export const Ellipsified = ({
       multiline={multiline}
     >
       <Text
-        lineClamp={lines}
         c="inherit"
         ref={ref}
         className={className}
@@ -59,6 +61,7 @@ export const Ellipsified = ({
         id={id}
         fz="inherit"
         lh="inherit"
+        {...truncatedProps}
       >
         {children}
       </Text>
