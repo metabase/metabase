@@ -10,7 +10,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
@@ -437,7 +436,7 @@
     (mt/with-full-data-perms-for-all-users!
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                       :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                       :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms-group/all-users))
                                                         :table_id             (mt/id :checkins)
                                                         :card_id              card-id
                                                         :attribute_remappings {}}]
