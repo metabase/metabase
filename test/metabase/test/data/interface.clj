@@ -385,7 +385,11 @@
      (fn [] ~@body)))
 
 (defmulti create-and-grant-roles!
-  "Creates the given roles and permissions for the database user"
+  "Creates the given roles and permissions for the database user
+   `roles` is a map of role names to table permissions of the form
+   {role-name {table-name {:columns [col1 col2 ...]
+                           :rls    honey-sql-form}}}
+   where colN is a column name as a string and honey-sql-form is a predicate"
   {:added "0.55.0" :arglists '([driver details roles db-user default-role])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
