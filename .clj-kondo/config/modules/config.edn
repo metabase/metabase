@@ -171,6 +171,13 @@
   {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
 
+  batch-processing
+  {:api  #{metabase.batch-processing.core
+           metabase.batch-processing.init}
+   :uses #{app-db
+           settings
+           util}}
+
   bookmarks
   {:api  #{metabase.bookmarks.api}
    :uses #{api
@@ -869,6 +876,7 @@
            app-db
            appearance
            audit-app
+           batch-processing
            cache
            config
            driver
@@ -1182,6 +1190,7 @@
            api
            app-db
            appearance
+           batch-processing
            channel
            collections
            config
@@ -1200,8 +1209,7 @@
 
   util
   {:api :any
-   :uses #{app-db
-           classloader
+   :uses #{classloader
            config
            legacy-mbql
            lib
@@ -1224,6 +1232,7 @@
            api
            app-db
            audit-app
+           batch-processing
            events
            models
            permissions
