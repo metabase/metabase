@@ -229,7 +229,7 @@
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
 
-(defn grant-select-table-to-role!
+(defn grant-table-perms-to-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name table-perms] roles]
@@ -249,9 +249,9 @@
     (doseq [statement [(format "DROP USER IF EXISTS %s" user-name)
                        (format "CREATE USER IF NOT EXISTS %s NOT IDENTIFIED;" user-name)]]
       (jdbc/execute! spec [statement] {:transaction? false})))
-  (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
-  (grant-select-table-to-role! driver details roles)
-  (sql-jdbc.tx/grant-role-to-user! driver details roles user-name))
+  (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name))
 
 (defmethod tx/drop-roles! :clickhouse
   [driver details roles user-name]

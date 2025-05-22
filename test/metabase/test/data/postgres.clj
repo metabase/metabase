@@ -163,7 +163,7 @@
                            (format "DROP ROLE IF EXISTS %s;" role-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
 
-(defn grant-select-table-to-role!
+(defn grant-table-perms-to-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name table-perms] roles]
@@ -185,6 +185,6 @@
 
 (defmethod tx/create-and-grant-roles! :postgres
   [driver details roles user-name _default-role]
-  (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
-  (grant-select-table-to-role! driver details roles)
-  (sql-jdbc.tx/grant-role-to-user! driver details roles user-name))
+  (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name))

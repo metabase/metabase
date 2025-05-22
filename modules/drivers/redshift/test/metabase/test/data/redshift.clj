@@ -289,7 +289,7 @@
           ;; if the ResultSet returns anything we know the table is already loaded.
           (.next rset)))))))
 
-(defn drop-if-exists-and-create-role!
+(defn drop-if-exists-and-create-roles!
   [driver details roles]
   (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name _table-perms] roles]
@@ -298,7 +298,7 @@
                            (format "CREATE USER %s WITH PASSWORD '%s';" role-name (:password details))]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
 
-(defn grant-select-table-to-role!
+(defn grant-table-perms-to-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
@@ -311,8 +311,8 @@
 
 (defmethod tx/create-and-grant-roles! :redshift
   [driver details roles _user-name _default-role]
-  (drop-if-exists-and-create-role! driver details roles)
-  (grant-select-table-to-role! driver details roles))
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles))
 
 (defmethod tx/drop-roles! :redshift
   [driver details roles _user-name]

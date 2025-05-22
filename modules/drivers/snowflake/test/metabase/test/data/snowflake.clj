@@ -231,7 +231,7 @@
        ;; if the ResultSet returns anything we know the catalog has been created
        (.next rset)))))
 
-(defn drop-if-exists-and-create-role!
+(defn drop-if-exists-and-create-roles!
   [driver details roles]
   (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name _table-perms] roles]
@@ -239,7 +239,7 @@
                          (format "CREATE ROLE %s;" role-name)]]
         (jdbc/execute! spec [statement] {:transaction? false})))))
 
-(defn grant-select-table-to-role!
+(defn grant-table-perms-to-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)
         wh-name (tx/db-test-env-var :snowflake :warehouse)
@@ -255,7 +255,7 @@
                        (format "GRANT SELECT ON TABLE %s TO ROLE %s" table-name role-name)
                        {:transaction? false})))))
 
-(defn grant-role-to-user!
+(defn grant-roles-to-user!
   [driver details roles user-name]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name _table-perms] roles]
@@ -265,9 +265,9 @@
 
 (defmethod tx/create-and-grant-roles! :snowflake
   [driver details roles user-name _default-role]
-  (drop-if-exists-and-create-role! driver details roles)
-  (grant-select-table-to-role! driver details roles)
-  (grant-role-to-user! driver details roles user-name))
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (grant-roles-to-user! driver details roles user-name))
 
 (defmethod tx/drop-roles! :snowflake
   [driver details roles _user-name]
