@@ -29,3 +29,9 @@
     padding-inline: 0.75rem;
   }
 }
+
+.EmptyTableRow {
+  &:hover {
+    background-color: transparent !important;
+  }
+}

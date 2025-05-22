@@ -9,6 +9,7 @@ import type {
 export type AdminPathKey =
   | "data-model"
   | "settings"
+  | "metabot"
   | "people"
   | "databases"
   | "permissions"
@@ -51,6 +52,5 @@ export interface AdminState {
 }
 
 export interface AdminAppState {
-  isNoticeEnabled: boolean;
   paths: AdminPath[];
 }
