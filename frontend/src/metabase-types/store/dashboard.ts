@@ -18,8 +18,7 @@ export type DashboardSidebarName =
   | "editParameter"
   | "settings"
   | "sharing"
-  | "info"
-  | "analyze";
+  | "info";
 
 interface BaseSidebarState {
   name?: DashboardSidebarName;

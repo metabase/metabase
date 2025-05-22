@@ -32,7 +32,6 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
@@ -58,7 +57,6 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
-  DashCardId,
   Dashboard,
   DashboardId,
   Database as DatabaseType,
@@ -655,12 +653,6 @@ export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   getPlaceholderText: () => "",
 };
 
-export interface AIDashboardAnalysisSidebarProps {
-  dashboard: Dashboard;
-  onClose?: () => void;
-  dashcardId?: DashCardId;
-}
-
 export interface AIQuestionAnalysisSidebarProps {
   question: Question;
   className?: string;
@@ -671,19 +663,13 @@ export interface AIQuestionAnalysisSidebarProps {
 
 export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: ComponentType<any>;
-  AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
-  AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
-  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
   canAnalyzeQuestion: (question: Question) => boolean;
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
-  AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
-  AIDashboardAnalysisSidebar: PluginPlaceholder,
-  canAnalyzeDashboard: () => false,
   canAnalyzeQuestion: () => false,
 };
 
@@ -706,20 +692,6 @@ export const PLUGIN_METABOT = {
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
-};
-
-type DashCardMenuItemGetter = (
-  question: Question,
-  dashcardId: DashCardId | undefined,
-  dispatch: Dispatch,
-) => (DashCardMenuItem & { key: string }) | null;
-
-export type PluginDashcardMenu = {
-  dashcardMenuItemGetters: DashCardMenuItemGetter[];
-};
-
-export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
-  dashcardMenuItemGetters: [],
 };
 
 export const PLUGIN_DB_ROUTING = {
