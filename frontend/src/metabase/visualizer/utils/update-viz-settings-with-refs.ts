@@ -62,7 +62,7 @@ function updateSettingsValuesWithRefs(
   columnsToRefs: Record<string, string>,
   keysToUpdate: [keyof VisualizationSettings],
 ): VisualizationSettings {
-  const newSettings = structuredClone(settings);
+  const newSettings = { ...settings };
 
   keysToUpdate.forEach((key) => {
     if (key in newSettings && newSettings[key] in columnsToRefs) {
