@@ -142,8 +142,14 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       ["Analytic Events", "Can view", "No", "1 million rows", "No"],
       ["Feedback", "Can view", "No", "1 million rows", "No"],
       ["Invoices", "Can view", "No", "1 million rows", "No"],
-      ["Orders", "Sandboxed", "Query builder only", "1 million rows", "No"],
-      ["People", "Sandboxed", "No", "1 million rows", "No"],
+      [
+        "Orders",
+        "Row and column security",
+        "Query builder only",
+        "1 million rows",
+        "No",
+      ],
+      ["People", "Row and column security", "No", "1 million rows", "No"],
       ["Products", "Can view", "No", "1 million rows", "No"],
       ["Reviews", "Can view", "No", "1 million rows", "No"],
     ]);
