@@ -4,10 +4,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  getAdminPaths,
-  getIsOnboardingSidebarLinkDismissed,
-} from "metabase/admin/app/selectors";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
@@ -38,7 +35,6 @@ const mapStateToProps = (state) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
   isNewInstance: getIsNewInstance(state),
-  showOnboardingLink: getIsOnboardingSidebarLinkDismissed(state),
 });
 
 const mapDispatchToProps = {
@@ -94,7 +90,7 @@ function ProfileLink({
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       // If the instance is not new, we're removing the link from the sidebar automatically!
-      (!isNewInstance || showOnboardingLink) &&
+      !isNewInstance &&
         canAccessOnboardingPage && {
           // eslint-disable-next-line no-literal-metabase-strings -- We don't show this to whitelabelled instances
           title: t`How to use Metabase`,

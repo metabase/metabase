@@ -37,7 +37,6 @@ function setup({
   helpLinkSetting = "metabase",
   helpLinkCustomDestinationSetting = "https://custom-destination.com/help",
   instanceCreationDate = dayjs().toISOString(),
-  dismissedOnboardingFromSidebar = false,
 }: {
   isAdmin?: boolean;
   isHosted?: boolean;
@@ -53,7 +52,6 @@ function setup({
     "help-link": helpLinkSetting,
     "help-link-custom-destination": helpLinkCustomDestinationSetting,
     "instance-creation": instanceCreationDate,
-    "dismissed-onboarding-sidebar-link": dismissedOnboardingFromSidebar,
   });
 
   const admin = createMockAdminState({
