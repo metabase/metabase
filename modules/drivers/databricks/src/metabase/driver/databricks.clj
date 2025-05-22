@@ -7,6 +7,7 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
@@ -339,3 +340,7 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

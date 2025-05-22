@@ -21,7 +21,8 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import  [com.clickhouse.client.api.query QuerySettings]))
+  (:import  [com.clickhouse.client.api.query QuerySettings]
+            [java.sql SQLException]))
 
 (set! *warn-on-reflection* true)
 
@@ -285,3 +286,8 @@
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
   "NONE")
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
+  [_ ^SQLException e]
+  ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
+  (str/starts-with? (.getMessage e) "Code: 60."))
