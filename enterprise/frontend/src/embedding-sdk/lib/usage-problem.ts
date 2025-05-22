@@ -95,6 +95,13 @@ export function getSdkUsageProblem(
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
+      .with(
+        {
+          hasTokenFeature: true,
+          isEnabled: false,
+        },
+        () => toError("EMBEDDING_SDK_NOT_ENABLED"),
+      )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
       // API keys are always enabled regardless of the "enable-embedding" setting,

@@ -38,19 +38,27 @@ export const initAuth = createAsyncThunk(
       // API key setup
       api.apiKey = authConfig.apiKey;
     } else if (isValidInstanceUrl) {
-      // SSO setup
-      api.onBeforeRequest = async () => {
-        const session = await dispatch(
+      try {
+        // SSO setup
+        api.onBeforeRequest = async () => {
+          const session = await dispatch(
+            getOrRefreshSession(authConfig.metabaseInstanceUrl),
+          ).unwrap();
+          if (session?.id) {
+            api.sessionToken = session.id;
+          }
+        };
+        // verify that the session is actually valid before proceeding
+        await dispatch(
           getOrRefreshSession(authConfig.metabaseInstanceUrl),
         ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
-      // verify that the session is actually valid before proceeding
-      await dispatch(
-        getOrRefreshSession(authConfig.metabaseInstanceUrl),
-      ).unwrap();
+      } catch (e) {
+        // TODO: make this more specific to whatever status code we receive:
+        // this is good for a 400
+        throw new Error(
+          `Unable to connect to instance at ${authConfig.metabaseInstanceUrl}`,
+        );
+      }
     }
 
     // Fetch user and site settings
@@ -118,6 +126,12 @@ export const refreshTokenAsync = createAsyncThunk(
         : "authProviderUri endpoint";
 
       if (!session || typeof session !== "object") {
+        if (customGetRefreshToken) {
+          throw new Error(
+            `If you are using a custom fetchRefreshToken function, you must return an object with the shape of { jwt: string } containing your JWT. Custom fetchRefreshToken functions are not supported with SAML authentication.`,
+          );
+        }
+
         throw new Error(
           `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
@@ -175,7 +189,8 @@ const getRefreshToken = async (
 
   if (method === "saml") {
     // The URL should point to the SAML IDP
-    return openSamlLoginPopup(responseUrl);
+    await openSamlLoginPopup(responseUrl);
+    return samlTokenStorage.get();
   }
 
   if (method === "jwt") {

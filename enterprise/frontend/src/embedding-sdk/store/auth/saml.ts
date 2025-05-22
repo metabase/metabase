@@ -34,7 +34,7 @@ export const openSamlLoginPopup = async (idpUrl: string) => {
 
     const messageHandler = (
       event: MessageEvent<{
-        type: "SAML_AUTH_COMPLETE";
+        type: string;
         authData: MetabaseEmbeddingSessionToken;
       }>,
     ) => {
