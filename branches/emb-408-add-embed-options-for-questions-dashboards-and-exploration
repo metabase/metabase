@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-355-setup-end-to-end-tests-for-using-the-embedv1js-library",
     "hash": "c7122fd23341b6089e37d1f333a80499ae83a648"
+  },
+  "upstream": {
+    "branch": "emb-408-add-embed-options-for-questions-dashboards-and-exploration"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 58338,
+        "gqlID": "PR_kwDOAczgH86XMig7"
+      }
+    }
   }
 }
