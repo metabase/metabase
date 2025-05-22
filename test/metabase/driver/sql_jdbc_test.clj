@@ -149,14 +149,14 @@
 
 (deftest ^:parallel splice-parameters-mbql-date-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       (mt/$ids checkins
         (testing "splicing a date"
           (test-spliced-count-of :checkins [:= $date "2014-03-05"] 3))))))
 
 (deftest ^:parallel splice-parameters-mbql-time-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
-    (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc :+:features [:test/time-type]})
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+features [:test/time-type]})
       (testing "splicing a time"
         (mt/dataset time-test-data
           (mt/$ids users
