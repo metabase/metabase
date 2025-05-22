@@ -4,6 +4,8 @@ import { useCallback, useLayoutEffect, useState } from "react";
 import { Box, Popover } from "metabase/ui";
 import { PreventPopoverExitProvider } from "metabase/ui/components/utils/PreventPopoverExit";
 
+import S from "./ClausePopover.module.css";
+
 interface ClausePopoverProps {
   isInitiallyOpen?: boolean;
   renderItem: (open: () => void) => JSX.Element | string;
@@ -36,8 +38,6 @@ export function ClausePopover({
     }
   }, [active]);
 
-  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
-
   return (
     <PreventPopoverExitProvider>
       <Popover
@@ -47,36 +47,11 @@ export function ClausePopover({
         trapFocus
         onChange={handleChange}
         floatingStrategy="fixed"
-        middlewares={{
-          size: {
-            padding: 10,
-            apply(args) {
-              // HACK: Safari has a bug where parent elements with overflow: auto
-              // will clip elements that are positioned with fixed/absolute
-              // whenever the parent element is overflowing (ie. has scrollbars).
-              //
-              // See https://bugs.webkit.org/show_bug.cgi?id=160953
-              //
-              // This causes popovers rendered by children of this popover to be
-              // clipped.
-              //
-              // This workaround solves the issue by moving the overflow
-              // onto a child element instead.
-              setMaxHeight(args.availableHeight);
-            },
-          },
-        }}
-        styles={{
-          dropdown: {
-            overflow: "visible",
-          },
-        }}
+        classNames={{ dropdown: S.dropdown }}
       >
         <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">
-          <Box style={{ overflow: "auto", maxHeight }}>
-            {renderPopover(handleClose)}
-          </Box>
+          <Box className={S.dropdownContent}>{renderPopover(handleClose)}</Box>
         </Popover.Dropdown>
       </Popover>
     </PreventPopoverExitProvider>
