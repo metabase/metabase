@@ -1,4 +1,4 @@
-(ns metabase.api.auth
+(ns metabase.api.settings
   (:require
    [metabase.settings.core :refer [defsetting]]))
 

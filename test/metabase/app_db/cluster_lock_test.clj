@@ -1,10 +1,10 @@
-(ns metabase.util.cluster-lock-test
+(ns metabase.app-db.cluster-lock-test
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
+   [metabase.app-db.cluster-lock :as sut]
    [metabase.app-db.core :as mdb]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.util.cluster-lock :as sut]))
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 

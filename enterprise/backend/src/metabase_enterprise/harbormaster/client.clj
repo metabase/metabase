@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.auth :as api.auth]
+   [metabase.api.settings :as api.auth]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.util :as m.util]
    [metabase.util.i18n :refer [tru]]

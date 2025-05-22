@@ -10,7 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
@@ -18,6 +18,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
@@ -27,6 +28,7 @@
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
@@ -587,7 +589,7 @@
                     (when (request/paged?)
                       {:limit (request/limit)
                        :offset (request/offset)}))
-        cards      (mdb.query/query query)]
+        cards      (app-db/query query)]
     {:total  (count cards)
      :data   (api.collection/post-process-rows {}
                                                (t2/select-one :model/Collection :id (:collection_id dashboard))
@@ -602,7 +604,7 @@
   [dash-before-update dash-updates]
   (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
             (api/column-will-change? :embedding_params dash-before-update dash-updates))
-    (validation/check-embedding-enabled)
+    (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (api.macros/defendpoint :delete "/:id"
@@ -1047,7 +1049,7 @@
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
   (api/check-superuser)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
              (u/prog1 (str (random-uuid))
@@ -1060,7 +1062,7 @@
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
               {:public_uuid       nil
@@ -1072,7 +1074,7 @@
   enabled."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api.macros/defendpoint :get "/embeddable"
@@ -1080,7 +1082,7 @@
   endpoints and a signed JWT."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-embedding-enabled)
+  (embedding.validation/check-embedding-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :get "/:id/related"

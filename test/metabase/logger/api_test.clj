@@ -1,11 +1,30 @@
-(ns metabase.api.logger-test
+(ns metabase.logger.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.logger :as logger]
-   [metabase.test :as mt]))
+   [metabase.logger.core :as logger]
+   [metabase.test :as mt]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(deftest logs-test
+  (testing "Call includes recent logs (#24616)"
+    (mt/with-log-level :warn
+      (let [message "Sample warning message for test"]
+        (log/warn message)
+        (let [logs (mt/user-http-request :crowberto :get 200 "logger/logs")]
+          (is (pos? (count logs)) "No logs returned from `logger/logs`")
+          (is (some (comp #(re-find (re-pattern message) %) :msg) logs)
+              "Recent message not found in `logger/logs`"))))))
+
+(deftest ^:parallel logs-permissions-test
+  (testing "GET /api/logger/logs"
+    (testing "Requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "logger/logs"))))
+    (testing "Call successful for superusers"
+      (mt/user-http-request :crowberto :get 200 "logger/logs"))))
 
 (deftest ^:parallel presets-test
   (testing "non-admins have no access"

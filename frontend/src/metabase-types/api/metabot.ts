@@ -92,6 +92,10 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
+export interface MetabotPromptSuggestions {
+  prompts: Array<{ prompt: string }>;
+}
+
 /* Metabot v3 - Type Guards */
 
 export const isMetabotMessageReaction = (

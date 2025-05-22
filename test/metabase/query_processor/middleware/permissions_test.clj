@@ -461,6 +461,34 @@
                #"You do not have permissions to run this query"
                (process-query))))))))
 
+(deftest e2e-ignore-user-supplied-gtapped-tables-test
+  (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/gtapped-table` in the query"
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT !"
+                                                                               ::query-perms/gtapped-table (mt/id :venues)}}
+                       ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
+                                                    :perms/create-queries :query-builder-and-native}}}]
+        (mt/with-test-user :rasta
+          (testing "Sanity check: should not be able to run this query the normal way"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (qp/process-query bad-query))))
+          (letfn [(process-query []
+                    (qp/process-query bad-query))]
+            (testing "Testing that we will still throw due to the ::query-perms/perms stripping"
+              (with-redefs [qp.perms/remove-gtapped-table-keys identity]
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to run this query"
+                     (process-query)))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (process-query)))))))))
+
 (deftest e2e-ignore-user-supplied-compiled-from-mbql-key
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
     (mt/with-temp [:model/Database db    {}
