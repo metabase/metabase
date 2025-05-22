@@ -14,7 +14,7 @@ import {
 } from "./pie";
 
 describe("pie", () => {
-  const dataSource = createDataSource("card", "1:1", "Q1");
+  const dataSource = createDataSource("card", 1, "Q1");
 
   const metricColumn = createMockNumericColumn({ id: 1, name: "count" });
   const metricColumnRef = createVisualizerColumnReference(
@@ -255,7 +255,7 @@ describe("pie", () => {
   });
 
   describe("combineWithPieChart", () => {
-    const dataSource = createDataSource("card", `entity_2`, "Q2");
+    const dataSource = createDataSource("card", 2, "Q2");
 
     const metricColumn3 = createMockNumericColumn({ id: 5, name: "avg" });
     const dimensionColumn3 = createMockCategoryColumn({
@@ -272,11 +272,7 @@ describe("pie", () => {
         },
         columnValuesMapping: {
           COLUMN_1: [
-            {
-              sourceId: "card:entity_1",
-              name: "COLUMN_1",
-              originalName: "category",
-            },
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "category" },
           ],
         },
       };
@@ -296,14 +292,10 @@ describe("pie", () => {
       ]);
       expect(state.columnValuesMapping).toEqual({
         COLUMN_1: [
-          {
-            sourceId: "card:entity_1",
-            name: "COLUMN_1",
-            originalName: "category",
-          },
+          { sourceId: "card:1", name: "COLUMN_1", originalName: "category" },
         ],
         COLUMN_2: [
-          { sourceId: "card:entity_2", name: "COLUMN_2", originalName: "sum" },
+          { sourceId: "card:2", name: "COLUMN_2", originalName: "sum" },
         ],
       });
       expect(state.settings).toEqual({
@@ -321,11 +313,7 @@ describe("pie", () => {
         },
         columnValuesMapping: {
           COLUMN_1: [
-            {
-              sourceId: "card:entity_1",
-              name: "COLUMN_1",
-              originalName: "count",
-            },
+            { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
           ],
         },
       };

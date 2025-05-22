@@ -50,7 +50,6 @@
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :database_name]     "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
-             [:like [:lower :entity_id]         "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (search.legacy/order-clause "Foo")))))
