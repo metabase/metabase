@@ -33,19 +33,35 @@ export function TableVisibilityToggle({
           updateTable({ id: table.id, visibility_type: null });
 
         if (isHidden) {
-          await unhide();
-          sendToast({
-            message: t`Unhid ${table.display_name}`,
-            actionLabel: t`Undo`,
-            action: hide,
-          });
+          const { error } = await unhide();
+          if (error) {
+            sendToast({
+              icon: "warning",
+              toastColor: "warning",
+              message: t`Failed to unhide ${table.display_name}`,
+            });
+          } else {
+            sendToast({
+              message: t`Unhid ${table.display_name}`,
+              actionLabel: t`Undo`,
+              action: hide,
+            });
+          }
         } else {
-          await hide();
-          sendToast({
-            message: t`Hid ${table.display_name}`,
-            actionLabel: t`Undo`,
-            action: unhide,
-          });
+          const { error } = await hide();
+          if (error) {
+            sendToast({
+              icon: "warning",
+              toastColor: "warning",
+              message: t`Failed to hide ${table.display_name}`,
+            });
+          } else {
+            sendToast({
+              message: t`Hid ${table.display_name}`,
+              actionLabel: t`Undo`,
+              action: unhide,
+            });
+          }
         }
       }}
     />
