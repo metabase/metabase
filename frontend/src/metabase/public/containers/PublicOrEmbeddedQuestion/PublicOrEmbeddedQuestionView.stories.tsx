@@ -84,8 +84,8 @@ const initialState = createMockState({
 
 const store = getStore(publicReducers, initialState);
 
-const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (args) => {
-  return <PublicOrEmbeddedQuestionView {...args} />;
+const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (_args) => {
+  return <h1> this should fail</h1>;
 };
 
 const defaultArgs: Partial<
