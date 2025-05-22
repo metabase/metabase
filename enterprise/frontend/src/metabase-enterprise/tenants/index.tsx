@@ -30,8 +30,11 @@ if (true || hasPremiumFeature("tenants")) {
           <ModalRoute path="new" modal={NewTenantModal} noWrap />
         </Route>
         <Route path=":tenantId" component={TenantsListingApp}>
+          {/* @ts-expect-error - params prop can't be infered */}
           <ModalRoute path="edit" modal={EditTenantModal} noWrap />
+          {/* @ts-expect-error - params prop can't be infered */}
           <ModalRoute path="deactivate" modal={TenantActivationModal} noWrap />
+          {/* @ts-expect-error - params prop can't be infered */}
           <ModalRoute path="reactivate" modal={TenantActivationModal} noWrap />
         </Route>
       </Route>

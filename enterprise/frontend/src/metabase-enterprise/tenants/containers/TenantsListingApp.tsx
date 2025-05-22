@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ACTIVE_STATUS } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -18,14 +18,15 @@ export const TenantsListingApp = ({
   const [searchInputValue, setSearchInputValue] = useState("");
   const [status, setStatus] = useState(ACTIVE_STATUS.active);
 
-  const { isLoading, error, data = [] } = useListTenantsQuery({ status });
+  const { isLoading, error, data } = useListTenantsQuery({ status });
+  const tenants = useMemo(() => data?.data ?? [], [data]);
 
   return (
     <>
       <LoadingAndErrorWrapper error={error} loading={isLoading}>
         <TenantsListing
           isAdmin={isAdmin}
-          tenants={data}
+          tenants={tenants}
           searchInputValue={searchInputValue}
           setSearchInputValue={setSearchInputValue}
           status={status}

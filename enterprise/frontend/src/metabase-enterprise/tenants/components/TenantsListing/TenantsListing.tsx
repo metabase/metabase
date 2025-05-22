@@ -104,7 +104,7 @@ export const TenantsListing = ({
                 </Flex>
               </td>
               <td>{tenant.slug}</td>
-              <td>{tenant.userCount || 0}</td>
+              <td>{tenant.member_count || 0}</td>
               <Box component="td" ta="end">
                 <ActionsPopover tenant={tenant} />
               </Box>

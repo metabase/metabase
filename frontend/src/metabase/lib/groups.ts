@@ -11,7 +11,7 @@ const SPECIAL_GROUP_NAMES = new Map([
 ]);
 
 export function isDefaultGroup(group: Pick<Group, "name">) {
-  return group.name === "All Users";
+  return group.name === "All Internal Users";
 }
 
 export function isAdminGroup(group: Pick<Group, "name">) {

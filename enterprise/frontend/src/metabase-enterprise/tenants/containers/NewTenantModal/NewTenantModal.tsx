@@ -4,7 +4,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Modal } from "metabase/ui";
 import { useCreateTenantMutation } from "metabase-enterprise/api";
-import type { CreateTenantInput } from "metabase-types/api";
+import type { Tenant } from "metabase-types/api";
 
 import { TenantForm } from "../../components/TenantForm";
 
@@ -17,8 +17,12 @@ export const NewTenantModal = ({ onClose }: NewUserModalProps) => {
 
   const [createTenant] = useCreateTenantMutation();
 
-  const handleSubmit = async (vals: CreateTenantInput) => {
-    await createTenant(vals).unwrap();
+  const handleSubmit = async (vals: Partial<Tenant>) => {
+    await createTenant({
+      ...vals,
+      name: vals.name ?? "",
+      slug: vals.slug ?? "",
+    }).unwrap();
     dispatch(addUndo({ message: t`Tenant creation successful` }));
     onClose();
   };

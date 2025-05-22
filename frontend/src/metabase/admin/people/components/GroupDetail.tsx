@@ -18,7 +18,7 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { GroupMembersTable } from "./GroupMembersTable";
@@ -126,9 +126,15 @@ export const GroupDetail = ({
           </Box>
         </Fragment>
       }
-      buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
-      buttonDisabled={addUserVisible}
+      titleActions={
+        canEditMembership(group) && (
+          <Button
+            variant="filled"
+            onClick={onAddUsersClicked}
+            disabled={addUserVisible}
+          >{t`Add members`}</Button>
+        )
+      }
     >
       <GroupDescription group={group} />
       <GroupMembersTable

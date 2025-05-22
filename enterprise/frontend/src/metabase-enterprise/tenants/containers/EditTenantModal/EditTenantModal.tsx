@@ -12,7 +12,7 @@ import {
   useGetTenantQuery,
   useUpdateTenantMutation,
 } from "metabase-enterprise/api";
-import type { CreateTenantInput } from "metabase-types/api";
+import type { Tenant } from "metabase-types/api";
 
 import { TenantForm } from "../../components/TenantForm";
 
@@ -37,8 +37,13 @@ export const EditTenantModal = ({ params, onClose }: EditUserModalProps) => {
     [tenant],
   );
 
-  const handleSubmit = async (vals: CreateTenantInput) => {
-    await updateTenant(vals).unwrap();
+  const handleSubmit = async (vals: Partial<Tenant>) => {
+    if (typeof vals.id !== "number") {
+      throw new Error("tenant should have an id");
+    }
+    const tenant = _.omit({ ...vals, id: vals.id ?? 0 }, "slug");
+
+    await updateTenant(tenant).unwrap();
     dispatch(addUndo({ message: t`Tenant update successful` }));
     onClose();
   };

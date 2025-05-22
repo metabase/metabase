@@ -88,7 +88,7 @@
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                      (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
-   "/tenants"                    (premium-handler metabase-enterprise.tenants.api/routes :tenants)
+   "/tenants"                    (premium-handler metabase-enterprise.tenants.api/routes :advanced-permissions) ;; TODO change back to :tenants once feature is enabled
    "/upload-management"          (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

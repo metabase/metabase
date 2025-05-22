@@ -2,7 +2,7 @@ export type Tenant = {
   id: number;
   name: string;
   slug: string;
-  userCount: number; // TODO: rename
+  member_count: number;
   is_active: boolean;
 };
 
