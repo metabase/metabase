@@ -7,23 +7,36 @@ import { useDispatch } from "metabase/lib/redux";
 import { Stack, Text, Title } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
-type DataConnectionStepProps = {
-  onSubmit: (databaseData: DatabaseData) => Promise<void>;
-  error: string;
-};
+import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
-export const DataConnectionStep = ({
-  onSubmit,
-  error,
-}: DataConnectionStepProps) => {
+export const DataConnectionStep = () => {
   const dispatch = useDispatch();
+  const { setDatabase, setError, setProcessingStatus } = useEmbeddingSetup();
 
   const handleSubmit = useCallback(
     async (databaseData: DatabaseData) => {
-      await onSubmit(databaseData);
-      dispatch(push("/setup/embedding/processing"));
+      setProcessingStatus("Connecting to database...");
+      setError("");
+
+      try {
+        const response = await fetch("/api/database", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(databaseData),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to create database");
+        }
+        const createdDatabase = await response.json();
+        setDatabase(createdDatabase);
+        dispatch(push("/setup/embedding/table-selection"));
+      } catch (err) {
+        setError(
+          "Failed to connect to the database. Please check your settings and try again.",
+        );
+      }
     },
-    [onSubmit, dispatch],
+    [dispatch, setDatabase, setError, setProcessingStatus],
   );
 
   return (
@@ -31,13 +44,8 @@ export const DataConnectionStep = ({
       <Stack gap="md">
         <Title order={2}>{t`Connect to your data`}</Title>
         <Text size="lg">
-          {t`Connect to your database to get started with embedding. We'll automatically create models and X-rays for your data.`}
+          {t`Connect to your database to get started with embedding. We'll help you select tables to turn into models and dashboards.`}
         </Text>
-        {error && (
-          <Text color="error" role="alert">
-            {error}
-          </Text>
-        )}
       </Stack>
 
       <DatabaseForm
