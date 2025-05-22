@@ -204,7 +204,7 @@
   "Technically `config` 'uses' `enterprise/core` and `test` since it tries to load them to see if they exist so we know
   if EE/test code is available; however we can ignore them since they're not 'real' usages. So add them here so we
   don't include them in our deps tree."
-  '{metabase.config #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
+  '{metabase.config.core #{metabase-enterprise.core.dummy-namespace metabase.test.dummy-namespace}})
 
 (mu/defn- file-dependencies :- [:map
                                 [:namespace simple-symbol?]

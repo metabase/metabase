@@ -4,7 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -206,7 +206,7 @@
           (catch Throwable e
             (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
                             {:driver   driver
-                             :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                             :sql-args (into [(str/split-lines (app-db/format-sql (first sql-args)))]
                                              (rest sql-args))}
                             e))))))))
 
