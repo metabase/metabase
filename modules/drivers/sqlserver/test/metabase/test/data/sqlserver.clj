@@ -55,7 +55,8 @@
                                user-name user-name
                                (tx/db-test-env-var :sqlserver :password))
                        (format "drop user if exists [%s];" user-name)
-                       (format "create user %s for login %s;" user-name user-name)]]
+                       (format "create user %s for login %s;" user-name user-name)
+                       (format "EXEC sp_addrolemember 'db_owner', %s;" user-name)]]
       (jdbc/execute! spec [statement])))
   (drop-if-exists-and-create-role! driver details roles)
   (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
@@ -65,12 +66,19 @@
   [driver details roles db-user]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[user-name _] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
+      (let [role-login (str user-name "_login")
+            role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
             user-name (sql.tx/qualify-and-quote driver user-name)]
         (doseq [statement [(format "EXEC sp_droprolemember %s, %s" role-name user-name)
-                           (format "REVOKE IMPERSONATE ON USER::%s TO %s" user-name db-user)
-                           (format "DROP ROLE IF EXISTS %s;" role-name)]]
-          (jdbc/execute! spec [statement] {:transaction? false}))))))
+                           (format "REVOKE IMPERSONATE ON USER::%s FROM %s" user-name db-user)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)
+                           (format "DROP USER IF EXISTS %s;" user-name)
+                           (format "DROP LOGIN %s;" role-login)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))
+    (doseq [statement [(format "EXEC sp_droprolemember 'db_owner', %s" db-user)
+                       (format "DROP USER IF EXISTS %s;" db-user)
+                       (format "DROP LOGIN %s;" db-user)]]
+      (jdbc/execute! spec [statement] {:transaction? false}))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BIT"

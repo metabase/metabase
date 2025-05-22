@@ -149,6 +149,10 @@
   ;; need to create a new user because the user 'default' is read only
   "metabase")
 
+(defmethod impersonation-default-user :sqlserver
+  [_driver]
+  "default_role_user")
+
 (defmulti impersonation-details
   {:arglists '([driver db])}
   tx/dispatch-on-driver-with-test-extensions
@@ -179,8 +183,8 @@
   [_driver db]
   (assoc (:details db) :role "ACCOUNTADMIN"))
 
-(deftest conn-impersonation-test-one
-  (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+(deftest conn-impersonation-test-four
+  (mt/test-drivers #{:sqlserver} (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")

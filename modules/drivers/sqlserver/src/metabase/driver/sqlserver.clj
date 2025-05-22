@@ -921,9 +921,9 @@
   [_driver database]
   ;; SQL Server supports impersonation via EXECUTE AS USER
   ;; So the default role is the default user
-  (-> database :details :user))
+  (if (= "sa" (-> database :details :user)) nil (-> database :details :user)))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
   ;; REVERT to handle the case where the users role attribute has changed
-  (format "REVERT; EXECUTE AS USER = '%s'" role))
+  (format "REVERT; EXECUTE AS USER = '%s';" role))
