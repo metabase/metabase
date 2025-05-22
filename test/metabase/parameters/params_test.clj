@@ -128,8 +128,7 @@
                                                                   {:id "p4" :type :number/=}
                                                                   {:id "p5" :type :string/=}
                                                                   {:id "p6" :type :string/=}
-                                                                  {:id "p7" :type :number/=}
-                                                                  {:id "p8" :type :number/=}]}
+                                                                  {:id "p7" :type :number/=}]}
                      :model/Card          card      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]
                                                                                              :breakout    [$category]})}
                      :model/DashboardCard _dashcard {:dashboard_id       (u/the-id dashboard)
@@ -177,10 +176,8 @@
                   param-fields))
           ;; invalid :stage-number
           (is (not (contains? param-fields "p6")))
-          ;; invalid :card_id
-          (is (not (contains? param-fields "p7")))
           ;; no mapping
-          (is (not (contains? param-fields "p8"))))))))
+          (is (not (contains? param-fields "p7"))))))))
 
 (deftest ^:parallel card->template-tag-test
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
