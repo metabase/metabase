@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
@@ -605,9 +604,9 @@
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
-  (-> (mdb.query/query {:select [:value]
-                        :from   [:setting]
-                        :where  [:= :key (name setting-key)]})
+  (-> (mdb/query {:select [:value]
+                  :from   [:setting]
+                  :where  [:= :key (name setting-key)]})
       first :value))
 
 (deftest encrypted-settings-test

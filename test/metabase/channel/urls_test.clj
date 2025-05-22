@@ -1,8 +1,8 @@
-(ns metabase.util.urls-test
+(ns metabase.channel.urls-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
-   [metabase.util.urls :as urls]))
+   [metabase.channel.urls :as urls]
+   [metabase.test :as mt]))
 
 (deftest dashboard-url-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]

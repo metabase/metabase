@@ -5,11 +5,11 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.urls :as urls]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.urls :as urls]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private image-width
   "Maximum width of the rendered PNG of HTML to be sent to HTTP Content that exceeds this width (e.g. a table with

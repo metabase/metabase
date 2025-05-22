@@ -1,4 +1,4 @@
-(ns metabase.logger-test
+(ns metabase.logger.core-test
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -6,7 +6,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.test :as mt])
   (:import
    (org.apache.logging.log4j Level)
@@ -16,7 +16,7 @@
 
 (defn logger
   (^Logger []
-   (logger 'metabase.logger-test))
+   (logger 'metabase.logger.core-test))
   (^Logger [ns-symb]
    (log.impl/get-logger log/*logger-factory* ns-symb)))
 
@@ -42,8 +42,8 @@
         (is (not (.isAdditive (logger 'metabase))))))
 
     (testing "still true if the parent logger is not root"
-      (mt/with-log-level [metabase.logger :warn]
-        (is (.isAdditive (logger 'metabase.logger)))))))
+      (mt/with-log-level [metabase.logger.core :warn]
+        (is (.isAdditive (logger 'metabase.logger.core)))))))
 
 (deftest ^:parallel logger-test
   (testing "Using log4j2 logger"
@@ -62,27 +62,28 @@
 
 (deftest fork-logs-test
   (testing "logger/for-ns works properly"
-    (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
-      (try
-        (with-open [_ (logger/for-ns f 'metabase.logger-test {:additive false})]
+    (mt/with-temp-file [filename]
+      (let [f (io/file filename)]
+        (with-open [_ (logger/for-ns f 'metabase.logger.core-test {:additive false})]
           (log/info "just a test"))
         (is (=? [#".*just a test$"]
-                (line-seq (io/reader f))))
-        (finally
-          (when (.exists f)
-            (io/delete-file f)))))
+                (line-seq (io/reader f))))))))
+
+(deftest fork-logs-test-2
+  (testing "logger/for-ns works properly"
     (let [baos (java.io.ByteArrayOutputStream.)]
-      (with-open [_ (logger/for-ns baos 'metabase.logger-test {:additive false})]
+      (with-open [_ (logger/for-ns baos 'metabase.logger.core-test {:additive false})]
         (log/info "just a test"))
       (log/info "this line is not going into our stream")
       (testing "We catched the line we needed and did not catch the other one"
         (is (=? [#".*just a test$"]
-                (line-seq (io/reader (.toByteArray baos))))))))
+                (line-seq (io/reader (.toByteArray baos)))))))))
 
+(deftest fork-logs-test-3
   (testing "We can capture few separate namespaces"
-    (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
-      (try
-        (with-open [_ (logger/for-ns f ['metabase.logger-test
+    (mt/with-temp-file [filename]
+      (let [f (io/file filename)]
+        (with-open [_ (logger/for-ns f ['metabase.logger.core-test
                                         'metabase.unknown]
                                      {:additive false})]
           (log/info "just a test")
@@ -91,16 +92,13 @@
             (log/log 'metabase.unknown2 :info nil "this one going into standard log")))
         (is (=? [#".*just a test$"
                  #".*separate test$"]
-                (line-seq (io/reader f))))
-        (finally
-          (when (.exists f)
-            (io/delete-file f)))))))
+                (line-seq (io/reader f))))))))
 
 (deftest level-enabled?-test
   #_{:clj-kondo/ignore [:equals-true]}
   (are [set-level check-level expected-value] (= expected-value
-                                                 (mt/with-log-level [metabase.logger-test set-level]
-                                                   (logger/level-enabled? 'metabase.logger-test check-level)))
+                                                 (mt/with-log-level [metabase.logger.core-test set-level]
+                                                   (logger/level-enabled? 'metabase.logger.core-test check-level)))
     :error Level/ERROR true
     :error Level/WARN  false
     :error Level/INFO  false
@@ -138,6 +136,6 @@
         (log/debug (apply str (repeat 5000 "a"))))
       (log/debug (ex-info (apply str (repeat 600 "b")) {}) "exception message")
       (is (= 250 (count (logger/messages))))
-      (is (= 4000 (apply max (map #(count (:msg %)) (logger/messages)))))
-      (is (= 20 (apply max (map #(count (:exception %)) (logger/messages)))))
-      (is (= 500 (apply max (map count (mapcat :exception (logger/messages)))))))))
+      (is (= 4000 (reduce max 0 (map #(count (:msg %)) (logger/messages)))))
+      (is (= 20 (reduce max 0 (map #(count (:exception %)) (logger/messages)))))
+      (is (= 500 (reduce max 0 (map count (mapcat :exception (logger/messages)))))))))

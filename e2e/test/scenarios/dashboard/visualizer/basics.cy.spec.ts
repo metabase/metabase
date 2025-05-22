@@ -206,6 +206,29 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().button("Save").should("be.disabled");
   });
 
+  it("should allow clicking on the title", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // Click on both series of the first chart
+    // Series 1
+    H.showUnderlyingQuestion(0, ORDERS_COUNT_BY_CREATED_AT.name);
+    cy.url().should("contain", "80-orders-by-created-at-month");
+    cy.findByLabelText("Back to Test Dashboard").click();
+    cy.url().should("contain", "10-test-dashboard");
+
+    // Series 2
+    H.showUnderlyingQuestion(0, PRODUCTS_COUNT_BY_CREATED_AT.name);
+    cy.url().should("contain", "82-products-by-created-at-month");
+    cy.findByLabelText("Back to Test Dashboard").click();
+    cy.url().should("contain", "10-test-dashboard");
+
+    // Click on the fifth chart (a funnel)
+    H.showUnderlyingQuestion(4, STEP_COLUMN_CARD.name);
+    cy.url().should("contain", "88-step-column");
+    cy.findByLabelText("Back to Test Dashboard").click();
+    cy.url().should("contain", "10-test-dashboard");
+  });
+
   it("should rename a dashboard card", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
