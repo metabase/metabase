@@ -1,6 +1,6 @@
 {{> metabase/channel/email/_header.hbs }}
   <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);">
-    <p><strong>A new record was <i>created</i></strong> in Table {{table.name}}{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.</p>
+    <p><strong>A new record was <i>created</i></strong> in <a href="{{scope.origin_url}}" target="_blank">Table {{table.name}}</a>{{#if editor.common_name }} by {{editor.common_name}}{{/if}}.</p>
     <table style="width: 100%; border-collapse: collapse; font-family: inherit; margin-top: 2em;">
       <thead>
         <tr style="border-bottom: 2px solid #ededed;">
@@ -17,5 +17,8 @@
         {{/each}}
       </tbody>
     </table>
+    <p>
+      <a href="{{scope.origin_url}}" target="_blank">View table in Metabase</a>
+    </p>
   </div>
 {{> metabase/channel/email/_footer.hbs }}
