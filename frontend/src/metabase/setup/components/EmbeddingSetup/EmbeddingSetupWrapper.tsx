@@ -11,7 +11,7 @@ export const EmbeddingSetupWrapper = ({
 }: EmbeddingSetupWrapperProps) => {
   return (
     <EmbeddingSetupProvider>
-      <Box p="xl" maw={800} mx="auto">
+      <Box p="xl" maw="80%" mx="auto" mt="xl">
         {children}
       </Box>
     </EmbeddingSetupProvider>
