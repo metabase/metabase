@@ -154,8 +154,12 @@
 (defmethod tx/drop-roles! :postgres
   [driver details roles _user-name]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name _] roles]
+    (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name perms] table-perms]
+          (jdbc/execute! spec
+                         [(format "ALTER TABLE %s DISABLE ROW LEVEL SECURITY" table-name)]
+                         {:transaction? false}))
         (jdbc/execute! spec
                        [(format "DROP OWNED BY %s;" role-name)]
                        {:transaction? false})
@@ -169,13 +173,13 @@
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [[table-name perms] table-perms]
-          (when (:rls perms)
-            (let [policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
-                                       (sql.qp/format-honeysql driver (:rls perms))))]
-              (doseq [statement [(format "ALTER TABLE %s enable ROW LEVEL SECURITY" table-name)
-                                 (format "CREATE POLICY role_policy_%s ON %s FOR SELECT TO %s USING %s"
-                                         (mt/random-name) table-name role-name policy-cond)]]
-                (jdbc/execute! spec [statement] {:transaction? false}))))
+          (let [rls-perms (if (:rls perms) (:rls perms) [true])
+                policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
+                                     (sql.qp/format-honeysql driver rls-perms)))]
+            (doseq [statement [(format "ALTER TABLE %s ENABLE ROW LEVEL SECURITY" table-name)
+                               (format "CREATE POLICY role_policy_%s ON %s FOR SELECT TO %s USING %s"
+                                       (mt/random-name) table-name role-name policy-cond)]]
+              (jdbc/execute! spec [statement] {:transaction? false})))
           (let [columns (:columns perms)
                 select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
                 grant-stmt (if (seq columns)
