@@ -23,7 +23,7 @@
   `/db/1/read/` permissions, or if they have `/db/1/`, or even full `/` superuser permissions.
 
   This prefix system allows us to easily and efficiently query the application database to find relevant matching
-  permissions matching an path or path using `LIKE`; see [[metabase.models.database/pre-delete]] for
+  permissions matching an path or path using `LIKE`; see [[metabase.warehouses.models.database/pre-delete]] for
   an example of the sort of efficient queries the prefix system facilitates.
 
   The union of all permissions the current User's gets from all groups of which they are a member are automatically
@@ -171,7 +171,7 @@
   (:require
    [clojure.string :as str]
    [metabase.audit-app.core :as audit]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]

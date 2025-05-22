@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.table :as table]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -15,6 +14,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 

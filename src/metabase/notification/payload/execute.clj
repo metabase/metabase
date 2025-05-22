@@ -3,7 +3,8 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.channel.urls :as urls]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
@@ -17,7 +18,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?

@@ -28,7 +28,7 @@ import {
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconName, IconProps } from "metabase/ui";
+import { type IconName, type IconProps, Menu } from "metabase/ui";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -876,6 +876,25 @@ class Visualization extends PureComponent<
                     onUpdateWarnings={onUpdateWarnings}
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
+                    titleMenuItems={
+                      visualizerRawSeries ? (
+                        <>
+                          <Menu.Label>{t`Questions in this card`}</Menu.Label>
+                          {visualizerRawSeries.map((series, index) => (
+                            <Menu.Item
+                              key={index}
+                              onClick={() => {
+                                this.handleOnChangeCardAndRun({
+                                  nextCard: series.card,
+                                });
+                              }}
+                            >
+                              {series.card.name}
+                            </Menu.Item>
+                          ))}
+                        </>
+                      ) : undefined
+                    }
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

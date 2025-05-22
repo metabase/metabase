@@ -2,7 +2,7 @@
   "Support for in-memory, thread-blocking retrying."
   (:require
    [malli.util :as mut]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -64,7 +64,8 @@
    :max-interval-millis (retry-max-interval-millis)})
 
 (defn- make-predicate [f]
-  (reify Predicate (test [_ x] (f x))))
+  (reify Predicate (test [_ x]
+                     (boolean (f x)))))
 
 (defn random-exponential-backoff-retry
   "Returns a randomized exponential backoff retry named `retry-name`

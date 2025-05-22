@@ -2,7 +2,7 @@
   "Code and constants related to getting and setting cookies in Ring requests and responses."
   (:require
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.request.util :as request.util]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting :refer [defsetting]]

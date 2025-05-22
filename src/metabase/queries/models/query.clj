@@ -2,7 +2,7 @@
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
    [clojure.walk :as walk]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]

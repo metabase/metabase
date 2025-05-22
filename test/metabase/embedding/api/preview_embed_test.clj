@@ -3,7 +3,7 @@
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
-   [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.embed-test :as embed-test]
    [metabase.embedding.api.preview-embed :as api.preview-embed]
    [metabase.query-processor.pivot.test-util :as api.pivots]

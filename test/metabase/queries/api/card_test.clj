@@ -11,15 +11,14 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.test-util :as api.test-util]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.http-client :as client]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -38,6 +37,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -3610,22 +3610,6 @@
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))
-
-(deftest card-metadata-has-entity-ids-test
-  (mt/with-temp
-    [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
-                                  :database_id (mt/id)}
-     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
-    (testing "Simple card"
-      (is (=? {:fields api.test-util/all-have-entity-ids?
-               :tables api.test-util/all-have-entity-ids?
-               :databases api.test-util/all-have-entity-ids?}
-              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata")))))
-    (testing "Parameterized native query"
-      (is (=? {:fields api.test-util/all-have-entity-ids?
-               :tables api.test-util/all-have-entity-ids?
-               :databases api.test-util/all-have-entity-ids?}
-              (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata")))))))
 
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"

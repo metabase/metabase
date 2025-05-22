@@ -8,7 +8,7 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,7 +18,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.database :as database]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -32,6 +31,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.models.database :as database]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -323,7 +323,7 @@
 (defn- apply-gtap
   "Apply a GTAP to map m (e.g. a Join or inner query), replacing its `:source-table`/`:source-query` with the GTAP
   `:source-query`."
-  [m gtap]
+  [{:keys [source-table] :as m} gtap]
   ;; Only infer source query metadata for JOINS that use `:fields :all`. That's the only situation in which we
   ;; absolutely *need* to infer source query metadata (we need to know the columns returned by the source query so we
   ;; can generate the join against ALL fields). It's better not to infer the source metadata if we don't NEED to,
@@ -331,9 +331,10 @@
   ;; columns as the Table it replaces, but this constraint is not enforced anywhere. If we infer metadata and the GTAP
   ;; turns out *not* to match exactly, the query could break. So only infer it in cases where the query would
   ;; definitely break otherwise.
-  (u/prog1 (merge
-            (dissoc m :source-table :source-query)
-            (gtap->source gtap))
+  (u/prog1 (-> (merge
+                (dissoc m :source-table :source-query)
+                (gtap->source gtap))
+               (assoc-in [:source-query ::query-perms/gtapped-table] source-table))
     (log/tracef "Applied GTAP: replaced\n%swith\n%s"
                 (u/pprint-to-str 'yellow m)
                 (u/pprint-to-str 'green <>))))

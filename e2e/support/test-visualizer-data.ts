@@ -243,6 +243,24 @@ export const PRODUCTS_COUNT_BY_CREATED_AT: StructuredQuestionDetailsWithName = {
   },
 };
 
+export const PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY: StructuredQuestionDetailsWithName =
+  {
+    display: "bar",
+    name: "Products by Created At (Month) and Category",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+        ["field", PRODUCTS.CATEGORY, null],
+      ],
+    },
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      "graph.metrics": ["count"],
+    },
+  };
+
 export const PRODUCTS_AVERAGE_BY_CREATED_AT: StructuredQuestionDetailsWithName =
   {
     display: "bar",
@@ -358,7 +376,11 @@ export const VIEWS_COLUMN_CARD: NativeQuestionDetailsWithName = {
   },
 };
 
-export function createDashboardWithVisualizerDashcards() {
+export function createDashboardWithVisualizerDashcards(
+  { enable_embedding }: { enable_embedding: boolean } = {
+    enable_embedding: false,
+  },
+) {
   cy.get("@ordersCountByCreatedAtQuestionId").then(function () {
     const {
       ordersCountByCreatedAtQuestionId,
@@ -381,93 +403,96 @@ export function createDashboardWithVisualizerDashcards() {
       viewsColumnQuestionEntityId,
     } = this;
 
-    H.createDashboard().then(({ body: { id: dashboardId } }) => {
-      const dc1 = createVisualizerDashcardWithTimeseriesBreakout(
-        ordersCountByCreatedAtQuestionId,
-        ordersCountByCreatedAtQuestionEntityId,
-        productsCountByCreatedAtQuestionId,
-        productsCountByCreatedAtQuestionEntityId,
-        {
-          id: -1,
-          col: 0,
-          row: 0,
-          size_x: 12,
-          size_y: 8,
-        },
-      );
+    H.createDashboard({ enable_embedding }).then(
+      ({ body: { id: dashboardId } }) => {
+        const dc1 = createVisualizerDashcardWithTimeseriesBreakout(
+          ordersCountByCreatedAtQuestionId,
+          ordersCountByCreatedAtQuestionEntityId,
+          productsCountByCreatedAtQuestionId,
+          productsCountByCreatedAtQuestionEntityId,
+          {
+            id: -1,
+            col: 0,
+            row: 0,
+            size_x: 12,
+            size_y: 8,
+          },
+        );
 
-      const dc2 = createVisualizerDashcardWithCategoryBreakout(
-        ordersCountByProductCategoryQuestionId,
-        ordersCountByProductCategoryQuestionEntityId,
-        productsCountByCategoryQuestionId,
-        productsCountByCategoryQuestionEntityId,
-        {
-          id: -2,
+        const dc2 = createVisualizerDashcardWithCategoryBreakout(
+          ordersCountByProductCategoryQuestionId,
+          ordersCountByProductCategoryQuestionEntityId,
+          productsCountByCategoryQuestionId,
+          productsCountByCategoryQuestionEntityId,
+          {
+            id: -2,
+            col: 12,
+            row: 0,
+            size_x: 12,
+            size_y: 8,
+          },
+        );
+
+        const dc3 = createVisualizerPieChartDashcard(
+          productsCountByCategoryQuestionId,
+          productsCountByCategoryQuestionEntityId,
+          {
+            id: -3,
+            col: 0,
+            row: 8,
+            size_x: 12,
+            size_y: 8,
+          },
+        );
+
+        const dc4 = {
+          id: -4,
+          card_id: productsCountByCreatedAtQuestionId,
+
           col: 12,
-          row: 0,
-          size_x: 12,
-          size_y: 8,
-        },
-      );
-
-      const dc3 = createVisualizerPieChartDashcard(
-        productsCountByCategoryQuestionId,
-        productsCountByCategoryQuestionEntityId,
-        {
-          id: -3,
-          col: 0,
           row: 8,
           size_x: 12,
           size_y: 8,
-        },
-      );
+        };
 
-      const dc4 = {
-        id: -4,
-        card_id: productsCountByCreatedAtQuestionId,
+        const dc5 = createVisualizerFunnel(
+          stepColumnQuestionId,
+          stepColumnQuestionEntityId,
+          viewsColumnQuestionId,
+          viewsColumnQuestionEntityId,
+          {
+            id: -5,
+            col: 0,
+            row: 16,
+            size_x: 12,
+            size_y: 8,
+          },
+        );
 
-        col: 12,
-        row: 8,
-        size_x: 12,
-        size_y: 8,
-      };
+        const dc6 = createVisualizerScalarFunnel(
+          landingPageViewsScalarQuestionId,
+          landingPageViewsScalarQuestionEntityId,
+          checkoutPageViewsScalarQuestionId,
+          checkoutPageViewsScalarQuestionEntityId,
+          paymentDonePageViewsScalarQuestionId,
+          paymentDonePageViewsScalarQuestionEntityId,
+          {
+            id: -6,
+            col: 12,
+            row: 16,
+            size_x: 12,
+            size_y: 8,
+          },
+        );
 
-      const dc5 = createVisualizerFunnel(
-        stepColumnQuestionId,
-        stepColumnQuestionEntityId,
-        viewsColumnQuestionId,
-        viewsColumnQuestionEntityId,
-        {
-          id: -5,
-          col: 0,
-          row: 16,
-          size_x: 12,
-          size_y: 8,
-        },
-      );
-
-      const dc6 = createVisualizerScalarFunnel(
-        landingPageViewsScalarQuestionId,
-        landingPageViewsScalarQuestionEntityId,
-        checkoutPageViewsScalarQuestionId,
-        checkoutPageViewsScalarQuestionEntityId,
-        paymentDonePageViewsScalarQuestionId,
-        paymentDonePageViewsScalarQuestionEntityId,
-        {
-          id: -6,
-          col: 12,
-          row: 16,
-          size_x: 12,
-          size_y: 8,
-        },
-      );
-
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        dashcards: [dc1, dc2, dc3, dc4, dc5, dc6],
-      }).then(() => {
-        H.visitDashboard(dashboardId);
-      });
-    });
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          dashcards: [dc1, dc2, dc3, dc4, dc5, dc6],
+        }).then(() => {
+          cy.wrap(dashboardId).as("dashboardId");
+          H.visitDashboard(dashboardId);
+        });
+      },
+    );
   });
 }
 
