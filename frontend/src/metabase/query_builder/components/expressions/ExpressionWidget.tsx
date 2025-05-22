@@ -150,6 +150,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
 
   if (expressionMode === "expression" && isCombiningColumns) {
     return (
+      // here expression editor!
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
         <CombineColumns
           query={query}

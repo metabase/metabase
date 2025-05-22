@@ -58,6 +58,54 @@ const WINDOW = defineClauses(
       ],
       docsPage: "offset",
     },
+    "window-min": {
+      displayName: "WindowMin",
+      type: "any",
+      hasOptions: true,
+      description: () =>
+        t`Computes window min`,
+      args: () => [
+        {
+          name: t`expression`,
+          type: "any",
+          description: t`Hello.`,
+          example: op("WindowMin", dimension(t`Total`)),
+        },
+      ],
+      // docsPage: "offset",
+    },
+    "window-max": {
+      displayName: "WindowMax",
+      type: "any",
+      hasOptions: true,
+      description: () =>
+        t`Computes window max`,
+      args: () => [
+        {
+          name: t`expression`,
+          type: "any",
+          description: t`Hello.`,
+          example: op("WindowMax", dimension(t`Total`)),
+        },
+      ],
+      // docsPage: "offset",
+    },
+    "window-sum": {
+      displayName: "WindowSum",
+      type: "any",
+      hasOptions: true,
+      description: () =>
+        t`Computes window sum`,
+      args: () => [
+        {
+          name: t`expression`,
+          type: "any",
+          description: t`Hello.`,
+          example: op("WindowSum", dimension(t`Total`)),
+        },
+      ],
+      // docsPage: "offset",
+    },
   },
 );
 
@@ -1819,7 +1867,7 @@ export const COMPARISON_OPERATORS = defineClauses(
     },
   },
 );
-
+// here!!!
 export const EXPRESSION_OPERATORS = {
   ...LOGICAL_OPERATORS,
   ...NUMERIC_OPERATORS,
@@ -1833,6 +1881,7 @@ export const AGGREGATION_FUNCTIONS = {
 } as const;
 
 export const EXPRESSION_FUNCTIONS = {
+  ...WINDOW,
   ...CONVERSION,
   ...STRING,
   ...DATE,

@@ -229,6 +229,7 @@ function compileEqualityOp(node: Node, ctx: Context): Lib.ExpressionParts {
   return compileInfixOp(node.token.text, node, ctx);
 }
 
+// this???
 function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
   assert(node.type === CALL, t`Invalid node type`);
   assert(node.token?.text, t`Empty token text`);
@@ -247,7 +248,66 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
   const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
 
-  if (hasOptions) {
+  // if (clause.name === "window-max") {
+  //   // console.log(clause)
+  //   // console.log(node)
+  //   // console.log(args)
+  //   // console.log("AHOJS")
+  //   // console.log(args.slice(1))
+  //   const optsTmp = args.slice(1).reduce(
+  //     (acc, a) => {
+  //     if (acc.state === "broken") {
+  //       return { ...acc }
+  //     }
+  //     else if (acc.state === "empty") {
+  //       if (typeof a === "string" && a === "partition") {
+  //         return { ...acc, state: "partition" }
+  //       }
+  //       else if (typeof a === "string" && a === "order") {
+  //         return { ...acc, state: "order" }
+  //       }
+  //       else {
+  //         return { ...acc, state: "broken" }
+  //       }
+  //     }
+  //     else if (acc.state === "partition") {
+  //       if (typeof a === "string" && a === "order") {
+  //         return { ...acc, state: "order" }
+  //       } else {
+  //         return { ...acc, partition: [...acc.partition, a] }
+  //       }
+  //     }
+  //     else if (acc.state === "order") {
+  //       return { ...acc, order: [...acc.order, a] }
+  //     }
+  //   }, { state: "empty", partition: [], order: [] })
+
+    //// console.log(optsTmp)
+    // if (optsTmp.state !== "broken") {
+    //   console.log('blalba')
+    //   console.log(optsTmp)
+    //   console.log(optsTmp.partition.map(x => Lib.rawLegacyRef(x)))
+    //   options.partition = optsTmp.partition.map(x => Lib.rawLegacyRef(x))
+    //   options.order = optsTmp.order.map(x => Lib.rawLegacyRef(x))
+    // }
+    // for (
+    //   let i = 0; 
+    //   i < (optsTmp.partition.length ? optsTmp.partition.length + 1 : 0)  + (optsTmp.order.length ? optsTmp.order.length + 1 : 0); 
+    //   i++) {
+    //   args.pop()
+    // }
+
+
+  // }
+
+  // console.log(clause.name)
+
+  // console.log(args)
+
+
+
+
+  if (hasOptions && clause.name !== "window-max") {
     const last = args.at(-1);
     if (last === "include-current") {
       args.pop();

@@ -179,6 +179,17 @@
           (assoc :joins (mapv (fn [join]
                                 (assoc join :qp/refs (:qp/refs query)))
                               joins))))))
+(defn- cc-window?
+  [x]
+  (and (vector? x)
+       (#{:window-min :window-max :window-sum}
+        (first x))))
+
+(defn- contains-cc-window?
+  [x]
+  (seq (lib.util.match/match x
+         cc-window?
+         &match)))
 
 (defn- should-nest-expressions?
   "Whether we should nest the expressions in a inner query; true if
@@ -189,16 +200,19 @@
 
   3. AND the breakouts/aggregations/order-bys contain at least one `:expression` reference."
   [{:keys [expressions], breakouts :breakout, aggregations :aggregation, order-bys :order-by, :as _inner-query}]
-  (and
+  (or
+   (contains-cc-window? expressions)
+   (and
    ;; 1. has some expression definitions
-   (seq expressions)
+    (seq expressions)
    ;; 2. has some breakouts or aggregations or order-by
-   (or (seq breakouts)
-       (seq aggregations)
-       (seq order-bys))
+    (or (seq breakouts)
+        (seq aggregations)
+        (seq order-bys))
    ;; 3. contains an `:expression` ref
-   (lib.util.match/match-one (concat breakouts aggregations order-bys)
-     :expression)))
+    (lib.util.match/match-one
+     (concat breakouts aggregations order-bys)
+     :expression))))
 
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a

@@ -13,6 +13,7 @@
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
+   #_[metabase.lib.schema.custom-column-window]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]

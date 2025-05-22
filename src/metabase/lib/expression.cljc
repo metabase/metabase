@@ -326,6 +326,9 @@
 (lib.common/defop text [x])
 (lib.common/defop integer [x])
 (lib.common/defop float [x])
+(lib.common/defop window-min [x & args])
+(lib.common/defop window-max [x & args])
+(lib.common/defop window-sum [x & args])
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."

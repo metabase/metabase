@@ -349,6 +349,13 @@
   {:pre [(= (count clause) 4)]}
   [tag opts (->pMBQL expr) n])
 
+(defmethod ->pMBQL :cc-window
+  [[tag expr & args :as clause]]
+  #_{:pre [(= (count clause) 3)]}
+  (into (lib.options/ensure-uuid [tag {} (->pMBQL expr)])
+        (map ->pMBQL)
+        args))
+
 ;; These four expressions have a different form depending on the number of arguments.
 (doseq [tag [:contains :starts-with :ends-with :does-not-contain]]
   (lib.hierarchy/derive tag ::string-comparison))
@@ -473,7 +480,8 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
              :concat :substring :replace :regex-match-first :split-part
-             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
+             :length :trim :ltrim :rtrim :upper :lower :text :integer
+             :cc-window]]
   (lib.hierarchy/derive tag ::expression))
 
 (defmethod ->legacy-MBQL ::aggregation-or-expression
@@ -558,6 +566,11 @@
   [[tag opts expr n, :as clause]]
   {:pre [(= (count clause) 4)]}
   [tag opts (->legacy-MBQL expr) n])
+
+(defmethod ->legacy-MBQL :cc-window
+  [[tag _opts expr & args, :as _clause]]
+  #_{:pre [(= (count clause) 3)]}
+  (into [tag (->legacy-MBQL expr)] (map ->legacy-MBQL) args))
 
 (defmethod ->legacy-MBQL ::string-comparison
   [[tag opts & args]]

@@ -421,7 +421,8 @@
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
-    :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
+    :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second
+    :window-min :window-max :window-sum})
 
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
@@ -604,6 +605,21 @@
 
 (defclause ^{:requires-features #{:expressions}} +
   x Addable, y Addable, more (rest Addable))
+
+(mr/def ::WinArg
+  [:or :string :any])
+
+(def ^:private WinArg
+  [:ref ::WinArg])
+
+(defclause ^{:requires-features #{:expressions}} window-min
+  x NumericExpressionArg, more (rest WinArg))
+
+(defclause ^{:requires-features #{:expressions}} window-max
+  x NumericExpressionArg, more (rest WinArg))
+
+(defclause ^{:requires-features #{:expressions}} window-sum
+  x NumericExpressionArg, more (rest WinArg))
 
 (defclause ^{:requires-features #{:expressions}} -
   x NumericExpressionArg, y Addable, more (rest Addable))
@@ -965,7 +981,10 @@
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
+          get-hour get-minute get-second
+          window-min
+          window-max
+          window-sum))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain

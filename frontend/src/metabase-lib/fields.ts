@@ -59,3 +59,9 @@ export function legacyRef(
 ): FieldReference {
   return ML.legacy_ref(query, stageIndex, column);
 }
+
+export function rawLegacyRef(
+  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+): FieldReference {
+  return ML.raw_legacy_ref(column);
+}

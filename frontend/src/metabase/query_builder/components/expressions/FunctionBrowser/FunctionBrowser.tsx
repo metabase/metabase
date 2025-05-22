@@ -61,6 +61,8 @@ export function FunctionBrowser({
     [filter, expressionMode, database, reportTimezone],
   );
 
+  // console.log(filteredClauses)
+
   const isEmpty = filteredClauses.length === 0;
 
   return (

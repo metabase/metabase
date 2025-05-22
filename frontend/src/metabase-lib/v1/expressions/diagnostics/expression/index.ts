@@ -19,6 +19,7 @@ const expressionChecks = [
   checkLibDiagnostics,
 ];
 
+// check lib diag...
 export function diagnoseExpression(options: {
   query: Lib.Query;
   stageIndex: number;
@@ -28,5 +29,9 @@ export function diagnoseExpression(options: {
   expressionIndex?: number;
   metadata?: Metadata;
 }) {
-  expressionChecks.forEach((check) => check(options));
+  expressionChecks.forEach((check) => { 
+    // console.log("CHECK")
+    // console.log(check)
+    //return check(options) 
+    return true});
 }

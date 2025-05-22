@@ -894,6 +894,61 @@
 (defmethod ->honeysql [:sql :min]    [driver [_ field]] [:min        (->honeysql driver field)])
 (defmethod ->honeysql [:sql :max]    [driver [_ field]] [:max        (->honeysql driver field)])
 
+(defmethod ->honeysql [:sql :window-min]
+  [driver [_tag expr _opts]]
+  [:over [[:min (->honeysql driver expr)]]])
+
+(defmethod ->honeysql [:sql :window-max]
+  [driver [_tag expr & opts]]
+  (def ooo opts)
+  (let [#_#_hsql-partition @(def hp (mapv #(vector (->honeysql driver %))
+                                          (:partition opts)))
+        #_#_hsql-order-by @(def ho (mapv #(vector (->honeysql driver %))
+                                         (:order-by opts)))
+        [partition-by order-by] (split-with (complement #{"order"}) ooo)
+        hsql-partition (mapv #(vector (->honeysql driver %)) (drop 1 partition-by))
+        hsql-order-by (mapv #(vector (->honeysql driver %)) (drop 1 order-by))]
+    [:over [[:max (->honeysql driver expr)]
+            (merge {}
+                   (when (seq hsql-partition)
+                     {:partition-by hsql-partition})
+                   (when (seq hsql-order-by)
+                     {:order-by hsql-order-by}))]]))
+
+(defmethod ->honeysql [:sql :window-min]
+  [driver [_tag expr & opts]]
+  (def ooo opts)
+  (let [#_#_hsql-partition @(def hp (mapv #(vector (->honeysql driver %))
+                                          (:partition opts)))
+        #_#_hsql-order-by @(def ho (mapv #(vector (->honeysql driver %))
+                                         (:order-by opts)))
+        [partition-by order-by] (split-with (complement #{"order"}) ooo)
+        hsql-partition (mapv #(vector (->honeysql driver %)) (drop 1 partition-by))
+        hsql-order-by (mapv #(vector (->honeysql driver %)) (drop 1 order-by))]
+    [:over [[:min (->honeysql driver expr)]
+            (merge {}
+                   (when (seq hsql-partition)
+                     {:partition-by hsql-partition})
+                   (when (seq hsql-order-by)
+                     {:order-by hsql-order-by}))]]))
+
+(defmethod ->honeysql [:sql :window-sum]
+  [driver [_tag expr & opts]]
+  (def ooo opts)
+  (let [#_#_hsql-partition @(def hp (mapv #(vector (->honeysql driver %))
+                                          (:partition opts)))
+        #_#_hsql-order-by @(def ho (mapv #(vector (->honeysql driver %))
+                                         (:order-by opts)))
+        [partition-by order-by] (split-with (complement #{"order"}) ooo)
+        hsql-partition (mapv #(vector (->honeysql driver %)) (drop 1 partition-by))
+        hsql-order-by (mapv #(vector (->honeysql driver %)) (drop 1 order-by))]
+    [:over [[:sum (->honeysql driver expr)]
+            (merge {}
+                   (when (seq hsql-partition)
+                     {:partition-by hsql-partition})
+                   (when (seq hsql-order-by)
+                     {:order-by hsql-order-by}))]]))
+
 (defmethod ->honeysql [:sql :percentile]
   [driver [_ field p]]
   (let [field (->honeysql driver field)

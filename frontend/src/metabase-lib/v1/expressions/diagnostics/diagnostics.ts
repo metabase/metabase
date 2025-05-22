@@ -24,13 +24,18 @@ export type ExpressionDiagnoser = (
 ) => void;
 
 export function diagnoseAndCompile(options: Options) {
-  return compileExpression({
+  // console.log("diagnoseAndCompile")
+  // console.log(options)
+  const eee = compileExpression({
     ...options,
     hooks: {
       lexified({ tokens }) {
         diagnoseExpressionSyntax({ source: options.source, tokens });
       },
       compiled({ expressionClause, expressionParts }) {
+        // console.log("compiled")
+        // console.log(expressionClause)
+        // console.log(expressionParts)
         diagnoseExpression({ ...options, expressionClause, expressionParts });
       },
       error(error) {
@@ -38,9 +43,14 @@ export function diagnoseAndCompile(options: Options) {
       },
     },
   });
+  // console.log("EEE")
+  // console.log(eee)
+  return eee
 }
 
 export function diagnose(options: Options): ExpressionError | null {
+  // console.log("diagnose")
+  // console.log(options)
   const result = diagnoseAndCompile(options);
   if (result.error) {
     return result.error;
