@@ -6,8 +6,6 @@ import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { EntityTypeFilterKeys } from "embedding-sdk/types/question";
-import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
@@ -32,19 +30,6 @@ export const InteractiveQuestionContext = createContext<
 >(undefined);
 
 const DEFAULT_OPTIONS = {};
-
-const FILTER_MODEL_MAP: Record<EntityTypeFilterKeys, DataPickerValue["model"]> =
-  {
-    table: "table",
-    question: "card",
-    model: "dataset",
-    metric: "metric",
-  };
-const mapEntityTypeFilterToDataPickerModels = (
-  entityTypes: InteractiveQuestionProviderProps["entityTypes"],
-): InteractiveQuestionContextType["modelsFilterList"] => {
-  return entityTypes?.map((entityType) => FILTER_MODEL_MAP[entityType]);
-};
 
 export const InteractiveQuestionProvider = ({
   questionId,
@@ -152,7 +137,6 @@ export const InteractiveQuestionProvider = ({
     mode,
     onSave: handleSave,
     onCreate: handleCreate,
-    modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypes),
     isSaveEnabled,
     targetCollection,
     withDownloads,

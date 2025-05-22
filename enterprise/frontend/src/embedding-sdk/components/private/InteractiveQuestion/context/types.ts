@@ -10,7 +10,6 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk/types/question";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
-import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
 
@@ -88,8 +87,7 @@ export type InteractiveQuestionContextType = Omit<
     InteractiveQuestionConfig,
     "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
   > &
-  Pick<InteractiveQuestionProviderProps, "variant"> &
-  Pick<QBNotebookProps, "modelsFilterList"> & {
+  Pick<InteractiveQuestionProviderProps, "variant"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
     resetQuestion: () => void;
