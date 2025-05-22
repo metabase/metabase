@@ -8,15 +8,7 @@ import * as Lib from "metabase-lib";
 import NativeQueryEditorS from "./ViewNativeQueryEditor.module.css";
 
 export const ViewNativeQueryEditor = (props) => {
-  const {
-    question,
-    height,
-    isDirty,
-    isNativeEditorOpen,
-    card,
-    setParameterValueToDefault,
-    onSetDatabaseId,
-  } = props;
+  const { question, height, isDirty, isNativeEditorOpen, card } = props;
 
   const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
@@ -45,8 +37,6 @@ export const ViewNativeQueryEditor = (props) => {
         isOpen={legacyNativeQuery.isEmpty() || isDirty}
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
-        setParameterValueToDefault={setParameterValueToDefault}
-        onSetDatabaseId={onSetDatabaseId}
       />
     </Box>
   );

@@ -3,8 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { connect } from "metabase/lib/redux";
+import { TemporalUnitSettings } from "metabase/parameters/components/ParameterSettings/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -30,6 +32,7 @@ import type {
   TemplateTag,
   TemplateTagId,
   TemplateTagType,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -50,7 +53,20 @@ import {
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 import type { WidgetOption } from "./types";
 
-interface Props {
+interface StateProps {
+  metadata: Metadata;
+  originalQuestion?: Question;
+}
+
+interface DispatchProps {
+  fetchField: (fieldId: FieldId, force?: boolean) => void;
+  setTemplateTagConfig: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
+}
+
+interface OwnProps {
   tag: TemplateTag;
   /**
    * parameter can be undefined when it's an incomplete "Field Filter", i.e. when
@@ -60,15 +76,8 @@ interface Props {
   embeddedParameterVisibility?: EmbeddingParameterVisibility | null;
   database?: Database | null;
   databases: Database[];
-  metadata: Metadata;
-  originalQuestion?: Question;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
-  fetchField: (fieldId: FieldId, force?: boolean) => void;
 }
 
 function mapStateToProps(state: State) {
@@ -78,7 +87,7 @@ function mapStateToProps(state: State) {
   };
 }
 
-const mapDispatchToProps = { fetchField };
+const mapDispatchToProps = { fetchField, setTemplateTagConfig };
 
 const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
   values_query_type: undefined,
@@ -86,7 +95,9 @@ const EMPTY_VALUES_CONFIG: ParameterValuesConfig = {
   values_source_config: undefined,
 };
 
-class TagEditorParamInner extends Component<Props> {
+class TagEditorParamInner extends Component<
+  OwnProps & StateProps & DispatchProps
+> {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -94,6 +105,11 @@ class TagEditorParamInner extends Component<Props> {
       const fieldId = tag.dimension[1];
       // Field values might already have been loaded so force the load of other field information too
       fetchField(fieldId, true);
+    }
+
+    // temporal unit tag is required by default, it can't be changed by user
+    if (tag.type === "temporal-unit") {
+      this.setRequired(true);
     }
   }
 
@@ -264,6 +280,7 @@ class TagEditorParamInner extends Component<Props> {
       metadata,
       parameter,
       embeddedParameterVisibility,
+      setTemplateTagConfig,
     } = this.props;
     let widgetOptions: WidgetOption[] = [];
     let field: Field | null = null;
@@ -279,6 +296,7 @@ class TagEditorParamInner extends Component<Props> {
     }
 
     const isDimension = tag.type === "dimension";
+    const isTemporalUnit = tag.type === "temporal-unit";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions.length > 0;
@@ -288,12 +306,59 @@ class TagEditorParamInner extends Component<Props> {
         className={TagEditorParamS.TagContainer}
         data-testid={`tag-editor-variable-${tag.name}`}
       >
-        <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
-        <Box component="h3" className={TagEditorParamS.TagName}>
-          {tag.name}
-        </Box>
+        {isTemporalUnit && parameter && (
+          <>
+            <ContainerLabel paddingTop>{t`Parameter name`}</ContainerLabel>
+            <Box mb="xl" className={TagEditorParamS.Parameter}>
+              {tag.name}
+            </Box>
 
-        <VariableTypeSelect value={tag.type} onChange={this.setType} />
+            <ContainerLabel>{t`Parameter type`}</ContainerLabel>
+            <Box
+              mb="xl"
+              className={TagEditorParamS.Parameter}
+            >{t`time_grouping`}</Box>
+
+            <FilterWidgetLabelInput
+              tag={tag}
+              onChange={(value) =>
+                this.setParameterAttribute("display-name", value)
+              }
+            />
+
+            <ContainerLabel>{t`Time grouping options`}</ContainerLabel>
+            <Box mb="xl">
+              <TemporalUnitSettings
+                parameter={parameter}
+                onChangeTemporalUnits={(newTemporalUnits) => {
+                  setTemplateTagConfig(tag, {
+                    temporal_units: newTemporalUnits,
+                  });
+
+                  if (tag.default != null) {
+                    if (
+                      !newTemporalUnits.includes(tag.default as TemporalUnit)
+                    ) {
+                      // reset value as it's not on the new list of available options
+                      this.setParameterAttribute("default", null);
+                      this.props.setParameterValue(tag.id, null);
+                    }
+                  }
+                }}
+              />
+            </Box>
+          </>
+        )}
+
+        {!isTemporalUnit && (
+          <>
+            <ContainerLabel paddingTop>{t`Variable name`}</ContainerLabel>
+            <Box component="h3" className={TagEditorParamS.TagName}>
+              {tag.name}
+            </Box>
+            <VariableTypeSelect value={tag.type} onChange={this.setType} />
+          </>
+        )}
 
         {tag.type === "dimension" && (
           <FieldMappingSelect
@@ -317,7 +382,7 @@ class TagEditorParamInner extends Component<Props> {
           />
         )}
 
-        {(hasWidgetOptions || !isDimension) && (
+        {(hasWidgetOptions || (!isDimension && !isTemporalUnit)) && (
           <FilterWidgetLabelInput
             tag={tag}
             onChange={(value) =>
@@ -339,7 +404,9 @@ class TagEditorParamInner extends Component<Props> {
 
         {parameter && (
           <DefaultRequiredValueControl
-            tag={tag}
+            tag={isTemporalUnit ? { ...tag, required: true } : tag}
+            disabled={isTemporalUnit}
+            showTooltip={!isTemporalUnit}
             parameter={parameter}
             isEmbeddedDisabled={embeddedParameterVisibility === "disabled"}
             onChangeDefaultValue={(value) => {
@@ -354,7 +421,12 @@ class TagEditorParamInner extends Component<Props> {
   }
 }
 
-export const TagEditorParam = connect(
+export const TagEditorParam = connect<
+  StateProps,
+  DispatchProps,
+  OwnProps,
+  State
+>(
   mapStateToProps,
   mapDispatchToProps,
 )(TagEditorParamInner);

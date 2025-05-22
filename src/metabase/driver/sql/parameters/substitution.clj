@@ -378,3 +378,18 @@
   [_ {:keys [content]}]
   {:prepared-statement-args nil
    :replacement-snippet     content})
+
+(defmulti time-grouping->replacement-snippet-info
+  "Like ->replacement-snipped-info, but specialized for converting time-groupings.  This is separate from the main
+  ->replacement-snippet-info because it requires an extra argument."
+  {:arglists '([driver column temporal-unit])
+   :added "0.55.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod time-grouping->replacement-snippet-info :sql
+  [driver column {:keys [value]}]
+  (honeysql->replacement-snippet-info driver
+                                      (if (= value params/no-value)
+                                        [:raw column]
+                                        (sql.qp/date driver (keyword value) [:raw column]))))

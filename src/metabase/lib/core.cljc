@@ -32,6 +32,7 @@
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -340,6 +341,8 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [lib.parse
+  parse]
  [lib.query
   ->query
   can-preview
