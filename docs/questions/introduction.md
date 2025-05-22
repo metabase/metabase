@@ -13,7 +13,7 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 ## Creating a new question
 
-You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor.
+You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor:
 
 ### Query builder
 
