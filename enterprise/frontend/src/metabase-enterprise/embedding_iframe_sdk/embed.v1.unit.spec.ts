@@ -4,7 +4,10 @@ describe("embed.v1.js script tag for sdk iframe embedding", () => {
   const defaultSettings = {
     apiKey: "test-api-key",
     instanceUrl: "http://localhost:3000",
-    target: "#embed-container",
+
+    // this will fail due to the target being missing,
+    // but the errors for incompatible configuration will throw first.
+    target: "#non-existent-target",
   };
 
   it("throws when target element is not found", () => {
