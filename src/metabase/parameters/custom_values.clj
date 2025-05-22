@@ -114,7 +114,7 @@
    (values-from-card card value-field nil))
 
   ([card            :- (ms/InstanceOf :model/Card)
-    value-field-ref :- ms/LegacyFieldOrExpressionReference
+    value-field-ref :- ::legacy-field-or-expression-reference
     opts            :- [:maybe :map]]
    (let [mbql-query   (values-from-card-query card value-field-ref opts)
          result       (qp/process-query mbql-query)

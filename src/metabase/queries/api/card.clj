@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.card :as queries.card]
@@ -475,8 +476,8 @@
                             [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
                             [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-                            [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
-                            [:parameter_mappings     {:optional true} [:maybe [:sequential ms/ParameterMapping]]]
+                            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+                            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
                             [:description            {:optional true} [:maybe ms/NonBlankString]]
                             [:display                ms/NonBlankString]
                             [:visualization_settings ms/Map]
@@ -536,7 +537,7 @@
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
@@ -795,7 +796,7 @@
                                                         (cond-> x
                                                           (string? x) json/decode+kw))}
                                          ;; TODO -- figure out what the actual schema for parameters is supposed to be
-                                         ;; here... [[ms/Parameter]] is used for other endpoints in this namespace but
+                                         ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
                                          ;; it breaks existing tests
                                          [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]

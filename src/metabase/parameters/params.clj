@@ -23,6 +23,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -37,7 +38,7 @@
 (defn assert-valid-parameters
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
-  (let [schema [:maybe [:sequential ms/Parameter]]]
+  (let [schema [:maybe [:sequential ::parameters.schema/parameter]]]
     (when-not (mr/validate schema parameters)
       (throw (ex-info ":parameters must be a sequence of maps with :id and :type keys"
                       {:parameters parameters
@@ -45,12 +46,12 @@
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."
-  [{:keys [parameter_mappings]}]
-  (let [schema [:maybe [:sequential ms/ParameterMapping]]]
-    (when-not (mr/validate schema parameter_mappings)
+  [{parameter-mappings :parameter_mappings}]
+  (let [schema [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+    (when-not (mr/validate schema parameter-mappings)
       (throw (ex-info ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
-                      {:parameter_mappings parameter_mappings
-                       :errors             (:errors (mr/explain schema parameter_mappings))})))))
+                      {:parameter_mappings parameter-mappings
+                       :errors             (:errors (mr/explain schema parameter-mappings))})))))
 
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
@@ -147,7 +148,7 @@
   "Get the Fields (as a map of Parameter ID -> Fields) that should be returned for hydrated `:param_fields` for a Card
   or Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [param-id->field-ids :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]]
+  [param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]]
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
@@ -273,7 +274,7 @@
              (ensure-filterable-columns-for-card card stage-number)
              (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
 
-(mu/defn dashcards->param-id->field-ids* :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]
+(mu/defn dashcards->param-id->field-ids* :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
   [dashcards]
   (letfn [(dashcard->param-dashcard-info [dashcard]
@@ -287,7 +288,7 @@
 
 (declare card->template-tag-param-id->field-ids)
 
-(mu/defn- dashcards->param-id->field-ids :- [:map-of ms/NonBlankString [:set ms/PositiveInt]]
+(mu/defn- dashcards->param-id->field-ids :- [:map-of ms/NonBlankString [:set ::lib.schema.id/field]]
   "Return a map of Parameter ID to the set of Field IDs referenced by parameters in the Cards on the given `dashcards`,
   or `nil` if none are referenced. `dashcards` must be hydrated with :card."
   [dashcards]
@@ -296,15 +297,15 @@
              (dashcards->param-id->field-ids* dashcards)
              (map :card dashcards)))
 
-(mu/defn dashcards->param-field-ids :- [:set ms/PositiveInt]
+(mu/defn dashcards->param-field-ids :- [:set ::lib.schema.id/field]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if
   none are referenced. `dashcards` must be hydrated with :card."
   [dashcards]
   (into #{} cat (vals (dashcards->param-id->field-ids dashcards))))
 
-(mu/defn dashboard-param->field-ids :- [:set ms/PositiveInt]
+(mu/defn dashboard-param->field-ids :- [:set ::lib.schema.id/field]
   "Return field ids mapped to the parameter. `dashcard` and `card` must be present for each mapping."
-  [{:keys [mappings]} :- ms/Parameter]
+  [{:keys [mappings]} :- ::parameters.schema/parameter]
   (let [param-id->field-ids (transduce (map (fn [mapping]
                                               {:dashcard           (:dashcard mapping)
                                                :param-mapping      mapping

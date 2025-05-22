@@ -510,6 +510,7 @@
           metabase.lib.field
           metabase.lib.filter
           metabase.lib.ident
+          metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
           metabase.lib.metadata.cached-provider
@@ -659,6 +660,7 @@
            metabase.parameters.field
            metabase.parameters.init
            metabase.parameters.params
+           metabase.parameters.schema
            metabase.parameters.shared}
    :uses #{api
            app-db
@@ -1209,8 +1211,6 @@
   {:api :any
    :uses #{classloader
            config
-           legacy-mbql
-           lib
            settings
            system}}
 
@@ -1508,6 +1508,7 @@
    :uses #{analytics
            analyze
            api
+           parameters
            query-processor
            settings
            util}}
