@@ -6,7 +6,6 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
    [metabase.app-db.core :as app-db]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
@@ -16,9 +15,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.table :as table]
-   [redux.core :as redux]
    [toucan2.core :as t2]))
 
 (defn incomplete-analysis-kvs
@@ -52,6 +48,7 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private ^:dynamic *truncation-size*
   "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
   text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
@@ -61,27 +58,22 @@
 (mu/defn- fingerprint-fields!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
-  (let [rff (fn [_metadata]
-              (redux/post-complete
-               (analyze/fingerprint-fields fields)
-               (fn [fingerprints]
-                 (reduce (fn [count-info [field fingerprint]]
-                           (cond
-                             (instance? Throwable fingerprint)
-                             (update count-info :failed-fingerprints inc)
-
-                             (some-> fingerprint :global :distinct-count zero?)
-                             (update count-info :no-data-fingerprints inc)
-
-                             :else
-                             (do
-                               (save-fingerprint! field fingerprint)
-                               (update count-info :updated-fingerprints inc))))
-                         (empty-stats-map (count fingerprints))
-                         (map vector fields fingerprints)))))
-        driver (driver.u/database->driver (table/database table))
-        opts {:truncation-size *truncation-size*}]
-    (driver/table-rows-sample driver table fields rff opts)))
+  ;; Skip fetching sample data and just apply name-based classification
+  (log/debugf "Applying name classification without fingerprinting for %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+  (let [updated-count (reduce (fn [counter field]
+                                (let [semantic-type (analyze/infer-semantic-type-by-name field)]
+                                  (if semantic-type
+                                    (do
+                                      (log/debugf "Applied semantic type %s to field %s based on name"
+                                                  semantic-type (sync-util/name-for-logging field))
+                                      (save-fingerprint! field {:global {:distinct-count 0}})
+                                      (t2/update! :model/Field (u/the-id field) {:semantic_type semantic-type})
+                                      (inc counter))
+                                    counter)))
+                              0
+                              fields)]
+    (assoc (empty-stats-map (count fields))
+           :updated-fingerprints updated-count)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -238,23 +230,24 @@
     (fingerprint-fields-for-db!* database log-progress-fn)
     (empty-stats-map 0)))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private max-refingerprint-field-count
   "Maximum number of fields to refingerprint. Balance updating our fingerprinting values while not spending too much
   time in the db."
   1000)
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (mu/defn refingerprint-fields-for-db!
   "Invokes [[fingeprint-fields!]] on every table in `database` up to some limit."
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
-  (binding [*refingerprint?* true]
-    (fingerprint-fields-for-db!* database
-                                 log-progress-fn
-                                 (fn [stats-acc]
-                                   (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
+  ;; Skip refingerprinting entirely
+  (log/infof "Skipping refingerprinting for database %s" (sync-util/name-for-logging database))
+  (empty-stats-map 0))
 
 (mu/defn refingerprint-field
   "Refingerprint a field"
   [field :- i/FieldInstance]
-  (let [table (field/table field)]
-    (fingerprint-fields! table [field])))
+  ;; Skip refingerprinting field
+  (log/infof "Skipping refingerprinting for field %s" (sync-util/name-for-logging field))
+  (empty-stats-map 1))

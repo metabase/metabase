@@ -8,7 +8,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.driver.h2 :as h2]
@@ -46,25 +45,19 @@
 ;; The DisallowConcurrentExecution on the two defrecords below attaches an annotation to the generated class that will
 ;; constrain the job execution to only be one at a time. Other triggers wanting the job to run will misfire.
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private analyze-duration-threshold-for-refingerprinting
   "If the `analyze-db!` step is shorter than this number of `minutes`, then we may refingerprint fields."
   5)
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (defn- should-refingerprint-fields?
   "Whether to refingerprint fields in the database. Looks at the runtime of the last analysis and if any fields were
   fingerprinted. If no fields were fingerprinted and the run was shorter than the threshold, it will re-fingerprint
   some fields."
   [{:keys [start-time end-time steps] :as _analyze-results}]
-  (let [attempted (some->> steps
-                           (filter (fn [[step-name _results]] (= step-name "fingerprint-fields")))
-                           first
-                           second
-                           :fingerprints-attempted)]
-    (and (number? attempted)
-         (zero? attempted)
-         start-time
-         end-time
-         (< (.toMinutes (t/duration start-time end-time)) analyze-duration-threshold-for-refingerprinting))))
+  ;; Always return false to disable refingerprinting
+  false)
 
 (defn- sync-and-analyze-database*!
   [database-id]
@@ -296,6 +289,7 @@
       nil)))
 
 ;; called [[from metabase.warehouses.models.database/schedule-tasks!]] from the post-insert and the pre-update
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]

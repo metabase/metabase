@@ -259,12 +259,11 @@
                  :percent-state  (stats/share u/state?)
                  :average-length ((map count) stats/mean)})))
 
+#_{:clj-kondo/ignore [:unused-binding]}
 (defn fingerprint-fields
-  "Return a transducer for fingerprinting a resultset with fields `fields`."
+  "Return a transducer for fingerprinting a batch of fields. Takes a sequence of tuples of field metadata and a sequence of
+  row values for that field. Returns a fingerprint for each field. If a fingerprinter was not available for that field,
+  or an error occurred, the fingerprint will be nil."
   [fields]
-  (apply col-wise (for [field fields]
-                    (fingerprinter
-                     (cond-> field
-                       ;; Try to get a better guestimate of what we're dealing with on first sync
-                       (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classifiers.name/infer-semantic-type-by-name field)))))))
+  ;; Just return minimal fingerprints, actual classification is in fingerprint-fields!
+  (map (constantly nil)))
