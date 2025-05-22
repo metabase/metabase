@@ -1,11 +1,11 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
-import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import { UpsellHosting } from "metabase/admin/upsells";
 import {
   useGetAdminSettingsDetailsQuery,
@@ -15,7 +15,7 @@ import {
   useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
@@ -31,16 +31,12 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import type {
   EmailSMTPSettings,
-  EnterpriseSettingKey,
-  SettingDefinition,
   SettingDefinitionMap,
-  SettingKey,
   Settings,
 } from "metabase-types/api";
 
 import { clearEmailSettings } from "../../settings";
-import { SettingHeader } from "../SettingHeader";
-import { SetByEnvVar } from "../widgets/AdminSettingInput";
+import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
@@ -98,6 +94,7 @@ export const SMTPConnectionForm = () => {
   const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
   // const [deleteEmailSMTPSettings, deleteEmailSMTPSettingsResult] = useDeleteEmailSMTPSettingsMutation();
+  const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
   const isHosted = useSetting("is-hosted?");
@@ -129,21 +126,19 @@ export const SMTPConnectionForm = () => {
     [dispatch, isEmailConfigured, updateEmailSMTPSettings],
   );
 
-  // const handleSendTestEmail = useCallback(async () => {
-  //   setSendingEmail("working");
-  //   setTestEmailError(null);
-
-  //   try {
-  //     await dispatch(sendTestEmail());
-  //     setSendingEmail("success");
-
-  //     // show a confirmation for 3 seconds, then return to normal
-  //     setTimeout(() => setSendingEmail("default"), 3000);
-  //   } catch (error: any) {
-  //     setSendingEmail("default");
-  //     setTestEmailError(error?.data?.message);
-  //   }
-  // }, [dispatch]);
+  const handleSendTestEmail = useCallback(async () => {
+    try {
+      await sendTestEmail().unwrap();
+      sendToast({ message: t`Email sent successfully!` });
+    } catch (error) {
+      sendToast({
+        icon: "warning",
+        message: isErrorWithMessage(error)
+          ? error.data.message
+          : t`Error sending test email`,
+      });
+    }
+  }, [sendTestEmail, sendToast]);
 
   useEffect(() => {
     if (isHosted) {
@@ -306,7 +301,7 @@ export const SMTPConnectionForm = () => {
                   variant="filled"
                 />
                 {!dirty && isValid && !isSubmitting && (
-                  <Button onClick={() => sendTestEmail()}>
+                  <Button onClick={handleSendTestEmail}>
                     {sendTestEmailResult.isLoading
                       ? t`Sending...`
                       : t`Send test email`}
@@ -329,33 +324,3 @@ export const SMTPConnectionForm = () => {
     </Flex>
   );
 };
-
-type SetByEnvVarWrapperProps<S extends EnterpriseSettingKey> = {
-  settingKey: S;
-  settingDetails: SettingDefinition<S> | undefined;
-  children: React.ReactNode;
-};
-
-function SetByEnvVarWrapper<SettingName extends SettingKey>({
-  settingKey,
-  settingDetails,
-  children,
-}: SetByEnvVarWrapperProps<SettingName>) {
-  if (
-    settingDetails &&
-    settingDetails.is_env_setting &&
-    settingDetails.env_name
-  ) {
-    return (
-      <Box mb="lg">
-        <SettingHeader
-          id={settingKey}
-          title={settingDetails.display_name}
-          description={settingDetails.description}
-        />
-        <SetByEnvVar varName={settingDetails.env_name} />
-      </Box>
-    );
-  }
-  return children;
-}
