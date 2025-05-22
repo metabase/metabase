@@ -15,16 +15,6 @@
 
 (sql-jdbc.tx/add-test-extensions! :mysql)
 
-(defn grant-select-table-to-role!
-  [driver details roles]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
-    (doseq [[role-name table-perms] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
-        (doseq [[table-name _columns] table-perms]
-          (jdbc/execute! spec
-                         [(format "GRANT SELECT ON %s TO %s" table-name role-name)]
-                         {:transaction? false}))))))
-
 (defmethod tx/create-and-grant-roles! :mysql
   [driver details roles user-name default-role]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
@@ -33,12 +23,12 @@
                        (format "DROP ROLE IF EXISTS %s;" default-role)
                        (format "CREATE ROLE %s;" default-role)
                        (format "GRANT SELECT ON *.* TO %s;" default-role)
-                       (format "GRANT %s TO %s" default-role user-name)]]
+                       (format "GRANT %s TO %s;" default-role user-name)
+                       (format "SET DEFAULT ROLE %s %s %s;" default-role (if (mysql/mariadb? (mt/db)) "for" "to") user-name)]]
       (jdbc/execute! spec [statement]))
     (sql-jdbc.tx/drop-if-exists-and-create-role! driver details roles)
-    (grant-select-table-to-role! driver details roles)
-    (sql-jdbc.tx/grant-role-to-user! driver details roles user-name)
-    (jdbc/execute! spec [(format "set default role %s %s %s;" default-role (if (mysql/mariadb? (mt/db)) "for" "to") user-name)])))
+    (sql-jdbc.tx/grant-select-table-to-role! driver details roles)
+    (sql-jdbc.tx/grant-role-to-user! driver details roles user-name)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"

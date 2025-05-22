@@ -144,7 +144,6 @@
     (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
                        FROM pg_stat_activity
                        WHERE pg_stat_activity.datname = ?;" db-name])
-    ;; create the DB
     (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
                    {:transaction? false})
     (when (not= just-drop :just-drop)
@@ -160,12 +159,9 @@
           (jdbc/execute! spec
                          [(format "ALTER TABLE %s DISABLE ROW LEVEL SECURITY" table-name)]
                          {:transaction? false}))
-        (jdbc/execute! spec
-                       [(format "DROP OWNED BY %s;" role-name)]
-                       {:transaction? false})
-        (jdbc/execute! spec
-                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
-                       {:transaction? false})))))
+        (doseq [statement [(format "DROP OWNED BY %s;" role-name)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
 
 (defn grant-select-table-to-role!
   [driver details roles]
@@ -182,7 +178,7 @@
               (jdbc/execute! spec [statement] {:transaction? false})))
           (let [columns (:columns perms)
                 select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
-                grant-stmt (if (seq columns)
+                grant-stmt (if (not= select-cols "")
                              (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
                              (format "GRANT SELECT ON %s TO %s" table-name role-name))]
             (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))

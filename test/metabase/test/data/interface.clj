@@ -358,7 +358,7 @@
   (log/infof "%s has no after-run hooks." driver))
 
 (defmulti drop-if-exists-and-create-db!
-  "Drop a database named `db-name` if it already exists; then create a new empty one with that name."
+  "Drop a database named `db-name` if it already exists, then create a new empty one with that name"
   {:added "0.55.0" :arglists '([driver db-name & [just-drop]])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -368,7 +368,7 @@
   nil)
 
 (defn with-temp-database-fn!
-  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
+  "Creates a new database, dropping it first if necessary, runs `f`, then drops the db"
   [driver db-name f]
   (try
     (drop-if-exists-and-create-db! driver db-name)
@@ -386,41 +386,41 @@
 
 (defmulti create-and-grant-roles!
   "Creates the given roles and permissions for the database user"
-  {:added "0.55.0" :arglists '([driver details roles user-name default-role])}
+  {:added "0.55.0" :arglists '([driver details roles db-user default-role])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod create-and-grant-roles! ::test-extensions
-  [_driver _details _roles _user-name _default-role]
+  [_driver _details _roles _db-user _default-role]
   nil)
 
 (defmulti drop-roles!
-  "Drops the given roles"
-  {:added "0.55.0" :arglists '([driver details roles user-name])}
+  "Drops the given roles, and drops the database user if necessary"
+  {:added "0.55.0" :arglists '([driver details roles db-user])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod drop-roles! ::test-extensions
-  [_driver _details _roles _user-name]
+  [_driver _details _roles _db-user]
   nil)
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
-  [driver details roles user-name default-role f]
+  [driver details roles db-user default-role f]
   (try
-    (create-and-grant-roles! driver details roles user-name default-role)
+    (create-and-grant-roles! driver details roles db-user default-role)
     (f)
     (finally
-      (drop-roles! driver details roles user-name))))
+      (drop-roles! driver details roles db-user))))
 
 (defmacro with-temp-roles!
   "Creates the given roles and permissions for the database user, and drops them after execution"
-  [driver details roles user-name default-role & body]
+  [driver details roles db-user default-role & body]
   `(with-temp-roles-fn!
      ~driver
      ~details
      ~roles
-     ~user-name
+     ~db-user
      ~default-role
      (fn [] ~@body)))
 
