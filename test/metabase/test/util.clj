@@ -20,9 +20,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -54,12 +53,7 @@
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
    (org.eclipse.jetty.server Server)
-   (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    Scheduler
-    Trigger)
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -1030,7 +1024,7 @@
      (fn []
        (t2/delete! :model/Permissions
                    :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-                   :group_id [:not= (u/the-id (perms-group/admin))])
+                   :group_id [:not= (u/the-id (perms/admin-group))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -1038,7 +1032,7 @@
     (finally
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1074,14 +1068,14 @@
   For most use cases see the macro [[with-all-users-permission]]."
   [permission-path f]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms-group/all-users))
+  (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms/all-users-group))
                                                  :object permission-path}]
     (f)))
 
 (defn do-with-all-user-data-perms-graph!
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
-  (let [all-users-group-id  (u/the-id (perms-group/all-users))]
+  (let [all-users-group-id  (u/the-id (perms/all-users-group))]
     (premium-features.test-util/with-additional-premium-features #{:advanced-permissions}
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!

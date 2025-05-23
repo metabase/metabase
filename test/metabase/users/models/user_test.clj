@@ -1,18 +1,14 @@
 (ns metabase.users.models.user-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
-   [metabase.collections.models.collection :as collection]
-   [metabase.collections.models.collection-test :as collection-test]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
@@ -31,47 +27,6 @@
 (use-fixtures
   :once
   (fixtures/initialize :test-users :notifications))
-
-;;; Tests for permissions-set
-
-(deftest check-test-users-have-valid-permissions-sets-test
-  (testing "Make sure the test users have valid permissions sets"
-    (doseq [user [:rasta :crowberto :lucky :trashbird]]
-      (testing user
-        (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id user))))))))
-
-(deftest group-with-no-permissions-test
-  (testing (str "Adding a group with *no* permissions shouldn't suddenly break all the permissions sets (This was a "
-                "bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).")
-    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
-                   :model/PermissionsGroupMembership _              {:group_id group-id, :user_id (mt/user->id :rasta)}]
-      (is (perms-test/is-permissions-set? (user/permissions-set (mt/user->id :rasta)))))))
-
-(defn- remove-non-collection-perms [perms-set]
-  (set (for [perms-path perms-set
-             :when      (str/starts-with? perms-path "/collection/")]
-         perms-path)))
-
-(deftest personal-collection-permissions-test
-  (testing "Does permissions-set include permissions for my Personal Collection?"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (is (contains?
-           (user/permissions-set (mt/user->id :lucky))
-           (perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
-
-      (testing "...and for any descendant Collections of my Personal Collection?"
-        (mt/with-temp [:model/Collection child-collection      {:name     "child"
-                                                                :location (collection/children-location
-                                                                           (collection/user->personal-collection (mt/user->id :lucky)))}
-                       :model/Collection grandchild-collection {:name     "grandchild"
-                                                                :location (collection/children-location child-collection)}]
-          (is (set/subset?
-               #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
-                 "/collection/child/"
-                 "/collection/grandchild/"}
-               (->> (user/permissions-set (mt/user->id :lucky))
-                    remove-non-collection-perms
-                    (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 

@@ -1,14 +1,11 @@
 (ns metabase-enterprise.sso.integrations.saml-test
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.nonce :as nonce]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]

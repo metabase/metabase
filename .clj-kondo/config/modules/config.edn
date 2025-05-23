@@ -35,7 +35,8 @@
 {:metabase/modules
  {actions
   {:api  #{metabase.actions.api
-           metabase.actions.core}
+           metabase.actions.core
+           metabase.actions.init}
    :uses #{analytics
            api
            collections
@@ -116,7 +117,6 @@
           metabase.api.util
           metabase.api.util.handlers}
    :uses #{analytics
-           api-routes
            classloader
            config
            events
@@ -170,6 +170,13 @@
   auth-provider
   {:api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
+
+  batch-processing
+  {:api  #{metabase.batch-processing.core
+           metabase.batch-processing.init}
+   :uses #{app-db
+           settings
+           util}}
 
   bookmarks
   {:api  #{metabase.bookmarks.api}
@@ -373,6 +380,7 @@
           metabase.driver.init
           metabase.driver.mysql
           metabase.driver.postgres
+          metabase.driver.settings
           metabase.driver.sql
           metabase.driver.sql-jdbc.connection
           metabase.driver.sql-jdbc.execute
@@ -398,9 +406,7 @@
            lib-be
            logger
            models
-           notification
            premium-features
-           pulse
            query-processor
            secrets
            settings
@@ -413,14 +419,14 @@
 
   eid-translation
   {:api  #{metabase.eid-translation.api
-           metabase.eid-translation.core}
+           metabase.eid-translation.core
+           metabase.eid-translation.init}
    :uses #{api
            settings
            util}}
 
   embedding
   {:api  #{metabase.embedding.api
-           metabase.embedding.app-origins-sdk
            metabase.embedding.init
            metabase.embedding.settings
            metabase.embedding.validation}
@@ -670,6 +676,7 @@
   permissions
   {:api  #{metabase.permissions.api
            metabase.permissions.core
+           metabase.permissions.init
            ;; TODO -- move these into the API namespace.
            metabase.permissions.models.application-permissions-revision
            metabase.permissions.models.collection-permission-graph-revision
@@ -678,6 +685,7 @@
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
            metabase.permissions.models.query.permissions
+           metabase.permissions.path
            metabase.permissions.util}
    :uses #{api
            app-db
@@ -690,7 +698,6 @@
            premium-features
            query-processor
            request
-           server
            settings
            util}}
 
@@ -756,8 +763,7 @@
   pulse
   {:api  #{metabase.pulse.api
            metabase.pulse.core
-           metabase.pulse.init
-           metabase.pulse.task.send-pulses}
+           metabase.pulse.init}
    :uses #{api
            app-db
            channel
@@ -869,6 +875,7 @@
            app-db
            appearance
            audit-app
+           batch-processing
            cache
            config
            driver
@@ -989,7 +996,6 @@
            session
            settings
            system
-           users
            util
            enterprise/sso}}
 
@@ -1029,7 +1035,8 @@
 
   setup
   {:api  #{metabase.setup.api
-           metabase.setup.core}
+           metabase.setup.core
+           metabase.setup.init}
    :uses #{analytics
            api
            app-db
@@ -1180,8 +1187,8 @@
            metabase.users.models.user-parameter-value}
    :uses #{analytics
            api
-           app-db
            appearance
+           batch-processing
            channel
            collections
            config
@@ -1200,8 +1207,7 @@
 
   util
   {:api :any
-   :uses #{app-db
-           classloader
+   :uses #{classloader
            config
            legacy-mbql
            lib
@@ -1224,6 +1230,7 @@
            api
            app-db
            audit-app
+           batch-processing
            events
            models
            permissions
@@ -1315,9 +1322,9 @@
 
   enterprise/advanced-config
   {:api  #{metabase-enterprise.advanced-config.api.logs
-           metabase-enterprise.advanced-config.models.notification
            metabase-enterprise.advanced-config.init
-           metabase-enterprise.advanced-config.file}
+           metabase-enterprise.advanced-config.file
+           metabase-enterprise.advanced-config.settings}
    :uses #{api
            api-keys
            app-db
@@ -1335,13 +1342,13 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
-           enterprise/impersonation
            lib
            permissions
            premium-features
            query-processor
            util
-           warehouses}}
+           warehouses
+           enterprise/impersonation}}
 
   enterprise/ai-entity-analysis
   {:api #{metabase-enterprise.ai-entity-analysis.api}
@@ -1380,7 +1387,8 @@
    :uses :any}
 
   enterprise/audit-app
-  {:api  #{metabase-enterprise.audit-app.api.routes}
+  {:api  #{metabase-enterprise.audit-app.api.routes
+           metabase-enterprise.audit-app.init}
    :uses #{api
            app-db
            audit-app
@@ -1452,15 +1460,6 @@
            warehouse-schema
            warehouses}}
 
-  enterprise/enhancements
-  {:api  #{metabase-enterprise.enhancements.init}
-   :uses #{premium-features
-           settings
-           sso
-           users
-           util
-           enterprise/sso}}
-
   enterprise/gsheets
   {:api  #{metabase-enterprise.gsheets.api
            metabase-enterprise.gsheets.init}
@@ -1506,7 +1505,9 @@
            util}}
 
   enterprise/metabot-v3
-  {:api #{metabase-enterprise.metabot-v3.api metabase-enterprise.metabot-v3.core
+  {:api #{metabase-enterprise.metabot-v3.api
+          metabase-enterprise.metabot-v3.core
+          metabase-enterprise.metabot-v3.init
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
@@ -1611,8 +1612,8 @@
 
   enterprise/sso
   {:api #{metabase-enterprise.sso.api.routes
-          metabase-enterprise.sso.integrations.sso-settings
-          metabase-enterprise.sso.integrations.sso-utils}
+          metabase-enterprise.sso.init
+          metabase-enterprise.sso.settings}
    :uses #{api
            appearance
            channel
@@ -1625,6 +1626,7 @@
            settings
            sso
            system
+           users
            util
            enterprise/scim}}
 

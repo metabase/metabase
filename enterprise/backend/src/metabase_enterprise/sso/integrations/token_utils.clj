@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.sso.integrations.sso-settings :refer [sdk-encryption-validation-key]]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.util.encryption :as encryption])
   (:import
    (java.net URLEncoder URLDecoder)
@@ -13,7 +13,7 @@
 
 (defn- hashed-key
   []
-  (encryption/secret-key->hash (sdk-encryption-validation-key)))
+  (encryption/secret-key->hash (sso-settings/sdk-encryption-validation-key)))
 
 (defn generate-token
   "Generate a cryptographically secure token with built-in expiration."
