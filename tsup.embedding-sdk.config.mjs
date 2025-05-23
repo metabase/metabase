@@ -9,17 +9,15 @@ import babel from "esbuild-plugin-babel";
 import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
 import { build } from "tsup";
 
-import {
-  EXTERNAL_DEPENDENCIES,
-  EXTERNAL_PEER_DEPENDENCIES,
-} from "./frontend/build/embedding-sdk/constants/external-dependencies.mjs";
 import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
 import { cssModulesPlugin } from "./frontend/build/embedding-sdk/plugins/css-modules-plugin.mjs";
 import { sideEffectsPlugin } from "./frontend/build/embedding-sdk/plugins/side-effects-plugin.mjs";
 import { svgPlugin } from "./frontend/build/embedding-sdk/plugins/svg-plugin.mjs";
+import { filterExternalDependencies } from "./frontend/build/embedding-sdk/utils/filter-external-dependencies.mjs";
 import { generateScopedCssClassName } from "./frontend/build/embedding-sdk/utils/generate-scoped-css-class-name.mjs";
 import { getCssModulesInjectCode } from "./frontend/build/embedding-sdk/utils/get-css-modules-inject-code.mjs";
 import { getExternalsConfig } from "./frontend/build/embedding-sdk/utils/get-externals-config.mjs";
+import { getPackageJsonContent } from "./frontend/build/embedding-sdk/utils/get-package-json-content.mjs";
 import { setupBanners } from "./frontend/build/embedding-sdk/utils/setup-banners.mjs";
 
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -80,6 +78,10 @@ const GIT_BRANCH = execSync("git rev-parse --abbrev-ref HEAD")
   .trim();
 const GIT_COMMIT = execSync("git rev-parse HEAD").toString().trim();
 
+const externals = Object.keys(
+  filterExternalDependencies(getPackageJsonContent().dependencies),
+);
+
 await build({
   entry: [path.join(SDK_SRC_PATH, "index.ts")],
   outDir: BUILD_PATH,
@@ -102,12 +104,10 @@ await build({
   watch: isDevMode
     ? ["./enterprise/frontend/src/embedding-sdk", "./frontend/src"]
     : false,
-  metafile: false,
+  metafile: true,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
-  ...getExternalsConfig({
-    externals: [...EXTERNAL_DEPENDENCIES, ...EXTERNAL_PEER_DEPENDENCIES],
-  }),
+  ...getExternalsConfig({ externals }),
   injectStyle: true,
   env: {
     BUILD_TIME: JSON.stringify(new Date().toISOString()),
@@ -118,6 +118,7 @@ await build({
     MB_LOG_ANALYTICS: "false",
     MB_LOG_CHARTS_DEBUG: "false",
     STORYBOOK: "false",
+    NODE_ENV: "production", // needed for Icepick to disable errors on frozen objects modification
     WEBPACK_BUNDLE: "development", // this is weird, but it is how it is done in the rspack config
   },
   define: {
@@ -200,8 +201,7 @@ await build({
       },
     }),
     commonjs({
-      filter: /node_modules\/.*\.(?:js|cjs)$/,
-      ignore: (path) => !(path === "react" || path === "react-dom"),
+      ignore: (path) => !externals.includes(path),
     }),
     NodeModulesPolyfillPlugin(),
     svgPlugin(),

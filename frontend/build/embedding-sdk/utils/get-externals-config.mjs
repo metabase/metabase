@@ -9,6 +9,11 @@ export const getExternalsConfig = ({ externals }) => {
 
   return {
     externals: undefined,
-    noExternal: [noExternalsRegExp],
+    noExternal: [
+      noExternalsRegExp,
+      // Preserve all 3rd party CSS imports to bundle them
+      // It's important because some frameworks like Next throw an error if a 3rd party JS file imports CSS
+      /.*\.css$/,
+    ],
   };
 };
