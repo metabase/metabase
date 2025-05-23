@@ -71,6 +71,7 @@ function setup({
   return renderWithProviders(
     <DataSourceSelector
       isInitiallyOpen
+      isQuerySourceModel={false}
       canChangeDatabase={!isJoinStep}
       selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
