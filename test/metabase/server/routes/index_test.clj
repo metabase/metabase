@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.server.routes.index :as index]
+   [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]))
 
@@ -72,3 +73,15 @@
             (binding [i18n/*user-locale* "xx"]
               (#'index/load-localization "yy"))
             json/decode)))))
+
+(deftest load-entrypoint-template-contains-user-locale
+  (binding [i18n/*user-locale* "es"]
+    (is (= "es" (:language (#'index/template-parameters false {})))))
+  (binding [i18n/*user-locale* "en"]
+    (is (= "en" (:language (#'index/template-parameters false {})))))
+  (mt/with-temporary-setting-values [site-locale "es"]
+    ;; site locale is used as the default
+    (is (= "es" (:language (#'index/template-parameters false {}))))
+    ;; but we can override with the user locale
+    (binding [i18n/*user-locale* "fr"]
+      (is (= "fr" (:language (#'index/template-parameters false {})))))))
