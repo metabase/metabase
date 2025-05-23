@@ -7,7 +7,7 @@ type RowActionItemProps = {
   action: WritebackAction;
   userDefinedName?: string;
   onRemove: (id: number) => void;
-  onEdit: (action: WritebackAction) => void;
+  onEdit: (action: WritebackAction | TableAction) => void;
 };
 
 export const RowActionItem = ({

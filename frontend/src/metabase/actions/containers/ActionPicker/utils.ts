@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { WritebackAction } from "metabase-types/api";
+import type { TableAction, WritebackAction } from "metabase-types/api";
 
 import type { ModelActionMap } from "./types";
 
@@ -19,14 +19,14 @@ export const sortAndGroupActions = (
   return sortedGroupedActions;
 };
 
-export const sortAndGroupTableActions = (actions?: WritebackAction[]) => {
+export const sortAndGroupTableActions = (actions?: TableAction[]) => {
   if (!actions) {
     return {};
   }
 
-  const sortedActions = _.sortBy(actions, (a) => a.name.toLowerCase());
+  const sortedActions = _.sortBy(actions, (a) => a.table_name.toLowerCase());
 
-  const sortedGroupedActions = _.groupBy(sortedActions, "table_id");
+  const sortedGroupedActions = _.groupBy(sortedActions, "table_name");
 
   return sortedGroupedActions;
 };

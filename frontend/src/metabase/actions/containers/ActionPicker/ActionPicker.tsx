@@ -29,9 +29,9 @@ export function ActionPicker({
   enableTableActions,
 }: {
   models: Card[];
-  actions: WritebackAction[];
-  onClick: (action: WritebackAction) => void;
-  currentAction?: WritebackAction;
+  actions: (WritebackAction | TableAction)[];
+  onClick: (action: WritebackAction | TableAction) => void;
+  currentAction?: WritebackAction | TableAction;
   enableTableActions?: boolean;
 }) {
   const [tableActions, modelActions] = useMemo(
@@ -45,12 +45,12 @@ export function ActionPicker({
     ) ?? [];
 
   const actionsByModel = useMemo(
-    () => sortAndGroupActions(modelActions),
+    () => sortAndGroupActions(modelActions as WritebackAction[]),
     [modelActions],
   );
 
   const actionsByTable = useMemo(
-    () => sortAndGroupTableActions(tableActions),
+    () => sortAndGroupTableActions(tableActions as TableAction[]),
     [tableActions],
   );
 
@@ -68,13 +68,13 @@ export function ActionPicker({
         <>
           <Title order={4}>{t`Table actions`}</Title>
           <Stack gap="xs">
-            {Object.keys(actionsByTable).map((tableId) => (
+            {Object.keys(actionsByTable).map((tableName) => (
               <TableActionPicker
-                key={tableId}
-                title={(actionsByTable[tableId][0] as TableAction).table_name}
-                actions={actionsByTable[tableId] as TableAction[]}
+                key={tableName}
+                title={tableName}
+                actions={actionsByTable[tableName] as TableAction[]}
                 onClick={onClick}
-                currentAction={currentAction}
+                currentAction={currentAction as TableAction}
               />
             ))}
           </Stack>
@@ -89,7 +89,7 @@ export function ActionPicker({
             model={model}
             actions={actionsByModel[model.id] ?? []}
             onClick={onClick}
-            currentAction={currentAction}
+            currentAction={currentAction as WritebackAction}
           />
         ))}
         {!sortedModels.length && (
@@ -200,14 +200,17 @@ function TableActionPicker({
   actions,
   currentAction,
 }: {
-  onClick: (newValue: WritebackAction) => void;
+  onClick: (newValue: TableAction) => void;
   title: string;
   actions: TableAction[];
-  currentAction?: WritebackAction;
+  currentAction?: TableAction;
 }) {
+  const hasCurrentAction = currentAction?.table_id === actions[0].table_id;
+
   return (
     <>
       <CollapseSection
+        initialState={hasCurrentAction ? "expanded" : "collapsed"}
         header={
           <Title tt="capitalize" order={5}>
             {title}
@@ -223,7 +226,7 @@ function TableActionPicker({
                   role="button"
                   isSelected={currentAction?.id === action.id}
                   aria-selected={currentAction?.id === action.id}
-                  onClick={() => onClick(action as WritebackAction)}
+                  onClick={() => onClick(action)}
                   data-testid={`table-action-item-${action.name}`}
                 >
                   <Text c="var(--mb-color-brand)">{action.name}</Text>

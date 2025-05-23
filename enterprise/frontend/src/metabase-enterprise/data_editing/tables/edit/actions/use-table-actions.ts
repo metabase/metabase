@@ -30,7 +30,6 @@ export const useTableActions = ({
     actionOverrides?: EditableTableActionsVizOverride;
   } | null>(null);
 
-  // const { data: actions } = useListActionsQuery({});
   const { data: actions } = useGetActionsQuery();
 
   const {

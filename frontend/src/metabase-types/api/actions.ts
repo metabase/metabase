@@ -110,7 +110,7 @@ export type WritebackImplicitQueryAction = WritebackActionBase &
   ImplicitQueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
 
-interface TableActionParameter extends Omit<Parameter, "name" | "type"> {
+export interface TableActionParameter extends Omit<Parameter, "name" | "type"> {
   id: string;
   "display-name": string;
   type: string;
@@ -135,23 +135,12 @@ export interface TableAction
   database_id?: DatabaseId;
   database_enabled_actions: boolean;
   kind: string;
-  visualization_settings: {
-    name: string;
-    type?: string;
-    description?: string;
-    fields?: Record<
-      string,
-      {
-        hidden: boolean;
-        id: string;
-      }
-    >;
-  };
+  visualization_settings: ActionFormSettings;
   parameters: TableActionParameter[];
 }
 
 export type WritebackAction = WritebackActionBase &
-  (QueryAction | ImplicitQueryAction | HttpAction | TableAction);
+  (QueryAction | ImplicitQueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 

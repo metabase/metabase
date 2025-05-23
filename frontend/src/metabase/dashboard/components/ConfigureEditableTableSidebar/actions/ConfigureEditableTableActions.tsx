@@ -13,6 +13,7 @@ import type {
   EditableTableRowActionDisplaySettings,
   EditableTableRowActionId,
   RowActionFieldSettings,
+  TableAction,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -120,7 +121,7 @@ export const ConfigureEditableTableActions = ({
       name,
       parameterMappings,
     }: {
-      action: WritebackAction;
+      action: WritebackAction | TableAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
@@ -151,7 +152,7 @@ export const ConfigureEditableTableActions = ({
       name,
       parameterMappings,
     }: {
-      action: WritebackAction;
+      action: WritebackAction | TableAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
