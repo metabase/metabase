@@ -59,7 +59,7 @@ describe("checkNativeQueryDiagnostics", () => {
     );
   });
 
-  it("throws if parameter is used as both mb.time_grouping and filter variable", () => {
+  it("throws if parameter is used as both mb.time_grouping and variable", () => {
     const query = setup({
       native: {
         query: `SELECT {{mb.time_grouping("unit", "created_at")}} as unit, {{unit}} as filter FROM ORDERS`,
