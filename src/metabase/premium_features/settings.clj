@@ -251,7 +251,7 @@
   :ai-sql-generation)
 
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-iframe-sdk?
-  "Should we allow users embed the SDK in iframes?"
+  "Should we allow users to embed the SDK in iframes?"
   :embedding-iframe-sdk)
 
 (defn- -token-features []
