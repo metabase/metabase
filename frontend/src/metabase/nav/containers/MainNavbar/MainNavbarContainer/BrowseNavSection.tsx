@@ -49,8 +49,9 @@ export const BrowseNavSection = ({
           c="text-medium"
           className={CS.cursorPointer}
         >
-          <SidebarHeading>{c("A verb, shown in the sidebar")
-            .t`Browse`}</SidebarHeading>
+          <SidebarHeading>
+            {c("A noun, shown in the sidebar as a navigation link").t`Data`}
+          </SidebarHeading>
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
         <Group
