@@ -1,3 +1,6 @@
+import _ from "underscore";
+
+import type { ContentTranslationFunction } from "metabase-lib";
 import type { DictionaryArray } from "metabase-types/api";
 
 /** Translate a user-generated string
@@ -35,4 +38,26 @@ export const translateContentString = <
   }
 
   return msgstr;
+};
+
+/** Walk through obj and translate any display_name fields */
+export const translateDisplayNames = <T>(
+  originalObj: T,
+  tc: ContentTranslationFunction,
+): T => {
+  const obj = structuredClone(originalObj);
+  if (_.isArray(obj)) {
+    return obj.map((item) => translateDisplayNames(item, tc)) as T; // TODO: this could probably be avoided somehow
+  }
+  if (_.isObject(obj)) {
+    _.each(obj, (value, key) => {
+      if (key === "display_name" && typeof value === "string") {
+        obj[key] = tc(value); // FIXME
+      } else if (_.isObject(value) || _.isArray(value)) {
+        obj[key] = translateDisplayNames(value, tc);
+      }
+    });
+    return obj;
+  }
+  return obj;
 };
