@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import type { SelectData } from "metabase/ui/components/inputs/Select/Select";
 import type {
   PartialRowActionFieldSettings,
   RowActionFieldSettings,
-  RowActionFieldSourceType,
 } from "metabase-types/api";
 
 export const isValidMapping = (
@@ -24,24 +22,6 @@ export const isValidMapping = (
 
   return false;
 };
-
-export const getDefaultSourceTypeOptions =
-  (): SelectData<RowActionFieldSourceType> => {
-    return [
-      {
-        label: t`Ask the user`,
-        value: "ask-user",
-      },
-      {
-        label: t`Get data from a row`,
-        value: "row-data",
-      },
-      {
-        label: t`Use constant value`,
-        value: "constant",
-      },
-    ];
-  };
 
 export const getFieldFlagsCaption = ({
   isRequired,

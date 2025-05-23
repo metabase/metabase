@@ -10,9 +10,8 @@ import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Title } from "metabase/ui";
 import type {
-  EditableTableRowActionDisplaySettings,
-  Field,
   RowActionFieldSettings,
+  TableActionDisplaySettings,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -22,8 +21,8 @@ import { isValidMapping } from "./utils";
 
 interface Props {
   action: WritebackAction | null | undefined;
-  rowActionSettings: EditableTableRowActionDisplaySettings | undefined;
-  tableColumns: Field[];
+  rowActionSettings: TableActionDisplaySettings | undefined;
+  tableColumns: { id: number; name: string }[];
   onClose: () => void;
   onSubmit: (actionParams: {
     action: WritebackAction;
