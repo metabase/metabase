@@ -18,7 +18,10 @@ class SegmentListAppInner extends Component {
     const { segments, tableSelector, setArchived } = this.props;
 
     return (
-      <div className={cx(CS.px3, CS.pb2)} data-testid="segment-list-app">
+      <div
+        className={cx(CS.px3, CS.pb2, CS.wrapper)}
+        data-testid="segment-list-app"
+      >
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
           <Link to="/admin/datamodel/segment/create" className={CS.mlAuto}>
