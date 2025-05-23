@@ -8,8 +8,8 @@
    [metabase.util.json :as json]
    [metabase.util.urls :as urls])
   (:import
-   (com.github.jknack.handlebars
-    Options Handlebars Helper)))
+   (com.github.jknack.handlebars Options Handlebars Helper)
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -366,6 +366,16 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
+(defhelper split
+  "Splits strings by a given substring.
+
+   Example:
+   ```
+   {{#each (split recipients \",\")}}<@{{this}}> {{/each}}
+   ```"
+  [^String string [sep] _kparams _options]
+  (.split string (Pattern/quote sep)))
+
 (def ^:private built-in-helpers-info
   (map
    #(assoc % :type :built-in)
@@ -476,6 +486,7 @@
    "ends-with"     #'ends-with
    "json-encode"   #'json-encode
    "regexp"        #'regexp
+   "split"         #'split
    "format-date"   #'format-date
    "now"           #'now
    "card-url"      #'card-url
