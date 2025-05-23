@@ -19,8 +19,8 @@
    #?@(:cljs
        [[goog.string :as gstring]])
    [clojure.set :as set]
-   [clojure.spec.alpha :as s]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [malli.core :as mc]))
 
 (def ^:dynamic ^{:arglists '([namespace-str level-int])} *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
@@ -80,19 +80,22 @@
                                       f2          f2)))]
       (f (fn [] @logs)))))
 
-(s/def ::namespace
-  (some-fn symbol? string?))
-
-(s/def ::level
-  #{:explode :fatal :error :warn :info :debug :trace :whisper})
-
-(s/def ::with-log-messages-for-level-args
-  (s/cat :bindings (s/spec (s/+ (s/cat :messages-fn-binding symbol?
-                                       :ns-level            (s/or :ns-level (s/spec (s/cat :ns-str ::namespace
-                                                                                           :level  ::level))
-                                                                  :ns       ::namespace
-                                                                  :level    ::level))))
-         :body     (s/+ any?)))
+(def ^:private namespace-schema [:or symbol? string?])
+(def ^:private level-schema [:enum :explode :fatal :error :warn :info :debug :trace :whisper])
+(def ^:private with-log-messages-for-level-args-schema
+  [:catn
+   ;; bindings - sequence of binding pairs
+   [:bindings [:schema
+               [:+
+                [:catn
+                 [:messages-fn-binding symbol?]
+                 [:ns-level [:altn
+                             [:ns-level [:schema [:catn
+                                                  [:ns-str namespace-schema]
+                                                  [:level level-schema]]]]
+                             [:ns namespace-schema]
+                             [:level level-schema]]]]]]]
+   [:body [:+ :any]]])
 
 (defmacro with-log-messages-for-level
   "Capture log messages at a given level in a given namespace and all 'child' namespaces inside `body`.
@@ -127,7 +130,7 @@
   they capture overlap or not. See [[metabase.util.log.capture-test/multiple-captures-test]] for an example."
   {:arglists '([[messages-fn-binding ns-level & more-bindings] & body])}
   [& args]
-  (let [{:keys [bindings body]} (s/conform ::with-log-messages-for-level-args args)]
+  (let [{:keys [bindings body]} (mc/parse with-log-messages-for-level-args-schema args)]
     (reduce
      (fn [form bindings]
        (let [{:keys [messages-fn-binding ns-level]} bindings
@@ -139,10 +142,6 @@
          `(do-with-log-messages-for-level ~(str ns-str) ~(level->int level) (fn [~messages-fn-binding] ~form))))
      `(do ~@body)
      bindings)))
-
-(s/fdef with-log-messages-for-level
-  :args ::with-log-messages-for-level-args
-  :ret  any?)
 
 ;;; The macroexpansion of something like
 ;;;
