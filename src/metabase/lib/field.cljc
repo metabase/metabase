@@ -180,7 +180,8 @@
    stage-number
    metadata
    [_tag {source-uuid :lib/uuid
-          :keys [base-type binning effective-type ident join-alias source-field temporal-unit], :as opts}
+          :keys [base-type binning effective-type ident join-alias source-field source-field-join-alias temporal-unit]
+          :as opts}
     :as field-ref]]
   (let [metadata (merge
                   {:lib/type        :metadata/column}
@@ -192,20 +193,23 @@
                          default
                          original))]
     (cond-> metadata
-      source-uuid    (assoc :lib/source-uuid source-uuid)
-      base-type      (-> (assoc :base-type base-type)
-                         (update :effective-type default-type base-type))
-      effective-type (assoc :effective-type effective-type)
-      temporal-unit  (assoc ::temporal-unit temporal-unit)
-      binning        (assoc ::binning binning)
-      source-field   (-> (assoc :fk-field-id source-field)
-                         (update :ident lib.metadata.ident/implicitly-joined-ident
-                                 (:ident (lib.metadata/field query source-field))))
-      join-alias     (-> (lib.join/with-join-alias join-alias)
-                         (update :ident lib.metadata.ident/explicitly-joined-ident
-                                 (:ident (lib.join/maybe-resolve-join-across-stages query stage-number join-alias))))
+      source-uuid             (assoc :lib/source-uuid source-uuid)
+      base-type               (-> (assoc :base-type base-type)
+                                  (update :effective-type default-type base-type))
+      effective-type          (assoc :effective-type effective-type)
+      temporal-unit           (assoc ::temporal-unit temporal-unit)
+      binning                 (assoc ::binning binning)
+      source-field            (-> (assoc :fk-field-id source-field)
+                                  (update :ident lib.metadata.ident/implicitly-joined-ident
+                                          (:ident (lib.metadata/field query source-field))))
+      source-field-join-alias (assoc :fk-join-alias source-field-join-alias)
+      join-alias              (-> (lib.join/with-join-alias join-alias)
+                                  (update :ident lib.metadata.ident/explicitly-joined-ident
+                                          (:ident (lib.join/maybe-resolve-join-across-stages query
+                                                                                             stage-number
+                                                                                             join-alias))))
       ;; Overwriting the ident with one from the options, eg. for a breakout clause.
-      ident          (assoc :ident ident))))
+      ident                   (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
