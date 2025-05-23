@@ -1,5 +1,7 @@
 import * as MetabaseError from "embedding-sdk/errors";
 
+import { getSdkRequestHeaders } from "./auth";
+
 export async function jwtDefaultRefreshTokenFunction(
   responseUrl: string,
   instanceUrl: string,
@@ -16,7 +18,10 @@ export async function jwtDefaultRefreshTokenFunction(
 
   let authSsoResponse;
   try {
-    authSsoResponse = await fetch(mbAuthUrl.toString());
+    authSsoResponse = await fetch(
+      mbAuthUrl.toString(),
+      getSdkRequestHeaders(hash),
+    );
   } catch (e) {
     // Network error when connecting to Metabase SSO
     throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
