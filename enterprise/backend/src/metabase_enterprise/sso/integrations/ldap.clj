@@ -1,13 +1,12 @@
-(ns metabase-enterprise.enhancements.integrations.ldap
+(ns metabase-enterprise.sso.integrations.ldap
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
   (:require
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+   [metabase-enterprise.sso.settings :as ee.sso.settings]
    [metabase.premium-features.core :refer [defenterprise-schema]]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -17,29 +16,9 @@
   [:merge sso/LDAPUserInfo
    [:map [:attributes [:maybe [:map-of :keyword :any]]]]])
 
-(defsetting ldap-sync-user-attributes
-  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
-  :type    :boolean
-  :default true
-  :audit   :getter)
-
-;; TODO - maybe we want to add a csv setting type?
-(defsetting ldap-sync-user-attributes-blacklist
-  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
-  :encryption :no
-  :default    "userPassword,dn,distinguishedName"
-  :type       :csv
-  :audit      :getter)
-
-(defsetting ldap-group-membership-filter
-  (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
-  :encryption :no
-  :default    "(member={dn})"
-  :audit      :getter)
-
 (defn- syncable-user-attributes [m]
-  (when (ldap-sync-user-attributes)
-    (apply dissoc m :objectclass (map (comp keyword u/lower-case-en) (ldap-sync-user-attributes-blacklist)))))
+  (when (ee.sso.settings/ldap-sync-user-attributes)
+    (apply dissoc m :objectclass (map (comp keyword u/lower-case-en) (ee.sso.settings/ldap-sync-user-attributes-blacklist)))))
 
 (defn- attribute-synced-user
   [{:keys [attributes first-name last-name email]}]
@@ -72,7 +51,7 @@
                           ldap-connection
                           result
                           settings
-                          (ldap-group-membership-filter))]
+                          (ee.sso.settings/ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
 ;;; for some reason the `:clj-kondo/ignore` doesn't work inside of [[defenterprise-schema]]

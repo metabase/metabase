@@ -1,6 +1,6 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
 (defn- select-sso-backend

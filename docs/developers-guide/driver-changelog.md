@@ -54,6 +54,15 @@ title: Driver interface changelog
 
 - `metabase.util.ssh` has been moved to `metabase.driver.sql-jdbc.connection.ssh-tunnel`.
 
+- `metabase.query-processor.pipeline/*query-timeout-ms*` has been moved to
+  `metabase.driver.settings/*query-timeout-ms*`.
+
+- The namespace `metabase.query-processor.context`, deprecated in 0.50.0, has been removed.
+
+- All settings formerly in a `metabase.driver.*` namespace have been moved to `metabase.driver.settings`, and all
+  settings formerly in a `metabase.query-processor.*` namespace have been moved to
+  `metabase.query-processor.settings`.
+
 ## Metabase 0.54.10
 
 - Add `metabase.driver/table-known-to-not-exist?` for drivers to test if an exception is due to a query on a table that no longer exists

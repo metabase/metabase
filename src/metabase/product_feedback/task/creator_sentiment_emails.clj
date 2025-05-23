@@ -6,8 +6,8 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
@@ -83,8 +83,8 @@
   "Send an email to the instance admin following up on their experience with Metabase thus far."
   [current-week]
   ;; we need access to email AND the instance must have surveys enabled.
-  (when (and (email/email-configured?)
-             (email/surveys-enabled))
+  (when (and (channel.settings/email-configured?)
+             (channel.settings/surveys-enabled))
     (let [instance-data (fetch-instance-data)
           all-creators  (fetch-creators (premium-features/enable-whitelabeling?))
           this-week?    (fn [c] (= current-week (-> c :email hash (mod 52))))
