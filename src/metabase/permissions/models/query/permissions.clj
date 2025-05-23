@@ -175,7 +175,7 @@
    {:description "legacy MBQL query"}
    ::any-query
    [:map
-    [:type [:enum :query :native]]]])
+    [:type [:enum :query "query" :native "native"]]]])
 
 (mr/def ::preprocess-fn
   "Function used to preprocess a query as needed; should always spit out a legacy MBQL query.

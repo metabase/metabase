@@ -37,6 +37,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -48,6 +49,8 @@
    (org.apache.poi.ss.usermodel DataFormatter)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (comment api.card/keep-me)
 
