@@ -55,6 +55,7 @@
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [next.jdbc]))
 
 (set! *warn-on-reflection* true)
@@ -322,7 +323,17 @@
   "Drivers that are so weird that we can't use the standard dataset loading against them."
   #{:druid :druid-jdbc})
 
-(defn driver-select
+(mr/def ::driver-selector
+  [:map {:closed true}
+   [:+features {:optional true} [:sequential :keyword]]
+   [:-features {:optional true} [:sequential :keyword]]
+   [:+conn-props {:optional true} [:sequential :string]]
+   [:-conn-props {:optional true} [:sequential :string]]
+   [:+parent {:optional true} :keyword]
+   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]
+   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]])
+
+(mu/defn driver-select :- [:set :keyword]
   "Select drivers to be tested.
 
    +features - a list of features that the drivers should support.
@@ -338,8 +349,8 @@
    -fns - exclude drivers that returns truthy for any fn `(fn driver)`."
   ([]
    (driver-select {}))
-  ([{:keys [+features -features -fns +fns +conn-props -conn-props +parent -parent] :as args}]
-   (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers args)))
+  ([{:keys [+features -features -fns +fns +conn-props -conn-props +parent] :as selector} :- ::driver-selector]
+   (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'driver-select selector)))
    (set
     (for [driver (tx.env/test-drivers)
           :let [driver (tx/the-driver-with-test-extensions driver)
@@ -350,9 +361,6 @@
                     (cond-> true
                       +parent
                       (and (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver +parent)))
-
-                      -parent
-                      (and (not (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver -parent))))
 
                       (seq +fns)
                       (and (every? (fn [f] (f driver)) +fns))
@@ -373,7 +381,7 @@
                       (and (not (some #(driver.u/supports? driver % @the-db) -features))))))]
       driver))))
 
-(defn normal-driver-select
+(mu/defn normal-driver-select :- [:set :keyword]
   "Select drivers to be tested. Excludes timeseries drivers because they can only be tested with special datasets.
 
    +features - a list of features that the drivers should support.
@@ -383,11 +391,10 @@
    -conn-props - a list of connection-property names that drivers should not have.
 
    +parent - only include drivers whose parent is this.
-   -parent - do not include drivers whose parent is this.
 
    +fns - only include drivers that returns truthy for each fn `(f driver)`.
    -fns - exclude drivers that returns truthy for any fn `(f driver)`."
   ([]
    (normal-driver-select {}))
-  ([selector]
+  ([selector :- ::driver-selector]
    (driver-select (update selector :-fns (fnil conj []) #(contains? timeseries-drivers %)))))

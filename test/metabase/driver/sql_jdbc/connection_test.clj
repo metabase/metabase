@@ -343,7 +343,7 @@
                 (is (> @connection-creations 1))))))))))
 
 (deftest test-ssh-tunnel-connection
-  (mt/test-drivers (mt/driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
+  (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
