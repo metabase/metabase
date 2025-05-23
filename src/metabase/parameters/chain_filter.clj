@@ -74,6 +74,7 @@
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -467,7 +468,7 @@
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
-   v->human-readable :- :parameters/human-readable-remapping-map]
+   v->human-readable :- ::parameters.schema/human-readable-remapping-map]
   (map vector
        (map first values)
        (map (fn [[v]]
@@ -663,7 +664,7 @@
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
-   v->human-readable :- :parameters/human-readable-remapping-map
+   v->human-readable :- ::parameters.schema/human-readable-remapping-map
    constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]
