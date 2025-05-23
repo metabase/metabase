@@ -265,7 +265,7 @@
          (mapv (fn [join]
                  (dissoc join ::original-position))))))
 
-(mu/defn- remove-fk-join-alias-from-joins [:maybe [:sequential JoinInfo]]
+(mu/defn- remove-fk-join-alias-from-joins :- [:maybe [:sequential JoinInfo]]
   [joins :- [:maybe [:sequential JoinInfo]]]
   (map #(dissoc % :fk-join-alias) joins))
 
