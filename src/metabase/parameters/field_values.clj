@@ -2,7 +2,7 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.classloader.core :as classloader]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -144,8 +144,8 @@
      (if advanced-field-value?
        (let [hash-key (str (hash hash-input))
              select-kvs {:field_id (:id field) :type :advanced :hash_key hash-key}
-             fv (mdb.query/select-or-insert! :model/FieldValues select-kvs
-                                             #(prepare-advanced-field-values field hash-key constraints))]
+             fv (app-db/select-or-insert! :model/FieldValues select-kvs
+                                          #(prepare-advanced-field-values field hash-key constraints))]
          ;; If it's expired, delete then try to re-create it
          (if (some-> fv field-values/advanced-field-values-expired?)
            (do

@@ -6,10 +6,10 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -199,7 +199,7 @@
              details-map (assoc details :engine engine)]
          (try
            (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
-           (u/with-timeout (driver.u/db-connection-timeout-ms)
+           (u/with-timeout (driver.settings/db-connection-timeout-ms)
              (or (driver/can-connect? driver details-map)
                  (throw (Exception. "Failed to connect to Database"))))
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
@@ -405,7 +405,7 @@
   [{:keys [id]}]
   (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
+      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 

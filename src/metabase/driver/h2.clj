@@ -625,4 +625,9 @@
                               :metabase.upload/float}})
 
 (defmethod sql-jdbc/impl-query-canceled? :h2 [_ ^SQLException e]
-  (= (.getErrorCode e) 57014))
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :h2 e))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
+  [_ e]
+  (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))

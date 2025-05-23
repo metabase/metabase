@@ -68,7 +68,8 @@
 
 (defn- filter-for-card
   [card field]
-  [:dimension ((:fk-map field) (:table_id card)) {:stage-number 0}])
+  (when-let [field-ref ((:fk-map field) (:table_id card))]
+    [:dimension field-ref {:stage-number 0}]))
 
 (defn- add-filter
   [dashcard filter-id field]

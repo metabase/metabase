@@ -23,6 +23,14 @@ export function dataSource(dataSourceName: string) {
     .parents("[data-testid='data-source-list-item']");
 }
 
+export function showUnderlyingQuestion(index: number, title: string) {
+  getDashboardCard(index).findByTestId("legend-caption-title").click();
+
+  cy.findByTestId("legend-caption-menu").within(() => {
+    cy.findByText(title).click();
+  });
+}
+
 /**
  * Unselects a data source.
  * Only works in "ColumnList" mode, despite the name...

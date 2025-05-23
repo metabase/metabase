@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.email :as email]
+   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -77,7 +78,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-inbox
   "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username` and
-  `email-smtp-password` (which will cause [[metabase.channel.email/email-configured?]] to return `true`, and execute
+  `email-smtp-password` (which will cause [[metabase.channel.settings/email-configured?]] to return `true`, and execute
   `body`.
 
    Fetch the emails send by dereffing `inbox`.
@@ -229,9 +230,9 @@
                            user-or-user-kwd)
          to-type         (if (:bcc? email-map) :bcc :to)
          email-map       (dissoc email-map :bcc?)]
-     {email [(merge {:from   (if-let [from-name (email/email-from-name)]
-                               (str from-name " <" (email/email-from-address) ">")
-                               (email/email-from-address))
+     {email [(merge {:from   (if-let [from-name (channel.settings/email-from-name)]
+                               (str from-name " <" (channel.settings/email-from-address) ">")
+                               (channel.settings/email-from-address))
                      to-type #{email}}
                     email-map)]})))
 
@@ -259,10 +260,10 @@
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=
-           [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
+           [{:from     (str (channel.settings/email-from-name) " <" (channel.settings/email-from-address) ">")
              :to       ["test@test.com"]
              :subject  "101 Reasons to use Metabase"
-             :reply-to (email/email-reply-to)
+             :reply-to (channel.settings/email-reply-to)
              :body     [{:type    "text/html; charset=utf-8"
                          :content "101. Metabase will make you a better person"}]}]
            (with-fake-inbox
@@ -300,10 +301,10 @@
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=
-             [{:from     (email/email-from-address)
+             [{:from     (channel.settings/email-from-address)
                :to       ["test@test.com"]
                :subject  "101 Reasons to use Metabase"
-               :reply-to (email/email-reply-to)
+               :reply-to (channel.settings/email-reply-to)
                :body     [{:type    "text/html; charset=utf-8"
                            :content "101. Metabase will make you a better person"}]}]
              (with-fake-inbox
@@ -329,10 +330,10 @@
                                           :description  "very scientific data"}]}]
         (testing "it sends successfully"
           (is (=
-               [{:from     (str (email/email-from-name) " <" (email/email-from-address) ">")
+               [{:from     (str (channel.settings/email-from-name) " <" (channel.settings/email-from-address) ">")
                  :to       [recipient]
                  :subject  "101 Reasons to use Metabase"
-                 :reply-to (email/email-reply-to)
+                 :reply-to (channel.settings/email-reply-to)
                  :body     [{:type    "text/html; charset=utf-8"
                              :content "100. Metabase will hug you when you're sad"}
                             {:type         :attachment

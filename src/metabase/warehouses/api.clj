@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -26,7 +25,6 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
-   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -484,7 +482,7 @@
   (api/check-superuser)
   (check-database-exists id)
   (let [table-ids (t2/select-pks-set :model/Table :db_id id)]
-    (first (mdb.query/query
+    (first (mdb/query
             {:select [:*]
              :from   (for [model database-usage-models
                            :let [query (database-usage-query model id table-ids)]
@@ -655,30 +653,6 @@
         tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
         fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
-
-(def ^:private autocomplete-matching-options
-  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
-  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
-  causes too many problems."
-  #{:substring :prefix :off})
-
-(defsetting native-query-autocomplete-match-style
-  (deferred-tru
-   (str "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
-        "Larger instances can have performance issues matching using substring, so can use prefix matching, "
-        " or turn autocompletions off."))
-  :visibility :public
-  :export?    true
-  :type       :keyword
-  :default    :substring
-  :audit      :raw-value
-  :setter     (fn [v]
-                (let [v (cond-> v (string? v) keyword)]
-                  (if (autocomplete-matching-options v)
-                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
-                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
-                                    {:option v
-                                     :valid-options autocomplete-matching-options}))))))
 
 (api.macros/defendpoint :get "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
