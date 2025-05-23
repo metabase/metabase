@@ -162,7 +162,6 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
-        _ (prn (:headers req))
         embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)
         redirect-url (construct-redirect-url req)]
     (sso-utils/check-sso-redirect redirect)
