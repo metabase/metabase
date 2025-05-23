@@ -199,7 +199,7 @@
                             ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
                             ;; preserve the existing metadata provider.
                             (:lib/metadata query)
-                            ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                            ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
                              (u/the-id (some #(get query %) [:database "database"]))))]
     (lib/query metadata-provider query)))
 

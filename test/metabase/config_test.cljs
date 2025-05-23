@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]])
   (:require-macros
-   [metabase.config :as config]))
+   [metabase.config.core :as config]))
 
 (deftest ^:parallel build-type-case-test
   (testing "Make sure [[config/build-type-case]] works correctly for ClojureScript."

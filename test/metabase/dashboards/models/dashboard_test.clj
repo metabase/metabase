@@ -6,13 +6,12 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [toucan2.core :as t2]))
@@ -219,7 +218,7 @@
     (tu/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (binding [api/*current-user-id*              (test.users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
+                  api/*current-user-permissions-set* (-> :rasta test.users/user->id perms/user-permissions-set atom)]
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))

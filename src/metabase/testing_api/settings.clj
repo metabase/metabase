@@ -1,6 +1,6 @@
 (ns metabase.testing-api.settings
   (:require
-   [metabase.config :as config]))
+   [metabase.config.core :as config]))
 
 (def enable-testing-routes?
   "Whether to enable `/api/testing` endpoints (utils for e2e Cypress tests).

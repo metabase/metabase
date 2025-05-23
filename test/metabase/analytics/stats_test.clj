@@ -7,9 +7,9 @@
    [medley.core :as m]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.app-db.core :as mdb]
-   [metabase.channel.email :as email]
+   [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
@@ -88,7 +88,7 @@
     "250+"    5000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [email/email-configured? (constantly false)
+  (with-redefs [channel.settings/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
@@ -126,7 +126,7 @@
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
-    (with-redefs [email/email-configured? (constantly false)
+    (with-redefs [channel.settings/email-configured? (constantly false)
                   slack/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0

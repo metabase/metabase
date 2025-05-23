@@ -37,7 +37,6 @@ import {
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
-import { getCardByEntityId } from "metabase/visualizer/utils/get-card-by-entity-id";
 import type {
   BaseDashboardCard,
   Card,
@@ -555,10 +554,7 @@ class DashboardGridInner extends Component<
     );
   }
 
-  onVisualizerModalSave = (
-    visualization: VisualizerVizDefinition,
-    cards: Card[],
-  ) => {
+  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
     const { visualizerModalStatus } = this.state;
 
     if (!visualizerModalStatus) {
@@ -568,7 +564,6 @@ class DashboardGridInner extends Component<
     this.props.replaceCardWithVisualization({
       dashcardId: visualizerModalStatus.dashcardId,
       visualization,
-      cards,
     });
 
     this.onVisualizerModalClose();
@@ -586,7 +581,6 @@ class DashboardGridInner extends Component<
     }
 
     const dashcard = dashcards[visualizerModalStatus.dashcardId];
-    const cardByEntityId = getCardByEntityId(dashcard);
 
     // We want to allow saving a visualization as is if it's initial display type
     // isn't supported by visualizer. For example, taking a pivot table and saving
@@ -599,7 +593,7 @@ class DashboardGridInner extends Component<
       <VisualizerModal
         onSave={this.onVisualizerModalSave}
         onClose={this.onVisualizerModalClose}
-        initialState={{ state: visualizerModalStatus.state, cardByEntityId }}
+        initialState={{ state: visualizerModalStatus.state }}
         saveLabel={t`Save`}
         allowSaveWhenPristine={allowSaveWhenPristine}
       />

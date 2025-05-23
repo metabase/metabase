@@ -5,7 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
@@ -81,7 +81,12 @@
                       [:!= :search_index.model [:inline "table"]]
                       [:and
                        [:= :search_index.model [:inline "table"]]
-                       (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]]))
+                       [:exists {:select [1]
+                                 :from   [[:metabase_table :mt_toplevel]]
+                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id (case (mdb/db-type)
+                                                                                                   :mysql :signed
+                                                                                                   :integer)]]
+                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,

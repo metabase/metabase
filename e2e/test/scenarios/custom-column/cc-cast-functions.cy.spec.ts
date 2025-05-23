@@ -141,6 +141,24 @@ const DATE_TEST_CASES: CastTestCase[] = [
   },
 ];
 
+const DATETIME_TEST_CASES: CastTestCase[] = [
+  {
+    name: "String",
+    expression: 'datetime("2025-03-20 12:03")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringExpression",
+    expression:
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 12:03"))',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
+];
+
 const FLOAT_TEST_CASES: CastTestCase[] = [
   {
     name: "Float",
@@ -181,6 +199,10 @@ describe(
 
     it("should support date function", () => {
       testFilterWithExpressions(DATE_TEST_CASES, addDateFilter);
+    });
+
+    it("should support datetime function", () => {
+      testFilterWithExpressions(DATETIME_TEST_CASES, addDateTimeFilter);
     });
   },
 );
@@ -223,6 +245,18 @@ function addDateFilter({ filterOperator, filterValue }: CastTestCase) {
     cy.findByText("Fixed date range…").click();
     cy.findByText(filterOperator).click();
     cy.findByLabelText("Date").clear().type(filterValue);
+    cy.button("Add filter").click();
+  });
+}
+
+function addDateTimeFilter({ filterOperator, filterValue }: CastTestCase) {
+  const [dateValue, timeValue] = filterValue.split("|");
+  H.popover().within(() => {
+    cy.findByText("Fixed date range…").click();
+    cy.findByText(filterOperator).click();
+    cy.findByLabelText("Date").clear().type(dateValue);
+    cy.findByText("Add time").click();
+    cy.findByLabelText("Time").clear().type(timeValue);
     cy.button("Add filter").click();
   });
 }

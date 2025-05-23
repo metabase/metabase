@@ -9,7 +9,6 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -22,6 +21,7 @@
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.http-client :as client]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]))

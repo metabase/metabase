@@ -1,14 +1,14 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.coercion-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.types :as types]))
+   [metabase.types.core :as types]))
 
 (set! *warn-on-reflection* true)
 

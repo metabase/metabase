@@ -9,7 +9,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -150,6 +150,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Temporal Casting                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/cast-temporal-string [:starburst :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (h2x/->timestamp [:replace expr "T" " "]))
 
 (defmethod sql.qp/cast-temporal-string [:starburst :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_ _coercion-strategy expr]

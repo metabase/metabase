@@ -25,7 +25,7 @@ describe("getVisualizationColumns", () => {
 
       const dataSource: VisualizerDataSource = {
         id: "card:1",
-        sourceId: `entity_1`,
+        sourceId: 1,
         name: "Source 1",
         type: "card",
       };
@@ -111,7 +111,7 @@ describe("getVisualizationColumns", () => {
 
       const dataSource: VisualizerDataSource = {
         id: "card:1",
-        sourceId: `entity_1`,
+        sourceId: 1,
         name: "Source 1",
         type: "card",
       };
@@ -160,10 +160,6 @@ describe("getVisualizationColumns", () => {
     });
 
     it("should ignore missing dataset column or data source", () => {
-      const consoleWarnSpy = jest
-        .spyOn(console, "warn")
-        .mockImplementation(() => {});
-
       const visualizerEntity: VisualizerVizDefinition = {
         display: "bar",
         settings: {},
@@ -187,7 +183,7 @@ describe("getVisualizationColumns", () => {
 
       const dataSource: VisualizerDataSource = {
         id: "card:1",
-        sourceId: `entity_1`,
+        sourceId: 1,
         name: "Source 1",
         type: "card",
       };
@@ -216,13 +212,6 @@ describe("getVisualizationColumns", () => {
       );
 
       expect(columns).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "Could not find dataset column or data source for mapping",
-        ),
-      );
-
-      consoleWarnSpy.mockRestore();
     });
   });
 });

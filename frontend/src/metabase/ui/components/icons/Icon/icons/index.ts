@@ -71,6 +71,8 @@ import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
+import check_filled_component from "./check_filled.svg?component";
+import check_filled_source from "./check_filled.svg?source";
 import chevrondown_component from "./chevrondown.svg?component";
 import chevrondown_source from "./chevrondown.svg?source";
 import chevronleft_component from "./chevronleft.svg?component";
@@ -565,6 +567,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     check: {
       component: check_component,
       source: check_source,
+    },
+    check_filled: {
+      component: check_filled_component,
+      source: check_filled_source,
     },
     chevrondown: {
       component: chevrondown_component,
@@ -1352,6 +1358,7 @@ export type IconName =
   | "burger"
   | "calendar"
   | "check"
+  | "check_filled"
   | "chevrondown"
   | "chevronleft"
   | "chevronright"
