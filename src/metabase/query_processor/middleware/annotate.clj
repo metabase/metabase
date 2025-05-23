@@ -127,7 +127,7 @@
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
 (defn- name-for-joined-field
-  [name {:keys [fk-field-id], join-alias :alias}]
+  [name {join-alias :alias}]
   (str join-alias "__" name))
 
 (defn- display-name-for-joined-field
