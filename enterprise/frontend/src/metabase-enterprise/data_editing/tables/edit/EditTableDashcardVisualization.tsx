@@ -56,6 +56,7 @@ type EditTableDashcardVisualizationProps = {
   visualizationSettings?: VisualizationSettings;
   question: Question;
   withLeaveUnsavedConfirmation?: boolean;
+  isEditing?: boolean;
 };
 
 export const EditTableDashcardVisualization = ({
@@ -68,6 +69,7 @@ export const EditTableDashcardVisualization = ({
   visualizationSettings,
   question,
   withLeaveUnsavedConfirmation = true,
+  isEditing,
 }: EditTableDashcardVisualizationProps) => {
   const dispatch = useDispatch();
 
@@ -202,59 +204,61 @@ export const EditTableDashcardVisualization = ({
       >
         <Text fw="bold">{title}</Text>
 
-        <Group gap="sm" align="center">
-          {hasDeleteAction && (
-            <>
-              <ActionIcon
-                size="md"
-                onClick={requestDeleteBulk}
-                disabled={shouldDisableActions || !selectedRowIndices.length}
-              >
-                <Icon
-                  name="trash"
-                  tooltip={
-                    selectedRowIndices.length
-                      ? t`Delete`
-                      : t`Select rows for deletion`
-                  }
-                />
-              </ActionIcon>
-              <Box h={rem(16)}>
-                <Divider orientation="vertical" h="100%" />
-              </Box>
-            </>
-          )}
-          <ActionIcon
-            size="md"
-            onClick={undo}
-            disabled={shouldDisableActions}
-            loading={isUndoLoading}
-          >
-            <Icon name="undo" tooltip={t`Undo changes`} />
-          </ActionIcon>
-          <ActionIcon
-            size="md"
-            onClick={redo}
-            disabled={shouldDisableActions}
-            loading={isRedoLoading}
-          >
-            <Icon name="redo" tooltip={t`Redo changes`} />
-          </ActionIcon>
-          {hasCreateAction && (
-            <Box h={rem(16)}>
-              <Divider orientation="vertical" h="100%" />
-            </Box>
-          )}
-          {hasCreateAction && (
+        {!isEditing && (
+          <Group gap="sm" align="center">
+            {hasDeleteAction && (
+              <>
+                <ActionIcon
+                  size="md"
+                  onClick={requestDeleteBulk}
+                  disabled={shouldDisableActions || !selectedRowIndices.length}
+                >
+                  <Icon
+                    name="trash"
+                    tooltip={
+                      selectedRowIndices.length
+                        ? t`Delete`
+                        : t`Select rows for deletion`
+                    }
+                  />
+                </ActionIcon>
+                <Box h={rem(16)}>
+                  <Divider orientation="vertical" h="100%" />
+                </Box>
+              </>
+            )}
             <ActionIcon
               size="md"
-              onClick={openCreateRowModal}
+              onClick={undo}
               disabled={shouldDisableActions}
+              loading={isUndoLoading}
             >
-              <Icon name="add" tooltip={t`New record`} />
+              <Icon name="undo" tooltip={t`Undo changes`} />
             </ActionIcon>
-          )}
-        </Group>
+            <ActionIcon
+              size="md"
+              onClick={redo}
+              disabled={shouldDisableActions}
+              loading={isRedoLoading}
+            >
+              <Icon name="redo" tooltip={t`Redo changes`} />
+            </ActionIcon>
+            {hasCreateAction && (
+              <>
+                <Box h={rem(16)}>
+                  <Divider orientation="vertical" h="100%" />
+                </Box>
+                <ActionIcon
+                  size="md"
+                  onClick={openCreateRowModal}
+                  disabled={shouldDisableActions}
+                >
+                  <Icon name="add" tooltip={t`New record`} />
+                </ActionIcon>
+              </>
+            )}
+          </Group>
+        )}
       </Flex>
       {data.rows.length === 0 ? (
         <Stack
