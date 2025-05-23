@@ -234,15 +234,17 @@ describe("getIsCompatible", () => {
     });
 
     it("should return false if a data source doesn't have dimensions", () => {
+      const settings = {
+        "graph.metrics": [metricColumn.name],
+        "graph.dimensions": [timeDimensionColumn.name],
+      };
       expect(
         getIsCompatible({
           currentDataset: {
             display: "line",
             columns: [metricColumn, timeDimensionColumn],
-            settings: {
-              "graph.metrics": [metricColumn.name],
-              "graph.dimensions": [timeDimensionColumn.name],
-            },
+            settings,
+            computedSettings: settings,
           },
           targetDataset: { fields: [numericField] },
           datasets: {
