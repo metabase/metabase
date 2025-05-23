@@ -197,7 +197,7 @@
     (ia-content->plugins (plugins/plugins-dir))
     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
       (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
-        (adjust-audit-db-to-source! audit-db)   
+        (adjust-audit-db-to-source! audit-db)
         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
         (let [report (log/with-no-logs
