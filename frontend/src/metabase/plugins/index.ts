@@ -6,7 +6,6 @@ import React, {
   useMemo,
 } from "react";
 import { t } from "ttag";
-import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -210,24 +209,8 @@ export const PLUGIN_AUTH_PROVIDERS = {
 };
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
-  formFieldAttributes: [] as string[],
-  defaultableFormFieldAttributes: [] as string[],
-  formFieldsSchemas: {} as Record<string, AnySchema>,
-  UserProvisioning: (() => null) as ComponentType<{
-    settings: {
-      [setting: string]: {
-        display_name?: string | undefined;
-        description?: string | ReactNode | undefined;
-        note?: string | undefined;
-      };
-    };
-    fields: {
-      [field: string]: {
-        name: string;
-        default: boolean;
-      };
-    };
-  }>,
+  LdapUserProvisioning: PluginPlaceholder,
+  LdapGroupMembershipFilter: PluginPlaceholder,
 };
 
 // Only show the password tab in account settings if these functions all return true.
