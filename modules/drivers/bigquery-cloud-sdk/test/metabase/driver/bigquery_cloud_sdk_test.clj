@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -335,53 +334,49 @@
       (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
             table (first (:tables database))]
         (is (=? {:name "records"} table))
-        (is (=? [{:name "id"}
+        (is (=? [{:name "a",
+                  :database-type "INTEGER",
+                  :base-type :type/Integer,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "aa",
+                  :database-type "INTEGER",
+                  :base-type :type/Integer,
+                  :database-position 2,
+                  :nfc-path ["r" "rr"]}
+                 {:name "b",
+                  :database-type "STRING",
+                  :base-type :type/Text,
+                  :database-position 2,
+                  :nfc-path ["r"]}
+                 {:name "id"}
                  {:name "name"}
                  {:name "r"
                   :database-type "RECORD",
                   :base-type :type/Dictionary,
-                  :database-position 2
-                  :nested-fields [{:name "a",
-                                   :database-type "INTEGER",
-                                   :base-type :type/Integer,
-                                   :database-position 2,
-                                   :nfc-path ["r"]}
-                                  {:name "b",
-                                   :database-type "STRING",
-                                   :base-type :type/Text,
-                                   :database-position 2,
-                                   :nfc-path ["r"]}
-                                  {:name "rr",
-                                   :database-type "RECORD",
-                                   :base-type :type/Dictionary,
-                                   :database-position 2,
-                                   :nfc-path ["r"],
-                                   :nested-fields
-                                   [{:name "aa",
-                                     :database-type "INTEGER",
-                                     :base-type :type/Integer,
-                                     :database-position 2,
-                                     :nfc-path ["r" "rr"]}]}]}]
-                (walk/postwalk
-                 (fn [n]
-                   (if (set? n)
-                     (sort-by :name n)
-                     n))
-                 (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]}))))))))
+                  :database-position 2}
+                 {:name "rr",
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :database-position 2,
+                  :nfc-path ["r"]}]
+                (->> (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]})
+                     (sort-by :name)
+                     vec)))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
       nested-records
-      (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+      (is (= {:columns ["a" "b" "aa" "rr"]
               :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
              (mt/rows+column-names
               (mt/run-mbql-query records
-                {:fields [(mt/id :records :r :a)
-                          (mt/id :records :r :b)
-                          (mt/id :records :r :rr :aa)
-                          (mt/id :records :r :rr)]})))))))
+                {:fields [(mt/id :records :a)
+                          (mt/id :records :b)
+                          (mt/id :records :aa)
+                          (mt/id :records :rr)]})))))))
 
 (deftest sync-table-with-required-filter-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -836,31 +831,32 @@
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
-                        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "primary",
+                        (is (= [{:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "name",
                                  :table-name tbl-nm
                                  :table-schema test-db-name
-                                 :database-type "RECORD",
-                                 :base-type :type/Dictionary,
-                                 :database-partitioned false,
-                                 :database-position 2,
-                                 :nested-fields
-                                 #{{:name "name",
-                                    :table-name tbl-nm
-                                    :table-schema test-db-name
-                                    :database-type "STRING",
-                                    :base-type :type/Text,
-                                    :nfc-path ["primary"],
-                                    :database-position 2}}}
+                                 :database-type "STRING",
+                                 :base-type :type/Text,
+                                 :nfc-path ["primary"],
+                                 :database-position 2}
                                 {:name "participants",
                                  :table-name tbl-nm
                                  :table-schema test-db-name
                                  :database-type "ARRAY",
                                  :base-type :type/Array,
                                  :database-partitioned false,
-                                 :database-position 3}]
-                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+                                 :database-position 3}
+                                {:name "primary",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "RECORD",
+                                 :base-type :type/Dictionary,
+                                 :database-partitioned false,
+                                 :database-position 2}]
+                               (->> (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]})
+                                    (sort-by :name)
+                                    vec))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
