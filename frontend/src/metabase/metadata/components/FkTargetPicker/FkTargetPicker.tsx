@@ -52,9 +52,20 @@ export const FkTargetPicker = ({
     return option?.field;
   };
 
+  const getValue = (fieldId: string | null) => {
+    const field = getField(fieldId);
+    if (field?.id === undefined || typeof field.id === "object") {
+      // this code is unreachable since we don't expect field references here
+      return;
+    }
+    return field.id;
+  };
+
   const handleChange = (value: string) => {
-    const parsedValue = parseValue(value);
-    onChange(parsedValue);
+    const fieldId = getValue(value);
+    if (fieldId) {
+      onChange(fieldId);
+    }
   };
 
   return (
@@ -97,7 +108,7 @@ export const FkTargetPicker = ({
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={(item) => {
         const field = getField(item.option.value);
-        const selected = parseValue(item.option.value) === value;
+        const selected = getValue(item.option.value) === value;
 
         return (
           <SelectItem selected={selected}>
@@ -136,10 +147,6 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           : stringifyValue(field.id),
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
-}
-
-function parseValue(value: string): FieldId | null {
-  return value === "" ? null : JSON.parse(value);
 }
 
 function stringifyValue(value: FieldId | null): string {
