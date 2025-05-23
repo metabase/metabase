@@ -270,6 +270,11 @@ const config = {
     new rspack.CssExtractRspackPlugin({
       filename: devMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+
+      // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
+      // https://webpack.js.org/plugins/mini-css-extract-plugin/#remove-order-warnings
+      // This is needed due to app-embed-sdk importing the sdk, so the style order is different than the main app.
+      ignoreOrder: true,
     }),
     new OnScriptError(),
     new HtmlWebpackPlugin({
