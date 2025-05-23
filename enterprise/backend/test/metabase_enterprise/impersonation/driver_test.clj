@@ -178,12 +178,12 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod impersonation-granting-details :default
-  [_driver db]
-  (:details db))
+  [_driver {:keys [details] :as db}]
+  details)
 
 (defmethod impersonation-granting-details :snowflake
-  [_driver db]
-  (assoc (:details db) :role "ACCOUNTADMIN"))
+  [_driver {:keys [details] :as db}]
+  (assoc details :role "ACCOUNTADMIN"))
 
 (defmulti impersonation-details
   "The database details that will be used for the impersonation connection"
@@ -192,13 +192,13 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod impersonation-details :default
-  [driver db]
-  (assoc (:details db) :user (impersonation-default-user driver)))
+  [driver {:keys [details] :as db}]
+  (assoc details :user (impersonation-default-user driver)))
 
 (doseq [driver [:postgres :snowflake]]
   (defmethod impersonation-details driver
-    [_driver db]
-    (:details db)))
+    [_driver {:keys [details] :as db}]
+    details))
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
