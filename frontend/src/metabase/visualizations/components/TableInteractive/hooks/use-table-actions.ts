@@ -1,64 +1,53 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { useListActionsQuery } from "metabase/api";
+import { skipToken, useListActionsQuery } from "metabase/api";
+import { remapRowActionMappingsToActionOverride } from "metabase-enterprise/data_editing/tables/edit/actions/utils";
 import type { TableActionsExecuteFormVizOverride } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionFormInitialValues,
-  DashCardVisualizationSettings,
   DatasetData,
-  EditableTableRowActionDisplaySettings,
   RowValues,
+  TableActionDisplaySettings,
   TableActionId,
-  VisualizationSettings,
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
 
-import { remapRowActionMappingsToActionOverride } from "./utils";
-
 export const useTableActions = ({
-  visualizationSettings,
+  actionsVizSettings,
   datasetData,
 }: {
-  visualizationSettings?: VisualizationSettings & DashCardVisualizationSettings;
+  actionsVizSettings: TableActionDisplaySettings[] | undefined;
   datasetData: DatasetData | null | undefined;
 }) => {
-  const [activeActionState, setActiveActionState] = useState<{
+  const [selectedTableActionState, setSelectedTableActionState] = useState<{
     actionId: WritebackActionId;
     rowData: ActionFormInitialValues;
     actionOverrides?: TableActionsExecuteFormVizOverride;
   } | null>(null);
 
-  const { data: actions } = useListActionsQuery({});
+  const hasAddedActions = actionsVizSettings && actionsVizSettings.length > 0;
 
-  const {
-    hasCreateAction,
-    hasDeleteAction,
-    enabledRowActions,
-    enabledActionsVizSettingsSet,
-  } = useMemo(() => {
-    const enabledActionsVizSettingsSet = new Map<
+  const { data: actions } = useListActionsQuery(
+    hasAddedActions ? {} : skipToken,
+  );
+
+  const { tableActions, tableActionsVizSettingsSet } = useMemo(() => {
+    const tableActionsVizSettingsSet = new Map<
       TableActionId,
-      EditableTableRowActionDisplaySettings
+      TableActionDisplaySettings
     >();
 
-    visualizationSettings?.["editableTable.enabledActions"]?.forEach(
-      (action) => {
-        if (action.enabled) {
-          enabledActionsVizSettingsSet.set(action.id, action);
-        }
-      },
-    );
+    actionsVizSettings?.forEach((action) => {
+      tableActionsVizSettingsSet.set(action.id, action);
+    });
 
-    const hasCreateAction = enabledActionsVizSettingsSet.has("row/create");
-    const hasDeleteAction = enabledActionsVizSettingsSet.has("row/delete");
-
-    const enabledRowActions =
+    const tableActions =
       actions
-        ?.filter(({ id }) => enabledActionsVizSettingsSet.has(id))
+        ?.filter(({ id }) => tableActionsVizSettingsSet.has(id))
         .map((action) => {
-          const actionSettings = enabledActionsVizSettingsSet.get(action.id);
+          const actionSettings = tableActionsVizSettingsSet.get(action.id);
 
           // remap to user defined custom action name
           return {
@@ -68,14 +57,12 @@ export const useTableActions = ({
         }) || [];
 
     return {
-      hasCreateAction,
-      hasDeleteAction,
-      enabledRowActions,
-      enabledActionsVizSettingsSet,
+      tableActions,
+      tableActionsVizSettingsSet,
     };
-  }, [actions, visualizationSettings]);
+  }, [actions, actionsVizSettings]);
 
-  const handleRowActionRun = useCallback(
+  const handleTableActionRun = useCallback(
     (action: WritebackAction, row: Row<RowValues>) => {
       if (!datasetData) {
         console.warn("Failed to trigger action, datasetData is null");
@@ -85,7 +72,7 @@ export const useTableActions = ({
       const rowIndex = row.index;
       const rowData = datasetData.rows[rowIndex];
 
-      const vizSettings = enabledActionsVizSettingsSet.get(action.id);
+      const vizSettings = tableActionsVizSettingsSet.get(action.id);
 
       const remappedInitialActionValues = action.parameters?.reduce(
         (result, parameter) => {
@@ -120,25 +107,23 @@ export const useTableActions = ({
         ? remapRowActionMappingsToActionOverride(vizSettings)
         : undefined;
 
-      setActiveActionState({
+      setSelectedTableActionState({
         actionId: action.id,
         rowData: remappedInitialActionValues || {},
         actionOverrides,
       });
     },
-    [datasetData, enabledActionsVizSettingsSet],
+    [datasetData, tableActionsVizSettingsSet],
   );
 
-  const handleExecuteModalClose = useCallback(() => {
-    setActiveActionState(null);
+  const handleExecuteActionModalClose = useCallback(() => {
+    setSelectedTableActionState(null);
   }, []);
 
   return {
-    hasCreateAction,
-    hasDeleteAction,
-    enabledRowActions,
-    handleRowActionRun,
-    activeActionState,
-    handleExecuteModalClose,
+    tableActions,
+    handleTableActionRun,
+    selectedTableActionState,
+    handleExecuteActionModalClose,
   };
 };

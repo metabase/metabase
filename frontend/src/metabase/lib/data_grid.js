@@ -10,7 +10,7 @@ export function isPivotGroupColumn(col) {
 }
 
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
-export const TABLE_ACTIONS_SETTING = "table.enabledActions";
+export const TABLE_ACTIONS_SETTING = "table.enabled_actions";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";

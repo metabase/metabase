@@ -19,6 +19,7 @@ import _ from "underscore";
 
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Modal from "metabase/components/Modal";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
@@ -40,12 +41,14 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { TABLE_ACTIONS_SETTING } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
+import { useTableActions } from "metabase/visualizations/components/TableInteractive/hooks/use-table-actions";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -56,6 +59,7 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { TableActionExecuteModal } from "metabase-enterprise/data_editing/tables/edit/actions/TableActionExecuteModal";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
@@ -245,6 +249,18 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       });
     });
   }, [cols, settings, getCellClickedObject]);
+
+  const {
+    tableActions,
+    selectedTableActionState,
+    handleTableActionRun,
+    handleExecuteActionModalClose,
+  } = useTableActions({
+    actionsVizSettings: settings[TABLE_ACTIONS_SETTING],
+    datasetData: data,
+  });
+
+  const isTableActionExecuteModalOpen = !!selectedTableActionState;
 
   const handleBodyCellClick = useCallback(
     (
@@ -679,6 +695,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnResize: handleColumnResize,
     onColumnReorder: handleColumnReordering,
     pageSize,
+
+    rowActionsColumn:
+      tableActions?.length && handleTableActionRun
+        ? { actions: tableActions, onActionRun: handleTableActionRun }
+        : undefined,
   });
   const { virtualGrid } = tableProps;
 
@@ -764,6 +785,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
       />
+      <Modal
+        isOpen={isTableActionExecuteModalOpen}
+        onClose={handleExecuteActionModalClose}
+      >
+        {selectedTableActionState && (
+          <TableActionExecuteModal
+            actionId={selectedTableActionState.actionId}
+            initialValues={selectedTableActionState.rowData}
+            actionOverrides={selectedTableActionState.actionOverrides}
+            onClose={handleExecuteActionModalClose}
+          />
+        )}
+      </Modal>
     </div>
   );
 });

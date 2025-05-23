@@ -1,15 +1,15 @@
-import type { EditableTableActionsVizOverride } from "metabase-enterprise/data_editing/tables/types";
+import type { TableActionsExecuteFormVizOverride } from "metabase-enterprise/data_editing/tables/types";
 import type {
-  EditableTableRowActionDisplaySettings,
   FieldSettings,
   ParameterId,
+  TableActionDisplaySettings,
 } from "metabase-types/api";
 
 export const remapRowActionMappingsToActionOverride = ({
   name,
   parameterMappings,
-}: EditableTableRowActionDisplaySettings): EditableTableActionsVizOverride => {
-  const result: EditableTableActionsVizOverride = {};
+}: TableActionDisplaySettings): TableActionsExecuteFormVizOverride => {
+  const result: TableActionsExecuteFormVizOverride = {};
 
   if (name) {
     result.name = name;

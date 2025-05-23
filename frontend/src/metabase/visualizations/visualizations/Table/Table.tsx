@@ -221,7 +221,7 @@ class Table extends Component<TableProps, TableState> {
     },
     [DataGrid.TABLE_ACTIONS_SETTING]: {
       get section() {
-        return t`Table Actions`;
+        return t`Actions`;
       },
       widget: ChartSettingsTableActions,
       default: [],
