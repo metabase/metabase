@@ -12,6 +12,8 @@ title: Driver interface changelog
 
 - Extend `date()` to accept a DateTime (or DB equivalent) in addition to an ISO string. When given a DateTime, it will truncate it to a date.
 
+- Added a feature `:expressions/datetime` for drivers that support converting iso strings to datetimes
+
 - Added a feature `:expression-literals` for drivers that support expressions consisting of a single string, number, or boolean literal value.
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
@@ -51,6 +53,15 @@ title: Driver interface changelog
   `metabase.driver.common.table-rows-sample`.
 
 - `metabase.util.ssh` has been moved to `metabase.driver.sql-jdbc.connection.ssh-tunnel`.
+
+- `metabase.query-processor.pipeline/*query-timeout-ms*` has been moved to
+  `metabase.driver.settings/*query-timeout-ms*`.
+
+- The namespace `metabase.query-processor.context`, deprecated in 0.50.0, has been removed.
+
+- All settings formerly in a `metabase.driver.*` namespace have been moved to `metabase.driver.settings`, and all
+  settings formerly in a `metabase.query-processor.*` namespace have been moved to
+  `metabase.query-processor.settings`.
 
 ## Metabase 0.54.10
 

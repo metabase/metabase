@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.audit-app.audit :as ee-audit]
+   [metabase-enterprise.audit-app.settings :as ee.audit.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit-app.core :as audit]
@@ -75,7 +76,7 @@
         (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
 
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [ee-audit/load-analytics-content (constantly nil)]
+      (with-redefs [ee.audit.settings/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))

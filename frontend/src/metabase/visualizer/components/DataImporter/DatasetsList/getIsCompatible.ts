@@ -1,3 +1,4 @@
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
 import type {
   Dataset,
@@ -12,6 +13,7 @@ interface CompatibilityParameters {
     display: VisualizationDisplay | null;
     columns: DatasetColumn[];
     settings: VisualizationSettings;
+    computedSettings: ComputedVisualizationSettings;
   };
   targetDataset: {
     fields: Field[];
@@ -22,7 +24,7 @@ interface CompatibilityParameters {
 export function getIsCompatible(parameters: CompatibilityParameters) {
   const { currentDataset, targetDataset, datasets } = parameters;
 
-  const { display: currentDisplay } = currentDataset;
+  const { display: currentDisplay, computedSettings } = currentDataset;
   const { fields } = targetDataset;
 
   if (fields.length === 0) {
@@ -35,6 +37,7 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
 
   const columnSettingMapping = groupColumnsBySuitableVizSettings(
     currentDataset,
+    computedSettings,
     datasets,
     fields,
   );

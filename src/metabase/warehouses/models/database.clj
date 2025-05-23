@@ -9,6 +9,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -198,7 +199,7 @@
              details-map (assoc details :engine engine)]
          (try
            (log/info (u/format-color :cyan "Health check: checking %s {:id %d}" (:name database) (:id database)))
-           (u/with-timeout (driver.u/db-connection-timeout-ms)
+           (u/with-timeout (driver.settings/db-connection-timeout-ms)
              (or (driver/can-connect? driver details-map)
                  (throw (Exception. "Failed to connect to Database"))))
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))

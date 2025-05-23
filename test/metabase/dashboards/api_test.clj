@@ -52,33 +52,28 @@
 
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
-    (let [entity-id-a           "pWBdh4crM7C_1l-kzJeFv"
-          entity-id-b           "xA2dF8gHj3K_4m-nzPqRs"
-          entity-id-c           "tY7uI9oP0L_5v-wXzCbNm"
-          entity-id->new-card   {entity-id-a {:entity_id "aB3cD5eF6g_7h-iJkLmNo"}
-                                 entity-id-b {:entity_id "pQ8rS9tU0v_1w-xYzAbCd"}}
-          col->val-source       {:COLUMN_1 [{:sourceId (str "card:" entity-id-a) :originalName "sum" :name "COLUMN_1"}]
-                                 :COLUMN_2 [{:sourceId (str "card:" entity-id-b) :originalName "count" :name "COLUMN_2"}]
-                                 :COLUMN_3 [{:sourceId (str "card:" entity-id-c) :originalName "avg" :name "COLUMN_3"}]
-                                 :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
-                                 :COLUMN_5 [{:sourceId "card:invalid!id@format" :originalName "invalid" :name "COLUMN_5"}]
-                                 :COLUMN_6 [{:name "No source ID"}]}
-          result                (#'api.dashboard/update-colvalmap-setting col->val-source entity-id->new-card)]
+    (let [id->new-card {123 {:id 456}
+                        789 {:id 987}}
+          col->val-source {:COLUMN_1 [{:sourceId "card:123" :originalName "sum" :name "COLUMN_1"}]
+                           :COLUMN_2 [{:sourceId "card:789" :originalName "count" :name "COLUMN_2"}]
+                           :COLUMN_3 [{:sourceId "card:999" :originalName "avg" :name "COLUMN_3"}]
+                           :COLUMN_4 [{:sourceId "not-a-card" :originalName "x" :name "COLUMN_4"}]
+                           :COLUMN_5 [{:sourceId "card:abc" :originalName "invalid" :name "COLUMN_5"}]
+                           :COLUMN_6 [{:name "No source ID"}]}
+          result (#'api.dashboard/update-colvalmap-setting col->val-source id->new-card)]
 
-      (testing "should update valid entity IDs that exist in the map"
-        (is (= (str "card:" (:entity_id (get entity-id->new-card entity-id-a)))
-               (-> result :COLUMN_1 first :sourceId)))
-        (is (= (str "card:" (:entity_id (get entity-id->new-card entity-id-b)))
-               (-> result :COLUMN_2 first :sourceId))))
+      (testing "should update valid card IDs that exist in the map"
+        (is (= "card:456" (-> result :COLUMN_1 first :sourceId)))
+        (is (= "card:987" (-> result :COLUMN_2 first :sourceId))))
 
-      (testing "should not modify entity IDs that don't exist in the map"
-        (is (= (str "card:" entity-id-c) (-> result :COLUMN_3 first :sourceId))))
+      (testing "should not modify card IDs that don't exist in the map"
+        (is (= "card:999" (-> result :COLUMN_3 first :sourceId))))
 
       (testing "should not modify non-card sourceIds"
         (is (= "not-a-card" (-> result :COLUMN_4 first :sourceId))))
 
-      (testing "should not modify invalid entity IDs (wrong format)"
-        (is (= "card:invalid!id@format" (-> result :COLUMN_5 first :sourceId))))
+      (testing "should not modify invalid card IDs (non-numeric)"
+        (is (= "card:abc" (-> result :COLUMN_5 first :sourceId))))
 
       (testing "should handle items without sourceId"
         (is (= {:name "No source ID"} (-> result :COLUMN_6 first)))))))
@@ -309,7 +304,7 @@
                   #{crowberto-dash-id archived-dash-id}
                   (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
 
-    (testing "f=archived return archived dashboards"
+    (testing "f=archvied return archived dashboards"
       (is (= #{archived-dash-id}
              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
 
@@ -1560,7 +1555,6 @@
                                                   {1 {:id 1}
                                                    2 {:id 2}
                                                    3 {:id 3}}
-                                                  nil
                                                   nil))))
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
@@ -1572,8 +1566,7 @@
                                                    2 {:id 2}
                                                    3 {:id 3}}
                                                   {1 10
-                                                   2 20}
-                                                  nil)))))
+                                                   2 20})))))
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
@@ -1581,7 +1574,6 @@
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 5}
                                                      2 {:id 6}}
-                                                    nil
                                                     nil
                                                     nil)))))
     (testing "Can omit whole card with series if not copied"
@@ -1595,7 +1587,6 @@
                                                      ;; not copying id 4 which is the base of the following two
                                                      5 {:id 10}
                                                      6 {:id 11}}
-                                                    nil
                                                     nil
                                                     nil)))))
     (testing "Updates parameter mappings to new card ids"
@@ -1614,7 +1605,6 @@
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 2}}
                                                     nil
-                                                    nil
                                                     nil)))))
     (testing "Does not think action cards are text cards"
       (let [dashcards [{:card_id 1 :card {:id 1}}
@@ -1626,7 +1616,6 @@
         (is (= (butlast dashcards)
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
-                                                    nil
                                                     nil
                                                     nil)))))))
 

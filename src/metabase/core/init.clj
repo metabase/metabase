@@ -6,12 +6,14 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
+   [metabase.actions.init]
    [metabase.activity-feed.init]
    [metabase.analytics.init]
    [metabase.api.init]
    [metabase.app-db.init]
    [metabase.appearance.init]
    [metabase.audit-app.init]
+   [metabase.batch-processing.init]
    [metabase.bug-reporting.init]
    [metabase.cache.init]
    [metabase.channel.init]
@@ -20,6 +22,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.init]
    [metabase.driver.init]
+   [metabase.eid-translation.init]
    [metabase.embedding.init]
    [metabase.events.init]
    [metabase.geojson.init]
@@ -31,6 +34,7 @@
    [metabase.models.init]
    [metabase.notification.init]
    [metabase.parameters.init]
+   [metabase.permissions.init]
    [metabase.premium-features.init]
    [metabase.product-feedback.init]
    [metabase.public-sharing.init]
@@ -45,6 +49,7 @@
    [metabase.server.init]
    [metabase.session.init]
    [metabase.settings.init]
+   [metabase.setup.init]
    [metabase.sso.init]
    [metabase.sync.init]
    [metabase.system.init]
