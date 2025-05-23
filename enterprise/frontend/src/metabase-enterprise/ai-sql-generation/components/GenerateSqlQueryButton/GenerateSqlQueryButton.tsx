@@ -4,6 +4,7 @@ import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import { useLazyGenerateSqlQueryQuery } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
+import type { GenerateSqlQueryRequest } from "metabase-types/api";
 
 export function GenerateSqlQueryButton({
   className,
@@ -12,36 +13,27 @@ export function GenerateSqlQueryButton({
   onGenerateQuery,
 }: GenerateSqlQueryButtonProps) {
   const [generateSql, { isLoading }] = useLazyGenerateSqlQueryQuery();
-  const promptInfo = getPromptInfo(query, selectedQueryText);
+  const request = getRequest(query, selectedQueryText);
 
   const handleClick = async () => {
-    if (promptInfo == null) {
+    if (request == null) {
       return;
     }
-    const { data } = await generateSql({
-      prompt: promptInfo.prompt,
-      database_id: promptInfo.databaseId,
-    });
+    const { data } = await generateSql(request);
     if (data == null) {
       return;
     }
-    onGenerateQuery(getQueryText(promptInfo.prompt, data.generated_sql));
+    onGenerateQuery(getQueryText(request.prompt, data.generated_sql));
   };
 
   return (
-    <Tooltip
-      label={
-        promptInfo?.isSelected
-          ? t`Generate SQL based on the prompt selected in the editor`
-          : t`Generate SQL based on the prompt`
-      }
-    >
+    <Tooltip label={t`Generate SQL based on the prompt selected in the editor`}>
       <Button
         className={className}
         variant="subtle"
         leftSection={<Icon name="metabot" />}
         loading={isLoading}
-        disabled={promptInfo == null}
+        disabled={request == null}
         aria-label={t`Generate SQL based on the prompt`}
         onClick={handleClick}
       />
@@ -51,10 +43,10 @@ export function GenerateSqlQueryButton({
 
 const COMMENT_PREFIX = "--";
 
-function getPromptInfo(
+function getRequest(
   query: Lib.Query,
   selectedQueryText: string | undefined,
-) {
+): GenerateSqlQueryRequest | undefined {
   const databaseId = Lib.databaseID(query);
   const queryInfo = Lib.queryDisplayInfo(query);
   if (!queryInfo.isNative || databaseId == null) {
@@ -65,8 +57,7 @@ function getPromptInfo(
   if (selectedText != null && selectedText.length > 0) {
     return {
       prompt: selectedText,
-      databaseId: databaseId,
-      isSelected: true,
+      database_id: databaseId,
     };
   }
 
@@ -78,8 +69,7 @@ function getPromptInfo(
   if (commentText != null && commentText.length > 0) {
     return {
       prompt: commentText,
-      databaseId: databaseId,
-      isSelected: false,
+      database_id: databaseId,
     };
   }
 }
