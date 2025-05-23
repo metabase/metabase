@@ -23,9 +23,10 @@ import {
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { checkNativeQueryDiagnostics } from "metabase-lib/v1/expressions/diagnostics/expression/check-lib-diagnostics";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -136,6 +137,7 @@ interface NativeQueryEditorState {
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
   isPromptInputVisible: boolean;
+  queryValidationError?: string | null;
 }
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
@@ -180,11 +182,19 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      setDatasetQuery(
-        query
-          .setQueryText(queryText)
-          .updateSnippetsWithIds(this.props.snippets),
-      );
+      const updatedQuery = query
+        .setQueryText(queryText)
+        .updateSnippetsWithIds(this.props.snippets);
+
+      setDatasetQuery(updatedQuery);
+
+      let error = null;
+      try {
+        checkNativeQueryDiagnostics(updatedQuery);
+      } catch (e) {
+        error = e instanceof Error && e.message ? e.message : String(e);
+      }
+      this.setState({ queryValidationError: error });
     }
   };
 
@@ -432,6 +442,22 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 nativeEditorSelectedText={this.props.nativeEditorSelectedText}
                 runQuery={this.props.runQuery}
               />
+            )}
+
+            {this.state.queryValidationError && (
+              // TODO: for demo only. use palette color
+              // eslint-disable-next-line no-color-literals
+              <Box
+                bg="#CA00C2"
+                w="calc(100% - 4rem)"
+                pos="absolute"
+                bottom="0"
+                p="md"
+                c="text-white"
+                data-testid="query-validation-error"
+              >
+                {this.state.queryValidationError}
+              </Box>
             )}
           </>
         </ResizableBox>
