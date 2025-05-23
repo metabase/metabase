@@ -10,13 +10,11 @@ export async function jwtDefaultRefreshTokenFunction(
     | MetabaseAuthConfig["fetchRequestToken"]
     | null = null,
 ) {
-  // Points to the JWT Auth endpoint on the client server
-  // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
-  const clientBackendResponse = await (
-    customFetchRequestToken ?? refreshUserJwt
-  )(responseUrl);
+  const jwtTokenResponse = await runFetchRequestToken(
+    responseUrl,
+    customFetchRequestToken,
+  );
 
-  const jwtTokenResponse = clientBackendResponse.jwt;
   const mbAuthUrl = new URL(`${instanceUrl}/auth/sso`);
   mbAuthUrl.searchParams.set("jwt", jwtTokenResponse);
   const authSsoResponse = await fetch(mbAuthUrl, getSdkRequestHeaders(hash));
@@ -34,6 +32,31 @@ export async function jwtDefaultRefreshTokenFunction(
   }
 }
 
+const runFetchRequestToken = async (
+  responseUrl: string,
+  customFetchRequestToken:
+    | MetabaseAuthConfig["fetchRequestToken"]
+    | null = null,
+) => {
+  // Points to the JWT Auth endpoint on the client server
+  // This should return {jwt: USER_JWT_TOKEN } with the signed token from the client backend
+  try {
+    const clientBackendResponse = await (
+      customFetchRequestToken ?? refreshUserJwt
+    )(responseUrl);
+
+    if (!("jwt" in clientBackendResponse)) {
+      throwResponseShapeError(customFetchRequestToken);
+    }
+
+    const jwtTokenResponse = clientBackendResponse.jwt;
+
+    return jwtTokenResponse;
+  } catch (e) {
+    throwResponseShapeError(customFetchRequestToken);
+  }
+};
+
 const refreshUserJwt = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
 ) => {
@@ -45,3 +68,23 @@ const refreshUserJwt = async (
   // This should return {url: /auth/sso?jwt=[...]} with the signed token from the client backend
   return await clientBackendResponse.json();
 };
+
+export function throwResponseShapeError(
+  customFetchRequestToken:
+    | MetabaseAuthConfig["fetchRequestToken"]
+    | null = null,
+) {
+  const source = customFetchRequestToken
+    ? '"fetchRequestToken" function'
+    : "JWT server endpoint";
+
+  if (customFetchRequestToken) {
+    throw new Error(
+      `If you are using a custom fetchRefreshToken function, you must return an object with the shape of { jwt: string } containing your JWT. Custom fetchRefreshToken functions are not supported with SAML authentication.`,
+    );
+  }
+
+  throw new Error(
+    `Your ${source} must return an object with the shape {jwt:string}`,
+  );
+}

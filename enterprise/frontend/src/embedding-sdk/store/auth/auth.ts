@@ -18,7 +18,7 @@ import type { Settings } from "metabase-types/api";
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
 
-import { jwtDefaultRefreshTokenFunction } from "./jwt";
+import { jwtDefaultRefreshTokenFunction, throwResponseShapeError } from "./jwt";
 import { openSamlLoginPopup } from "./saml";
 import { samlTokenStorage } from "./saml-token-storage";
 
@@ -38,27 +38,19 @@ export const initAuth = createAsyncThunk(
       // API key setup
       api.apiKey = authConfig.apiKey;
     } else if (isValidInstanceUrl) {
-      try {
-        // SSO setup
-        api.onBeforeRequest = async () => {
-          const session = await dispatch(
-            getOrRefreshSession(authConfig.metabaseInstanceUrl),
-          ).unwrap();
-          if (session?.id) {
-            api.sessionToken = session.id;
-          }
-        };
-        // verify that the session is actually valid before proceeding
-        await dispatch(
+      // SSO setup
+      api.onBeforeRequest = async () => {
+        const session = await dispatch(
           getOrRefreshSession(authConfig.metabaseInstanceUrl),
         ).unwrap();
-      } catch (e) {
-        // TODO: make this more specific to whatever status code we receive:
-        // this is good for a 400
-        throw new Error(
-          `Unable to connect to instance at ${authConfig.metabaseInstanceUrl}`,
-        );
-      }
+        if (session?.id) {
+          api.sessionToken = session.id;
+        }
+      };
+      // verify that the session is actually valid before proceeding
+      await dispatch(
+        getOrRefreshSession(authConfig.metabaseInstanceUrl),
+      ).unwrap();
     }
 
     // Fetch user and site settings
@@ -126,15 +118,7 @@ export const refreshTokenAsync = createAsyncThunk(
         : "JWT server endpoint";
 
       if (!session || typeof session !== "object") {
-        if (customGetRefreshToken) {
-          throw new Error(
-            `If you are using a custom fetchRefreshToken function, you must return an object with the shape of { jwt: string } containing your JWT. Custom fetchRefreshToken functions are not supported with SAML authentication.`,
-          );
-        }
-
-        throw new Error(
-          `Your ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
-        );
+        throwResponseShapeError(customGetRefreshToken);
       }
       if ("status" in session && session.status !== "ok") {
         if ("message" in session && typeof session.message === "string") {
@@ -189,8 +173,7 @@ const getRefreshToken = async (
 
   if (method === "saml") {
     // The URL should point to the SAML IDP
-    await openSamlLoginPopup(responseUrl);
-    return samlTokenStorage.get();
+    return await openSamlLoginPopup(responseUrl);
   }
 
   if (method === "jwt") {
