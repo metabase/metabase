@@ -76,15 +76,16 @@
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
               alias-for-join           (unique-name-fn (join-alias table-name fk-name))]
-          (-> {:source-table  source-table
-               :alias         alias-for-join
-               :ident         (lib/implicit-join-clause-ident fk-ident)
-               :fields        :none
-               :strategy      :left-join
-               :condition     [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
-                               [:field pk-id {:join-alias alias-for-join}]]
-               :fk-field-id   fk-field-id
-               :fk-join-alias fk-join-alias}
+          (-> (merge {:source-table  source-table
+                      :alias         alias-for-join
+                      :ident         (lib/implicit-join-clause-ident fk-ident)
+                      :fields        :none
+                      :strategy      :left-join
+                      :condition     [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
+                                      [:field pk-id {:join-alias alias-for-join}]]
+                      :fk-field-id   fk-field-id}
+                     (when fk-join-alias
+                       {:fk-join-alias fk-join-alias}))
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
 (mu/defn- implicitly-joined-fields->joins :- [:maybe [:sequential JoinInfo]]
@@ -129,7 +130,8 @@
 
 (mu/defn- field-opts->fk-field-info :- FkFieldInfo
   [{:keys [source-field source-field-join-alias]}]
-  {:fk-field-id source-field, :fk-join-alias source-field-join-alias})
+  (merge {:fk-field-id source-field}
+         (when source-field-join-alias {:fk-join-alias source-field-join-alias})))
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
@@ -265,10 +267,6 @@
          (mapv (fn [join]
                  (dissoc join ::original-position))))))
 
-(mu/defn- remove-fk-join-alias-from-joins :- [:maybe [:sequential JoinInfo]]
-  [joins :- [:maybe [:sequential JoinInfo]]]
-  (map #(dissoc % :fk-join-alias) joins))
-
 (defn- resolve-implicit-joins-this-level
   "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
   `:fields`. Add additional `:fields` to source query if needed to perform the join."
@@ -281,7 +279,7 @@
       (seq required-joins) (update :joins (fn [existing-joins]
                                             (m/distinct-by
                                              :alias
-                                             (concat existing-joins (remove-fk-join-alias-from-joins required-joins)))))
+                                             (concat existing-joins required-joins))))
       true                 add-join-alias-to-fields-with-source-field
       true                 (add-fields-to-source reused-joins)
       (seq required-joins) (update :joins topologically-sort-joins))))
