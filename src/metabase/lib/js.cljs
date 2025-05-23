@@ -1867,6 +1867,15 @@
   [database-id metadata inner-query]
   (lib.core/native-query (metadataProvider database-id metadata) inner-query))
 
+(defn ^:export validate-native-query-sql
+  "Validates the syntax of a native query.
+
+  Specifically takes in a sql string, possibly with metabase parameters.
+
+  > **Code health:** Healthy"
+  [sql]
+  (lib.core/validate-native-sql sql))
+
 (defn ^:export with-native-query
   "Update the raw native query. The first stage of `a-query` must already be a native stage.
 

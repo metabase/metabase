@@ -196,6 +196,77 @@
                                         :native             sql-or-other-native-query}])
          (with-native-extras native-extras)))))
 
+;; map of function names to min/max expected arguments
+(def function-expected-args
+  {"mb.time_grouping" [2 2]})
+
+(def tag-type->display-name
+  {:temporal-unit "time grouping"
+   :text "text variable"
+   :card "card reference"
+   :snippet "snippet"})
+
+(defn- validate-function-tags
+  [query-text]
+  (let [parsed (lib.parse/parse {} query-text)]
+    (loop [found {}
+           errors []
+           [current & more] (vec parsed)]
+      (match [current]
+        [nil] errors
+        [_ :guard string?] (recur found errors more)
+        [{:type ::lib.parse/param
+          :name tag-name}]
+        (let [full-tag         (str "{{" tag-name "}}")
+              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)
+              prev             (found matched-name)
+              current          (some-> matched-name fresh-tag finish-tag)
+              error            (cond
+                                 (not current)
+                                 (format "Syntax error in: %s" tag-name)
+
+                                 (and prev (not= (:type prev) (:type current)))
+                                 (format "Parameter %s is used as both a %s and a %s. This is not allowed."
+                                         matched-name
+                                         (-> prev :type tag-type->display-name)
+                                         (-> current :type tag-type->display-name))
+
+                                 (function-expected-args matched-name)
+                                 (format "%s should be used as a function call, e.g. %s('arg1', ...)" matched-name matched-name))]
+          (recur (cond-> found
+                   (and current (not error)) (assoc matched-name current))
+                 (cond-> errors
+                   error (conj error))
+                 more))
+        [{:type ::lib.parse/function-param
+          :name function-name
+          :args args}] (let [new-tag (fresh-function-tag function-name args)
+                             args-count (count args)
+                             [args-min args-max] (function-expected-args function-name)
+                             error (cond
+                                     (not new-tag)
+                                     (format "Unrecognized function: %s" function-name)
+
+                                     (< args-count args-min)
+                                     (format "Too few arguments given to %s" function-name)
+
+                                     (> args-count args-max)
+                                     (format "Too many arguments given to %s" function-name))]
+                         (recur (cond-> found
+                                  (and new-tag (not error)) (assoc (:name new-tag) new-tag))
+                                (cond-> errors
+                                  error (conj error))
+                                more))
+        [{:type ::lib.parse/optional
+          :contents contents}] (recur found errors (apply conj more contents))))))
+
+(defn validate-native-query-sql
+  "Validates the syntax of a native query.
+
+  Specifically takes in a sql string, possibly with metabase parameters."
+  [sql]
+  (validate-function-tags sql))
+
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
