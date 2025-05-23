@@ -156,8 +156,6 @@
    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
    ;; `:source-field`.
    [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   ;; :lib/desired-column-alias or :name of the source field used for the implicit join
-   [:fk-field-name {:optional true} [:maybe :string]]
    ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
    ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
    ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.

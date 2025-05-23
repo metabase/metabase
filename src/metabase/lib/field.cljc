@@ -484,9 +484,9 @@
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id})
-                                 (when-let [source-field-name (when-not inherited-column?
-                                                                (:fk-field-name metadata))]
-                                   {:source-field-name source-field-name}))
+                                 (when-let [source-field-join-alias (when-not inherited-column?
+                                                                      (:fk-join-alias metadata))]
+                                   {:source-field-join-alias source-field-join-alias}))
         id-or-name        ((if inherited-column?
                              (some-fn :lib/desired-column-alias :name)
                              (some-fn :id :name))

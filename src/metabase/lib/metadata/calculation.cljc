@@ -647,15 +647,14 @@
                                              :as   source}]
                                          (-> (id->target-fields fk-target-field-id)
                                              (assoc ::source-field-id   source-field-id
-                                                    ::source-field-name ((some-fn :lib/desired-column-alias :name) source)
-                                  ::source-join-alias (:metabase.lib.join/join-alias source)
+                                                    ::source-join-alias (:metabase.lib.join/join-alias source)
                                                     ::fk-ident          fk-ident))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-field-name source-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-ident source-field-id source-join-alias]}]
                     (let [table-metadata (id->table table-id)
                           options        {:unique-name-fn               unique-name-fn
                                           :include-implicitly-joinable? false}]
@@ -664,7 +663,6 @@
                                    field (assoc field
                                                 :ident                    ident
                                                 :fk-field-id              source-field-id
-                                                      :fk-field-name            source-field-name
                                                 :fk-join-alias            source-join-alias
                                                 :lib/source               :source/implicitly-joinable
                                                 :lib/source-column-alias  (:name field))]]
