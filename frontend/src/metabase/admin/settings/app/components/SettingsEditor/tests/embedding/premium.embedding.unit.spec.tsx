@@ -41,7 +41,7 @@ describe("[EE, with token] embedding settings", () => {
     });
 
     describe("static embedding", () => {
-      it.skip("should show info about static embedding", async () => {
+      it("should show info about static embedding", async () => {
         const withinStaticEmbeddingCard = within(
           screen.getByRole("article", {
             name: "Static embedding",
