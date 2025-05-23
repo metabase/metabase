@@ -14,7 +14,7 @@ export const getLatestEligibleReleaseNotes = ({
   isEmbeddingIframe = false,
   isWhiteLabeling = false,
 }: {
-  versionInfo: VersionInfo | null;
+  versionInfo: VersionInfo | null | undefined;
   currentVersion: string | undefined;
   lastAcknowledgedVersion: string | null;
   isEmbeddingIframe: boolean;
