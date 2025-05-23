@@ -59,7 +59,7 @@
 
 (defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
   [_driver _feature db]
-  (= (str/lower-case (-> db :details :user)) "sa"))
+  (= (u/lower-case-en (-> db :details :user)) "sa"))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
@@ -926,7 +926,7 @@
   ;; Use a "role" (sqlserver user) if it exists, otherwise use
   ;; the user if it can be impersonated (ie not the 'sa' user).
   (let [{:keys [role user]} (:details database)]
-    (or role (when-not (= (str/lower-case user) "sa") user))))
+    (or role (when-not (= (u/lower-case-en user) "sa") user))))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
