@@ -77,9 +77,6 @@ import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
 
-const { useTableActionsExecute, TableActionExecuteModal } =
-  PLUGIN_TABLE_ACTIONS;
-
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
   if (isPill) {
@@ -256,7 +253,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     selectedTableActionState,
     handleTableActionRun,
     handleExecuteActionModalClose,
-  } = useTableActionsExecute({
+  } = PLUGIN_TABLE_ACTIONS.useTableActionsExecute({
     actionsVizSettings: settings[TABLE_ACTIONS_SETTING],
     datasetData: data,
   });
@@ -761,6 +758,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const isColumnReorderingDisabled =
     (isDashboard || mode == null || isRawTable) && !isSettings;
+
+  const TableActionExecuteModal = PLUGIN_TABLE_ACTIONS.TableActionExecuteModal;
 
   return (
     <div

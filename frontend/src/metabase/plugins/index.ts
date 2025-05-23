@@ -8,6 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -814,8 +815,8 @@ export const PLUGIN_TABLE_ACTIONS = {
     onClose: () => void;
   }>,
   ConfigureTableActions: PluginPlaceholder as ComponentType<{
-    tableActions: TableActionDisplaySettings[] | undefined;
-    columns: { id: number; name: string }[];
+    value: TableActionDisplaySettings[] | undefined;
+    cols: { id: number; name: string }[];
     onChange: (newValue: TableActionDisplaySettings[]) => void;
   }>,
 };

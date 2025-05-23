@@ -15,14 +15,14 @@ import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
 import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 
 type ConfigureTableActionsProps = {
-  tableActions: TableActionDisplaySettings[] | undefined;
-  columns: { id: number; name: string }[];
+  value: TableActionDisplaySettings[] | undefined;
+  cols: { id: number; name: string }[];
   onChange: (newValue: TableActionDisplaySettings[]) => void;
 };
 
 export const ConfigureTableActions = ({
-  tableActions: inputTableActions,
-  columns,
+  value: inputTableActions,
+  cols: columns,
   onChange,
 }: ConfigureTableActionsProps) => {
   const {

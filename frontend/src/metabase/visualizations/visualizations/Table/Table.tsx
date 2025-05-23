@@ -56,8 +56,6 @@ import type {
   VisualizationProps,
 } from "../../types";
 
-const { ConfigureTableActions } = PLUGIN_TABLE_ACTIONS;
-
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
 }
@@ -225,7 +223,9 @@ class Table extends Component<TableProps, TableState> {
       get section() {
         return t`Actions`;
       },
-      widget: ConfigureTableActions,
+      get widget() {
+        return PLUGIN_TABLE_ACTIONS.ConfigureTableActions;
+      },
       default: [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols,

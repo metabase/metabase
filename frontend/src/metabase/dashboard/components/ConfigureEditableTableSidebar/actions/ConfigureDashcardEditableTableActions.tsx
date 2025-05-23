@@ -13,9 +13,6 @@ import type {
   TableRowActionDisplaySettings,
 } from "metabase-types/api";
 
-const { isBuiltInEditableTableAction, ConfigureTableActions } =
-  PLUGIN_TABLE_ACTIONS;
-
 const DEFAULT_ACTIONS = [
   {
     id: "data-grid.row/create" as const,
@@ -52,7 +49,9 @@ export const ConfigureDashcardEditableTableActions = ({
     const tableActions: TableRowActionDisplaySettings[] = [];
 
     enabledActions.forEach((tableActionSettings) => {
-      if (isBuiltInEditableTableAction(tableActionSettings)) {
+      if (
+        PLUGIN_TABLE_ACTIONS.isBuiltInEditableTableAction(tableActionSettings)
+      ) {
         const typed =
           tableActionSettings as EditableTableBuiltInActionDisplaySettings;
         builtInActionsMap.set(typed.id, typed);
@@ -111,7 +110,9 @@ export const ConfigureDashcardEditableTableActions = ({
 
   const handleUpdateRowActions = useCallback(
     (newActions: TableActionDisplaySettings[]) => {
-      const builtIns = enabledActions.filter(isBuiltInEditableTableAction);
+      const builtIns = enabledActions.filter(
+        PLUGIN_TABLE_ACTIONS.isBuiltInEditableTableAction,
+      );
 
       dispatch(
         onUpdateDashCardVisualizationSettings(dashcard.id, {
@@ -121,6 +122,8 @@ export const ConfigureDashcardEditableTableActions = ({
     },
     [dashcard.id, dispatch, enabledActions],
   );
+
+  const ConfigureTableActions = PLUGIN_TABLE_ACTIONS.ConfigureTableActions;
 
   return (
     <>
@@ -141,9 +144,9 @@ export const ConfigureDashcardEditableTableActions = ({
 
       {dashboard && (
         <ConfigureTableActions
-          tableActions={tableActions}
+          value={tableActions}
           onChange={handleUpdateRowActions}
-          columns={tableColumns}
+          cols={tableColumns}
         />
       )}
     </>
