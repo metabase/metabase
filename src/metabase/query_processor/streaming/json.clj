@@ -67,10 +67,10 @@
                     (interleave
                      @col-names
                      (map (fn [formatter r]
-                     ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
-                     ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
-                     ;; does mean that all JSON values are strings. Any other strategy requires some level of
-                     ;; inference to know if we should or should not parse a string (or not stringify an object).
+                            ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
+                            ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
+                            ;; does mean that all JSON values are strings. Any other strategy requires some level of
+                            ;; inference to know if we should or should not parse a string (or not stringify an object).
                             (let [res (formatter (streaming.common/format-value r))]
                               (cond
                                 (formatter/NumericWrapper? res) (:num-str res)
