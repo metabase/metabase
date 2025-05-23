@@ -1874,7 +1874,7 @@
 
   > **Code health:** Healthy"
   [query]
-  (lib.core/validate-native-query query))
+  (to-array (lib.core/validate-native-query query)))
 
 (defn ^:export with-native-query
   "Update the raw native query. The first stage of `a-query` must already be a native stage.

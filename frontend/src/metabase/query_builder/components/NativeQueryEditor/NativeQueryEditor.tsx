@@ -23,10 +23,9 @@ import {
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { checkNativeQueryDiagnostics } from "metabase-lib/v1/expressions/diagnostics/expression/check-lib-diagnostics";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -137,7 +136,7 @@ interface NativeQueryEditorState {
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
   isPromptInputVisible: boolean;
-  queryValidationError?: string | null;
+  queryValidationError?: string[] | null;
 }
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
@@ -188,13 +187,15 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
       setDatasetQuery(updatedQuery);
 
-      let error = null;
-      try {
-        checkNativeQueryDiagnostics(updatedQuery);
-      } catch (e) {
-        error = e instanceof Error && e.message ? e.message : String(e);
+      const errors = Lib.validateNativeQuery(updatedQuery.question().query());
+
+      if (errors && errors.length > 0) {
+        this.setState({ queryValidationError: errors });
+      } else {
+        if (this.state.queryValidationError) {
+          this.setState({ queryValidationError: null });
+        }
       }
-      this.setState({ queryValidationError: error });
     }
   };
 
@@ -445,19 +446,23 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             )}
 
             {this.state.queryValidationError && (
-              // TODO: for demo only. use palette color
-              // eslint-disable-next-line no-color-literals
-              <Box
-                bg="#CA00C2"
-                w="calc(100% - 4rem)"
+              <Flex
+                bg="bg-error"
                 pos="absolute"
-                bottom="0"
+                bottom="15px"
+                w="calc(100% - 5.5rem)"
                 p="md"
-                c="text-white"
                 data-testid="query-validation-error"
+                className={S.queryErrorContainer}
+                ml="lg"
               >
-                {this.state.queryValidationError}
-              </Box>
+                <Icon name="warning" c="error" mr="sm" />
+                <Box component="ul" m={0} p={0} style={{ listStyle: "none" }}>
+                  {this.state.queryValidationError.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </Box>
+              </Flex>
             )}
           </>
         </ResizableBox>
