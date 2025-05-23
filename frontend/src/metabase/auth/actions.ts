@@ -72,14 +72,21 @@ export const login = createAsyncThunk(
 interface LoginGooglePayload {
   credential: string;
   redirectUrl?: string;
+  remember?: boolean;
 }
 
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createAsyncThunk(
   LOGIN_GOOGLE,
-  async ({ credential }: LoginGooglePayload, { dispatch, rejectWithValue }) => {
+  async (
+    { credential, remember }: LoginGooglePayload,
+    { dispatch, rejectWithValue },
+  ) => {
     try {
-      await SessionApi.createWithGoogleAuth({ token: credential });
+      await SessionApi.createWithGoogleAuth({
+        token: credential,
+        remember,
+      });
       await dispatch(refreshSession()).unwrap();
       if (!isSmallScreen()) {
         dispatch(openNavbar());
