@@ -259,7 +259,7 @@
 (defn- execute-dashcard-row-action-on-saved-action!
   "Implementation handling a sub-sub-case."
   [action-id dashcard-id pk params & [_mapping]]
-  (let [action (-> (actions/select-action :id (parse-long action-id) :archived false)
+  (let [action (-> (actions/select-action :id action-id :archived false)
                    (t2/hydrate :creator)
                    api/read-check)
         ;; TODO flatten this into a single query
@@ -282,7 +282,7 @@
 
 (defn- execute-dashcard-row-action-on-primitive-action!
   "Implementation handling a sub-sub-case."
-  [action-kw scope dashcard-id pk input & [_mapping]]
+  [action-kw scope dashcard-id pk input _mapping]
   ;; TODO flatten this into a single query
   (let [card-id   (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
         table-id  (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
@@ -297,12 +297,12 @@
   "Executes an action as a row action. The allows action parameters sharing a name with column names to be derived from a specific row.
   The caller is still able to supply parameters, which will be preferred to those derived from the row.
   Discovers the table via the provided dashcard-id, assumes a model/editable for now."
-  [{:keys [action-id]}   :- [:map [:action-id :string]]
+  [{:keys [action-id]}   :- [:map [:action-id ms/IntString]]
    {:keys [dashcard-id]} :- [:map [:dashcard-id ms/PositiveInt]]
    {:keys [pk params]}   :- [:map
                              [:pk :any]
                              [:params :any]]]
-  (execute-dashcard-row-action-on-saved-action! action-id dashcard-id pk params))
+  (execute-dashcard-row-action-on-saved-action! (parse-long action-id) dashcard-id pk params))
 
 (api.macros/defendpoint :get "/tmp-action"
   "Returns all actions across all tables and models"
@@ -375,17 +375,17 @@
                                                                                               :action-id raw-id
                                                                                               :op        op
                                                                                               :param     param}))))
-    (string? raw-id) (if-let [[dashcard-id nested--id] (re-matches #"^dashcard:(.*):(.*)$" raw-id)]
-                       (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) dashcard-id)
-                             dashcard    (api/check-500 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
+    (string? raw-id) (if-let [[_ dashcard-id _nested-id] (re-matches #"^dashcard:([^:]+):(.*)$" raw-id)]
+                       (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) (parse-long dashcard-id))
+                             dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
                              actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
                              ;; TODO actual_id should get renamed to id at some point in the FE
-                             viz-action  (first (filter (comp #{nested--id} #(or (:actual_id %) (:id %))) actions))
+                             viz-action  (api/check-404 (first (filter (comp #{raw-id} #(or (:actual_id %) (:id %))) actions)))
                              ;; TODO id should get renamed to action_id at some point as well
                              inner-id    (or (:action_id viz-action) (:id viz-action))
                              unified     (fetch-unified-action scope inner-id)
                              action-type (:type viz-action "row-action")
-                             mapping     (:parameterMappings viz-action)]
+                             mapping     (:parameterMappings viz-action {})]
                          (assert (:enabled viz-action) "Cannot call disabled actions")
                          (case action-type
                            "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
