@@ -31,15 +31,15 @@
 (deftest ^:parallel fk-field-infos->join-infos-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (is (=? [{:source-table (meta/id :products)
-              :alias       "PRODUCTS__via__PRODUCT_ID"
-              :fields      :none
-              :strategy    :left-join
-              :condition   [:=
-                            [:field (meta/id :orders :product-id) nil]
-                            [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
-              :fk-field-id (meta/id :orders :product-id)}]
-            (#'qp.add-implicit-joins/fk-field-infos->join-infos [{:fk-field-id (meta/id :orders :id)}
-                                                                 {:fk-field-id (meta/id :orders :product-id)}])))))
+              :alias        "PRODUCTS__via__PRODUCT_ID"
+              :fields       :none
+              :strategy     :left-join
+              :condition    [:=
+                             [:field (meta/id :orders :product-id) nil]
+                             [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+              :fk-field-id  (meta/id :orders :product-id)}]
+            (#'qp.add-implicit-joins/fk-field-infos->join-infos #{{:fk-field-id (meta/id :orders :id)}
+                                                                  {:fk-field-id (meta/id :orders :product-id)}})))))
 
 (deftest ^:parallel resolve-implicit-joins-test
   (let [query (mt/nest-query
