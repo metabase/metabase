@@ -1,4 +1,4 @@
- {
+import type {
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
 } from "embedding-sdk/types";
