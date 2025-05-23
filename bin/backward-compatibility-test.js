@@ -37,13 +37,8 @@ const getTestFiles = () => {
   ].filter((file) => !SKIPPED_FILES.includes(file));
 };
 
-// those are temporarily ignored because they contain a test that fails
-const SKIPPED_FILES = [
-  "e2e/test/scenarios/question/native-query-drill.cy.spec.ts",
-  "e2e/test/scenarios/question/multiple-column-breakouts.cy.spec.ts",
-  "e2e/test/scenarios/question/notebook-data-source.cy.spec.ts",
-  "e2e/test/scenarios/question/notebook-link-to-data-source.cy.spec.ts",
-];
+// place to put files if we want to skip them
+const SKIPPED_FILES = [];
 
 console.log(`Using frontend from ${FE_GIT_REF}`);
 console.log(`Using backend from ${BE_GIT_REF}`);
@@ -96,7 +91,9 @@ function build() {
 
   console.log("Building frontend...");
   executeCommand("yarn install", FE_FOLDER);
-  executeCommand("yarn build", FE_FOLDER, { MB_EDITION: "ee" });
+  executeCommand("yarn build-release", FE_FOLDER, {
+    MB_EDITION: "ee",
+  });
 
   printStep("Copying frontend build to backend...");
   const feResourcesClientPath = path.join(
@@ -201,9 +198,11 @@ async function test() {
   const testEnv = {
     BACKEND_PORT: "4000",
     TEST_SUITE: "e2e",
+    // uncomment the line above to debug the tests with the ui
+    // OPEN_UI: "true",
   };
 
-  const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "${testForThisShard.join(",")}"`;
+  const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@OSS --@external",grepOmitFiltered=true --spec "${testForThisShard.join(",")}"`;
   executeCommand(cypressCommand, FE_FOLDER, testEnv);
 }
 
