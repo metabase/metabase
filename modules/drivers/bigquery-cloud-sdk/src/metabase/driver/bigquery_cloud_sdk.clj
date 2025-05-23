@@ -56,7 +56,11 @@
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds bigquery-scopes)))]
+                  (.setCredentials (.createScoped creds bigquery-scopes))
+                  (.setHeaderProvider
+                   (reify com.google.api.gax.rpc.HeaderProvider
+                     (getHeaders [_]
+                       {"user-agent" "Metabase"}))))]
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
@@ -594,6 +598,11 @@
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
   (let [^BigQuery client (database-details->client database-details)
+        user-agent (try
+                     (some-> client
+                             .getOptions
+                             .getHeaderProvider)
+                     (catch Exception _ nil))
         result-promise (promise)
         request (build-bigquery-request sql parameters)
         query-future (future
@@ -601,6 +610,9 @@
                        (classloader/the-classloader)
                        (try
                          (*page-callback*)
+                         (tap> {:user-agent user-agent
+                                :client client
+                                :request request})
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
                            (deliver result-promise [:ready result])
                            (throw (ex-info "Null response from query" {})))
