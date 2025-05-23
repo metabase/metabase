@@ -22,8 +22,8 @@ driver:
     - user
     - password
     - name: role
-      display-name: Impersonation User (required for impersonation if the default user cannot be impersonated)
-      helper-text: Specify a user to override the default user. Required if the default user cannot be impersonated, such as the 'sa' user.
+      display-name: Default Impersonation User (required for impersonation if the connection's user cannot be impersonated)
+      helper-text: Specify a user to act as the default user. Required if the connection's user cannot be impersonated, such as the 'sa' user.
       placeholder: user
     - cloud-ip-address-info
     - ssl
