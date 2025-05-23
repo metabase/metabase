@@ -16,6 +16,7 @@ import {
 } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
+import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 export const BrowseNavSection = ({
@@ -68,7 +69,10 @@ export const BrowseNavSection = ({
           leftSection={<Icon name="add_data" />}
           h="auto"
           p={0}
-          onClick={onModalOpen}
+          onClick={() => {
+            trackAddDataModalOpened("left-nav");
+            onModalOpen();
+          }}
         >
           {t`Add`}
         </Button>
