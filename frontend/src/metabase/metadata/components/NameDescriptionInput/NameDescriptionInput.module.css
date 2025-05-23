@@ -7,7 +7,7 @@
 
 .description {
   position: relative;
-  top: -1px; /* imitate collapsed borders */
+  top: -2px; /* imitate collapsed borders */
 }
 
 .nameInput {

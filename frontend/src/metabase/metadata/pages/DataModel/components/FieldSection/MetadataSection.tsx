@@ -8,12 +8,7 @@ import { useToast } from "metabase/common/hooks";
 import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import {
-  Box,
-  Stack,
-  TextInputBlurChange,
-  TextareaBlurChange,
-} from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import type { DatabaseId, Field } from "metabase-types/api";
 
 import { SectionPill } from "../SectionPill";
@@ -29,7 +24,6 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
-  const id = getRawTableFieldId(field);
   const [sendToast] = useToast();
   function confirm(message: string) {
     sendToast({ message, icon: "check" });
@@ -40,39 +34,6 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
       <Box>
         <SectionPill icon="model" title={t`Metadata`} />
       </Box>
-
-      <TextInputBlurChange
-        label={t`Display name`}
-        normalize={(newValue) => {
-          if (typeof newValue !== "string") {
-            return field.display_name;
-          }
-
-          const isNewValueEmpty = newValue.trim().length === 0;
-          return isNewValueEmpty ? field.display_name : newValue.trim();
-        }}
-        value={field.display_name}
-        onBlurChange={async (event) => {
-          await updateField({ id, display_name: event.target.value });
-          confirm(t`Display name for ${event.target.value} updated`);
-        }}
-      />
-
-      <TextareaBlurChange
-        label={t`Description`}
-        minRows={3}
-        placeholder={t`What is this field about?`}
-        value={field.description ?? ""}
-        onBlurChange={async (event) => {
-          const newValue = event.target.value;
-
-          await updateField({
-            id,
-            description: newValue.trim().length > 0 ? newValue : null,
-          });
-          confirm(t`Description for ${field.display_name} updated`);
-        }}
-      />
 
       <SemanticTypeAndTargetPicker
         description={t`What this data represents`}
