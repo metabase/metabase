@@ -50,7 +50,8 @@
    [:fields        [:= :none]]
    [:strategy      [:= :left-join]]
    [:condition     mbql.s/=]
-   [:fk-field-id   ::lib.schema.id/field]])
+   [:fk-field-id   ::lib.schema.id/field]
+   [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mu/defn- fk-field-infos->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-infos`, return a sequence of maps containing IDs and and other info needed to generate corresponding
@@ -114,18 +115,20 @@
        [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
    fields))
 
-(mu/defn- construct-fk-field-id->join-alias :- [:map-of
-                                                ::lib.schema.id/field
-                                                ::lib.schema.common/non-blank-string]
+(mu/defn- construct-fk-field-info->join-alias :- [:map-of
+                                                  FkFieldInfo
+                                                  ::lib.schema.common/non-blank-string]
   [form]
-  ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
+  ;; Build a map of [FK Field ID, FK join alias] -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (into {}
-        (comp (map (fn [{:keys [fk-field-id], join-alias :alias}]
-                     (when fk-field-id
-                       [fk-field-id join-alias])))
-              ;; only keep the first alias for each FK Field ID
-              (m/distinct-by first))
+        (map (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
+               (when fk-field-id
+                 [fk-field-id join-alias])))
         (visible-joins form)))
+
+(defn- field-opts->fk-field-info
+  [opts]
+  (select-keys opts [:source-field :source-field-join-alias]))
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
@@ -133,11 +136,11 @@
   found. For examaple during remaps, metadata contain fields with `:source-field`, that are not used further in their
   `:source-query`."
   [{:keys [source-query] :as query}]
-  (let [fk-field-id->join-alias (construct-fk-field-id->join-alias source-query)]
+  (let [fk-field-info->join-alias (construct-fk-field-info->join-alias source-query)]
     (update query :source-metadata
             #(lib.util.match/replace %
                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
-               (let [join-alias (fk-field-id->join-alias (:source-field opts))]
+               (let [join-alias (fk-field-info->join-alias (field-opts->fk-field-info opts))]
                  (if (some? join-alias)
                    [:field id-or-name (assoc opts :join-alias join-alias)]
                    &match))))))
@@ -145,11 +148,11 @@
 (defn- add-join-alias-to-fields-with-source-field
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:source-metadata`."
   [form]
-  (let [fk-field-id->join-alias (construct-fk-field-id->join-alias form)]
+  (let [fk-field-info->join-alias (construct-fk-field-info->join-alias form)]
     (cond-> (lib.util.match/replace form
               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
               (if-not (some #{:source-metadata} &parents)
-                (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
+                (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info opts))
                                      (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
                                                           (format "%s %s"
                                                                   (pr-str (:source-field opts))
@@ -158,7 +161,7 @@
                                                                                (:source-field opts))]
                                                                     (pr-str (:display-name field)))))
                                                      {:resolving  &match
-                                                      :candidates fk-field-id->join-alias
+                                                      :candidates fk-field-info->join-alias
                                                       :form       form})))]
                   [:field id-or-name (assoc opts :join-alias join-alias)])
                 &match))
