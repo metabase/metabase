@@ -63,7 +63,7 @@ export function assertDataSourceColumnSelected(
 }
 
 export function selectDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").type(datasetName);
+  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
   cy.findAllByText(datasetName).first().click({ force: true });
   cy.wait("@cardQuery");
 }
