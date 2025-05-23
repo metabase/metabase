@@ -56,7 +56,7 @@
 (mu/defn- fk-field-infos->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-infos`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
-  [fk-field-infos]
+  [fk-field-infos :- [:maybe [:sequential FkFieldInfo]]]
   (when (seq fk-field-infos)
     (let [fk-field-ids       (into #{} (map :fk-field-id) fk-field-infos)
           fk-fields          (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids)

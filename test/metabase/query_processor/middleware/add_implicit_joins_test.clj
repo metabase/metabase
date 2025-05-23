@@ -28,7 +28,7 @@
              [:field "bird" {:base-type :type/Integer}]
              [:field "bird" {:base-type :type/Number}]])))))
 
-(deftest ^:parallel fk-ids->join-infos-test
+(deftest ^:parallel fk-field-infos->join-infos-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (is (=? [{:source-table (meta/id :products)
               :alias       "PRODUCTS__via__PRODUCT_ID"
@@ -38,8 +38,8 @@
                             [:field (meta/id :orders :product-id) nil]
                             [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
               :fk-field-id (meta/id :orders :product-id)}]
-            (#'qp.add-implicit-joins/fk-ids->join-infos #{(meta/id :orders :id)
-                                                          (meta/id :orders :product-id)})))))
+            (#'qp.add-implicit-joins/fk-field-infos->join-infos [{:fk-field-id (meta/id :orders :id)}
+                                                                 {:fk-field-id (meta/id :orders :product-id)}])))))
 
 (deftest ^:parallel resolve-implicit-joins-test
   (let [query (mt/nest-query
