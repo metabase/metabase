@@ -24,5 +24,3 @@ Here's how to get connection information for databases on Amazon's RDS:
 ## Database routing
 
 See [Database routing](../../permissions/database-routing.md).
-
-## Danger zone
