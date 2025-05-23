@@ -87,7 +87,7 @@
                :fk-join-alias fk-join-alias}
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
-(mu/defn- implicitly-joined-fields->joins :- [:maybe [:sequential FkFieldInfo]]
+(mu/defn- implicitly-joined-fields->joins :- [:maybe [:sequential JoinInfo]]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [field-clauses-with-source-field]
   (distinct
@@ -265,6 +265,10 @@
          (mapv (fn [join]
                  (dissoc join ::original-position))))))
 
+(mu/defn- remove-fk-join-alias-from-joins [:maybe [:sequential JoinInfo]]
+  [joins :- [:maybe [:sequential JoinInfo]]]
+  (map #(dissoc % :fk-join-alias) joins))
+
 (defn- resolve-implicit-joins-this-level
   "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
   `:fields`. Add additional `:fields` to source query if needed to perform the join."
@@ -277,7 +281,7 @@
       (seq required-joins) (update :joins (fn [existing-joins]
                                             (m/distinct-by
                                              :alias
-                                             (concat existing-joins required-joins))))
+                                             (concat existing-joins (remove-fk-join-alias-from-joins required-joins)))))
       true                 add-join-alias-to-fields-with-source-field
       true                 (add-fields-to-source reused-joins)
       (seq required-joins) (update :joins topologically-sort-joins))))

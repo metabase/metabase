@@ -188,8 +188,8 @@
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
 (mu/defn- disambiguate-matches-find-match-with-same-fk-join-alias :- [:maybe ::lib.schema.metadata/column]
-  "If there are multiple matching columns and `a-ref` has a `source-field-name`, check if only one column has that
-   same name."
+  "If there are multiple matching columns and `a-ref` has a `source-field-join-alias`, check if only one column has that
+   same alias."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
   (let [{:keys [source-field-join-alias]} (lib.options/options a-ref)]
