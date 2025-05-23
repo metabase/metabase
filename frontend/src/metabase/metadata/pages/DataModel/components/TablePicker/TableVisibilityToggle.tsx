@@ -21,47 +21,57 @@ export function TableVisibilityToggle({
 
   const isHidden = table?.visibility_type !== null;
 
+  const hide = async () => {
+    const { error } = await updateTable({
+      id: table.id,
+      visibility_type: "hidden",
+    });
+    if (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "warning",
+        message: t`Failed to hide ${table.display_name}`,
+      });
+    } else {
+      sendToast({
+        message: t`Hid ${table.display_name}`,
+        actionLabel: t`Undo`,
+        action: unhide,
+      });
+    }
+  };
+
+  const unhide = async () => {
+    const { error } = await updateTable({
+      id: table.id,
+      visibility_type: null,
+    });
+    if (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "warning",
+        message: t`Failed to unhide ${table.display_name}`,
+      });
+    } else {
+      sendToast({
+        message: t`Unhid ${table.display_name}`,
+        actionLabel: t`Undo`,
+        action: hide,
+      });
+    }
+  };
+
   return (
     <ActionIcon
       name={isHidden ? "eye_crossed_out" : "eye"}
       className={className}
-      onClick={async (evt) => {
+      onClick={(evt) => {
         evt.stopPropagation();
-        const hide = () =>
-          updateTable({ id: table.id, visibility_type: "hidden" });
-        const unhide = () =>
-          updateTable({ id: table.id, visibility_type: null });
 
         if (isHidden) {
-          const { error } = await unhide();
-          if (error) {
-            sendToast({
-              icon: "warning",
-              toastColor: "warning",
-              message: t`Failed to unhide ${table.display_name}`,
-            });
-          } else {
-            sendToast({
-              message: t`Unhid ${table.display_name}`,
-              actionLabel: t`Undo`,
-              action: hide,
-            });
-          }
+          unhide();
         } else {
-          const { error } = await hide();
-          if (error) {
-            sendToast({
-              icon: "warning",
-              toastColor: "warning",
-              message: t`Failed to hide ${table.display_name}`,
-            });
-          } else {
-            sendToast({
-              message: t`Hid ${table.display_name}`,
-              actionLabel: t`Undo`,
-              action: unhide,
-            });
-          }
+          hide();
         }
       }}
     />
