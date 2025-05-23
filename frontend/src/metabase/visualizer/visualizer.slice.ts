@@ -4,7 +4,8 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import undoable, { includeAction } from "redux-undo";
+import { shallowEqual } from "react-redux";
+import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
@@ -645,17 +646,30 @@ export const {
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
-  filter: includeAction([
-    initializeVisualizer.fulfilled.type,
-    _addColumn.type,
-    setTitle.type,
-    updateSettings.type,
-    _removeColumn.type,
-    setDisplay.type,
-    _handleDrop.type,
-    removeDataSource.type,
-    addDataSource.fulfilled.type,
-  ]),
+  filter: combineFilters(
+    includeAction([
+      initializeVisualizer.fulfilled.type,
+      _addColumn.type,
+      setTitle.type,
+      updateSettings.type,
+      _removeColumn.type,
+      setDisplay.type,
+      _handleDrop.type,
+      removeDataSource.type,
+      addDataSource.fulfilled.type,
+    ]),
+    (action, nextState, { present }) => {
+      if (action.type !== _handleDrop.type) {
+        return true;
+      }
+      // Prevents history items from being added when dropping an item has no effect on the rest of the visualizer state
+      const keysToIgnore: (keyof VisualizerState)[] = ["draggedItem"];
+      return !shallowEqual(
+        _.omit(nextState, keysToIgnore),
+        _.omit(present, keysToIgnore),
+      );
+    },
+  ),
   undoType: undo.type,
   redoType: redo.type,
   clearHistoryType: CLEAR_HISTORY,
