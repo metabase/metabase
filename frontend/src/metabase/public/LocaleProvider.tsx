@@ -13,6 +13,7 @@ import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesP
 interface LocaleProviderProps {
   locale?: string | null;
   shouldWaitForLocale?: boolean;
+  lazyLoadDateLocales?: (locale: string) => Promise<void>;
 }
 
 /** context for the locale used in the sdk and in public/static from the #locale parameter  */
@@ -22,6 +23,7 @@ export const LocaleProvider = ({
   children,
   locale,
   shouldWaitForLocale,
+  lazyLoadDateLocales,
 }: PropsWithChildren<LocaleProviderProps>) => {
   const shouldLoadLocale = Boolean(locale);
   const [isLocaleLoading, setIsLocaleLoading] = useState(shouldLoadLocale);
@@ -37,7 +39,7 @@ export const LocaleProvider = ({
       );
 
       setLocaleHeader(localeToLoad);
-      loadLocalization(localeToLoad)
+      loadLocalization(localeToLoad, { lazyLoadDateLocales })
         .then((translatedObject) => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
@@ -47,7 +49,7 @@ export const LocaleProvider = ({
           setIsLocaleLoading(false);
         });
     }
-  }, [locale, shouldLoadLocale, availableLocalesData]);
+  }, [locale, shouldLoadLocale, availableLocalesData, lazyLoadDateLocales]);
 
   if (shouldWaitForLocale && isLocaleLoading) {
     return null;

@@ -11,6 +11,7 @@ import { build } from "tsup";
 
 import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
 import { cssModulesPlugin } from "./frontend/build/embedding-sdk/plugins/css-modules-plugin.mjs";
+import { dynamicLocaleImportsPlugin } from "./frontend/build/embedding-sdk/plugins/dynamic-locale-imports-plugin.mjs";
 import { sideEffectsPlugin } from "./frontend/build/embedding-sdk/plugins/side-effects-plugin.mjs";
 import { svgPlugin } from "./frontend/build/embedding-sdk/plugins/svg-plugin.mjs";
 import { filterExternalDependencies } from "./frontend/build/embedding-sdk/utils/filter-external-dependencies.mjs";
@@ -199,6 +200,15 @@ await build({
           ],
         ],
       },
+    }),
+    dynamicLocaleImportsPlugin({
+      basePath: ROOT_PATH,
+      filter: /embedding-sdk\/lib\/i18n\/.*$/,
+      libraryLocalePaths: [
+        "moment/dist/locale",
+        "moment/locale",
+        "dayjs/locale",
+      ],
     }),
     commonjs({
       ignore: (path) => !externals.includes(path),

@@ -1,7 +1,7 @@
 import fs from "fs";
+import path from "path";
 
 import glob from "glob";
-import path from "path";
 
 export const setupBanners = async ({ buildPath, getBanners }) => {
   await glob("./**/*.{js,mjs,cjs}", { cwd: buildPath }, (err, files) => {
