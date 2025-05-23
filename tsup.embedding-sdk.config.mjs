@@ -9,17 +9,23 @@ import babel from "esbuild-plugin-babel";
 import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
 import { build } from "tsup";
 
+import {
+  EXTERNAL_DEPENDENCIES,
+  EXTERNAL_PEER_DEPENDENCIES,
+} from "./frontend/build/embedding-sdk/constants/external-dependencies.mjs";
 import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
 import { cssModulesPlugin } from "./frontend/build/embedding-sdk/plugins/css-modules-plugin.mjs";
 import { sideEffectsPlugin } from "./frontend/build/embedding-sdk/plugins/side-effects-plugin.mjs";
 import { svgPlugin } from "./frontend/build/embedding-sdk/plugins/svg-plugin.mjs";
 import { generateScopedCssClassName } from "./frontend/build/embedding-sdk/utils/generate-scoped-css-class-name.mjs";
 import { getCssModulesInjectCode } from "./frontend/build/embedding-sdk/utils/get-css-modules-inject-code.mjs";
-import { getFullPathFromResolvePath } from "./frontend/build/embedding-sdk/utils/get-full-path-from-resolve-path.mjs";
+import { getExternalsConfig } from "./frontend/build/embedding-sdk/utils/get-externals-config.mjs";
 import { setupBanners } from "./frontend/build/embedding-sdk/utils/setup-banners.mjs";
 
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
+
+const ROOT_PATH = import.meta.dirname;
 
 const SRC_PATH = path.resolve(import.meta.dirname, "frontend/src/metabase");
 const SDK_SRC_PATH = path.resolve(
@@ -86,7 +92,7 @@ await build({
   tsconfig: "./tsconfig.sdk.json",
   platform: "browser",
   target: "esnext",
-  format: ["cjs", "esm"],
+  format: !isDevMode ? ["cjs", "esm"] : "esm",
   shims: true,
   splitting: !isDevMode,
   treeshake: !isDevMode,
@@ -99,9 +105,9 @@ await build({
   metafile: false,
   // We have to generate `dts` via `tsc` to emit files on `dts` type errors
   dts: false,
-  noExternal: [
-    /^(?!(?:canvg(?:\/|$)|dompurify(?:\/|$)|react(?:\/|$)|react-dom(?:\/|$))).*/,
-  ],
+  ...getExternalsConfig({
+    externals: [...EXTERNAL_DEPENDENCIES, ...EXTERNAL_PEER_DEPENDENCIES],
+  }),
   injectStyle: true,
   env: {
     BUILD_TIME: JSON.stringify(new Date().toISOString()),
@@ -166,7 +172,7 @@ await build({
   },
   esbuildPlugins: [
     cssModulesPlugin({
-      additionalCssModuleRegexp: /css\/core\/index\.css/,
+      additionalCssModuleRegexps: [/css\/core\/index\.css/],
       resolve: (filePath) => {
         if (filePath === "style") {
           return path.resolve(SRC_PATH, "css/core/index.css");
@@ -174,7 +180,6 @@ await build({
 
         return filePath;
       },
-      getFullPathFromResolvePath,
       generateScopedName: generateScopedCssClassName,
     }),
     fixReactVirtualizedPlugin,
@@ -199,13 +204,12 @@ await build({
       ignore: (path) => !(path === "react" || path === "react-dom"),
     }),
     NodeModulesPolyfillPlugin(),
-    svgPlugin({ getFullPathFromResolvePath }),
+    svgPlugin(),
     !isDevMode
       ? // This plugin is heavy, so we don't apply it for dev mode
         sideEffectsPlugin({
-          cwd: process.cwd(),
+          basePath: ROOT_PATH,
           sideEffects: [
-            "**/*.css",
             "./enterprise/frontend/src/metabase-enterprise/**",
             "./enterprise/frontend/src/embedding-sdk/index.ts",
             // eslint-disable-next-line no-literal-metabase-strings -- build config
@@ -214,7 +218,6 @@ await build({
             "./frontend/src/metabase/visualizations/components/LeafletHeatMap.jsx",
             "./frontend/src/metabase/visualizations/components/LeafletMap.jsx",
             "./frontend/src/metabase/dashboard/components/grid/GridLayout.tsx",
-            "./e2e/**/**",
           ],
         })
       : null,

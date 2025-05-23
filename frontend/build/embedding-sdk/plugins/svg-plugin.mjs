@@ -1,13 +1,14 @@
 import fs from "fs";
 
 import { transform as svgrTransform } from "@svgr/core";
-import path from "path";
+
+import { getFullPathFromResolvePath } from "../utils/get-full-path-from-resolve-path.mjs";
 
 /**
  * We have to use a custom plugin, because `esbuild-plugin-svgr` as a side-effect disables svg processing in `css` files
  * Also we anyway have to handle both `?component` and `?source` resource queries
  */
-export const svgPlugin = ({ getFullPathFromResolvePath }) => ({
+export const svgPlugin = () => ({
   name: "svg-plugin",
   setup(build) {
     const { alias } = build.initialOptions;
@@ -60,13 +61,15 @@ export const svgPlugin = ({ getFullPathFromResolvePath }) => ({
       { filter: /.*/, namespace: "svg-source" },
       async ({ path: resolvePath, pluginData }) => {
         const { resolveDir } = pluginData;
-
         const normalizedResolvePath = resolvePath.replace(/\?source$/, "");
-        const svgFilePath = path.isAbsolute(normalizedResolvePath)
-          ? normalizedResolvePath
-          : path.join(resolveDir, normalizedResolvePath);
 
-        const source = await fs.promises.readFile(svgFilePath, "utf8");
+        const fullPath = getFullPathFromResolvePath({
+          resolveDir,
+          resolvePath: normalizedResolvePath,
+          aliases: alias,
+        });
+
+        const source = await fs.promises.readFile(fullPath, "utf8");
 
         return {
           contents: `export default ${JSON.stringify(source)};`,

@@ -1,21 +1,27 @@
 import fs from "fs";
+import path from "path";
 
 import { transform as esbuildTransform } from "esbuild";
-import path from "path";
 import postcss from "postcss";
 import postCssModulesPlugin from "postcss-modules";
 
 import postcssConfig from "../../../../postcss.config.js";
 import { CSS_MODULE_INJECT_FUNCTION_NAME } from "../constants/css-module-inject-function-name.mjs";
+import { getFullPathFromResolvePath } from "../utils/get-full-path-from-resolve-path.mjs";
 
 export const cssModulesPlugin = ({
-  additionalCssModuleRegexp,
+  additionalCssModuleRegexps,
   resolve,
-  getFullPathFromResolvePath,
   generateScopedName,
 }) => {
+  const cssModulesRegExps = [/\.module\.css/, ...additionalCssModuleRegexps];
   const filter = new RegExp(
-    `(${additionalCssModuleRegexp.source}$|\\.module\\.css$)`,
+    `(${cssModulesRegExps.map((regexp) => regexp.source).join("|")})$`,
+  );
+
+  // Remove the `postcss-modules` from the plugins list, because we apply our custom plugin
+  const filteredPostCssPlugins = postcssConfig.plugins.filter(
+    (plugin) => plugin.postcssPlugin !== "postcss-modules",
   );
 
   return {
@@ -47,12 +53,9 @@ export const cssModulesPlugin = ({
 
           const source = await fs.promises.readFile(fullPath, "utf8");
           const json = {};
-          const plugins = postcssConfig.plugins.filter(
-            (plugin) => plugin.postcssPlugin !== "postcss-modules",
-          );
 
           const result = await postcss([
-            ...plugins,
+            ...filteredPostCssPlugins,
             postCssModulesPlugin({
               generateScopedName: (name, filename) => {
                 const scopedName = generateScopedName(name, filename);
@@ -67,7 +70,6 @@ export const cssModulesPlugin = ({
             }),
           ]).process(source, { from: fullPath });
 
-          // The same logic as done in `tsup`, but for `css modules`
           const injectedCss = (
             await esbuildTransform(result.css, {
               minify: build.initialOptions.minify,

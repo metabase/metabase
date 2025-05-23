@@ -4,9 +4,9 @@
 const fs = require("fs");
 const path = require("path");
 
-const IGNORED_PACKAGES = [
-  "react",
-  "react-dom",
+// Even if we figure out how to externalize most of the deps without using hacks,
+// we still can't externalize deps from the list below, because they add conflicting types
+const IGNORED_DEPENDENCIES = [
   "@types/react",
   "@types/react-dom",
   "@types/react-router",
@@ -26,7 +26,7 @@ function filterOuDependencies(object) {
   const result = {};
 
   Object.entries(object).forEach(([packageName, version]) => {
-    if (!IGNORED_PACKAGES.includes(packageName)) {
+    if (!IGNORED_DEPENDENCIES.includes(packageName)) {
       result[packageName] = version;
     }
   });

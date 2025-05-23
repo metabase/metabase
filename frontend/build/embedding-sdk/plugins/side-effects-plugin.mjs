@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
-import { minimatch } from "minimatch";
 import path from "path";
+
+import { minimatch } from "minimatch";
 
 /**
  * We have to define side-effects for the SDK when using `esbuild`, but we completely have to ignore them in all other cases:
@@ -11,12 +12,12 @@ import path from "path";
  *
  * This plugin mimics the `sideEffects` checking mechanism using `esbuild` API.
  */
-export const sideEffectsPlugin = ({ cwd, sideEffects }) => ({
+export const sideEffectsPlugin = ({ basePath, sideEffects }) => ({
   name: "no-side-effects",
   setup(build) {
     build.onResolve({ filter: /.*/ }, async (args) => {
       const importer = args.importer;
-      const relativeImporter = "./" + path.relative(cwd, importer);
+      const relativeImporter = "./" + path.relative(basePath, importer);
 
       if (args.pluginData) {
         // Ignore this if we called ourselves
