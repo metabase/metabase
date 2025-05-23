@@ -369,7 +369,7 @@
                                        :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                        :tunnel-user ssh-test/ssh-username
                                        :tunnel-pass ssh-test/ssh-password)]
-          (t2/update! [:model/Database (mt/id) {:details tunnel-db-details}])
+          (t2/update! :model/Database (mt/id) {:details tunnel-db-details})
           (letfn [(check-row []
                     (is (= [["Polo Lounge"]]
                            (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
