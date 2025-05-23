@@ -61,7 +61,8 @@ describe("personal collections", () => {
 
       cy.wait("@getUsers");
 
-      // Wait for page to re-render after user data is requested
+      // Wait for page to re-render after user data is requested, to make the
+      // should("not.exist") test legit
       cy.wait(200);
 
       H.navigationSidebar()
@@ -72,11 +73,13 @@ describe("personal collections", () => {
         statusCode: 200,
         body: {
           data: [],
-          total: 2,
+          total: 2, // Increase the total to 2
           limit: 0,
           offset: 0,
         },
       }).as("getUsers");
+
+      cy.wait("@getUsers");
 
       H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
