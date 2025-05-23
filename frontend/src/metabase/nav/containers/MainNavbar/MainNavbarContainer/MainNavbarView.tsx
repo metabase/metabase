@@ -178,7 +178,10 @@ export function MainNavbarView({
           {isNewInstance && (
             <SidebarSection>
               <ErrorBoundary>
-                <GettingStartedSection nonEntityItem={nonEntityItem}>
+                <GettingStartedSection
+                  nonEntityItem={nonEntityItem}
+                  onModalOpen={openModal}
+                >
                   {examplesCollection && (
                     <Tree
                       data={[examplesCollection]}
