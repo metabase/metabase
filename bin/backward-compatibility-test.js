@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-/* eslint-disable no-undef -- avoid errors on process */
+/* global process */
 
 const os = require("os");
 const fs = require("fs");
@@ -8,10 +8,10 @@ const path = require("path");
 const { execSync } = require("child_process");
 
 const INSTRUCTIONS =
-  "Usage: node bin/backward-compatibility-test.js <FE_GIT_REF> <BE_GIT_REF> <build|start|test>";
+  "Usage: node bin/backward-compatibility-test.js <FE_GIT_REF> <BE_GIT_REF> <build|start|test> <?optional shard in format shard/total>";
 
 const args = process.argv.slice(2);
-if (args.length !== 3) {
+if (args.length !== 3 && args.length !== 4) {
   console.log(INSTRUCTIONS);
   process.exit(1);
 }
@@ -19,17 +19,26 @@ if (args.length !== 3) {
 const FE_GIT_REF = args[0];
 const BE_GIT_REF = args[1];
 const COMMAND = args[2];
+const SHARD_ARG = args[3];
 
 const TMP_FOLDER = path.join(process.cwd(), ".tmp");
 const FE_FOLDER = path.join(TMP_FOLDER, "metabase-fe");
 const BE_FOLDER = path.join(TMP_FOLDER, "metabase-be");
 const JAR_PATH = path.join(BE_FOLDER, "target/uberjar/metabase.jar");
 
-const TESTS_TO_RUN = [
-  "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
-  "e2e/test/scenarios/question/caching.cy.spec.js",
-];
-const COMMA_SEPARATED_TESTS_TO_RUN = TESTS_TO_RUN.join(",");
+const getTestFiles = () => {
+  const questionFiles = getFilesInsideFolder(
+    path.join(FE_FOLDER, "e2e/test/scenarios/question"),
+  ).map((file) => path.join("e2e/test/scenarios/question", file)); // make sure the path is how we expect, starting with "e2e/test..."
+
+  return [
+    "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
+    ...questionFiles,
+  ].filter((file) => !SKIPPED_FILES.includes(file));
+};
+
+// place to put files if we want to skip them
+const SKIPPED_FILES = [];
 
 console.log(`Using frontend from ${FE_GIT_REF}`);
 console.log(`Using backend from ${BE_GIT_REF}`);
@@ -43,7 +52,6 @@ console.log(`TMP_FOLDER: ${TMP_FOLDER}`);
 console.log(`FE_FOLDER: ${FE_FOLDER}`);
 console.log(`BE_FOLDER: ${BE_FOLDER}`);
 console.log(`JAR_PATH: ${JAR_PATH}`);
-console.log(`COMMA_SEPARATED_TESTS_TO_RUN: ${COMMA_SEPARATED_TESTS_TO_RUN}`);
 
 function printStep(message) {
   console.log("---");
@@ -83,7 +91,9 @@ function build() {
 
   console.log("Building frontend...");
   executeCommand("yarn install", FE_FOLDER);
-  executeCommand("yarn build", FE_FOLDER, { MB_EDITION: "ee" });
+  executeCommand("yarn build-release", FE_FOLDER, {
+    MB_EDITION: "ee",
+  });
 
   printStep("Copying frontend build to backend...");
   const feResourcesClientPath = path.join(
@@ -171,6 +181,14 @@ async function waitForBackend() {
 }
 
 async function test() {
+  const { shard, totalShards, testForThisShard } = getTestShardInfo();
+
+  console.log(
+    `Shard ${shard} of ${totalShards} running tests:\n${testForThisShard.join(
+      "\n",
+    )}`,
+  );
+
   await waitForBackend();
 
   printStep("Creating snapshot...");
@@ -180,9 +198,40 @@ async function test() {
   const testEnv = {
     BACKEND_PORT: "4000",
     TEST_SUITE: "e2e",
+    // uncomment the line above to debug the tests with the ui
+    // OPEN_UI: "true",
   };
-  const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@external",grepOmitFiltered=true --spec "${COMMA_SEPARATED_TESTS_TO_RUN}"`;
+
+  const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@OSS --@external",grepOmitFiltered=true --spec "${testForThisShard.join(",")}"`;
   executeCommand(cypressCommand, FE_FOLDER, testEnv);
+}
+
+const getTestShardInfo = () => {
+  const testFiles = getTestFiles();
+
+  if (!SHARD_ARG) {
+    return {
+      shard: 1,
+      totalShards: 1,
+      testForThisShard: testFiles,
+    };
+  }
+
+  const totalShards = SHARD_ARG.split("/")[1];
+  const shard = SHARD_ARG.split("/")[0];
+  const testForThisShard = testFiles.filter(
+    (_test, i) => i % totalShards === shard - 1,
+  );
+
+  return {
+    shard,
+    totalShards,
+    testForThisShard,
+  };
+};
+
+function getFilesInsideFolder(folder) {
+  return fs.readdirSync(folder); //.map((file) => path.join(folder, file));
 }
 
 // main logic

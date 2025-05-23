@@ -389,6 +389,7 @@ interface PublicSettings {
   "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
@@ -424,6 +425,7 @@ interface PublicSettings {
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "persisted-model-refresh-cron-schedule": string;
+  "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;

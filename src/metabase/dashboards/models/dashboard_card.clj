@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -33,6 +32,13 @@
   (merge {:parameter_mappings     []
           :visualization_settings {}}
          dashcard))
+
+;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
+(t2/define-after-select :model/DashboardCard
+  [dashcard]
+  (if (contains? dashcard :visualization_settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    dashcard))
 
 (declare series)
 
@@ -89,7 +95,7 @@
           dashcard-id->series (when (seq dashcard-ids)
                                 (as-> (t2/select
                                        [:model/Card :id :name :description :display :dataset_query :type :database_id
-                                        :visualization_settings :collection_id :card_schema :series.dashboardcard_id :entity_id]
+                                        :visualization_settings :collection_id :card_schema :series.dashboardcard_id]
                                        {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
                                         :where     [:in :series.dashboardcard_id dashcard-ids]
                                         :order-by  [[:series.position :asc]]}) series
@@ -118,15 +124,15 @@
 
   This is also different from having multiple series displayed on Line, Area, or Bar Questions."
   [dashcard]
-  (mdb.query/query {:select    [:newcard.*]
-                    :from      [[:report_dashboardcard :dashcard]]
-                    :left-join [[:dashboardcard_series :dashcardseries]
-                                [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                                [:report_card :newcard]
-                                [:= :dashcardseries.card_id :newcard.id]]
-                    :where     [:and
-                                [:= :newcard.archived false]
-                                [:= :dashcard.id (:id dashcard)]]}))
+  (mdb/query {:select    [:newcard.*]
+              :from      [[:report_dashboardcard :dashcard]]
+              :left-join [[:dashboardcard_series :dashcardseries]
+                          [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                          [:report_card :newcard]
+                          [:= :dashcardseries.card_id :newcard.id]]
+              :where     [:and
+                          [:= :newcard.archived false]
+                          [:= :dashcard.id (:id dashcard)]]}))
 
 (defn update-dashboard-cards-series!
   "Batch update the DashboardCardSeries for multiple DashboardCards.

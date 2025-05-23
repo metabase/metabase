@@ -22,7 +22,6 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * @typedef {object} PageStyle
  * @property {boolean} [bordered]
  * @property {boolean} [titled]
- * @property {boolean} [hide_download_button] - EE/PRO only feature to disable downloads
  * @property {boolean} [downloads] - EE/PRO only feature to disable downloads
  */
 

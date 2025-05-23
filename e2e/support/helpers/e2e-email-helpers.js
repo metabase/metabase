@@ -127,3 +127,18 @@ export function sendEmailAndVisitIt() {
     cy.visit(`${emailUrl}/${latest.id}/html`);
   });
 }
+
+export function sendAlertAndVisitIt() {
+  cy.intercept("POST", "/api/notification/send").as("testAlert");
+  cy.findByLabelText("New alert")
+    .should("be.visible")
+    .findByText("Send now")
+    .click();
+  cy.wait("@testAlert");
+
+  const emailUrl = `http://localhost:${WEB_PORT}/email`;
+  return cy.request("GET", emailUrl).then(({ body }) => {
+    const latest = body.slice(-1)[0];
+    cy.visit(`${emailUrl}/${latest.id}/html`);
+  });
+}

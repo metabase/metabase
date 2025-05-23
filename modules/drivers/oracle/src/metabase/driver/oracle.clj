@@ -388,7 +388,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
-  [:to_timestamp expr "YYYY-MM-DD HH:mi:SS"])
+  [:to_timestamp [:replace expr "T" " "] "YYYY-MM-DD HH24:MI:SS"])
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->Date]
   [_driver _coercion-strategy expr]
@@ -725,3 +725,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :oracle [_ ^SQLException e]
   (= (.getErrorCode e) 1013))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :oracle
+  [_ ^SQLException e]
+  (= (.getErrorCode e) 942))

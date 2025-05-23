@@ -1024,18 +1024,9 @@
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
-  ;; MariaDB and MySQL report different error codes for the timeout caused by using .setQueryTimeout. This happens because they
-  ;; use different mechanisms for causing this timeout. MySQL timesout and terminates the connection externally. MariaDB uses the
-  ;; max_statement_time configuration that can be passed to a SQL statement to set its.
-  ;;
-  ;; Docs for MariaDB:
-  ;; https://mariadb.com/kb/en/e1317/
-  ;; https://mariadb.com/kb/en/e1969/
-  ;; https://mariadb.com/kb/en/e3024/
-  ;;
-  ;; Docs for MySQL:
-  ;; https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-  ;;
-  ;; MySQL can return 1317 and 3024, but 1969 is not an error code in the mysql reference. All of these codes make sense for MariaDB
-  ;; to return. Hibernate expects 3024, but in testing 1969 was observered.
-  (contains? #{1317 1969 3024} (.getErrorCode e)))
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (mdb/query-canceled-exception? :mysql e))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))

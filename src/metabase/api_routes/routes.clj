@@ -6,7 +6,6 @@
    [metabase.analytics.api]
    [metabase.api-keys.api]
    [metabase.api.docs]
-   [metabase.api.logger]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
@@ -24,6 +23,7 @@
    [metabase.embedding.api]
    [metabase.geojson.api]
    [metabase.indexed-entities.api]
+   [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -60,7 +60,6 @@
          metabase.activity-feed.api/keep-me
          metabase.analytics.api/keep-me
          metabase.api-keys.api/keep-me
-         metabase.api.logger/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
          metabase.bug-reporting.api/keep-me
@@ -71,6 +70,7 @@
          metabase.eid-translation.api/keep-me
          metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
+         metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.model-persistence.api/keep-me
          metabase.native-query-snippets.api/keep-me
@@ -151,7 +151,7 @@
    "/geojson"              'metabase.geojson.api
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
-   "/logger"               (+auth 'metabase.api.logger)
+   "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)

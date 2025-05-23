@@ -12,7 +12,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -106,7 +106,7 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                          :table_id      [:in table-ids]
-                                         :semantic_type (mdb.query/isa :type/Name))
+                                         :semantic_type (app-db/isa :type/Name))
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -182,10 +182,11 @@
         ;; a query against that model or metric.
         query (lib/query metadata-provider (if (= :question (:type card))
                                              (:dataset_query card)
-                                             (lib.metadata/card metadata-provider (:id card))))]
-    (-> query
-        lib/ensure-filter-stage
-        (lib/filterable-columns stage-number))))
+                                             (lib.metadata/card metadata-provider (:id card))))
+        ;; for backward compatibility, append a filter stage only with explicit stage numbers
+        query (cond-> query (>= stage-number 0) lib/ensure-filter-stage)]
+    (when (and (>= stage-number -1) (< stage-number (lib/stage-count query)))
+      (lib/filterable-columns query stage-number))))
 
 (defn- ensure-filterable-columns-for-card
   [ctx
@@ -199,7 +200,7 @@
          (seq dataset-query)
          (pos-int? database-id))
     (assoc-in [:card-id->filterable-columns card-id stage-number]
-              (filterable-columns-for-query database-id card stage-number))))
+              (or (filterable-columns-for-query database-id card stage-number) []))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in

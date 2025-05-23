@@ -1317,3 +1317,134 @@ describe("issue 50373", () => {
     H.visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
   });
 });
+
+describe("issue 51934 (EMB-189)", () => {
+  const COLLECTION_NAME = "Model Collection";
+  const MODEL_IN_ROOT_NAME = "Products Model";
+  const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+    H.createModelFromTableName({
+      tableName: "products",
+      modelName: MODEL_IN_ROOT_NAME,
+    });
+    H.createCollection({
+      name: COLLECTION_NAME,
+      alias: "modelCollectionId",
+    });
+    H.createModelFromTableName({
+      tableName: "orders",
+      modelName: MODEL_IN_COLLECTION_NAME,
+      idAlias: "modelId",
+    });
+    moveToCollection({
+      collectionIdAlias: "modelCollectionId",
+      cardIdAlias: "modelId",
+    });
+  });
+
+  it("should set the starting join step based on the query source", () => {
+    startNewEmbeddingQuestion();
+    const QA_DB_NAME = "QA Postgres12";
+    const DATA_SOURCE_NAME = "Orders";
+
+    cy.log("select a table as a data source");
+    H.popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByRole("heading", { name: QA_DB_NAME }).click();
+      cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
+    });
+    H.getNotebookStep("data").button("Join data").click();
+
+    cy.log(
+      'select the "Join" step when the data source is a table will open a table in the same database',
+    );
+    H.popover().within(() => {
+      cy.findByText(QA_DB_NAME).should("be.visible");
+      cy.findByRole("option", { name: "Orders" }).should("be.visible");
+    });
+
+    cy.log(
+      "changing the data source while not selecting the join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
+
+    cy.log('go back to the "Bucket" step');
+    H.popover().within(() => {
+      cy.icon("chevronleft").click();
+      cy.icon("chevronleft").click();
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.popover().within(() => {
+      cy.findByText("Models").click();
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
+      cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME }).click();
+    });
+
+    H.popover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME })
+        .should("be.visible")
+        .click();
+    });
+
+    cy.log(
+      "select a data source after selecting a join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
+    H.popover().within(() => {
+      cy.findByRole("menuitem", { name: "Our analytics" }).click();
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).click();
+    });
+
+    H.popover().within(() => {
+      cy.log("the collection of the new data source should be selected");
+      cy.findByRole("menuitem", { name: "Our analytics" }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  function startNewEmbeddingQuestion() {
+    cy.intercept("GET", "/api/search*", (req) => {
+      if (req.query.limit === "0") {
+        req.continue((res) => {
+          // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
+          res.body.total = 100;
+        });
+      }
+    });
+
+    H.visitFullAppEmbeddingUrl({
+      url: "/question/notebook",
+    });
+  }
+
+  function moveToCollection({ collectionIdAlias, cardIdAlias }) {
+    cy.get(`@${collectionIdAlias}`).then((collectionId) => {
+      cy.get(`@${cardIdAlias}`).then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_id: collectionId,
+        });
+      });
+    });
+  }
+});

@@ -320,7 +320,7 @@ export const UserApi = {
 export const UtilApi = {
   password_check: POST("/api/session/password-check"),
   random_token: GET("/api/util/random_token"),
-  logs: GET("/api/util/logs"),
+  logs: GET("/api/logger/logs"),
   bug_report_details: GET("/api/bug-reporting/details"),
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link

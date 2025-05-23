@@ -8,12 +8,13 @@ import {
   getDatasets,
   getVisualizationType,
   getVisualizerComputedSettings,
+  getVisualizerComputedSettingsForFlatSeries,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import type {
   Field,
   VisualizationDisplay,
-  VisualizerCardDataSource,
+  VisualizerDataSource,
 } from "metabase-types/api";
 
 import { useVisualizerUi } from "../../VisualizerUiContext";
@@ -22,13 +23,13 @@ import S from "./DatasetsListItem.module.css";
 import { getIsCompatible } from "./getIsCompatible";
 
 interface DatasetsListItemProps {
-  item: VisualizerCardDataSource & {
+  item: VisualizerDataSource & {
     display: VisualizationDisplay | null;
     result_metadata?: Field[];
   };
-  onSwap?: (item: VisualizerCardDataSource) => void;
-  onToggle?: (item: VisualizerCardDataSource) => void;
-  onRemove?: (item: VisualizerCardDataSource) => void;
+  onSwap?: (item: VisualizerDataSource) => void;
+  onToggle?: (item: VisualizerDataSource) => void;
+  onRemove?: (item: VisualizerDataSource) => void;
   selected: boolean;
 }
 
@@ -40,6 +41,9 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const currentDisplay = useSelector(getVisualizationType);
   const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
+  const computedSettings = useSelector(
+    getVisualizerComputedSettingsForFlatSeries,
+  );
   const datasets = useSelector(getDatasets);
 
   const isCompatible = useMemo(() => {
@@ -52,13 +56,14 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         display: currentDisplay ?? null,
         columns,
         settings,
+        computedSettings,
       },
       targetDataset: {
         fields: item.result_metadata,
       },
       datasets,
     });
-  }, [item, currentDisplay, columns, settings, datasets]);
+  }, [item, currentDisplay, columns, settings, computedSettings, datasets]);
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>

@@ -75,6 +75,10 @@
                  (name old-strategy) (name new-strategy))
       (re-humanize-table-and-field-names! old-strategy))))
 
+;;; these kondo warnings are ignored for now because I'm planning on moving this namespace out of `util` to eliminate
+;;; the dependency of `util` of `settings` -- will fix them after this namespace gets moved. -- Cam
+
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting ^{:added "0.28.0"} humanization-strategy
   (deferred-tru
    (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "
