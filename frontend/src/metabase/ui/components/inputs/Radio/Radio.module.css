@@ -44,6 +44,10 @@
   line-height: var(--mantine-line-height-md);
 }
 
+.labelWrapper {
+  justify-content: center;
+}
+
 .description {
   color: var(--mb-color-text-dark);
   font-size: var(--mantine-font-size-sm);
