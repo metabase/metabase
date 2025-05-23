@@ -2,7 +2,7 @@ import type { FloatingPosition } from "@mantine/core/lib";
 import type { CSSProperties, ReactNode } from "react";
 
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
-import { Text, Tooltip } from "metabase/ui";
+import { Text, type TextProps, Tooltip } from "metabase/ui";
 
 export interface EllipsifiedProps {
   style?: CSSProperties;
