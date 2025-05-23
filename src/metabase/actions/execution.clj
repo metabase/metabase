@@ -207,10 +207,18 @@
 
 (defn- execute-table-action!
   [kind table-id request-parameters]
-  (let [args
+  (let [action-arg
+        (case kind
+          ;; this is a hack to ignore inputs that have not been interacted with from the FE
+          ;; we would like to change this later
+          :table.row/update
+          (u/remove-nils request-parameters)
+          request-parameters)
+
+        args
         {:table-id table-id
          :database (t2/select-one-fn :db_id [:model/Table :db_id] table-id)
-         :arg      request-parameters}
+         :arg      action-arg}
 
         opts
         {:policy :data-editing}]

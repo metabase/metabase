@@ -297,8 +297,9 @@
         table-actions
         (for [t editable-tables
               op [:table.row/create :table.row/update :table.row/delete]
-              :let [fields (fields-by-table (:id t))]]
-          (actions/table-primitive-action t fields op))
+              :let [fields (fields-by-table (:id t))
+                    action (actions/table-primitive-action t fields op)]]
+          (assoc action :table_name (:name t)))
 
         model-actions
         (for [a (actions/select-actions nil :archived false)]

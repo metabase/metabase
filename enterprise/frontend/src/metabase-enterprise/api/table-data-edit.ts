@@ -8,6 +8,7 @@ import type {
   TableUpdateRowsRequest,
   TableUpdateRowsResponse,
 } from "metabase-enterprise/data_editing/tables/types";
+import type { TableAction, WritebackAction } from "metabase-types/api/actions";
 
 import { EnterpriseApi } from "./api";
 
@@ -57,6 +58,15 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         body: { "table-id": tableId, scope, "no-op": noOp },
       }),
     }),
+    getActions: builder.query<Array<WritebackAction | TableAction>, void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/data-editing/tmp-action`,
+      }),
+      transformResponse: (response: {
+        actions: Array<WritebackAction | TableAction>;
+      }) => response?.actions,
+    }),
   }),
 });
 
@@ -66,4 +76,5 @@ export const {
   useDeleteTableRowsMutation,
   useTableUndoMutation,
   useTableRedoMutation,
+  useGetActionsQuery,
 } = tableDataEditApi;

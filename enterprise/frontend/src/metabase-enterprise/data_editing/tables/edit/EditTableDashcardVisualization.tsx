@@ -27,6 +27,7 @@ import type {
   ConcreteTableId,
   DatasetData,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 
 import S from "./EditTableData.module.css";
@@ -291,7 +292,7 @@ export const EditTableDashcardVisualization = ({
               onRowExpandClick={openEditRowModal}
               columnsConfig={columnsConfig}
               getColumnSortDirection={getColumnSortDirection}
-              rowActions={enabledRowActions}
+              rowActions={enabledRowActions as WritebackAction[]}
               onActionRun={handleRowActionRun}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}

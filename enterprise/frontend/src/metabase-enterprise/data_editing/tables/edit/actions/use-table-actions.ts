@@ -1,7 +1,7 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { useListActionsQuery } from "metabase/api";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type { EditableTableActionsVizOverride } from "metabase-enterprise/data_editing/tables/types";
 import type {
   ActionFormInitialValues,
@@ -30,7 +30,7 @@ export const useTableActions = ({
     actionOverrides?: EditableTableActionsVizOverride;
   } | null>(null);
 
-  const { data: actions } = useListActionsQuery({});
+  const { data: actions } = useGetActionsQuery();
 
   const {
     hasCreateAction,

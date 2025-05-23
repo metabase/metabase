@@ -78,8 +78,13 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {
     component: AddActionElementButton,
-    enabled: ({ isEditing, canEdit, hasModelActionsEnabled }) =>
-      isEditing && canEdit && hasModelActionsEnabled,
+    enabled: ({
+      isEditing,
+      canEdit,
+      hasModelActionsEnabled,
+      hasDataEditingEnabled,
+    }) =>
+      isEditing && canEdit && (hasModelActionsEnabled || hasDataEditingEnabled),
   },
   [DASHBOARD_ACTION.EXTRA_EDIT_BUTTONS_MENU]: {
     component: ExtraEditButtonsMenu,

@@ -13,7 +13,9 @@ import type {
   EditableTableRowActionDisplaySettings,
   Field,
   RowActionFieldSettings,
+  TableAction,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import { RowActionParameterMappingForm } from "./RowActionParameterMappingForm";
@@ -21,27 +23,29 @@ import S from "./RowActionSettingsModalContent.module.css";
 import { isValidMapping } from "./utils";
 
 interface Props {
-  action: WritebackAction | null | undefined;
+  action: WritebackAction | TableAction | null | undefined;
   rowActionSettings: EditableTableRowActionDisplaySettings | undefined;
   tableColumns: Field[];
   onClose: () => void;
   onSubmit: (actionParams: {
-    action: WritebackAction;
+    action: WritebackAction | TableAction;
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
+  actions?: (WritebackAction | TableAction)[];
 }
 
 export function RowActionSettingsModalContent({
   action: editedAction,
   rowActionSettings,
   tableColumns,
+  actions,
   onClose,
   onSubmit,
 }: Props) {
-  const [selectedAction, setSelectedAction] = useState<WritebackAction | null>(
-    editedAction || null,
-  );
+  const [selectedAction, setSelectedAction] = useState<
+    WritebackAction | TableAction | null
+  >(editedAction || null);
   const isEditMode = !!editedAction;
 
   const [actionName, setActionName] = useState<string | undefined>(
@@ -101,9 +105,14 @@ export function RowActionSettingsModalContent({
   const handleSubmit = useCallback(
     (values: { parameters: RowActionFieldSettings[] }) => {
       if (selectedAction) {
+        const name =
+          "table_name" in selectedAction
+            ? actionName ||
+              `${selectedAction.table_name} (${selectedAction.name})`
+            : actionName;
         onSubmit({
           action: selectedAction,
-          name: actionName,
+          name,
           parameterMappings: values.parameters || [],
         });
       }
@@ -116,16 +125,18 @@ export function RowActionSettingsModalContent({
   return (
     <ActionSettingsWrapper
       style={{
+        padding: 0,
         height: "78vh",
         minWidth: isEditMode ? "auto" : undefined,
       }}
     >
       {!isEditMode && (
         <Box className={S.ParametersModalModalLeftSection}>
-          <h4 className={CS.pb2}>{t`Action Library`}</h4>
+          <Title order={3} className={CS.pb2}>{t`Action Library`}</Title>
           <ConnectedActionPicker
             currentAction={selectedAction}
             onClick={handlePickAction}
+            actions={actions}
           />
         </Box>
       )}
@@ -158,8 +169,11 @@ export function RowActionSettingsModalContent({
                   )}
                   <Box className={S.ParametersListContainer}>
                     <RowActionParameterMappingForm
-                      action={selectedAction}
-                      parameters={writeableParameters}
+                      // TODO: Fix later when new table actions API is ready
+                      action={selectedAction as unknown as WritebackAction}
+                      parameters={
+                        writeableParameters as unknown as WritebackParameter[]
+                      }
                       values={values}
                       tableColumns={tableColumns}
                     />

@@ -16,6 +16,7 @@ import type {
   InputComponentType,
   InputSettingType,
   Parameter,
+  TableActionParameter,
   VirtualCard,
   WritebackAction,
   WritebackActionBase,
@@ -102,7 +103,11 @@ export const inputTypeHasOptions = (inputType: InputSettingType) =>
   ["select", "radio"].includes(inputType);
 
 export const sortActionParams =
-  (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
+  (formSettings: ActionFormSettings) =>
+  (
+    a: Parameter | TableActionParameter,
+    b: Parameter | TableActionParameter,
+  ) => {
     const fields = formSettings.fields || {};
 
     const aOrder = fields[a.id]?.order ?? 0;
@@ -196,6 +201,9 @@ export function getActionExecutionMessage(
 ) {
   if (action.type === "implicit") {
     return getImplicitActionExecutionMessage(action);
+  }
+  if ("table-id" in result) {
+    return t`Success!`;
   }
   if (hasDataFromExplicitAction(result)) {
     return t`Success! The action returned: ${JSON.stringify(result)}`;

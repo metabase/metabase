@@ -1,16 +1,19 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListActionsQuery } from "metabase/api";
 import { onUpdateDashCardVisualizationSettings } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Checkbox, Modal, Stack } from "metabase/ui";
+// TODO: Remove this once we have a proper API for actions.
+// eslint-disable-next-line no-restricted-imports
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   Dashboard,
   DashboardCard,
   EditableTableRowActionDisplaySettings,
   EditableTableRowActionId,
   RowActionFieldSettings,
+  TableAction,
   WritebackAction,
 } from "metabase-types/api";
 
@@ -62,7 +65,7 @@ export const ConfigureEditableTableActions = ({
     return { enabledActions, enabledActionsMap };
   }, [dashcard.visualization_settings]);
 
-  const { data: actions } = useListActionsQuery({}); // TODO: we should have an api to optimize this
+  const { data: actions } = useGetActionsQuery();
 
   const tableColumns = useMemo(() => {
     const fieldsWithRemmapedColumns = dashcard.card.result_metadata ?? [];
@@ -118,7 +121,7 @@ export const ConfigureEditableTableActions = ({
       name,
       parameterMappings,
     }: {
-      action: WritebackAction;
+      action: WritebackAction | TableAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
@@ -149,7 +152,7 @@ export const ConfigureEditableTableActions = ({
       name,
       parameterMappings,
     }: {
-      action: WritebackAction;
+      action: WritebackAction | TableAction;
       name: string | undefined;
       parameterMappings: RowActionFieldSettings[];
     }) => {
@@ -240,6 +243,7 @@ export const ConfigureEditableTableActions = ({
             action={editingAction}
             rowActionSettings={editingActionSetting}
             tableColumns={tableColumns}
+            actions={actions}
             onSubmit={editingAction ? handleEditAction : handleAddAction}
             onClose={cancelEditAction}
           />

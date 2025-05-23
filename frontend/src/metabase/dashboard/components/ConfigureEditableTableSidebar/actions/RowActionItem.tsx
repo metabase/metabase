@@ -1,16 +1,16 @@
 import { t } from "ttag";
 
 import { ActionIcon, Checkbox, Group, Icon, Tooltip } from "metabase/ui";
-import type { WritebackAction } from "metabase-types/api";
+import type { TableAction, WritebackAction } from "metabase-types/api";
 
 type RowActionItemProps = {
-  action: WritebackAction;
+  action: WritebackAction | TableAction;
 
   isEnabled: boolean;
   userDefinedName?: string;
   onToggle: ({ id, enabled }: { id: number; enabled: boolean }) => void;
   onRemove: (id: number) => void;
-  onEdit: (action: WritebackAction) => void;
+  onEdit: (action: WritebackAction | TableAction) => void;
 };
 
 export const RowActionItem = ({

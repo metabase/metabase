@@ -1,3 +1,4 @@
+import { useDebouncedCallback } from "@mantine/hooks";
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
@@ -52,6 +53,13 @@ export function ActionSidebar({
     [dashboard.dashcards, dashcardId],
   );
 
+  const onChangeLabelDebounced = useDebouncedCallback(
+    (settings: Partial<VisualizationSettings>) => {
+      onUpdateVisualizationSettings(settings);
+    },
+    300,
+  );
+
   if (!dashcard) {
     return null;
   }
@@ -79,7 +87,7 @@ export function ActionSidebar({
               placeholder={t`Button text`}
               autoFocus
               onChangeCapture={(e) =>
-                onUpdateVisualizationSettings({
+                onChangeLabelDebounced({
                   "button.label": e.currentTarget.value,
                 })
               }
