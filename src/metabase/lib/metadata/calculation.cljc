@@ -618,13 +618,26 @@
              :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
              :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column))))))
 
+(mu/defn source-table-fields-or-returned-columns :- [:sequential ::lib.schema.metadata/column]
+  "Returns a list of fields for the source table of this query, or else the query's [[returned-columns]]."
+  [query :- ::lib.schema/query]
+  (if-let [table-id (lib.util/source-table-id query)]
+    (lib.metadata/fields query table-id)
+    (returned-columns query)))
+
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
-  [query        :- ::lib.schema/query]
-  (into [] (filter lib.types.isa/primary-key?)
-        (if-let [table-id (lib.util/source-table-id query)]
-          (lib.metadata/fields query table-id)
-          (returned-columns query))))
+  [query :- ::lib.schema/query]
+  (->> query
+       source-table-fields-or-returned-columns
+       (filterv lib.types.isa/primary-key?)))
+
+(mu/defn foreign-keys :- [:sequential ::lib.schema.metadata/column]
+  "Returns a list of foreign keys for the source table of this query."
+  [query :- ::lib.schema/query]
+  (->> query
+       source-table-fields-or-returned-columns
+       (filterv lib.types.isa/foreign-key?)))
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to

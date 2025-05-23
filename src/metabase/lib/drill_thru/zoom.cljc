@@ -7,7 +7,7 @@
 
   Requirements:
 
-  - There is only on PK column available in returned columns
+  - There is only one PK column available in returned columns
 
   - Selected column is not a FK
 
@@ -39,7 +39,6 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
 (defn- zoom-drill* [column value]
@@ -60,7 +59,7 @@
          (lib.drill-thru.common/mbql-stage? query stage-number)
          ;; if this table has more than one PK we should be returning a [[metabase.lib.drill-thru.pk]] instead.
          (not (lib.drill-thru.common/many-pks? query)))
-    (if (lib.types.isa/primary-key? column)
+    (if (lib.drill-thru.common/primary-key? query stage-number column)
       ;; PK column was clicked. Ignore NULL values.
       (when-not (= value :null)
         (zoom-drill* column value))
