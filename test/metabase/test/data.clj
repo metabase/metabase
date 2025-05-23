@@ -49,7 +49,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -318,6 +317,11 @@
      (mdb/finish-db-setup!)
      ~@body))
 
+;; Non-"normal" timeseries drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
+(def timeseries-drivers
+  "Drivers that are so weird that we can't use the standard dataset loading against them."
+  #{:druid :druid-jdbc})
+
 (defn driver-select
   "Select drivers to be tested.
 
@@ -386,4 +390,4 @@
   ([]
    (normal-driver-select {}))
   ([selector]
-   (driver-select (update selector :-fns (fnil conj []) #(contains? qp.test-util/abnormal-drivers %)))))
+   (driver-select (update selector :-fns (fnil conj []) #(contains? timeseries-drivers %)))))

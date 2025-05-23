@@ -211,6 +211,11 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
     (or (:default port-info)
         (:placeholder port-info))))
 
+(defn select-ssh-tunnel-keys
+  "Keep the ssh tunnel keys that might be carried on a connection spec or on details."
+  [spec-or-details]
+  (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))
+
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
   [{:keys [id details], driver :engine, :as database}]
@@ -228,7 +233,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
     (merge
      (connection-pool-spec spec properties)
      ;; also capture entries related to ssh tunneling for later use
-     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host])
+     (select-ssh-tunnel-keys spec)
      ;; remember when the password expires
      (select-keys details-with-auth [:password-expiry-timestamp]))))
 
