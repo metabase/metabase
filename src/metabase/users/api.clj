@@ -16,6 +16,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
