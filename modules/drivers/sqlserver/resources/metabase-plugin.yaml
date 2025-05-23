@@ -21,6 +21,10 @@ driver:
       placeholder: N/A
     - user
     - password
+    - name: role
+      display-name: Impersonation User (required for impersonation if the default user cannot be impersonated)
+      helper-text: Specify a user to override the default user. Required if the default user cannot be impersonated, such as the 'sa' user.
+      placeholder: user
     - cloud-ip-address-info
     - ssl
     - ssh-tunnel

@@ -57,6 +57,10 @@
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
+(defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
+  [_driver _feature db]
+  (= "sa" (get-in db [:details :user])))
+
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
   (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
@@ -919,11 +923,10 @@
 
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
-  ;; SQL Server supports impersonation via EXECUTE AS USER
-  ;; So the default role is the default user
-  ;; But we can't execute as sa, so skip setting the role in that case
-  (when-not (= "sa" (-> database :details :user))
-    (-> database :details :user)))
+  ;; Use a "role" (sqlserver user) if it exists, otherwise use
+  ;; the user if it can be impersonated (ie not the 'sa' user).
+  (let [{:keys [role user]} (:details database)]
+    (or role (when-not (= user "sa") user))))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
