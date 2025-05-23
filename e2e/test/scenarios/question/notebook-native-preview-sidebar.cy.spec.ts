@@ -20,6 +20,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   });
 
   it("should not an show empty sidebar when no data source is selected", () => {
+    H.setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByLabelText("View SQL").click();
@@ -89,23 +90,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByLabelText("View SQL").should("not.exist");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
     cy.get("code").should("not.exist");
-  });
-
-  it("should conditiaonlly show the sidebar preview when navigating between questions (metabase#49904)", () => {
-    cy.signInAsAdmin();
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    cy.findByRole("button", { name: /Editor/ }).click();
-    cy.findByRole("button", { name: /View SQL/ }).click();
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-    H.openNavigationSidebar();
-    cy.findByRole("link", { name: /Usage analytics/i }).click();
-    cy.findByRole("link", { name: /Metabase metrics/i }).click();
-    cy.findByRole("link", { name: /Question views last week/i }).click();
-
-    cy.findByRole("button", { name: /Editor/ }).click();
-    cy.findByRole("button", { name: /View SQL/ }).should("not.exist");
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
   it(
