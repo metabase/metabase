@@ -2,5 +2,16 @@
   "base": {
     "name": "new-iframe-embedding",
     "hash": "c38de69ea5d4b6eb0acbff724252b23fb2270799"
+  },
+  "upstream": {
+    "branch": "new-iframe-embedding-rename-to-embed-js"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 58415,
+        "gqlID": "PR_kwDOAczgH86XZLHY"
+      }
+    }
   }
 }
