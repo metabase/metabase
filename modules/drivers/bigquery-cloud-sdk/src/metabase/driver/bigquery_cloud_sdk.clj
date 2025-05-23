@@ -232,22 +232,23 @@
   ([database-position nfc-path fields]
    (into
     []
-    (map
+    (mapcat
      (fn [[idx ^Field field]]
        (let [database-position (or database-position idx)
              field-name (.getName field)
              repeated? (= Field$Mode/REPEATED (.getMode field))
-             [database-type base-type] (field->database+base-type field)]
-         (into
-          (cond-> {:name              field-name
-                   :database-type     database-type
-                   :base-type         base-type
-                   :database-position database-position}
-            nfc-path (assoc :nfc-path nfc-path)
-            (and (not repeated?) (= :type/Dictionary base-type)) (assoc :nested-fields (set (fields->metabase-field-info
-                                                                                             database-position
-                                                                                             (conj (vec nfc-path) field-name)
-                                                                                             (.getSubFields field)))))))))
+             [database-type base-type] (field->database+base-type field)
+             field (cond-> {:name              field-name
+                            :database-type     database-type
+                            :base-type         base-type
+                            :database-position database-position}
+                     nfc-path (assoc :nfc-path nfc-path))]
+         (if (and (not repeated?) (= :type/Dictionary base-type))
+           [field]
+           (apply conj [field] (fields->metabase-field-info
+                                database-position
+                                (conj (vec nfc-path) field-name)
+                                (.getSubFields field)))))))
     (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
@@ -662,7 +663,7 @@
 
 (doseq [[feature supported?] {:convert-timezone         true
                               :describe-fields          true
-                              :nested-fields            true
+                              :nested-field-columns     true
                               :datetime-diff            true
                               :expressions              true
                               :now                      true
