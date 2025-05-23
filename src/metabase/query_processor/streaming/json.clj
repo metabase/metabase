@@ -63,6 +63,7 @@
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to
+             ;; #12247 Use array-map instead of zipmap for preserving order in json export
              (apply array-map
                     (interleave
                      @col-names
