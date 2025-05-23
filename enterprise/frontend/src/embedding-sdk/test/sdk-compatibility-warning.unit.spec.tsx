@@ -21,11 +21,9 @@ import { getEmbeddingSdkVersion } from "../config";
 
 // TODO: extract this common setup to a shared util
 const METABASE_INSTANCE_URL = "path:";
-const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  authProviderUri: AUTH_PROVIDER_URL,
   fetchRequestToken: () =>
     Promise.resolve({
       jwt: "TEST_JWT_TOKEN",

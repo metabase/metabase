@@ -14,7 +14,7 @@ class TypedStorage<T> {
       return JSON.parse(data) as T;
     } catch (e) {
       throw new Error(
-        `Failed to parse stored data for key "${this.key}": ${e.message}`,
+        `Failed to parse stored data for key "${this.key}": ${(e as Error).message}`,
       );
     }
   }
@@ -25,7 +25,7 @@ class TypedStorage<T> {
       localStorage.setItem(this.key, JSON.stringify(value));
     } catch (e) {
       throw new Error(
-        `Failed to store data for key "${this.key}": ${e.message}`,
+        `Failed to store data for key "${this.key}": ${(e as Error).message}`,
       );
     }
   }
@@ -36,7 +36,7 @@ class TypedStorage<T> {
       localStorage.removeItem(this.key);
     } catch (e) {
       throw new Error(
-        `Failed to remove data for key "${this.key}": ${e.message}`,
+        `Failed to remove data for key "${this.key}": ${(e as Error).message}`,
       );
     }
   }

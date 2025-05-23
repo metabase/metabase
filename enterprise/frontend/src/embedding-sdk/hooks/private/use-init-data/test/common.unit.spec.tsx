@@ -21,7 +21,7 @@ describe.each(["jwt", "saml"] as const)(
       fetchMock.restore();
     });
 
-    it("start loading data if authProviderUri/instance URL and auth type are valid", async () => {
+    it("start loading data if instance URL and auth type are valid", async () => {
       setupCommon(method);
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",

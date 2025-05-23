@@ -8,7 +8,7 @@ import {
 import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -127,7 +127,7 @@ function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
     <CreateDashboardModal onCreate={jest.fn()} {...props} />,
     {
       sdkProviderProps: {
-        authConfig: createMockAuthProviderUriConfig(),
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: {
         currentUser: CURRENT_USER,

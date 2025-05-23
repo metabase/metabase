@@ -17,7 +17,6 @@ export const getEmbeddingProviderSnippet = (options: Options) => {
 
   // Fallback to API keys when user switching is not enabled.
   if (userSwitcherEnabled) {
-    apiKeyOrAuthUriConfig += `authProviderUri: \`\${BASE_SSO_API}/sso/metabase\`,`;
     imports = `import { AnalyticsContext, BASE_SSO_API } from './analytics-provider'`;
   } else {
     apiKeyOrAuthUriConfig += `apiKey: '${apiKey}'`;
