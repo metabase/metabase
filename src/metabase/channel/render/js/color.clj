@@ -32,30 +32,36 @@
                         [:name :string]]]]
    [:rows [:sequential [:sequential :any]]]])
 
-(defn convert-bigdecimals-by-column
-  "Convert BigDecimal values to doubles since Graal doesn't handle these"
+(defn- convert-bignumbers-by-column
+  "Convert BigDecimal and BigInteger values to doubles/longs since Graal doesn't handle these"
   [data]
   (if (empty? data)
     []
     (let [first-row (first data)
-          bd-column-indices (->> (map-indexed
-                                  (fn [idx item]
-                                    (when (instance? BigDecimal item)
-                                      idx))
-                                  first-row)
-                                 (filter some?)
-                                 (into #{}))]
-      (if (empty? bd-column-indices)
+          bignum-column-indices (->> (map-indexed
+                                      (fn [idx item]
+                                        (when (or (instance? BigDecimal item)
+                                                  (instance? BigInteger item))
+                                          idx))
+                                      first-row)
+                                     (filter some?)
+                                     (into #{}))]
+      (if (empty? bignum-column-indices)
         data
         (mapv
          (fn [row]
            (vec
             (map-indexed
              (fn [idx item]
-               (if (bd-column-indices idx)
-                 (if (instance? BigDecimal item)
+               (if (bignum-column-indices idx)
+                 (cond
+                   (instance? BigDecimal item)
                    (.doubleValue ^BigDecimal item)
-                   item)
+
+                   (instance? BigInteger item)
+                   (.longValue ^BigInteger item)
+
+                   :else item)
                  item))
              row)))
          data)))))
@@ -72,7 +78,7 @@
   ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
   ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
   ;; code. We do however need to handle BigDecimals as Graal won't convert these
-  (let [converted-rows (convert-bigdecimals-by-column rows)]
+  (let [converted-rows (convert-bignumbers-by-column rows)]
     (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
                                converted-rows
                                (json/encode cols)
