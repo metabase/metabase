@@ -16,7 +16,6 @@
        :params   <params>}"
   (:require
    [metabase.api.common :as api]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.api.common :as api.embed.common]
@@ -25,6 +24,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -108,11 +108,11 @@
    query-params :- :map]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
-(api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
+(api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format qp.schema/export-formats-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map
                                      [:token         string?]
-                                     [:export-format (into [:enum] api.dataset/export-formats)]]
+                                     [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot?       :pivot_results
     :as          query-params} :- [:map
@@ -193,13 +193,13 @@
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
 (api.macros/defendpoint :get ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
-                              :export-format api.dataset/export-format-regex]
+                              :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [{:keys [token dashcard-id card-id export-format]} :- [:map
                                                          [:dashcard-id   ms/PositiveInt]
                                                          [:card-id       ms/PositiveInt]
-                                                         [:export-format (into [:enum] api.dataset/export-formats)]]
+                                                         [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot?       :pivot_results
     :as          query-params} :- [:map

@@ -2,18 +2,15 @@
   (:require
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -132,84 +129,13 @@
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 
-(def ^:private TableVisibilityConfig
-  [:map
-   [:user-id pos-int?]
-   [:is-superuser? :boolean]
-   [:view-data-permission-level data-perms/PermissionValue]
-   [:create-queries-permission-level data-perms/PermissionValue]])
-
-(mu/defn- perm-type-to-int-case
-  "Converts a given `data-perm/PermissionType` keyword and either a column for a literal value into a case when ... then ... SQL statement
-   that converts the given column or literal into the index of the value for provide permission type.
-
-   For example, calling with perm-type :perms/view-data and a column :perm-value creates a SQL Statement like:
-
-     ```sql
-     CASE WHEN \"perm_value\" = 'unrestricted' THEN 0 ELSE ...
-     ```
-
-
-   This lets us write SQL statements to compare permissions values by their index position in the same way we do in the
-   `data-perms/at-least-as-permissive?` function"
-  [perm-type :- data-perms/PermissionType
-   column-or-perm-value :- [:or :keyword h2x/Literal]]
-  (into [:case]
-        (apply concat
-               (map-indexed (fn [idx perm-value] [[:= column-or-perm-value (h2x/literal perm-value)] [:inline idx]])
-                            (-> data-perms/Permissions perm-type :values)))))
-
-(mu/defn- perm-condition
-  [perm-type :- :keyword
-   required-level :- :keyword equality-comp]
-  [:and
-   equality-comp
-   [:= :dp.perm_type (h2x/literal perm-type)]
-   [:<=
-    (perm-type-to-int-case perm-type :dp.perm_value)
-    (perm-type-to-int-case perm-type (h2x/literal required-level))]])
-
-(mu/defn- user-in-group-half-join
-  [user-id :- pos-int?]
-  [:exists {:select [1]
-            :from   [[:permissions_group :pg]]
-            :where  [:and
-                     [:= :pg.id :dp.group_id]
-                     [:exists {:select [1]
-                               :from [[:permissions_group_membership :pgm]]
-                               :where [:and
-                                       [:= :pgm.group_id :pg.id]
-                                       [:= :pgm.user_id [:inline user-id]]]}]]}])
-
-(mu/defn- has-perms-for-table-as-honey-sql?
-  [user-id :- pos-int?
-   perm-type :- :keyword
-   required-level :- :keyword]
-  [:exists {:select [1]
-            :from   [[:data_permissions :dp]]
-            :where  [:and [:or
-                           (perm-condition perm-type required-level [:and [:= :t.db_id :dp.db_id]
-                                                                     [:= :dp.table_id nil]])
-                           (perm-condition perm-type required-level [:= :t.id :dp.table_id])]
-                     (user-in-group-half-join user-id)]}])
-
-(mu/defn visible-tables-filter-clause
-  "Returns a query for tables that are visible to the supplied user given the supplied view-data & create-queries permission levels."
-  [table-id-field-or-fields :- [:or [:sequential :keyword] :keyword]
-   {:keys [user-id is-superuser? view-data-permission-level create-queries-permission-level]} :- TableVisibilityConfig]
-  (if is-superuser?
-    [:= 1 1]
-    [:in [:cast (if (sequential? table-id-field-or-fields)
-                  (into [:coalesce] table-id-field-or-fields)
-                  table-id-field-or-fields)
-          (case (mdb/db-type)
-            :mysql :signed
-            :integer)]
-     {:select [:t.id]
-      :from   [[:metabase_table :t]]
-      :where  [:and
-               (has-perms-for-table-as-honey-sql? user-id :perms/view-data view-data-permission-level)
-               (has-perms-for-table-as-honey-sql? user-id :perms/create-queries create-queries-permission-level)]}]))
+(mu/defmethod mi/visible-filter-clause :model/Table
+  [_                  :- :keyword
+   column-or-exp      :- :any
+   user-info          :- perms/UserInfo
+   permission-mapping :- perms/PermissionMapping]
+  [:in column-or-exp
+   (perms/visible-table-filter-select :id user-info permission-mapping)])
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 

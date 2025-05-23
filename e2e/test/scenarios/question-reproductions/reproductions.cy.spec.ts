@@ -386,3 +386,42 @@ describe("issue 54817", () => {
     H.popover().findByPlaceholderText(placeholder).should("be.focused");
   });
 });
+
+describe("issue 57398", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show the query running state when navigating back (metabase#57398)", () => {
+    H.openProductsTable();
+    H.filter();
+    H.popover().within(() => {
+      cy.log("1st filter");
+      cy.findByText("Category").click();
+      cy.findByText("Widget").click();
+      cy.findByLabelText("Add another filter").click();
+
+      cy.log("2st filter");
+      cy.findByText("Vendor").click();
+      cy.findByText("Alfreda Konopelski II Group").click();
+      cy.findByLabelText("Add another filter").click();
+    });
+
+    cy.log("delay the response to be able to verify the running state");
+    cy.intercept("POST", "/api/dataset", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(5000);
+      });
+    });
+
+    cy.go("back");
+    H.queryBuilderMain().findByTestId("loading-indicator").should("be.visible");
+    H.queryBuilderFiltersPanel().within(() => {
+      cy.findByText("Category is Widget").should("be.visible");
+      cy.findByText("Vendor is Alfreda Konopelski II Group").should(
+        "not.exist",
+      );
+    });
+  });
+});

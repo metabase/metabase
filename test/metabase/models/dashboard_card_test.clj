@@ -1,11 +1,11 @@
 (ns metabase.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card-test :as card-test]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
