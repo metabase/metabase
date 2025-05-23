@@ -598,11 +598,6 @@
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
   (let [^BigQuery client (database-details->client database-details)
-        user-agent (try
-                     (some-> client
-                             .getOptions
-                             .getHeaderProvider)
-                     (catch Exception _ nil))
         result-promise (promise)
         request (build-bigquery-request sql parameters)
         query-future (future
@@ -610,9 +605,6 @@
                        (classloader/the-classloader)
                        (try
                          (*page-callback*)
-                         (tap> {:user-agent user-agent
-                                :client client
-                                :request request})
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
                            (deliver result-promise [:ready result])
                            (throw (ex-info "Null response from query" {})))
