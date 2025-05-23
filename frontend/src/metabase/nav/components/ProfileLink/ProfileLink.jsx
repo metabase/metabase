@@ -9,17 +9,16 @@ import {
   getIsOnboardingSidebarLinkDismissed,
 } from "metabase/admin/app/selectors";
 import { useSetting } from "metabase/common/hooks";
-import EntityMenu from "metabase/components/EntityMenu";
 import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
+import { ForwardRefLink } from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/home/selectors";
-import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -29,6 +28,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 
 import { useHelpLink } from "./useHelpLink";
 
@@ -86,6 +86,14 @@ function ProfileLink({
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
+      {
+        title: t`Keyboard Shortcuts`,
+        icon: null,
+        action: () => dispatch(setOpenModal("help")),
+      },
+      {
+        separator: true,
+      },
       helpLink.visible && {
         title: t`Help`,
         icon: null,
@@ -93,20 +101,14 @@ function ProfileLink({
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
-      // If the instance is not new, we're removing the link from the sidebar automatically!
       (!isNewInstance || showOnboardingLink) &&
         canAccessOnboardingPage && {
-          // eslint-disable-next-line no-literal-metabase-strings -- We don't show this to whitelabelled instances
+          // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
           title: t`How to use Metabase`,
           icon: null,
           link: "/getting-started",
           event: `Navbar;Profile Dropdown;Getting Started`,
         },
-      {
-        title: t`Keyboard Shortcuts`,
-        icon: null,
-        action: () => dispatch(setOpenModal("help")),
-      },
       {
         title: t`Report an issue`,
         icon: null,
@@ -123,6 +125,9 @@ function ProfileLink({
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
+        separator: true,
+      },
+      {
         title: t`Sign out`,
         icon: null,
         action: () => onLogout(),
@@ -134,25 +139,62 @@ function ProfileLink({
   // show trademark if application name is not whitelabeled
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const showTrademark = !isWhiteLabeling;
+
+  const menuItems = generateOptionsForUser();
+
   return (
     <div>
-      <EntityMenu
-        tooltip={t`Settings`}
-        items={generateOptionsForUser()}
-        triggerIcon="gear"
-        triggerProps={{
-          color: color("text-medium"),
-          hover: {
-            backgroundColor: color("brand"),
-            color: color("text-white"),
-          },
-        }}
-        // I've disabled this transition, since it results in the menu
-        // sometimes not appearing until content finishes loading on complex
-        // dashboards and questions #39303
-        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
-        transitionDuration={0}
-      />
+      <Menu position="bottom-end" shadow="md" width={200}>
+        <Menu.Target>
+          <Tooltip label={t`Settings`}>
+            <ActionIcon
+              size="lg"
+              variant="subtle"
+              color="text-medium"
+              aria-label={t`Settings`}
+            >
+              <Icon name="gear" size={16} />
+            </ActionIcon>
+          </Tooltip>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {menuItems.map((item, index) => {
+            if (!item) {
+              return null;
+            }
+
+            if (item.separator) {
+              return <Menu.Divider key={index} />;
+            }
+
+            const component = item.externalLink
+              ? "a"
+              : item.link
+                ? ForwardRefLink
+                : "button";
+
+            return (
+              <Menu.Item
+                key={item.title}
+                leftSection={item.icon && <Icon name={item.icon} />}
+                onClick={() => {
+                  if (item.action) {
+                    item.action();
+                  }
+                }}
+                component={component}
+                href={item.link}
+                to={item.link}
+                target={item.externalLink ? "_blank" : undefined}
+                rel={item.externalLink ? "noopener noreferrer" : undefined}
+              >
+                {item.title}
+              </Menu.Item>
+            );
+          })}
+        </Menu.Dropdown>
+      </Menu>
+
       {modalOpen === "about" ? (
         <Modal small onClose={closeModal}>
           <div
