@@ -164,7 +164,7 @@ function Search({
 
 function EmptyState({ title }: { title: string }) {
   return (
-    <Stack pt="lg" align="center" className={S.emptyState} gap="md">
+    <Stack py="xl" align="center" className={S.emptyState} gap="md">
       <Flex className={S.empyIcon} p="lg" align="center" justify="center">
         <Icon name="table2" />
       </Flex>
