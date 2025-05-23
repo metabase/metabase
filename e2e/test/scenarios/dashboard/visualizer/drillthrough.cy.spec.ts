@@ -150,7 +150,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(1).within(() =>
-      H.chartPathWithFillColor(PRODUCTS_SERIES_COLOR).eq(0).click(),
+      H.chartPathWithFillColor("#EF8C8C").eq(0).click(),
     );
     H.clickActionsPopover().button(">").click();
     cy.wait("@dataset");
