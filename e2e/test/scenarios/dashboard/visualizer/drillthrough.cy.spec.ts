@@ -114,7 +114,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
-    H.getDashboardCard(0).within(() => H.chartLegendItem("Count").click());
+    H.getDashboardCard(0).within(() =>
+      H.chartLegendItem(ORDERS_COUNT_BY_CREATED_AT.name).click(),
+    );
     cy.wait("@cardQuery");
     H.queryBuilderHeader()
       .findByText(ORDERS_COUNT_BY_CREATED_AT.name)
@@ -124,7 +126,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() =>
-      H.chartLegendItem(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).click(),
+      H.chartLegendItem(PRODUCTS_COUNT_BY_CREATED_AT.name).click(),
     );
     cy.wait("@cardQuery");
     H.queryBuilderHeader()
@@ -148,7 +150,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(1).within(() =>
-      H.chartPathWithFillColor(PRODUCTS_SERIES_COLOR).eq(0).click(),
+      H.chartPathWithFillColor("#EF8C8C").eq(0).click(),
     );
     H.clickActionsPopover().button(">").click();
     cy.wait("@dataset");
