@@ -93,21 +93,23 @@ export function getInitialStateForCardDataSource(
   const state: VisualizerVizDefinitionWithColumns = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
-      : card.display === "scalar"
-        ? "funnel"
-        : DEFAULT_VISUALIZER_DISPLAY,
+      : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
-    settings: {},
+    settings: {
+      "card.title": card.name,
+    },
   };
 
   const dataSource = createDataSource("card", card.id, card.name);
 
-  if (card.display === "scalar") {
+  if (card.display === "scalar" || card.display === "gauge") {
     const numericColumn = originalColumns.find((col) =>
       Lib.isNumeric(Lib.legacyColumnTypeInfo(col)),
     );
     if (numericColumn) {
+      state.display = "funnel";
+
       const columnRef = createVisualizerColumnReference(
         dataSource,
         numericColumn,

@@ -3,6 +3,7 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart/BarCha
 import { Funnel } from "metabase/visualizations/visualizations/Funnel";
 import { Scalar } from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table/Table";
+import type { CardDisplayType } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -102,46 +103,51 @@ describe("getInitialStateForCardDataSource", () => {
     });
   });
 
-  it("should return scalar funnel initial state if the original card is a scalar", () => {
-    const initialState = getInitialStateForCardDataSource(
-      createMockCard({ display: "scalar" }),
-      dataset,
-    );
+  it.each<CardDisplayType>(["scalar", "gauge"])(
+    "should return scalar funnel initial state if the original card is a %s",
+    (vizType) => {
+      const card = createMockCard({
+        name: `${vizType} card`,
+        display: vizType,
+      });
+      const initialState = getInitialStateForCardDataSource(card, dataset);
 
-    expect(initialState).toEqual({
-      display: "funnel",
-      columns: [
-        {
-          name: "METRIC",
-          display_name: "METRIC",
-          base_type: "type/Integer",
-          effective_type: "type/Integer",
-          field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
-          source: "artificial",
-        },
-        {
-          name: "DIMENSION",
-          display_name: "DIMENSION",
-          base_type: "type/Text",
-          effective_type: "type/Text",
-          field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
-          source: "artificial",
-        },
-      ],
-      columnValuesMapping: {
-        METRIC: [
+      expect(initialState).toEqual({
+        display: "funnel",
+        columns: [
           {
-            name: "COLUMN_1",
-            originalName: "Foo",
-            sourceId: "card:1",
+            name: "METRIC",
+            display_name: "METRIC",
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+            field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
+            source: "artificial",
+          },
+          {
+            name: "DIMENSION",
+            display_name: "DIMENSION",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
+            source: "artificial",
           },
         ],
-        DIMENSION: ["$_card:1_name"],
-      },
-      settings: {
-        "funnel.metric": "METRIC",
-        "funnel.dimension": "DIMENSION",
-      },
-    });
-  });
+        columnValuesMapping: {
+          METRIC: [
+            {
+              name: "COLUMN_1",
+              originalName: "Foo",
+              sourceId: "card:1",
+            },
+          ],
+          DIMENSION: ["$_card:1_name"],
+        },
+        settings: {
+          "card.title": card.name,
+          "funnel.metric": "METRIC",
+          "funnel.dimension": "DIMENSION",
+        },
+      });
+    },
+  );
 });
