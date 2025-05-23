@@ -6,7 +6,6 @@ import path from "path";
 import { NodeModulesPolyfillPlugin } from "@esbuild-plugins/node-modules-polyfill";
 import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
 import babel from "esbuild-plugin-babel";
-import fixReactVirtualizedPlugin from "esbuild-plugin-react-virtualized";
 import { build } from "tsup";
 
 import { LICENSE_BANNER } from "./frontend/build/embedding-sdk/constants/license-banner.mjs";
@@ -184,7 +183,6 @@ await build({
       },
       generateScopedName: generateScopedCssClassName,
     }),
-    fixReactVirtualizedPlugin,
     // To properly apply @emotion plugin before `requireToImport`
     babel({
       filter: /\.[jt]s?x/,
