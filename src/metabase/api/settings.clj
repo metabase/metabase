@@ -10,4 +10,4 @@
         If the header is available, then it's validated against MB_API_KEY.
         When it matches, the request continues; otherwise it's blocked with a 403 Forbidden response.
         MB_API_KEY is used only for /notify endpoints and isn't the same as Metabase API keys
-        used for authenticating other API requests. MP_API_KEY can be an arbitrary string.")
+        used for authenticating other API requests. MB_API_KEY can be an arbitrary string.")

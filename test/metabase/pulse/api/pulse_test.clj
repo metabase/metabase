@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.response :as api.response]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
@@ -18,7 +19,6 @@
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries.api.card-test :as api.card-test]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -97,8 +97,8 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (:body request/response-unauthentic) (client/client :get 401 "pulse")))
-  (is (= (:body request/response-unauthentic) (client/client :put 401 "pulse/13"))))
+  (is (= (:body api.response/response-unauthentic) (client/client :get 401 "pulse")))
+  (is (= (:body api.response/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |

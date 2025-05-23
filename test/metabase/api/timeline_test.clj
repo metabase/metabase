@@ -3,9 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.response :as api.response]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -13,9 +13,9 @@
 
 (deftest auth-tests
   (testing "Authentication"
-    (is (= (get request/response-unauthentic :body)
+    (is (= (get api.response/response-unauthentic :body)
            (client/client :get 401 "/timeline")))
-    (is (= (get request/response-unauthentic :body)
+    (is (= (get api.response/response-unauthentic :body)
            (client/client :get 401 "/timeline/1")))))
 
 (deftest list-timelines-test

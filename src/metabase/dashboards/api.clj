@@ -8,7 +8,6 @@
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
@@ -28,6 +27,7 @@
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]

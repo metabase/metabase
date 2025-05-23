@@ -83,13 +83,29 @@
     (when-not (= uses :any)
       (into (sorted-set) uses))))
 
-(defn indirect-deps [deps module]
-  (loop [seen (sorted-set), [dep & more] (direct-deps deps module)]
+(defn indirect-deps
+  "For a module, get a map of dependency => path to this dependency
+
+    (indirect-deps (deps) 'api)
+    ;; =>
+    {permissions [api settings permissions]
+     ...}"
+  [deps module]
+  (loop [seen (sorted-map), [[dep path] & more] (into {}
+                                                      (map (fn [dep]
+                                                             [dep [module]]))
+                                                      (direct-deps deps module))]
     (if-not dep
       seen
-      (let [dep-deps (direct-deps deps dep)
-            new      (set/difference dep-deps seen #{module})]
-        (recur (conj seen dep) (set/union (set more) new))))))
+      (let [path     (conj path dep)
+            dep-deps (direct-deps deps dep)
+            new      (set/difference dep-deps (set (keys seen)) #{module})]
+        (recur (assoc seen dep path)
+               (merge (into {}
+                            (map (fn [new-dep]
+                                   [new-dep path]))
+                            new)
+                      more))))))
 
 (defn module-vars [deps module]
   (let [namespaces (module-namespaces deps module)]
@@ -168,7 +184,7 @@
   [deps module]
   (into (sorted-set)
         (mapcat (fn [user]
-                  (disj (indirect-deps deps user) module)))
+                  (disj (set (keys (indirect-deps deps user))) module)))
         (direct-users deps module)))
 
 (defn info [deps config module]

@@ -1,8 +1,8 @@
 (ns metabase.analytics.api
   (:require
    [metabase.analytics.stats :as stats]
-   [metabase.api.common.validation :as validation]
-   [metabase.api.macros :as api.macros]))
+   [metabase.api.macros :as api.macros]
+   [metabase.permissions.validation :as validation]))
 
 ;;; I don't think this endpoint is actually used anywhere for anything.
 (api.macros/defendpoint :get "/anonymous-stats"
