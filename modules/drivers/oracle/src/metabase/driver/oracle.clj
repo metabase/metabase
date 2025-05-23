@@ -195,8 +195,8 @@
 (mu/defmethod driver/can-connect? :oracle
   [driver
    details :- ::details]
-  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel! details))]
-    (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (= 1M (first (vals (first (jdbc/query jdbc-spec ["SELECT 1 FROM dual"])))))))
 
 (defmethod driver/db-start-of-week :oracle
   [_driver]

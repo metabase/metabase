@@ -108,7 +108,7 @@
 
 (deftest clickhouse-connection-fails-test
   (mt/test-driver :clickhouse
-    (mt/with-temp [:model/Database db {:details (assoc (mt/db) :password "wrongpassword") :engine :clickhouse}]
+    (mt/with-temp [:model/Database db {:details (assoc (:details (mt/db)) :password "wrongpassword") :engine :clickhouse}]
       (testing "sense check that checking the cloud mode fails with a SQLException."
        ;; nil arg isn't tested here, as it will pick up the defaults, which is the same as the Docker instance credentials.
         (is (thrown? java.sql.SQLException (#'clickhouse/cloud? (:details db)))))

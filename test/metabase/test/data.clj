@@ -34,23 +34,28 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require
+   [clojure.set :as set]
    [clojure.test :as t]
    [colorize.core :as colorize]
-   [mb.hawk.init]
+   [mb.hawk.init :as hawk.init]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [next.jdbc]))
 
 (set! *warn-on-reflection* true)
@@ -223,7 +228,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic
   variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   ([]
-   (mb.hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
+   (hawk.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
    (data.impl/db-id))
 
   ([table-name]
@@ -312,3 +317,84 @@
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
      (mdb/finish-db-setup!)
      ~@body))
+
+;; Non-"normal" timeseries drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
+(def timeseries-drivers
+  "Drivers that are so weird that we can't use the standard dataset loading against them."
+  #{:druid :druid-jdbc})
+
+(mr/def ::driver-selector
+  [:map {:closed true}
+   [:+features {:optional true} [:sequential :keyword]]
+   [:-features {:optional true} [:sequential :keyword]]
+   [:+conn-props {:optional true} [:sequential :string]]
+   [:-conn-props {:optional true} [:sequential :string]]
+   [:+parent {:optional true} :keyword]
+   [:+fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]
+   [:-fns {:optional true} [:sequential [:function [:=> [:cat :keyword] :any]]]]])
+
+(mu/defn driver-select :- [:set :keyword]
+  "Select drivers to be tested.
+
+   +features - a list of features that the drivers should support.
+   -features - a list of features that drivers should not support.
+
+   +conn-props - a list of connection-property names that drivers should have.
+   -conn-props - a list of connection-property names that drivers should not have.
+
+   +parent - only include drivers whose parent is this.
+   -parent - do not include drivers whose parent is this.
+
+   +fns - only include drivers that returns truthy for each fn `(fn driver)`.
+   -fns - exclude drivers that returns truthy for any fn `(fn driver)`."
+  ([]
+   (driver-select {}))
+  ([{:keys [+features -features -fns +fns +conn-props -conn-props +parent] :as selector} :- ::driver-selector]
+   (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'driver-select selector)))
+   (set
+    (for [driver (tx.env/test-drivers)
+          :let [driver (tx/the-driver-with-test-extensions driver)
+                conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
+                                  (into #{} (map :name (driver/connection-properties driver))))]
+          :when (driver/with-driver driver
+                  (let [the-db (delay (db))]
+                    (cond-> true
+                      +parent
+                      (and (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver +parent)))
+
+                      (seq +fns)
+                      (and (every? (fn [f] (f driver)) +fns))
+
+                      (seq -fns)
+                      (and (not (some (fn [f] (f driver)) -fns)))
+
+                      (seq +conn-props)
+                      (and (set/superset? conn-prop-names (set +conn-props)))
+
+                      (seq -conn-props)
+                      (and (empty? (set/intersection conn-prop-names (set -conn-props))))
+
+                      (seq +features)
+                      (and (every? #(driver.u/supports? driver % @the-db) +features))
+
+                      (seq -features)
+                      (and (not (some #(driver.u/supports? driver % @the-db) -features))))))]
+      driver))))
+
+(mu/defn normal-driver-select :- [:set :keyword]
+  "Select drivers to be tested. Excludes timeseries drivers because they can only be tested with special datasets.
+
+   +features - a list of features that the drivers should support.
+   -features - a list of features that drivers should not support.
+
+   +conn-props - a list of connection-property names that drivers should have.
+   -conn-props - a list of connection-property names that drivers should not have.
+
+   +parent - only include drivers whose parent is this.
+
+   +fns - only include drivers that returns truthy for each fn `(f driver)`.
+   -fns - exclude drivers that returns truthy for any fn `(f driver)`."
+  ([]
+   (normal-driver-select {}))
+  ([selector :- ::driver-selector]
+   (driver-select (update selector :-fns (fnil conj []) #(contains? timeseries-drivers %)))))
