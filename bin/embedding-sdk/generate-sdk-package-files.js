@@ -3,35 +3,29 @@
 /* eslint-disable import/no-commonjs, import/order, no-console */
 const fs = require("fs");
 const path = require("path");
+const {
+  getPackageJsonContent,
+} = require("../../frontend/build/embedding-sdk/utils/get-package-json-content.mjs");
+const {
+  filterExternalDependencies,
+} = require("../../frontend/build/embedding-sdk/utils/filter-external-dependencies.mjs");
 
-// Even if we figure out how to externalize most of the deps without using hacks,
-// we still can't externalize deps from the list below, because they add conflicting types
-const IGNORED_DEPENDENCIES = [
+const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
+
+const IGNORED_REACT_PACKAGES = ["react", "react-dom"];
+// These deps may add conflicting types
+const IGNORED_TYPES_DEPENDENCIES = [
   "@types/react",
   "@types/react-dom",
   "@types/react-router",
   "@types/redux-auth-wrapper",
-  "@visx/axis",
-  "@visx/clip-path",
-  "@visx/grid",
-  "@visx/group",
-  "@visx/shape",
-  "@visx/text",
-  "formik",
-  "react-beautiful-dnd",
 ];
-const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
-function filterOuDependencies(object) {
-  const result = {};
-
-  Object.entries(object).forEach(([packageName, version]) => {
-    if (!IGNORED_DEPENDENCIES.includes(packageName)) {
-      result[packageName] = version;
-    }
-  });
-
-  return result;
+function getSdkDependencies(dependencies) {
+  return filterExternalDependencies(dependencies, [
+    ...IGNORED_REACT_PACKAGES,
+    ...IGNORED_TYPES_DEPENDENCIES,
+  ]);
 }
 
 function generateSdkPackage() {
@@ -42,12 +36,7 @@ function generateSdkPackage() {
     maybeCommitHash = maybeCommitHash.slice(0, 7);
   }
 
-  const mainPackageJson = fs.readFileSync(
-    path.resolve("./package.json"),
-    "utf-8",
-  );
-
-  const mainPackageJsonContent = JSON.parse(mainPackageJson);
+  const mainPackageJsonContent = getPackageJsonContent();
 
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
@@ -61,9 +50,8 @@ function generateSdkPackage() {
 
   const mergedContent = {
     ...sdkPackageTemplateJsonContent,
-    type: "module",
-    dependencies: filterOuDependencies(mainPackageJsonContent.dependencies),
-    resolutions: filterOuDependencies(mainPackageJsonContent.resolutions),
+    dependencies: getSdkDependencies(mainPackageJsonContent.dependencies),
+    resolutions: getSdkDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
