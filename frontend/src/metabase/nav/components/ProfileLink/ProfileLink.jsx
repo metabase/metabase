@@ -13,6 +13,7 @@ import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/Erro
 import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
+import { ForwardRefLink } from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
@@ -175,8 +176,8 @@ function ProfileLink({
                     item.action();
                   }
                 }}
-                component={item.link ? "a" : "button"}
-                href={item.link}
+                component={item.link ? ForwardRefLink : "button"}
+                to={item.link}
                 target={item.externalLink ? "_blank" : undefined}
                 rel={item.externalLink ? "noopener noreferrer" : undefined}
               >
