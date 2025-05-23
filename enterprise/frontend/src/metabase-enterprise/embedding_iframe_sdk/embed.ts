@@ -118,6 +118,7 @@ class MetabaseEmbed {
 
     if (
       settings.template === "exploration" &&
+      // @ts-expect-error -- we are validating an intentionally-wrong use case :)
       (settings.dashboardId || settings.questionId)
     ) {
       raiseError(
