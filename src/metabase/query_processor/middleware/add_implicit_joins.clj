@@ -120,7 +120,7 @@
                                                   FkFieldInfo
                                                   ::lib.schema.common/non-blank-string]
   [form]
-  ;; Build a map of [FK Field ID, FK join alias] -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
+  ;; Build a map of [[FkFieldInfo]] -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (into {}
         (map (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
                (when fk-field-id
