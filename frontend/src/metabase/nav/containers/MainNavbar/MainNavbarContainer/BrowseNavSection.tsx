@@ -8,7 +8,14 @@ import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
-import { Collapse, Flex, Group, Icon, Text, UnstyledButton } from "metabase/ui";
+import {
+  Button,
+  Collapse,
+  Flex,
+  Group,
+  Icon,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
@@ -60,17 +67,15 @@ export const BrowseNavSection = ({
           </SidebarHeading>
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
-        <Group
-          align="center"
-          gap="sm"
-          component={UnstyledButton}
-          c="brand"
-          className={CS.cursorPointer}
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add_data" />}
+          h="auto"
+          p={0}
           onClick={onModalOpen}
         >
-          <Icon name="add_data" />
-          <Text fw={700} c="inherit">{t`Add`}</Text>
-        </Group>
+          {t`Add`}
+        </Button>
       </Flex>
 
       <Collapse in={opened} transitionDuration={0} role="tabpanel">
