@@ -1,9 +1,9 @@
 (ns hooks.metabase.util.i18n-test
-  (:require [clj-kondo.hooks-api :as api]
-            [clj-kondo.impl.utils]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest testing is are]]
-            [hooks.metabase.util.i18n]))
+  (:require
+   [clj-kondo.hooks-api :as api]
+   [clj-kondo.impl.utils]
+   [clojure.test :refer [deftest are]]
+   [hooks.metabase.util.i18n]))
 
 (defn- warnings
   [form]

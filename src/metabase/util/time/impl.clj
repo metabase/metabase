@@ -150,7 +150,7 @@
                      (catch Exception _
                        (try (t/day-of-week "EEEE" value)
                             (catch Exception _
-                              (throw (ex-info (str "Failed to coerce '" value "' to day-of-week")
+                              (throw (ex-info (i18n/tru "Failed to coerce '''{value}''' to day-of-week" value)
                                               {:value value}))))))]
         (-> (now)
             (t/truncate-to :days)
