@@ -24,6 +24,7 @@
 (defsetting dismissed-excel-pivot-exports-banner
   (deferred-tru "Toggle which is true after a user has dismissed the excel pivot exports banner.")
   :user-local :only
+  :export?    false
   :visibility :authenticated
   :type       :boolean
   :default    false
