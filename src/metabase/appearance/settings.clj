@@ -382,3 +382,27 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (when (and id (t2/exists? :model/Dashboard :id id :archived false))
                     id)))
   :doc        false)
+
+(def ^:private autocomplete-matching-options
+  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
+  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
+  causes too many problems."
+  #{:substring :prefix :off})
+
+(defsetting native-query-autocomplete-match-style
+  (deferred-tru
+   (str "Matching style for native query editor''s autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+        "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+        " or turn autocompletions off."))
+  :visibility :public
+  :export?    true
+  :type       :keyword
+  :default    :substring
+  :audit      :raw-value
+  :setter     (fn [v]
+                (let [v (cond-> v (string? v) keyword)]
+                  (if (autocomplete-matching-options v)
+                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
+                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
+                                    {:option v
+                                     :valid-options autocomplete-matching-options}))))))

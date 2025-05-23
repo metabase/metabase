@@ -1,4 +1,4 @@
-(ns metabase-enterprise.enhancements.integrations.google-test
+(ns metabase-enterprise.sso.integrations.google-test
   (:require
    [clojure.test :refer :all]
    [metabase.sso.core :as sso]

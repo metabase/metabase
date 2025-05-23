@@ -100,3 +100,11 @@
   :export?    false
   :visibility :authenticated
   :type       :string)
+
+(defsetting user-visibility
+  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  :visibility   :authenticated
+  :feature      :email-restrict-recipients
+  :type         :keyword
+  :default      :all
+  :audit        :raw-value)

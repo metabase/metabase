@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.cache.core]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.queries.models.query :as query]
@@ -141,10 +142,10 @@
                   [:osprey      72]
                   [:flamingo    70]]
         query    (test-query query-kvs)]
-    (binding [qp.pipeline/*query-timeout-ms* 2000
-              qp.pipeline/*execute*          (fn [_driver _query respond]
-                                               (Thread/sleep *query-execution-delay-ms*)
-                                               (respond metadata rows))]
+    (binding [driver.settings/*query-timeout-ms* 2000
+              qp.pipeline/*execute*             (fn [_driver _query respond]
+                                                  (Thread/sleep *query-execution-delay-ms*)
+                                                  (respond metadata rows))]
       (driver/with-driver :h2
         (-> (qp query qp.reducible/default-rff)
             (assoc :data {}))))))
