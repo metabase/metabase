@@ -108,6 +108,8 @@ export const tableApi = Api.injectEndpoints({
         invalidateTags(error, [
           idTag("table", id),
           listTag("field"),
+          listTag("field-values"),
+          listTag("parameter-values"),
           tag("card"),
         ]),
     }),
