@@ -88,4 +88,10 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   Cypress.config("baseUrl", METABASE_INSTANCE_URL);
 
   signInAsAdminAndEnableEmbeddingSdkForE2e();
+
+  cy.request("PUT", "/api/setting", {
+    "jwt-enabled": true,
+    "jwt-identity-provider-uri": AUTH_PROVIDER_URL,
+    "jwt-shared-secret": JWT_SHARED_SECRET,
+  });
 }
