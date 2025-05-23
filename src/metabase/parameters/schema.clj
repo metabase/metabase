@@ -49,7 +49,6 @@
    :keyword
    ::lib.schema.common/non-blank-string])
 
-
 (mr/def ::parameter
   "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter
   is meant to be used for Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
