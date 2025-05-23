@@ -1,8 +1,5 @@
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
-import "html2canvas-pro";
-import "jspdf";
-
 // SETTINGS OVERRIDES:
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
