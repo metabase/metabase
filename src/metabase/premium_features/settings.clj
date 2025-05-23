@@ -250,6 +250,10 @@
   "Should Metabase generate SQL queries?"
   :ai-sql-generation)
 
+(define-premium-feature ^{:added "0.55.0"} enable-embedding-iframe-sdk?
+  "Should we allow users to embed the SDK in iframes?"
+  :embedding-iframe-sdk)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -270,6 +274,7 @@
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
+   :embedding_iframe_sdk           (enable-embedding-iframe-sdk?)
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
