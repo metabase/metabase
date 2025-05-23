@@ -601,8 +601,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
+    // TODO: Fix series have different colors in visualizer because of different
+    // column names in original dashcard and visualizer ("avg" becomes "COLUMN_2" and the color has is different)
     it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
-      // TODO Series colors are off
       // Checking the second datum since the first circle of one series is covered with a circle from the other series
       const circleIndex = 1;
 
