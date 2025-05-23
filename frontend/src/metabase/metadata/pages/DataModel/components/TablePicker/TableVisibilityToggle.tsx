@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { Icon } from "metabase/ui";
+import { ActionIcon } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 export function TableVisibilityToggle({
@@ -22,7 +22,7 @@ export function TableVisibilityToggle({
   const isHidden = table?.visibility_type !== null;
 
   return (
-    <Icon
+    <ActionIcon
       name={isHidden ? "eye_crossed_out" : "eye"}
       className={className}
       onClick={async (evt) => {
