@@ -13,7 +13,7 @@ import {
 export function PublicSharingSettingsPage() {
   const publicSharingEnabled = useSetting("enable-public-sharing");
   return (
-    <Stack gap="xl" p="2rem 2rem 2rem 1rem">
+    <Stack gap="xl" p="0 2rem 2rem 1rem">
       <AdminSettingInput
         name="enable-public-sharing"
         title={t`Enable Public Sharing`}
