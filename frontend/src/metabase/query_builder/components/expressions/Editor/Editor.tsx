@@ -144,7 +144,6 @@ export function Editor(props: EditorProps) {
     );
   }, []);
 
-  // here
   return (
     <>
       <LayoutMain className={cx(S.wrapper, { [S.formatting]: isFormatting })}>

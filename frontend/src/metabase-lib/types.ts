@@ -284,8 +284,6 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
   "base-type"?: string;
   "effective-type"?: string;
-  "partition"?: any[];
-  "order"?: any[];
 };
 
 declare const FilterOperatorSymbol: unique symbol;

@@ -1042,8 +1042,6 @@
 
   > **Code health:** Healthy"
   [a-query stage-number an-expression-clause]
-  (println "EXPR PARTS")
-  (println an-expression-clause)
   (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
     (walk/postwalk
      (fn [node]
@@ -1482,14 +1480,6 @@
         lib.core/ref
         ref->legacy-ref
         clj->js)))
-
-(defn ^:export raw-legacy-ref
-  "this is no-no"
-  [column]
-  (-> column
-      lib.core/ref
-      ref->legacy-ref
-      clj->js))
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
@@ -2384,7 +2374,6 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-;; 
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 

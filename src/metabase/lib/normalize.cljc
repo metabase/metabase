@@ -80,7 +80,6 @@
    (normalize schema x nil))
 
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
-   (println x)
    (let [schema (or schema (infer-schema x))
          thunk  (^:once fn* []
                   ((coercer schema) x))]

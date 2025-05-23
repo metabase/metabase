@@ -350,8 +350,7 @@
   [tag opts (->pMBQL expr) n])
 
 (defmethod ->pMBQL :cc-window
-  [[tag expr & args :as clause]]
-  #_{:pre [(= (count clause) 3)]}
+  [[tag expr & args]]
   (into (lib.options/ensure-uuid [tag {} (->pMBQL expr)])
         (map ->pMBQL)
         args))
@@ -568,8 +567,7 @@
   [tag opts (->legacy-MBQL expr) n])
 
 (defmethod ->legacy-MBQL :cc-window
-  [[tag _opts expr & args, :as _clause]]
-  #_{:pre [(= (count clause) 3)]}
+  [[tag _opts expr & args]]
   (into [tag (->legacy-MBQL expr)] (map ->legacy-MBQL) args))
 
 (defmethod ->legacy-MBQL ::string-comparison

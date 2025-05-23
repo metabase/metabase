@@ -61,9 +61,9 @@ const WINDOW = defineClauses(
     "window-min": {
       displayName: "WindowMin",
       type: "any",
-      hasOptions: true,
-      description: () =>
-        t`Computes window min`,
+      hasOptions: false,
+      multiple: true,
+      description: () => t`Computes window min`,
       args: () => [
         {
           name: t`expression`,
@@ -77,9 +77,9 @@ const WINDOW = defineClauses(
     "window-max": {
       displayName: "WindowMax",
       type: "any",
-      hasOptions: true,
-      description: () =>
-        t`Computes window max`,
+      hasOptions: false,
+      multiple: true,
+      description: () => t`Computes window max`,
       args: () => [
         {
           name: t`expression`,
@@ -93,9 +93,9 @@ const WINDOW = defineClauses(
     "window-sum": {
       displayName: "WindowSum",
       type: "any",
-      hasOptions: true,
-      description: () =>
-        t`Computes window sum`,
+      hasOptions: false,
+      multiple: true,
+      description: () => t`Computes window sum`,
       args: () => [
         {
           name: t`expression`,
@@ -1867,7 +1867,7 @@ export const COMPARISON_OPERATORS = defineClauses(
     },
   },
 );
-// here!!!
+
 export const EXPRESSION_OPERATORS = {
   ...LOGICAL_OPERATORS,
   ...NUMERIC_OPERATORS,
@@ -1880,6 +1880,7 @@ export const AGGREGATION_FUNCTIONS = {
   ...WINDOW,
 } as const;
 
+// Custom column window functions should probably have dedicated object. This make Offset available in editor. No-no.
 export const EXPRESSION_FUNCTIONS = {
   ...WINDOW,
   ...CONVERSION,

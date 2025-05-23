@@ -181,15 +181,15 @@
                               joins))))))
 (defn- cc-window?
   [x]
-  (and (vector? x)
-       (#{:window-min :window-max :window-sum}
-        (first x))))
+  (boolean (and (vector? x)
+                (#{:window-min :window-max :window-sum}
+                 (first x)))))
 
 (defn- contains-cc-window?
   [x]
-  (seq (lib.util.match/match x
-         cc-window?
-         &match)))
+  (boolean (seq (lib.util.match/match x
+                  cc-window?
+                  &match))))
 
 (defn- should-nest-expressions?
   "Whether we should nest the expressions in a inner query; true if
@@ -211,8 +211,8 @@
         (seq order-bys))
    ;; 3. contains an `:expression` ref
     (lib.util.match/match-one
-     (concat breakouts aggregations order-bys)
-     :expression))))
+      (concat breakouts aggregations order-bys)
+      :expression))))
 
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a

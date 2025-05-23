@@ -606,6 +606,7 @@
 (defclause ^{:requires-features #{:expressions}} +
   x Addable, y Addable, more (rest Addable))
 
+;; :any -> FieldOrExpression?
 (mr/def ::WinArg
   [:or :string :any])
 
@@ -982,9 +983,7 @@
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second
-          window-min
-          window-max
-          window-sum))
+          window-min window-max window-sum))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain

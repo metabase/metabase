@@ -228,15 +228,7 @@
 (mbql-clause/define-tuple-mbql-clause :float :- :type/Float
   [:schema [:ref ::expression/string]])
 
-#_(doseq [[tag args-schema] [[:window-min :any]]]
-  (mbql-clause/define-mbql-clause tag
-    [:and
-     {:error/message (str "valid" tag " clause")}
-     [:cat
-      [:= {:decode/normalize common/normalize-keyword} tag]
-      [:schema [:ref ::common/options]]
-      args-schema]]))
-
+;; windows probably deserve dedicated ns
 (lib.hierarchy/derive :cc-window ::expression/expression)
 
 (def cc-windows-definitions
@@ -254,11 +246,11 @@
   (lib.hierarchy/derive tag :lib.type-of/type-is-type-of-arithmetic-args))
 
 (doseq [{:keys [tag _args-schema]} cc-windows-definitions]
-    (mbql-clause/define-mbql-clause tag
-      [:and
-       {:error/message (str "valid" tag "clause")}
-       [:cat
-        [:= {:decode/normalize common/normalize-keyword} tag]
-        [:schema [:ref ::common/options]]
-        [:* :any]]
-       vector?]))
+  (mbql-clause/define-mbql-clause tag
+    [:and
+     {:error/message (str "valid" tag "clause")}
+     [:cat
+      [:= {:decode/normalize common/normalize-keyword} tag]
+      [:schema [:ref ::common/options]]
+      [:* :any]]
+     vector?]))
