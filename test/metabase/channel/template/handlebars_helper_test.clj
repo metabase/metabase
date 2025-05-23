@@ -66,7 +66,9 @@
     "false" "{{#if (starts-with text \"foo\")}}true{{else}}false{{/if}}" {:text "bar baz"}
     ;; ends with
     "true" "{{#if (ends-with text \"bar\")}}true{{else}}false{{/if}}" {:text "foo bar"}
-    "false" "{{#if (ends-with text \"bar\")}}true{{else}}false{{/if}}" {:text "bar baz"}))
+    "false" "{{#if (ends-with text \"bar\")}}true{{else}}false{{/if}}" {:text "bar baz"}
+    ;; split
+    "item: x item: y " "{{#each (split text \".\")}}item: {{this}} {{/each}}" {:text "x.y"}))
 
 (deftest collection-helpers-test
   (are [expected template context]
