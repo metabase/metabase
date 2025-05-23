@@ -335,7 +335,7 @@ function abs(a: number | bigint) {
  * Multiplies two numbers, handling bigints and floats safely.
  */
 function multiply(a: number | bigint, b: number) {
-  if (typeof a === "bigint" && Number.isSafeInteger(b)) {
+  if (typeof a === "bigint" && Number.isInteger(b)) {
     return a * BigInt(b);
   } else {
     return Number(a) * b;
