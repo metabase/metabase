@@ -40,7 +40,6 @@ export const setup = ({
   collection = createMockCollection(),
   tokenFeatures = createMockTokenFeatures(),
   isAdmin = false,
-  isPersonalCollectionChild = false,
   hasEnterprisePlugins = false,
   dashboardQuestionCandidates = [],
   moveToDashboard = false,
@@ -91,7 +90,6 @@ export const setup = ({
           <CollectionMenu
             collection={collection}
             isAdmin={isAdmin}
-            isPersonalCollectionChild={isPersonalCollectionChild}
             onUpdateCollection={onUpdateCollection}
           />
         )}

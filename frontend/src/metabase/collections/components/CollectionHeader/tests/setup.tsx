@@ -23,7 +23,6 @@ const getProps = (
   isBookmarked: false,
   canUpload: false,
   uploadsEnabled: true,
-  isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
   saveFile: jest.fn(),
