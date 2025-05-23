@@ -18,18 +18,9 @@
   app DB (for now)... ignore them."
   #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"})
 
-(defn- should-ignore-table?
-  "Whether we should ignore this table for entity ID purposes."
-  [table-name]
-  (or
-   ;; Check against explicitly ignored tables
-   (contains? ignored-entity-id-table-names table-name)
-   ;; Filter out dynamically created search index tables
-   (re-matches #"search_index.*" table-name)))
-
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding
-  views and dynamically created search index tables."
+  views."
   []
   (with-open [conn (.getConnection (mdb/app-db))]
     (let [dbmeta (.getMetaData conn)]
@@ -39,9 +30,8 @@
                                                              :h2                "ENTITY_ID"
                                                              (:mysql :postgres) "entity_id"))]
             (let [entity-id-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))]
-              (->> (set/intersection non-view-tables entity-id-tables)
-                   (remove should-ignore-table?)
-                   set))))))))
+              (-> (set/intersection non-view-tables entity-id-tables)
+                  (set/difference ignored-entity-id-table-names)))))))))
 
 (defn toucan-models
   "Return a list of all toucan models."

@@ -63,6 +63,12 @@
    :requires [[mage.kondo :as kondo]]
    :task     (task! (kondo/kondo-updated (:arguments parsed)))}
 
+  check
+  {:doc      "Checks whether we can compile all source files (and finds circular dependencies)"
+   :examples [["./bin/mage check"]]
+   :requires [[mage.check]]
+   :task     (task! (mage.check/check (:arguments parsed)))}
+
   start-maildev
   {:doc      "Start Maildev"
    :examples [["./bin/mage start-maildev -h" "print help for start-maildev"]]

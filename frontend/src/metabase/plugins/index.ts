@@ -628,10 +628,10 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: {
-    hide_download_button?: boolean | null;
-    downloads?: string | boolean | null;
-  }) => ({ pdf: true, results: true }),
+  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+    pdf: true,
+    results: true,
+  }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {

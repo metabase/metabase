@@ -180,13 +180,9 @@ export function QuestionList({
       {isVisualizerModalOpen && (
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
-          onSave={(visualization, cards) => {
+          onSave={(visualization) => {
             dispatch(
-              addCardWithVisualization({
-                visualization,
-                tabId: selectedTabId,
-                cards,
-              }),
+              addCardWithVisualization({ visualization, tabId: selectedTabId }),
             );
             setVisualizerModalCardId(null);
           }}
@@ -212,5 +208,5 @@ const VisualizerModalWithCardId = (
     return null;
   }
 
-  return <VisualizerModal initialState={{ card }} {...otherProps} />;
+  return <VisualizerModal initialState={{ cardId: card.id }} {...otherProps} />;
 };
