@@ -5,8 +5,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::human-readable-remapping-map
@@ -51,32 +49,31 @@
    :keyword
    ::lib.schema.common/non-blank-string])
 
+
 (mr/def ::parameter
-  "Schema for a valid Parameter.
-  We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter is meant to be used for
-  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
+  "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter
+  is meant to be used for Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
-  (mu/with-api-error-message
-   [:map
-    [:id   ::lib.schema.common/non-blank-string]
-    [:type ::keyword-or-non-blank-string]
-     ;; TODO how to merge this with ParameterSource above?
-    [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
-    [:values_source_config {:optional true} ::values-source-config]
-    [:slug                 {:optional true} :string]
-    [:name                 {:optional true} :string]
-    [:default              {:optional true} :any]
-    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
-    [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]
-    ;; TODO FIXME -- I've seen this key used in [[metabase.parameters.params/dashboard-param->field-ids]] but no idea
-    ;; what the expected shape is supposed to be. Please fixx
-    [:mappings             {:optional true} :any]]
-   (i18n/deferred-tru "parameter must be a map with :id and :type keys")))
+  [:map
+   {:description "parameter must be a map with :id and :type keys"}
+   [:id   ::lib.schema.common/non-blank-string]
+   [:type ::keyword-or-non-blank-string]
+   ;; TODO how to merge this with ParameterSource above?
+   [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
+   [:values_source_config {:optional true} ::values-source-config]
+   [:slug                 {:optional true} :string]
+   [:name                 {:optional true} :string]
+   [:default              {:optional true} :any]
+   [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
+   [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]
+   ;; TODO FIXME -- I've seen this key used in [[metabase.parameters.params/dashboard-param->field-ids]] but no idea
+   ;; what the expected shape is supposed to be. Please fixx
+   [:mappings             {:optional true} :any]])
 
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
-  (mu/with-api-error-message
-   [:map [:parameter_id ::lib.schema.common/non-blank-string]
-    [:target :any]
-    [:card_id {:optional true} ::lib.schema.id/card]]
-   (i18n/deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+  [:map
+   {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
+   [:parameter_id ::lib.schema.common/non-blank-string]
+   [:target       :any]
+   [:card_id      {:optional true} ::lib.schema.id/card]])
