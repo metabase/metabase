@@ -483,6 +483,7 @@
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
    clojure.core/defmulti                                                                                                     hooks.clojure.core.defmulti/lint-defmulti
+   clojure.core/ex-info                                                                                                      hooks.clojure.core.ex-info/ex-info
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -720,6 +721,7 @@
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
     :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+    :metabase/i18n-ex-info {:level :warning}
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}

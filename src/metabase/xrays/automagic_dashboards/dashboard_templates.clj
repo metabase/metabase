@@ -396,7 +396,7 @@
             (let [template (try
                              (yaml/load (partial make-dashboard-template entity-type) f)
                              (catch Throwable e
-                               (throw (ex-info (format "Error loading template %s: %s" (str f) (ex-message e))
+                               (throw (ex-info (i18n/tru "Error loading template %s: %s" (str f) (ex-message e))
                                                {:path path, :f f}
                                                e))))]
               (assoc-in acc (concat path [entity-type ::leaf]) template))

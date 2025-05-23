@@ -177,16 +177,16 @@
   (cond
     (nil? type)
     (when (some? hash_key)
-      (throw (ex-info "Invalid query - cannot specify a hash_key without specifying the type"
+      (throw (ex-info (tru "Invalid query - cannot specify a hash_key without specifying the type")
                       {:field-values field-values})))
 
     (= :full (keyword type))
     (when (some? hash_key)
-      (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
+      (throw (ex-info (tru "Invalid query - :full FieldValues cannot have a hash_key")
                       {:field-values field-values})))
 
     (and (contains? field-values :hash_key) (nil? hash_key))
-    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+    (throw (ex-info (tru "Invalid query - Advanced FieldValues can only specify a non-empty hash_key")
                     {:field-values field-values}))))
 
 (defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]

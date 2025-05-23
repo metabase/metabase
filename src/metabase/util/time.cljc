@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.time.impl :as internal]
    [metabase.util.time.impl-common :as common]))
@@ -78,7 +79,7 @@
   (cond
     (internal/time? value) value
     (string? value) (-> value common/drop-trailing-time-zone internal/parse-time-string)
-    :else           (throw (ex-info "Unknown input to coerce-to-time; expecting a string"
+    :else           (throw (ex-info (i18n/tru "Unknown input to coerce-to-time; expecting a string")
                                     {:value value}))))
 
 (defn format-unit
