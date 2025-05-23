@@ -2534,7 +2534,7 @@ msgid "How to use Metabase"
 msgstr ""
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:106
-msgid "Keyboard Shortcuts"
+msgid "Keyboard shortcuts"
 msgstr ""
 
 #: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:134

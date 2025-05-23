@@ -103,7 +103,7 @@ function ProfileLink({
           event: `Navbar;Profile Dropdown;Getting Started`,
         },
       {
-        title: t`Keyboard Shortcuts`,
+        title: t`Keyboard shortcuts`,
         icon: null,
         action: () => dispatch(setOpenModal("help")),
       },
