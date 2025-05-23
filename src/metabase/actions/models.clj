@@ -258,7 +258,8 @@
         model-id->implicit-parameters (when (seq implicit-action-models)
                                         (implicit-action-parameters implicit-action-models))]
     (for [action actions]
-      (if (= (:type action) :implicit)
+      (case (:type action)
+        :implicit
         (let [model-id        (:model_id action)
               saved-params    (m/index-by :id (:parameters action))
               action-kind     (:kind action)
@@ -302,6 +303,7 @@
                                            (assoc acc param-id {:id param-id, :hidden false})))
                                        fields
                                        param-ids)))))))
+        (:query :http)
         action))))
 
 (defn select-action
@@ -336,27 +338,31 @@
 ;; parameter as an integer. The frontend picker can when creating the dashcard pass the negative action_id.
 ;; we will use an integer with an op (15 bits) and param (32 bits)
 ;; to start with table actions, the param is the table-id.
-(def ^:private primitive-action-kind->int {:table.row/create 0 :table.row/update 1 :table.row/delete 2})
-(def ^:private int->primitive-action-kind (set/map-invert primitive-action-kind->int))
+(def ^:private primitive-action->int
+  {:table.row/create 0
+   :table.row/update 1
+   :table.row/delete 2})
 
-(defn unpack-table-primitive-action-id
-  "Return an [kind table-id] vector given the negative action id."
+(def ^:private int->primitive-action (set/map-invert primitive-action->int))
+
+(defn unpack-encoded-action-id
+  "Return an [action-kw table-id] vector given the negative action id."
   [^long encoded-id]
   (let [pos-id     (bit-and (Math/abs encoded-id) 0xFFFFFFFFFFFF)
         param-bits (bit-and pos-id 0xFFFFFFFF)
         op-bits    (bit-and (bit-shift-right pos-id 32) 0xFFFF)]
-    [(int->primitive-action-kind op-bits) param-bits]))
+    [(int->primitive-action op-bits) param-bits]))
 
-(defn- table-primitive-action-id ^long [kind ^long param]
-  (let [op-bits (primitive-action-kind->int kind)
+(defn- encoded-action-id ^long [action-kw ^long param]
+  (let [op-bits (primitive-action->int action-kw)
         packed  (bit-or (bit-shift-left op-bits 32) (bit-and param 0xFFFFFFFF))]
     (- packed)))
 
 (defn table-primitive-action
-  "Return an action map for a table edit action for the primitive action kind.
+  "Return an action map for a table edit action for the primitive action.
   Such an action is only valid if data editing is enabled for the database."
-  [table fields kind]
-  (let [field-param? (case kind
+  [table fields action-kw]
+  (let [field-param? (case action-kw
                        :table.row/create
                        #(not (:database_is_auto_increment %))
                        :table.row/delete
@@ -366,51 +372,45 @@
                           (filter field-param?)
                           (sort-by :position))]
     {:database_id (:database_id table)
-     :name        (name kind)
-     :kind        (u/qualified-name kind)
+     :name        (name action-kw)
+     :kind        (u/qualified-name action-kw)
      :table_id    (:id table)
-     :id          (table-primitive-action-id kind (:id table))
+     :id          (encoded-action-id action-kw (:id table))
      ;; true for all databases with data_editing_enabled
      ;; it is expected this fn will not be called if this is not the case
      :database_enabled_actions true
      :visualization_settings
-     {:name ""
-      :type "button"
+     {:name        ""
+      :type        "button"
       :description ""
-      :fields
-      (u/for-map [field field-params
-                  :let [field-name (:name field)]]
-        [field-name
-         {:hidden      false
-          :id          field-name}])}
+      :fields      (u/for-map [field field-params
+                               :let [field-name (:name field)]]
+                     [field-name {:id field-name, :hidden false}])}
      :parameters
      (->> (for [field field-params
                 :let [field-name (:name field)]]
-            {:id    field-name
-             :display-name (:display_name field)
-             :type (:base_type field)
-             :target [:variable [:template-tag field-name]]
-             :slug  field-name
-             :required (or (= :type/PK (:semantic_type field))
-                           (:database_required field))
+            {:id                field-name
+             :display-name      (:display_name field)
+             :type              (:base_type field)
+             :target            [:variable [:template-tag field-name]]
+             :slug              field-name
+             :required          (or (= :type/PK (:semantic_type field))
+                                    (:database_required field))
              :is-auto-increment (:database_is_auto_increment field)})
           vec)}))
 
 (defn select-primitive-action
-  "Returns the primitive action (map) for the given kind (operation, e.g :row/create) and table-id."
+  "Returns the primitive action (map) for the given kind (operation, e.g., :row/create) and table-id."
   [table-id kind]
-  (let [table      (t2/select-one :model/Table table-id)
-        fields     (t2/select :model/Field :table_id table-id)]
+  (let [table  (t2/select-one :model/Table table-id)
+        fields (t2/select :model/Field :table_id table-id)]
     (table-primitive-action table fields kind)))
 
 (defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-id]
-  (let [{:keys [action_id
-                visualization_settings]}
-        (t2/select-one [:model/DashboardCard :action_id :visualization_settings] dashcard-id)
-        {:keys [table_action]}
-        visualization_settings]
+  (let [{:keys [action_id] {:keys [table_action]} :visualization_settings}
+        (t2/select-one [:model/DashboardCard :action_id :visualization_settings] dashcard-id)]
     (cond
       action_id (select-action :id action_id)
       table_action
@@ -441,6 +441,7 @@
           :let [action-id (:action_id dashcard)
                 action
                 (or (get actions-by-id action-id)
+                    ;; Create a (fictitious) saved action that calls the given table action.
                     (when-some [{:keys [table_id kind]} (:table_action (:visualization_settings dashcard))]
                       (when-some [table (get table-by-id table_id)]
                         (table-primitive-action table (get fields-by-id table_id []) (keyword kind)))))]]

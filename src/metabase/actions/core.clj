@@ -48,7 +48,7 @@
   select-action
   select-actions
   table-primitive-action
-  unpack-table-primitive-action-id]
+  unpack-encoded-action-id]
  [metabase.actions.events
   publish-action-success!]
  [metabase.actions.scope
