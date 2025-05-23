@@ -72,7 +72,7 @@ describe("personal collections", () => {
         statusCode: 200,
         body: {
           data: [],
-          total: 1,
+          total: 2,
           limit: 0,
           offset: 0,
         },
@@ -80,7 +80,7 @@ describe("personal collections", () => {
 
       H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
-        .should("not.exist");
+        .should("exist");
     });
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
