@@ -159,7 +159,7 @@ describe("PublicSharingSettingsPage", () => {
     });
 
     await waitFor(() => {
-      const toasts = screen.getAllByLabelText("check icon");
+      const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(6);
     });
   });
