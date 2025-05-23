@@ -16,7 +16,6 @@ export function getIframeQueryWithoutDefaults(
   return optionsToHashParams(
     removeDefaultValueParameters(hashOptions, {
       theme: "light",
-      hide_download_button: false,
       background: true,
     }),
   );
