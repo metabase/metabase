@@ -4,8 +4,6 @@ import fetchMock from "fetch-mock";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
-  setupCurrentUserEndpoint,
-  setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
@@ -15,18 +13,14 @@ import {
   defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
-import {
-  createMockCard,
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import {
   type JwtMockConfig,
   MOCK_INSTANCE_URL,
   setupMockJwtEndpoints,
 } from "../mocks/sso";
+import { setupSdkState } from "../server-mocks/sdk-init";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: MOCK_INSTANCE_URL,
@@ -44,14 +38,7 @@ const setup = async (
     providerResponse: jwtProviderResponse,
   });
 
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "token-features": createMockTokenFeatures({
-        embedding_sdk: true,
-      }),
-    }),
-  );
-  setupCurrentUserEndpoint(createMockUser({ id: 1 }));
+  setupSdkState();
 
   setupCardEndpoints(MOCK_CARD);
   setupCardQueryEndpoints(MOCK_CARD, {} as any);
@@ -82,7 +69,7 @@ let consoleErrorSpy: jest.SpyInstance;
  */
 const expectErrorMessage = async (message: string) => {
   try {
-    const errors = consoleErrorSpy.mock.calls.map((call) => call[2]);
+    const errors = consoleErrorSpy.mock.calls.map((call) => call[0]);
     const errorMessages = errors.map((error) =>
       error instanceof Error ? error.message : error,
     );
@@ -138,7 +125,7 @@ describe("SDK auth errors", () => {
       await setup(authConfig);
 
       await expectErrorMessage(
-        `The "fetchRequestToken" must return an object with the shape {id:string, exp:number, iat:number, status:string}, got "not a json object" instead`,
+        'Your JWT server endpoint must return an object with the shape {jwt:string}, but instead received "not a json object"',
       );
     });
 

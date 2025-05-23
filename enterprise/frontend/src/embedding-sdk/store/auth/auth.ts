@@ -5,8 +5,8 @@ import type {
   MetabaseEmbeddingSessionToken,
 } from "embedding-sdk";
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
-import { bigErrorHeader, bigWarningHeader } from "embedding-sdk/lib/log-utils";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import api from "metabase/lib/api";
@@ -18,7 +18,7 @@ import type { Settings } from "metabase-types/api";
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
 
-import { jwtDefaultRefreshTokenFunction, throwResponseShapeError } from "./jwt";
+import { jwtDefaultRefreshTokenFunction } from "./jwt";
 import { openSamlLoginPopup } from "./saml";
 import { samlTokenStorage } from "./saml-token-storage";
 
@@ -62,36 +62,25 @@ export const initAuth = createAsyncThunk(
     const mbVersion = (siteSettings.payload as Settings)?.version?.tag;
     const sdkVersion = getEmbeddingSdkVersion();
 
-    if (mbVersion && sdkVersion !== "unknown") {
-      if (
-        !isSdkVersionCompatibleWithMetabaseVersion({
-          mbVersion,
-          sdkVersion,
-        })
-      ) {
-        console.warn(
-          ...bigWarningHeader("Detected SDK compatibility issue"),
-          `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- console log in case of issues
-          "Learn more at https://www.metabase.com/docs/latest/embedding/sdk/version",
-        );
-      }
+    if (
+      mbVersion &&
+      sdkVersion !== "unknown" &&
+      !isSdkVersionCompatibleWithMetabaseVersion({ mbVersion, sdkVersion })
+    ) {
+      // Optionally throw here if you want to block on version mismatch
+      // throw MetabaseError.SDK_VERSION_INCOMPATIBLE({ expected: mbVersion, actual: sdkVersion });
+      console.warn(
+        `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
+        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+        "Learn more at https://www.metabase.com/docs/latest/embedding/sdk/version",
+      );
     }
 
     if (!user.payload) {
-      // The refresh user thunk just returns null if it fails to fetch the user, it doesn't throw
-      const error = new Error(
-        "Failed to fetch the user, the session might be invalid.",
-      );
-      console.error(error);
-      throw error;
+      throw MetabaseError.USER_FETCH_FAILED();
     }
     if (!siteSettings.payload) {
-      const error = new Error(
-        "Failed to fetch the site settings, the session might be invalid.",
-      );
-      console.error(error);
-      throw error;
+      throw MetabaseError.USER_FETCH_FAILED(); // or SITE_SETTINGS_FETCH_FAILED if you have one
     }
   },
 );
@@ -102,60 +91,40 @@ export const refreshTokenAsync = createAsyncThunk(
     url: MetabaseAuthConfig["metabaseInstanceUrl"],
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
-    // The SDK user can provide a custom function to refresh the token.
     const customGetRefreshToken =
       getFetchRefreshTokenFn(getState() as SdkStoreState) ?? null;
 
-    // # How does the error handling work?
-    // This is an async thunk, thunks _by design_ can fail and no error will be shown on the console (it's the reducer that should handle the reject action)
-    // The following lines are wrapped in a try/catch block that will catch any errors thrown, log them to the console as a big red errors, and re-throw them to make the thunk reject
-    // In this way we also support standard thrown Errors in the custom fetchRequestToken user provided function
+    const session = await getRefreshToken(url, customGetRefreshToken);
 
-    try {
-      const session = await getRefreshToken(url, customGetRefreshToken);
-      const source = customGetRefreshToken
-        ? '"fetchRequestToken" function'
-        : "JWT server endpoint";
-
-      if (!session || typeof session !== "object") {
-        throwResponseShapeError(customGetRefreshToken);
-      }
-      if ("status" in session && session.status !== "ok") {
-        if ("message" in session && typeof session.message === "string") {
-          // For some errors, the BE gives us a message that explains it
-          throw new Error(session.message);
-        }
-        if (typeof session.status === "string") {
-          // other times it just returns an error code
-          throw new Error(
-            `Failed to refresh token, got status: ${session.status}`,
-          );
-        }
-      }
-      // Lastly if we don't have an error message or status, check if we actually got the session ID and expiration
-      if (!sessionSchema.isValidSync(session)) {
-        throw new Error(
-          `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
-        );
-      }
-      return session;
-    } catch (exception: unknown) {
-      // The host app may have a lot of logs (and the sdk logs a lot too), so we
-      // make a big red error message to make it visible as this is 90% a blocking error
-      console.error(...bigErrorHeader("Failed to get auth session"), exception);
-
-      throw exception;
+    if (!session || typeof session !== "object") {
+      throw MetabaseError.INVALID_SESSION_OBJECT({
+        expected: "{jwt: string}",
+        actual: JSON.stringify(session),
+      });
     }
+    if ("status" in session && session.status !== "ok") {
+      if ("message" in session && typeof session.message === "string") {
+        throw MetabaseError.INVALID_SESSION_OBJECT({
+          expected: "{jwt: string}",
+          actual: session.message,
+        });
+      }
+      if (typeof session.status === "string") {
+        throw MetabaseError.INVALID_SESSION_OBJECT({
+          expected: "{jwt: string}",
+          actual: session.status,
+        });
+      }
+    }
+    if (!sessionSchema.isValidSync(session)) {
+      throw MetabaseError.INVALID_SESSION_SCHEMA({
+        expected: "{id:string, exp:number, iat:number, status:string}",
+        actual: JSON.stringify(session),
+      });
+    }
+    return session;
   },
 );
-
-const safeStringify = (value: unknown) => {
-  try {
-    return JSON.stringify(value);
-  } catch (e) {
-    return value;
-  }
-};
 
 const getRefreshToken = async (
   url: MetabaseAuthConfig["metabaseInstanceUrl"],
@@ -163,19 +132,17 @@ const getRefreshToken = async (
     | MetabaseAuthConfig["fetchRequestToken"]
     | null = null,
 ) => {
-  // GET /auth/sso with headers
-  const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
-  const urlResponseJson = await urlResponse.json();
-
-  // For the SDK, both SAML and JWT endpoints return {url: [...], method: "saml" | "jwt"}
-  // when the headers are passed
-  const { method, url: responseUrl, hash } = urlResponseJson;
-
+  let urlResponseJson;
+  try {
+    urlResponseJson = await connectToInstanceAuthSso(url);
+  } catch (e) {
+    console.error("connectToInstanceAuthSso threw:", e);
+    throw e;
+  }
+  const { method, url: responseUrl, hash } = urlResponseJson || {};
   if (method === "saml") {
-    // The URL should point to the SAML IDP
     return await openSamlLoginPopup(responseUrl);
   }
-
   if (method === "jwt") {
     return jwtDefaultRefreshTokenFunction(
       responseUrl,
@@ -184,6 +151,9 @@ const getRefreshToken = async (
       customFetchRequestToken,
     );
   }
+  throw new Error(
+    `Unknown or missing method: ${method}, response: ${JSON.stringify(urlResponseJson)}`,
+  );
 };
 
 const sessionSchema = Yup.object({
@@ -192,6 +162,28 @@ const sessionSchema = Yup.object({
   // We should also receive `iat` and `status` in the response, but we don't actually need them
   // as we don't use them, so we don't throw an error if they are missing
 });
+
+async function connectToInstanceAuthSso(url: string) {
+  try {
+    const urlResponse = await fetch(`${url}/auth/sso`, getSdkRequestHeaders());
+    if (!urlResponse.ok) {
+      throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
+        instanceUrl: url,
+        status: urlResponse.status,
+      });
+    }
+    return await urlResponse.json();
+  } catch (e) {
+    // If the error is already a MetabaseError, just rethrow
+    if (e instanceof MetabaseError.MetabaseError) {
+      throw e;
+    }
+    throw MetabaseError.CANNOT_CONNECT_TO_INSTANCE({
+      instanceUrl: url,
+      status: (e as any)?.status,
+    });
+  }
+}
 
 export function getSdkRequestHeaders(hash?: string) {
   return {

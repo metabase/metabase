@@ -6,7 +6,7 @@ class TypedStorage<T> {
   // Get data with proper typing
   get(): T | null {
     const data = localStorage.getItem(this.key);
-    if (data === null) {
+    if (!data) {
       return null;
     }
 
