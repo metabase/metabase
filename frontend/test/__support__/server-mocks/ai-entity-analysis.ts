@@ -7,9 +7,3 @@ export function setupAnalyzeChartEndpoint(response: AIEntityAnalysisResponse) {
     overwriteRoutes: true,
   });
 }
-
-export function setupAnalyzeDashboardEndpoint(
-  response: AIEntityAnalysisResponse,
-) {
-  fetchMock.post("path:/api/ee/ai-entity-analysis/analyze-dashboard", response);
-}
