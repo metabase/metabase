@@ -59,7 +59,7 @@ describe.each(["jwt", "saml"] as const)(
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Unable to connect to instance at http://oisin-is-really-cool",
+        "Unable to connect to instance at http://oisin-is-really-cool (status: 500)",
       );
     });
   },
