@@ -453,3 +453,33 @@
               :ident        (lib/native-ident "PRICE" (:entity-id card))
               :lib/source   :source/card}]
             (lib/returned-columns query)))))
+
+(deftest ^:parallel validate-native-query-test
+  (let [cases [["SELECT {{mb.time_grouping(\"unit\", \"created_at\")}} as unit FROM ORDERS"
+                []]
+               ["SELECT {{mb.foobar(\"foo\")}} as foo FROM ORDERS"
+                ["Unknown function: mb.foobar"]]
+               ["SELECT {{mb.time_grouping(\"unit\", \"created_at\")}} as unit, {{unit}} as filter FROM ORDERS"
+                ["Parameter unit is used as both a time grouping and a variable. This is not allowed."]]
+               ["SELECT {{mb.time_grouping(\"foo\", \"created_at\")}} as unit FROM ORDERS"
+                []]
+               ["SELECT {{mb.time_grouping(\"unit\", \"created_at\")}} as unit1, {{mb.time_grouping(\"unit\", \"updated_at\")}} as unit2 FROM ORDERS"
+                []]
+               ["SELECT {{mb.time_grouping(\"unit\", \"created_at\")}} as unit, {{other}} as something FROM ORDERS"
+                []]
+               ["SELECT {{mb.time_grouping(unit, \"created_at\")}} as unit FROM ORDERS"
+                ["Syntax error in: mb.time_grouping(unit, \"created_at\")"]]
+               ["SELECT {{mb.time_grouping(\"unit\", created_at)}} as unit FROM ORDERS"
+                ["Syntax error in: mb.time_grouping(\"unit\", created_at)"]]
+               ["SELECT {{mb.time_grouping(\"unit\")}} as unit FROM ORDERS"
+                ["mb.time_grouping got too few parameters.  Got 1, expected at least 2."]]
+               ["SELECT {{mb.time_grouping('unit', 'created_at')}} as unit FROM ORDERS"
+                []]
+               ["SELECT count(*) as c, {{mb.time_grouping(\"unit\", \"created_\"}} as unit FROM ORDERS group by unit"
+                ["Syntax error in: mb.time_grouping(\"unit\", \"created_\""]]
+               ["SELECT {{mb.time_grouping}} {{mb.time_grouping}} FROM ORDERS"
+                ["mb.time_grouping should be used as a function call, e.g. mb.time_grouping('arg1', ...)"
+                 "mb.time_grouping should be used as a function call, e.g. mb.time_grouping('arg1', ...)"]]]]
+    (doseq [[query expected] cases]
+      (is (=? expected (-> {:stages [{:native query}]}
+                           lib.native/validate-native-query))))))

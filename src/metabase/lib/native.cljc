@@ -252,11 +252,11 @@
 
                       (< args-count args-min)
                       (str function-name " got too few parameters.  Got "
-                           args-count ", expected at least " args-min)
+                           args-count ", expected at least " args-min ".")
 
                       (> args-count args-max)
                       (str function-name " got too many parameters.  Got "
-                           args-count ", expected at most " args-max)
+                           args-count ", expected at most " args-max ".")
 
                       (not current)
                       (str "Invalid call to function: " function-name)
