@@ -714,9 +714,9 @@ See the [database limitations](./expressions/converttimezone.md#limitations) for
 
 Converts a datetime string to a datetime.
 
-Syntax: `datetime((column)` 
+Syntax: `datetime(column)` 
 
-Example: `datetime("2025-03-20 12:45:04)`
+Example: `datetime("2025-03-20 12:45:04")`
 
 `datetime` supports the following datetime string formats:
 
