@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-editing.api
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.undo :as undo]
    [metabase.actions.core :as actions]
@@ -10,6 +11,8 @@
    [metabase.driver :as driver]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -246,13 +249,16 @@
         include?    #(not (contains? field-names (:slug %)))]
     (update action :parameters #(some->> % (filterv include?)))))
 
-;; Really we want to generalize this to handle also:
-;; - Row actions on non-dashcards, e.g. directly on tables or dashcards.
-;; - Legacy, packed, primitive, and "new" saved actions.
-
-(defn- execute-dashcard-row-action-on-model-action!
+(defn- execute-saved-action!
   "Implementation handling a sub-sub-case."
-  [action-id dashcard-id pk params]
+  [action input]
+  (let [param-id (u/index-by (some-fn :slug :id) :id (:parameters action))
+        provided (update-keys input #(api/check-400 (param-id (name %)) "Unexpected parameter provided"))]
+    (actions/execute-action! action provided)))
+
+(defn- execute-dashcard-row-action-on-saved-action!
+  "Implementation handling a sub-sub-case."
+  [action-id dashcard-id pk params & [_mapping]]
   (let [action (-> (actions/select-action :id (parse-long action-id) :archived false)
                    (t2/hydrate :creator)
                    api/read-check)
@@ -276,7 +282,7 @@
 
 (defn- execute-dashcard-row-action-on-primitive-action!
   "Implementation handling a sub-sub-case."
-  [action-kw scope dashcard-id pk input]
+  [action-kw scope dashcard-id pk input & [_mapping]]
   ;; TODO flatten this into a single query
   (let [card-id   (api/check-404 (t2/select-one-fn :card_id [:model/DashboardCard :card_id] dashcard-id))
         table-id  (api/check-404 (t2/select-one-fn :table_id [:model/Card :table_id] card-id))
@@ -296,7 +302,7 @@
    {:keys [pk params]}   :- [:map
                              [:pk :any]
                              [:params :any]]]
-  (execute-dashcard-row-action-on-model-action! action-id dashcard-id pk params))
+  (execute-dashcard-row-action-on-saved-action! action-id dashcard-id pk params))
 
 (api.macros/defendpoint :get "/tmp-action"
   "Returns all actions across all tables and models"
@@ -325,7 +331,7 @@
               :let [fields (fields-by-table (:id t))]]
           (actions/table-primitive-action t fields op))
 
-        model-actions
+        saved-actions
         (for [a (actions/select-actions nil :archived false)]
           (select-keys a [:name
                           :model_id
@@ -334,45 +340,103 @@
                           :id
                           :visualization_settings
                           :parameters]))]
-    {:actions (vec (concat model-actions table-actions))}))
+    {:actions (vec (concat saved-actions table-actions))}))
 
-(defn- parse-action-id [s]
-  ;; id must be strictly negative or positive, we'll just let 0 fall through as a keyword.
-  (if (re-matches #"[+-]?[1-9][0-9]*" s)
-    (parse-long s)
-    (keyword s)))
+(mr/def ::unified-action.base
+  [:or
+   [:map {:closed true}
+    [:action-id ms/PositiveInt]]
+   [:map {:closed true}
+    [:action-kw :keyword]
+    [:table-id {:optional true} ms/PositiveInt]]])
 
-(defn- unpack-action-id [s]
-  (let [packed-id (parse-action-id s)]
-    (cond
-      (keyword? packed-id) {:primitive-action packed-id}
-      (pos-int? packed-id) {:model-action packed-id}
-      (neg-int? packed-id)
-      (let [[op param] (actions/unpack-table-primitive-action-id packed-id)]
-        (case op
-          (:table.row/create :table.row/update :table.row/delete)
-          {:primitive-action op, :input {:table-id param}}
+(mr/def ::unified-action
+  [:or
+   ::unified-action.base
+   [:map {:closed true}
+    [:row-action ::unified-action.base]
+    ;; TODO type our mappings
+    [:mapping :map]
+    ;; TODO generalize so we can support grids outside of dashboards
+    [:dashcard-id ms/PositiveInt]]])
 
-          :dashcard/card-action   {:dashcard-id param}
-          ;; in these cases, we'll need to get the dashcard-id from the scope (or die trying)
-          :dashcard/header-action {:dashcard-action-id param}
-          :dashcard/row-action    {:dashcard-action-id param}
-          (throw (ex-info (tru "Unsupported action") {:status-code 404, :op op, :param param})))))))
+(mu/defn- fetch-unified-action :- ::unified-action
+  "Resolve various types of action id into a semantic map which is easier to dispatch on."
+  [scope :- ::types/scope.raw
+   raw-id :- [:or :string ms/NegativeInt ms/PositiveInt]]
+  (cond
+    (pos-int? raw-id) {:action-id raw-id}
+    (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
+                        (cond
+                          (isa? op :table.row/common)
+                          {:action-kw op, :table-id param}
+                          :else
+                          (throw (ex-info "Execution not supported for given encoded action" {:status    400
+                                                                                              :action-id raw-id
+                                                                                              :op        op
+                                                                                              :param     param}))))
+    (string? raw-id) (if-let [[dashcard-id nested--id] (re-matches #"^dashcard:(.*):(.*)$" raw-id)]
+                       (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) dashcard-id)
+                             dashcard    (api/check-500 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
+                             actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
+                             ;; TODO actual_id should get renamed to id at some point in the FE
+                             viz-action  (first (filter (comp #{nested--id} #(or (:actual_id %) (:id %))) actions))
+                             ;; TODO id should get renamed to action_id at some point as well
+                             inner-id    (or (:action_id viz-action) (:id viz-action))
+                             unified     (fetch-unified-action scope inner-id)
+                             action-type (:type viz-action "row-action")
+                             mapping     (:parameterMappings viz-action)]
+                         (assert (:enabled viz-action) "Cannot call disabled actions")
+                         (case action-type
+                           "row-action" {:row-action unified, :mapping mapping, :dashcard-id dashcard-id}))
+                       ;; Not a fancy encoded string, it must refer directly to a primitive.
+                       {:action-kw (keyword raw-id)})
+    :else
+    (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
-(api.macros/defendpoint :post "/action/execute"
+(api.macros/defendpoint :post "/action/v2/execute"
   " ** The Grand Unification ** "
   [{}
    {}
    {:keys [action-id scope input]}
    :- [:map
-       [:action-id [:or :string :int]]
-       [:scope ::types/scope.raw]
-       [:input :map]]]
-  (let [action-id-map (unpack-action-id action-id)
-        scope         (actions/hydrate-scope scope)]
+       [:action-id [:or :string ms/NegativeInt ms/PositiveInt]]
+       [:scope     ::types/scope.raw]
+       [:input     :map]]]
+  (let [scope   (actions/hydrate-scope scope)
+        unified (fetch-unified-action scope action-id)]
     (cond
-      (:dashcard/row-action action-id-map)
-      1 #_(execute-dashcard-row-action-on-model-action! x))))
+      (:action-id unified)
+      (let [action (api/read-check (actions/select-action :id (:action-id unified) :archived false))]
+        (execute-saved-action! action input))
+      (:action-kw unified)
+      (let [action-kw (keyword (:action-kew unified))]
+        ;; Weird magic currying we've been doing implicitly.
+        (if (and (isa? action-kw :table.row/common) (:table-id unified))
+          (actions/perform-action! action-kw scope {:table-id (:table-id unified), :row input})
+          (actions/perform-action! action-kw scope input)))
+      (:row-action unified)
+      ;; use flat namespace for now, probably want to separate form inputs from pks
+      (let [row-action  (:row-action unified)
+            ;; will need to generalize this once we can use actions on fullscreen tables / editables / questions.
+            dashcard-id (:dashcard-id unified)
+            pk          input
+            saved-id    (:action-id row-action)
+            action-kw   (:action-kw row-action)
+            mapping     (:mapping row-action)]
+        (cond
+          saved-id
+          (execute-dashcard-row-action-on-saved-action! saved-id dashcard-id pk input mapping)
+          action-kw
+          (let [table-id (:table-id)]
+            ;; Weird magic currying we've been doing implicitly.
+            (if (and table-id (isa? action-kw :table.row/common))
+              (let [input {:table-id table-id, :row input}
+                    pk    input]
+                (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pk input mapping))
+              (execute-dashcard-row-action-on-primitive-action! action-kw scope dashcard-id pk input mapping)))))
+      :else
+      (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
