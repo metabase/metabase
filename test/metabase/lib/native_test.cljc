@@ -482,4 +482,5 @@
                  "mb.time_grouping should be used as a function call, e.g. mb.time_grouping('arg1', ...)"]]]]
     (doseq [[query expected] cases]
       (is (=? expected (-> {:stages [{:native query}]}
-                           lib.native/validate-native-query))))))
+                           lib.native/validate-native-query))
+          (str "Did not get appropriate errors for: " query)))))
