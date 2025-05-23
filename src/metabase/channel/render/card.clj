@@ -24,6 +24,7 @@
   [:map
    [:channel.render/include-buttons?     {:description "default: false", :optional true} :boolean]
    [:channel.render/include-title?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-href?        {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description? {:description "default: false", :optional true} :boolean]])
 
 (defn- card-href
@@ -56,7 +57,8 @@
                        [:td {:style (style/style {:padding :0
                                                   :margin  :0})}
                         [:a {:style  (style/style (style/header-style))
-                             :href   title-href
+                             :href   (when (:channel.render/include-href? options)
+                                       title-href)
                              :target "_blank"
                              :rel    "noopener noreferrer"}
                          (h card-name)]]
@@ -195,7 +197,8 @@
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                         [:div
-                         [:a {:href        attachment-href
+                         [:a {:href        (when (:channel.render/include-href? options)
+                                             attachment-href)
                               :target      "_blank"
                               :rel         "noopener noreferrer"
                               :style       (style/style
@@ -232,7 +235,8 @@
     options :- [:maybe ::options]]
    (log/with-context {:card_id (:id card)}
      (let [options                       (merge {:channel.render/include-title?       true
-                                                 :channel.render/include-description? true}
+                                                 :channel.render/include-description? true
+                                                 :channel.render/include-href?        (not= :table-editable (:display card))}
                                                 options)
            {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
        {:attachments attachments

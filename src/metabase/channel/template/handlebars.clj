@@ -1,5 +1,6 @@
 (ns metabase.channel.template.handlebars
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.channel.template.handlebars-helper :as handlebars-helper]
    [metabase.config :as config]
@@ -46,6 +47,24 @@
                  (handlebars-helper/register-helpers @default-hbs new-default-helpers)
                  (catch Exception e
                    (log/warn e "Error reloading default helpers"))))))
+
+(defn- syntax-error? [^Throwable e]
+  (and (instance? com.github.jknack.handlebars.HandlebarsException e)
+       (some #(and (= "com.github.jknack.handlebars.internal.HbsErrorReporter"
+                      (.getClassName ^StackTraceElement %))
+                   (= "syntaxError"
+                      (.getMethodName ^StackTraceElement %)))
+             (.getStackTrace e))))
+
+(defn humanize-error-message
+  "Humanize handlebars error messages"
+  [e]
+  (let [error-message (ex-message e)]
+    (if (syntax-error? e)
+      ;; filename:line:column:message
+      ;; https://github.com/jknack/handlebars.java/blob/2f65787/handlebars/src/main/java/com/github/jknack/handlebars/internal/HbsErrorReporter.java#L60
+      (or (some-> error-message (str/split #":" 4) last str/trim) error-message)
+      error-message)))
 
 (defn render
   "Render a template with a context."

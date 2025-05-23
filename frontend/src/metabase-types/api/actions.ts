@@ -1,3 +1,5 @@
+import type { FieldId } from "metabase-types/api/field";
+
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
@@ -183,6 +185,7 @@ export interface FieldSettings {
   width?: Size;
   height?: number;
   hasSearch?: boolean;
+  readonly?: boolean;
 }
 
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
@@ -214,3 +217,32 @@ export type GetPublicAction = Pick<
   WritebackActionBase,
   "id" | "name" | "public_uuid" | "model_id"
 >;
+
+type RowActionFieldSettingsBase = {
+  parameterId: ParameterId;
+  visibility?: "readonly" | "hidden";
+};
+
+export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {
+  sourceType: "ask-user"; // default - ask user, cannot be hidden
+};
+
+export type RowDataRowActionFieldSettings = RowActionFieldSettingsBase & {
+  sourceType: "row-data"; // get data from row
+  sourceValueTarget: FieldId;
+};
+
+export type ConstantRowActionFieldSettings = RowActionFieldSettingsBase & {
+  sourceType: "constant";
+  value: string;
+};
+
+export type RowActionFieldSettings =
+  | UserProvidedRowActionFieldSettings
+  | RowDataRowActionFieldSettings
+  | ConstantRowActionFieldSettings;
+
+export type RowActionFieldSourceType = RowActionFieldSettings["sourceType"];
+
+export type PartialRowActionFieldSettings = RowActionFieldSettingsBase &
+  Partial<RowActionFieldSettings>;

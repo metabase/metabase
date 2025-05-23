@@ -233,6 +233,7 @@ const getFormField = (
     // in this case we rely on required settings of parameter
     optional: fieldSettings.required === false || parameter.required === false,
     field: fieldSettings.field,
+    disabled: fieldSettings.readonly,
   };
 
   if (inputTypeHasOptions(fieldSettings.inputType)) {

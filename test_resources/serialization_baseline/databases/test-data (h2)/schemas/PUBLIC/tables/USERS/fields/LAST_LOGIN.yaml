@@ -38,5 +38,8 @@ serdes/meta:
   model: Table
 - id: LAST_LOGIN
   model: Field
+database_default: null
 database_indexed: false
+database_is_generated: false
+database_is_nullable: false
 database_partitioned: null
