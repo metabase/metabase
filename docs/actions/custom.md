@@ -10,12 +10,20 @@ Write SQL to update records in your databases.
 
 ## Creating a custom action
 
-> You must be in a group with Native query editing access to create an action
+> You must be in a group with Native query editing access to create an action.
 
 There are two ways to create a custom action:
 
-1. Click the **+ New** > **Action**. When you save your action, you'll be prompted to associate that action with a model. (NOTE: the **Action** option will only show up in the **+ New** menu if you've first created, or have access to, a [model](../data-modeling/models.md) in Metabase.)
-2. Via the model detail page: from a model, click on the **info** button in the upper right. In the upper right of the sidebar, click **Model detail** > **Actions** > **New action**.
+From the command palette:
+
+1. Hit command-K (mac) or ctrl-K (windows) to open the command palette.
+2. Search for **New Action**.
+
+From a model:
+
+1. First, [create a model](../data-modeling/models.md).
+2. Visit the model and click on the **info** button.
+3. Click the **Actions** tab.
 
 In the action editor, you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table. See [Example actions](#example-custom-actions).
 
