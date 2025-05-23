@@ -39,7 +39,7 @@
 (defn- fresh-function-tag [function-name args]
   (case function-name
     "mb.time_grouping" (let [param-name (first args)]
-                         (when (string? param-name)
+                         (when (and (string? param-name) (= (count args) 2))
                            {:type :temporal-unit
                             :name param-name
                             :id (str (random-uuid))}))
@@ -202,7 +202,7 @@
 
 (def tag-type->display-name
   {:temporal-unit "time grouping"
-   :text "text variable"
+   :text "variable"
    :card "card reference"
    :snippet "snippet"})
 
@@ -223,16 +223,17 @@
               current          (some-> matched-name fresh-tag finish-tag)
               error            (cond
                                  (not current)
-                                 (format "Syntax error in: %s" tag-name)
+                                 (str "Syntax error in: " tag-name)
 
                                  (and prev (not= (:type prev) (:type current)))
-                                 (format "Parameter %s is used as both a %s and a %s. This is not allowed."
-                                         matched-name
-                                         (-> prev :type tag-type->display-name)
-                                         (-> current :type tag-type->display-name))
+                                 (str "Parameter " matched-name
+                                      " is used as both a " (-> prev :type tag-type->display-name)
+                                      " and a " (-> current :type tag-type->display-name)
+                                      ". This is not allowed.")
 
                                  (function-expected-args matched-name)
-                                 (format "%s should be used as a function call, e.g. %s('arg1', ...)" matched-name matched-name))]
+                                 (str matched-name " should be used as a function call, e.g. "
+                                      matched-name "('arg1', ...)"))]
           (recur (cond-> found
                    (and current (not error)) (assoc matched-name current))
                  (cond-> errors
@@ -240,32 +241,46 @@
                  more))
         [{:type ::lib.parse/function-param
           :name function-name
-          :args args}] (let [new-tag (fresh-function-tag function-name args)
-                             args-count (count args)
-                             [args-min args-max] (function-expected-args function-name)
-                             error (cond
-                                     (not new-tag)
-                                     (format "Unrecognized function: %s" function-name)
+          :args args}]
+        (let [current (fresh-function-tag function-name args)
+              args-count (count args)
+              [args-min args-max] (function-expected-args function-name)
+              prev (some-> current :name found)
+              error (cond
+                      (not args-min)
+                      (str "Unknown function: " function-name)
 
-                                     (< args-count args-min)
-                                     (format "Too few arguments given to %s" function-name)
+                      (< args-count args-min)
+                      (str function-name " got too few parameters.  Got "
+                           args-count ", expected at least " args-min)
 
-                                     (> args-count args-max)
-                                     (format "Too many arguments given to %s" function-name))]
-                         (recur (cond-> found
-                                  (and new-tag (not error)) (assoc (:name new-tag) new-tag))
-                                (cond-> errors
-                                  error (conj error))
-                                more))
+                      (> args-count args-max)
+                      (str function-name " got too many parameters.  Got "
+                           args-count ", expected at most " args-max)
+
+                      (not current)
+                      (str "Invalid call to function: " function-name)
+
+                      (and prev (not= (:type prev) (:type current)))
+                      (str "Parameter " (:name current)
+                           " is used as both a " (-> prev :type tag-type->display-name)
+                           " and a " (-> current :type tag-type->display-name)
+                           ". This is not allowed."))]
+          (recur (cond-> found
+                   (and current (not error)) (assoc (:name current) current))
+                 (cond-> errors
+                   error (conj error))
+                 more))
         [{:type ::lib.parse/optional
           :contents contents}] (recur found errors (apply conj more contents))))))
 
-(defn validate-native-query-sql
+(defn validate-native-query
   "Validates the syntax of a native query.
 
-  Specifically takes in a sql string, possibly with metabase parameters."
-  [sql]
-  (validate-function-tags sql))
+  Native in this sense means a pMBQL query with a first stage that is a native query."
+  [query]
+  (let [sql (get-in query [:stages 0 :native])]
+    (validate-function-tags sql)))
 
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
