@@ -165,8 +165,8 @@ export const SMTPConnectionForm = () => {
   }, [settingsDetails]);
 
   return (
-    <Flex justify="space-between">
-      <Stack gap="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
+    <Flex justify="space-between" pl="lg">
+      <Stack gap="sm" w="25rem">
         <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
         <FormProvider
           initialValues={initialValues}
