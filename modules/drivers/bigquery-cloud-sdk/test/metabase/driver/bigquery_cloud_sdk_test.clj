@@ -339,16 +339,16 @@
                   :base-type :type/Integer,
                   :database-position 2,
                   :nfc-path ["r"]}
-                 {:name "b",
-                  :database-type "STRING",
-                  :base-type :type/Text,
-                  :database-position 2,
-                  :nfc-path ["r"]}
                  {:name "aa",
                   :database-type "INTEGER",
                   :base-type :type/Integer,
                   :database-position 2,
                   :nfc-path ["r" "rr"]}
+                 {:name "b",
+                  :database-type "STRING",
+                  :base-type :type/Text,
+                  :database-position 2,
+                  :nfc-path ["r"]}
                  {:name "id"}
                  {:name "name"}
                  {:name "r"
