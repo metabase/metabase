@@ -230,3 +230,49 @@
                                   #_types          (into-array String ["TABLE"]))]
        ;; if the ResultSet returns anything we know the catalog has been created
        (.next rset)))))
+
+(defn drop-if-exists-and-create-roles!
+  [driver details roles]
+  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (doseq [statement [(format "DROP ROLE IF EXISTS %s;" role-name)
+                         (format "CREATE ROLE %s;" role-name)]]
+        (jdbc/execute! spec [statement] {:transaction? false})))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        wh-name (:warehouse details)
+        db-name (sql.tx/qualify-and-quote driver (:db details))
+        schema-name (format "%s.\"PUBLIC\"" db-name)]
+    (doseq [[role-name table-perms] roles]
+      (doseq [statement [(format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" wh-name role-name)
+                         (format "GRANT USAGE ON DATABASE %s TO ROLE %s" db-name role-name)
+                         (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" schema-name role-name)]]
+        (jdbc/execute! spec [statement] {:transaction? false}))
+      (doseq [[table-name _perms] table-perms]
+        (jdbc/execute! spec
+                       (format "GRANT SELECT ON TABLE %s TO ROLE %s" table-name role-name)
+                       {:transaction? false})))))
+
+(defn grant-roles-to-user!
+  [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (jdbc/execute! spec
+                     [(format "GRANT ROLE %s TO USER \"%s\"" role-name user-name)]
+                     {:transaction? false}))))
+
+(defmethod tx/create-and-grant-roles! :snowflake
+  [driver details roles user-name _default-role]
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (grant-roles-to-user! driver details roles user-name))
+
+(defmethod tx/drop-roles! :snowflake
+  [driver details roles _user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (jdbc/execute! spec
+                     [(format "DROP ROLE IF EXISTS %s;" role-name)]
+                     {:transaction? false}))))

@@ -48,19 +48,11 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(defn drop-if-exists-and-create-db!
-  "Drop a MySQL database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-    (doseq [sql [(format "DROP DATABASE IF EXISTS %s;" db-name)
-                 (format "CREATE DATABASE %s;" db-name)]]
-      (jdbc/execute! spec [sql]))))
-
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
                   "when returning them like we asked")
-      (drop-if-exists-and-create-db! "all_zero_dates")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "all_zero_dates")
       ;; Create Table & add data
       (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
             spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
@@ -82,8 +74,8 @@
 (deftest multiple-schema-test
   (testing "Make sure that we filter databases (schema) with :db or :dbname (#50072)"
     (mt/test-driver :mysql
-      (drop-if-exists-and-create-db! "dbone")
-      (drop-if-exists-and-create-db! "dbtwo")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "dbone")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "dbtwo")
       (doseq [dbname ["dbone" "dbtwo"]
               :let [details (tx/dbdef->connection-details :mysql :db {:database-name dbname})
                     spec    (sql-jdbc.conn/connection-details->spec :mysql details)]]
@@ -334,7 +326,7 @@
 (deftest system-versioned-tables-test
   (mt/test-driver :mysql
     (testing "system versioned tables appear during a sync"
-      (drop-if-exists-and-create-db! "versioned_tables")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "versioned_tables")
       ;; Create Table & add data
       (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
             spec    (sql-jdbc.conn/connection-details->spec :mysql details)
@@ -502,7 +494,7 @@
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
-        (drop-if-exists-and-create-db! "composite_pks_test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "composite_pks_test")
         (with-redefs [table-rows-sample/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
                 spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
@@ -658,7 +650,7 @@
 (deftest action-error-handling-test
   (mt/test-driver :mysql
     (testing "violate not-null constraints with multiple columns"
-      (drop-if-exists-and-create-db! "not_null_constraint_on_multiple_cols")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "not_null_constraint_on_multiple_cols")
       (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "not_null_constraint_on_multiple_cols"})]
         (doseq [stmt ["CREATE TABLE IF NOT EXISTS mytable (
                       id INT PRIMARY KEY,
@@ -754,7 +746,7 @@
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
       (testing "`table-privileges` should return the correct data for current_user and role privileges"
-        (drop-if-exists-and-create-db! "table_privileges_test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "table_privileges_test")
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
               get-privileges   (fn []

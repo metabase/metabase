@@ -97,37 +97,6 @@
            (sql.qp/format-honeysql :postgres <>)
            (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
 
-(defn drop-if-exists-and-create-db!
-  "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name & [just-drop]]
-  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
-    ;; kill any open connections
-    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
-                       FROM pg_stat_activity
-                       WHERE pg_stat_activity.datname = ?;" db-name])
-    ;; create the DB
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
-                   {:transaction? false})
-    (when (not= just-drop :pg/just-drop)
-      (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
-                     {:transaction? false}))))
-
-(defn with-temp-database-fn
-  "Creates a new database (dropping first if necessary), runs `f`, then drops the db"
-  [db-name f]
-  (try
-    (drop-if-exists-and-create-db! db-name)
-    (f)
-    (finally
-      (drop-if-exists-and-create-db! db-name :pg/just-drop))))
-
-(defmacro with-temp-database!
-  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
-  [db-name & body]
-  `(with-temp-database-fn
-     ~db-name
-     (fn [] ~@body)))
-
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
   [spec statements]
@@ -222,7 +191,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (drop-if-exists-and-create-db! "hyphen-names-test")
+        (tx/drop-if-exists-and-create-db! driver/*driver*  "hyphen-names-test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
@@ -292,7 +261,7 @@
   (mt/test-driver :postgres
     (testing (str "Check that we properly fetch materialized views. As discussed in #2355 they don't come back from "
                   "JDBC `DatabaseMetadata` so we have to fetch them manually.")
-      (drop-if-exists-and-create-db! "materialized_views_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "materialized_views_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "materialized_views_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
@@ -305,7 +274,7 @@
 (deftest foreign-tables-test
   (mt/test-driver :postgres
     (testing "Check that we properly fetch foreign tables."
-      (drop-if-exists-and-create-db! "fdw_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "fdw_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "fdw_test"})]
         ;; You need to set `MB_POSTGRESQL_TEST_USER` in order for this to work apparently.
         ;;
@@ -343,7 +312,7 @@
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "dropped_views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (drop-if-exists-and-create-db! "dropped_views_test")
+        (tx/drop-if-exists-and-create-db! driver/*driver*  "dropped_views_test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
@@ -376,7 +345,7 @@
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         ;; create the postgres DB
-        (drop-if-exists-and-create-db! db-name)
+        (tx/drop-if-exists-and-create-db! driver/*driver*  db-name)
         (let [major-v (sql-jdbc.execute/do-with-connection-with-options
                        :postgres
                        spec
@@ -572,7 +541,7 @@
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
-      (drop-if-exists-and-create-db! "describe-json-with-schema-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "describe-json-with-schema-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-with-schema-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -597,7 +566,7 @@
 (deftest describe-funky-name-table-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
-      (drop-if-exists-and-create-db! "describe-json-funky-names-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "describe-json-funky-names-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-funky-names-test"
                                                                  :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -745,8 +714,8 @@
                           {:aggregation [[:count]]
                            :filter      [:= $ip "192.168.1.1"]}))))))))
 
-(defn- do-with-money-test-db [thunk]
-  (drop-if-exists-and-create-db! "money_columns_test")
+(defn- do-with-money-test-db! [thunk]
+  (tx/drop-if-exists-and-create-db! driver/*driver*  "money_columns_test")
   (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
     (sql-jdbc.execute/do-with-connection-with-options
      :postgres
@@ -778,7 +747,7 @@
                (is (= [1000.00M]
                       (row-thunk))))))))
 
-      (do-with-money-test-db
+      (do-with-money-test-db!
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
            (is (= "SELECT AVG(bird_prices.price::numeric) AS avg FROM bird_prices"
@@ -834,7 +803,7 @@
   One of those types has a space in the name, which is legal when quoted, to make sure we handle such wackiness
   properly."
   []
-  (drop-if-exists-and-create-db! "enums_test")
+  (tx/drop-if-exists-and-create-db! driver/*driver*  "enums_test")
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (enums-test-db-details))]
     (jdbc/execute! spec [enums-db-sql])))
 
@@ -1161,7 +1130,7 @@
 (deftest action-error-handling-test
   (mt/test-driver :postgres
     (testing "violate not-null constraints with multiple columns"
-      (drop-if-exists-and-create-db! "not-null-constraint-on-multiple-cols")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "not-null-constraint-on-multiple-cols")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "not-null-constraint-on-multiple-cols"})]
         (doseq [stmt ["CREATE TABLE mytable (id serial PRIMARY KEY,
                       column1 VARCHAR(50),
@@ -1227,7 +1196,7 @@
 (deftest fingerprint-time-fields-test
   (mt/test-driver :postgres
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
-      (drop-if-exists-and-create-db! "time_field_test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "time_field_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        [(str "CREATE TABLE toucan_sleep_schedule ("
@@ -1309,7 +1278,7 @@
 (deftest dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
     (mt/test-driver :postgres
-      (drop-if-exists-and-create-db! "no-select-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "no-select-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (doseq [statement ["CREATE TABLE PUBLIC.table_with_perms (x INTEGER NOT NULL);"
@@ -1332,7 +1301,7 @@
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
     (mt/test-driver :postgres
-      (drop-if-exists-and-create-db! "json-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
@@ -1355,7 +1324,7 @@
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
-      (drop-if-exists-and-create-db! "composite-pks-test")
+      (tx/drop-if-exists-and-create-db! driver/*driver*  "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]

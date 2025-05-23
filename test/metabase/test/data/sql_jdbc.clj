@@ -36,6 +36,66 @@
       (catch Throwable _e
         false))))
 
+(defmethod tx/drop-if-exists-and-create-db! :sql-jdbc/test-extensions
+  [driver db-name & [just-drop]]
+  (let [db-name (sql.tx/qualify-and-quote driver db-name)
+        spec (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server nil))]
+    (jdbc/execute! spec
+                   [(format "DROP DATABASE IF EXISTS %s;" db-name)]
+                   {:transaction? false})
+    (when (not= just-drop :just-drop)
+      (jdbc/execute! spec
+                     [(format "CREATE DATABASE %s;" db-name)]
+                     {:transaction? false}))))
+
+(defn drop-if-exists-and-create-roles!
+  [driver details roles]
+  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [statement [(format "DROP ROLE IF EXISTS %s;" role-name)
+                           (format "CREATE ROLE %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name _perms] table-perms]
+          (jdbc/execute! spec
+                         [(format "GRANT SELECT ON %s TO %s" table-name role-name)]
+                         {:transaction? false}))))))
+
+(defn grant-roles-to-user!
+  [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        user-name (sql.tx/qualify-and-quote driver user-name)]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (jdbc/execute! spec
+                       [(format "GRANT %s TO %s" role-name user-name)]
+                       {:transaction? false})))))
+
+(defmethod tx/create-and-grant-roles! :sql-jdbc/test-extensions
+  [driver details roles user-name _default-role]
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (grant-roles-to-user! driver details roles user-name))
+
+(defn drop-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (jdbc/execute! spec
+                       [(format "DROP ROLE IF EXISTS %s;" role-name)]
+                       {:transaction? false})))))
+
+(defmethod tx/drop-roles! :sql-jdbc/test-extensions
+  [driver details roles _user-name]
+  (drop-roles! driver details roles))
+
 (defmethod tx/create-db! :sql-jdbc/test-extensions
   [& args]
   (apply load-data/create-db! args))
