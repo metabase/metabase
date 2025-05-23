@@ -118,7 +118,16 @@ function checkDimensionCompatibilityForCartesianCharts(
     return false;
   }
 
-  const ownOtherDimensions = ownDimensions.filter((col) => !isDate(col));
+  const [ownTimeDimensions, ownOtherDimensions] = _.partition(
+    ownDimensions,
+    (col) => isDate(col),
+  );
+  if (ownTimeDimensions.length > 0) {
+    const isCompatible = columns.some((field) => isDate(field));
+    if (!isCompatible) {
+      return false;
+    }
+  }
   if (ownOtherDimensions.length > 0) {
     const isCompatible = ownOtherDimensions.every((dimension) =>
       columns.some((field) => dimension.id && field.id === dimension.id),
