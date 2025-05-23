@@ -126,9 +126,7 @@
         ;; Register Prometheus listeners
         (let [listener-manager (.getListenerManager new-scheduler)]
           (.addJobListener listener-manager
-                           (task.prometheus/create-job-execution-listener))
-          (.addTriggerListener listener-manager
-                               (task.prometheus/create-trigger-listener new-scheduler)))
+                           (task.prometheus/create-job-execution-listener)))
         (delete-jobs-with-no-class!)
         (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
