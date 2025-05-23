@@ -7,3 +7,7 @@ export function setupGenerateSqlQueryEndpoint(
 ) {
   fetchMock.post("path:/api/ee/ai-sql-generation/generate", response);
 }
+
+export function setupErrorGenerateSqlQueryEndpoint() {
+  fetchMock.post("path:/api/ee/ai-sql-generation/generate", 500);
+}

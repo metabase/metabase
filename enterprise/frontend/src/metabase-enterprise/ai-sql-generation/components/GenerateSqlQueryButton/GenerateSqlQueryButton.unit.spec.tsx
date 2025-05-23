@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupGenerateSqlQueryEndpoint } from "__support__/server-mocks";
+import {
+  setupErrorGenerateSqlQueryEndpoint,
+  setupGenerateSqlQueryEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
@@ -21,6 +25,8 @@ function setup({ query, generateQueryResponse, selectedQueryText }: SetupOpts) {
 
   if (generateQueryResponse) {
     setupGenerateSqlQueryEndpoint(generateQueryResponse);
+  } else {
+    setupErrorGenerateSqlQueryEndpoint();
   }
 
   renderWithProviders(
@@ -93,4 +99,18 @@ describe("GenerateSqlQueryButton", () => {
       );
     },
   );
+
+  it("should ignore errors from the endpoint", async () => {
+    const { onGenerateQuery } = setup({
+      query: getNativeQuery("-- prompt"),
+    });
+    await userEvent.click(screen.getByRole("button"));
+    await waitFor(() =>
+      expect(fetchMock.called("path:/api/ee/ai-sql-generation/generate")).toBe(
+        true,
+      ),
+    );
+    await waitFor(() => expect(screen.getByRole("button")).toBeEnabled());
+    expect(onGenerateQuery).not.toHaveBeenCalled();
+  });
 });
