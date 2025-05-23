@@ -345,66 +345,63 @@
 (deftest test-ssh-tunnel-connection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is established"
-      (let [tunnel-db-details (assoc (:details (mt/db))
-                                     :tunnel-enabled true
-                                     :tunnel-host "localhost"
-                                     :tunnel-auth-option "password"
-                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
-                                     :tunnel-user ssh-test/ssh-username
-                                     :tunnel-pass ssh-test/ssh-password)]
-        (is (true? (driver.u/can-connect-with-details? (tx/driver) tunnel-db-details)))
-        (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
-          (mt/with-db tunneled-db
-            (sync/sync-database! (mt/db))
-            (is (= [["Polo Lounge"]]
-                   (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
+      (mt/with-temp-copy-of-db
+        (let [tunnel-db-details (assoc (:details (mt/db))
+                                       :tunnel-enabled true
+                                       :tunnel-host "localhost"
+                                       :tunnel-auth-option "password"
+                                       :tunnel-port ssh-test/ssh-mock-server-with-password-port
+                                       :tunnel-user ssh-test/ssh-username
+                                       :tunnel-pass ssh-test/ssh-password)]
+          (t2/update! :model/Database (mt/id) {:details tunnel-db-details})
+          (is (true? (driver.u/can-connect-with-details? (tx/driver) tunnel-db-details)))
+          (is (= [["Polo Lounge"]]
+                 (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))))))
 
 (deftest test-ssh-server-reconnection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
-      (let [tunnel-db-details (assoc (:details (mt/db))
-                                     :tunnel-enabled true
-                                     :tunnel-host "localhost"
-                                     :tunnel-auth-option "password"
-                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
-                                     :tunnel-user ssh-test/ssh-username
-                                     :tunnel-pass ssh-test/ssh-password)]
-        (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
-          (mt/with-db tunneled-db
-            (sync/sync-database! (mt/db))
-            (letfn [(check-row []
-                      (is (= [["Polo Lounge"]]
-                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
-              ;; check that some data can be queried
-              (check-row)
-              ;; restart the ssh server
-              (ssh-test/stop-mock-servers!)
-              (ssh-test/start-mock-servers!)
-              ;; check the query again; the tunnel should have been reestablished
-              (check-row))))))))
+      (mt/with-temp-copy-of-db
+        (let [tunnel-db-details (assoc (:details (mt/db))
+                                       :tunnel-enabled true
+                                       :tunnel-host "localhost"
+                                       :tunnel-auth-option "password"
+                                       :tunnel-port ssh-test/ssh-mock-server-with-password-port
+                                       :tunnel-user ssh-test/ssh-username
+                                       :tunnel-pass ssh-test/ssh-password)]
+          (t2/update! [:model/Database (mt/id) {:details tunnel-db-details}])
+          (letfn [(check-row []
+                    (is (= [["Polo Lounge"]]
+                           (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
+            ;; check that some data can be queried
+            (check-row)
+            ;; restart the ssh server
+            (ssh-test/stop-mock-servers!)
+            (ssh-test/start-mock-servers!)
+            ;; check the query again; the tunnel should have been reestablished
+            (check-row)))))))
 
 (deftest test-ssh-tunnel-reconnection
   (mt/test-drivers (mt/normal-driver-select {:+conn-props ["tunnel-enabled"] :+parent :sql-jdbc})
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
-      (let [tunnel-db-details (assoc (:details (mt/db))
-                                     :tunnel-enabled true
-                                     :tunnel-host "localhost"
-                                     :tunnel-auth-option "password"
-                                     :tunnel-port ssh-test/ssh-mock-server-with-password-port
-                                     :tunnel-user ssh-test/ssh-username
-                                     :tunnel-pass ssh-test/ssh-password)]
-        (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
-          (mt/with-db tunneled-db
-            (sync/sync-database! (mt/db))
-            (letfn [(check-row []
-                      (is (= [["Polo Lounge"]]
-                             (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
-              ;; check that some data can be queried
-              (check-row)
-              ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
-              (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
-              ;; check the query again; the tunnel should have been reestablished
-              (check-row))))))))
+      (mt/with-temp-copy-of-db
+        (let [tunnel-db-details (assoc (:details (mt/db))
+                                       :tunnel-enabled true
+                                       :tunnel-host "localhost"
+                                       :tunnel-auth-option "password"
+                                       :tunnel-port ssh-test/ssh-mock-server-with-password-port
+                                       :tunnel-user ssh-test/ssh-username
+                                       :tunnel-pass ssh-test/ssh-password)]
+          (t2/update! :model/Database (mt/id) {:details tunnel-db-details})
+          (letfn [(check-row []
+                    (is (= [["Polo Lounge"]]
+                           (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]})))))]
+            ;; check that some data can be queried
+            (check-row)
+            ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
+            (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))
+            ;; check the query again; the tunnel should have been reestablished
+            (check-row)))))))
 
 (deftest test-ssh-tunnel-connection-h2
   (testing (str "We need a customized version of this test for H2, because H2 requires bringing up its TCP server to tunnel into. "
