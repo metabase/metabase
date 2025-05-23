@@ -10,6 +10,7 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
@@ -238,17 +239,17 @@
              field-name (.getName field)
              repeated? (= Field$Mode/REPEATED (.getMode field))
              [database-type base-type] (field->database+base-type field)
-             field (cond-> {:name              field-name
-                            :database-type     database-type
-                            :base-type         base-type
-                            :database-position database-position}
-                     nfc-path (assoc :nfc-path nfc-path))]
+             field-info (cond-> {:name              field-name
+                                 :database-type     database-type
+                                 :base-type         base-type
+                                 :database-position database-position}
+                          nfc-path (assoc :nfc-path nfc-path))]
          (if (and (not repeated?) (= :type/Dictionary base-type))
-           [field]
-           (apply conj [field] (fields->metabase-field-info
-                                database-position
-                                (conj (vec nfc-path) field-name)
-                                (.getSubFields field)))))))
+           [field-info]
+           (apply conj [field-info] (fields->metabase-field-info
+                                     database-position
+                                     (conj (vec nfc-path) field-name)
+                                     (.getSubFields field)))))))
     (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
@@ -262,37 +263,6 @@
   See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
 
-(defn- build-nested-column-lookup
-  "Returns a map of table-name->parent-path->nested-columns"
-  [driver database project-id dataset-id table-names]
-  (let [results (query-honeysql
-                 driver
-                 database
-                 (cond->
-                  {:select [:table_name :column_name :data_type :field_path]
-                   :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]}
-                   (not-empty table-names)
-                   (assoc :where [:in :table_name table-names])))
-        nested-columns (map (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
-                              (let [field-path (str/split field-path-str #"\.")
-                                    nfc-path (not-empty (pop field-path))
-                                    [database-type base-type] (raw-type->database+base-type data-type)]
-                                {:name (peek field-path)
-                                 :table-name table-name
-                                 :table-schema dataset-id
-                                 :database-type database-type
-                                 :base-type base-type
-                                 :nfc-path nfc-path}))
-                            results)]
-    (reduce
-     (fn [accum col]
-       (let [parent (:nfc-path col)]
-         (cond-> accum
-           parent
-           (update-in [(:table-name col) parent] (fnil conj []) col))))
-     {}
-     (sort-by (comp count :nfc-path) nested-columns))))
-
 (defn- describe-dataset-fields
   [driver database project-id dataset-id table-names]
   (let [named-rows (query-honeysql
@@ -304,14 +274,6 @@
                       :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]}
                       (not-empty table-names)
                       (assoc :where [:in :table_name table-names])))
-        nested-column-lookup (build-nested-column-lookup driver database project-id dataset-id table-names)
-        maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
-                                  (let [new-path ((fnil conj []) nfc-path (:name col))
-                                        nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
-                                    (cond-> [(assoc col :database-position root-database-position)]
-                                      (and (= :type/Dictionary (:base-type col)) nested-fields)
-                                      (into (mapcat #(maybe-add-nested-fields % new-path root-database-position))
-                                            nested-fields))))
         max-position-per-table (reduce
                                 (fn [accum {table-name :table_name pos :ordinal_position}]
                                   (if (> (or pos 0) (get accum table-name -1))
@@ -327,16 +289,13 @@
               (let [database-position (or (some-> database-position dec)
                                           (get max-position-per-table table-name 0))
                     [database-type base-type] (raw-type->database+base-type data-type)]
-                (cond-> (maybe-add-nested-fields
-                         {:name column-name
+                (cond-> [{:name column-name
                           :table-name table-name
                           :table-schema dataset-id
                           :database-type database-type
                           :base-type base-type
                           :database-partitioned partitioned?
-                          :database-position database-position}
-                         nil
-                         database-position)
+                          :database-position database-position}]
                   ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
                   (= column-name partitioned-time-field-name)
                   (conj {:name partitioned-date-field-name
@@ -361,6 +320,48 @@
        (fn [dataset-id]
          (describe-dataset-fields driver database project-id dataset-id table-names)))
       dataset-ids))))
+
+(defmethod sql-jdbc.sync/describe-nested-field-columns :bigquery-cloud-sdk
+  [driver {database-details :details :as database} {table-name :name, dataset-id :schema}]
+  (let [project-id (get-project-id database-details)
+        ordinal-positions (query-honeysql
+                           driver
+                           database
+                           {:select [:column_name :ordinal_position
+                                     [[:= :is_partitioning_column "YES"] :partitioned]]
+                            :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
+                            :where [:= :table_name table-name]})
+        max-position (apply max 0 (map #(or (:ordinal_position %) 0) ordinal-positions))
+        column-data (reduce (fn [accum {ordinal-position :ordinal_position
+                                        column-name :column_name
+                                        partitioned :partitioned}]
+                              (assoc accum column-name
+                                     {:database-position (or (some-> ordinal-position dec)
+                                                             max-position)
+                                      :database-partitioned partitioned}))
+                            {}
+                            ordinal-positions)
+        results (query-honeysql
+                 driver
+                 database
+                 {:select [:table_name :column_name :data_type :field_path]
+                  :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
+                  :where [:= :table_name table-name]})]
+    (into #{}
+          (for [{data-type :data_type
+                 field-path-str :field_path
+                 table-name :table_name
+                 column-name :column_name} results
+                :let [nfc-path (str/split field-path-str #"\.")]
+                :when (> (count nfc-path) 1)]
+            (let [[database-type base-type] (raw-type->database+base-type data-type)]
+              (merge (column-data column-name)
+                     {:name (str/join " \u2192 " nfc-path) ;; right arrow
+                      :table-name table-name
+                      :table-schema dataset-id
+                      :database-type database-type
+                      :base-type base-type
+                      :nfc-path nfc-path}))))))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]

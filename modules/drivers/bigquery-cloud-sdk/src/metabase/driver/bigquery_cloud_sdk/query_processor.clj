@@ -1,6 +1,7 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
   (:require
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
@@ -686,10 +687,19 @@
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
-        (if (and (lib.field/json-field? stored-field)
-                 (or (::sql.qp/forced-alias opts)
-                     (= source-table ::add/source)))
-          (keyword source-alias)
+        (cond
+          (lib.field/json-field? stored-field)
+          (if (or (::sql.qp/forced-alias opts)
+                  (= source-table ::add/source))
+            (keyword source-alias)
+            (walk/postwalk
+             #(if (h2x/identifier? %)
+                (let [[clause type path] %]
+                  [clause type (pop path)])
+                %)
+             result))
+
+          :else
           result)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
