@@ -6,28 +6,27 @@ import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import {
+  type RouteParams,
+  parseRouteParams,
+} from "metabase/metadata/utils/route-params";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
   FieldSection,
   PreviewSection,
-  RouterTablePicker,
   TableSection,
   usePreviewType,
 } from "./components";
-import type { RouteParams } from "./types";
-import { parseRouteParams } from "./utils";
 
 interface Props {
   params: RouteParams;
 }
 
-const DATA_MODEL_APP_NAV_BAR_HEIGHT = 53;
-
 export const DataModel = ({ params }: Props) => {
-  const { databaseId, tableId, schemaId, fieldId } = parseRouteParams(params);
+  const { databaseId, tableId, fieldId } = parseRouteParams(params);
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -47,22 +46,7 @@ export const DataModel = ({ params }: Props) => {
   const [previewType, setPreviewType] = usePreviewType();
 
   return (
-    <Flex h={`calc(100% - ${DATA_MODEL_APP_NAV_BAR_HEIGHT}px)`} bg="bg-light">
-      <Stack
-        className={S.sidebar}
-        flex="0 0 25%"
-        miw="320px"
-        gap={0}
-        h="100%"
-        bg="bg-white"
-      >
-        <RouterTablePicker
-          databaseId={databaseId}
-          schemaId={schemaId}
-          tableId={tableId}
-        />
-      </Stack>
-
+    <>
       {tableId && (
         <Box className={S.sidebar} flex="0 0 25%" h="100%" miw="400px">
           <Box p="xl" pb="lg">
@@ -146,6 +130,6 @@ export const DataModel = ({ params }: Props) => {
           )}
         </>
       )}
-    </Flex>
+    </>
   );
 };

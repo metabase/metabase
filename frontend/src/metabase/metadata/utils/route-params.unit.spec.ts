@@ -1,4 +1,4 @@
-import { getUrl, parseRouteParams } from "./utils";
+import { getUrl, parseRouteParams } from "./route-params";
 
 describe("parseRouteParams", () => {
   it("should parse all route parameters correctly", () => {

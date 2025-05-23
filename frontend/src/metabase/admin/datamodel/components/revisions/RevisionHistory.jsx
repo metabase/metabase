@@ -29,9 +29,12 @@ export default class RevisionHistory extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper loading={!segment || !revisions}>
+      <LoadingAndErrorWrapper
+        loading={!segment || !revisions}
+        className={CS.wrapper}
+      >
         {() => (
-          <div className={CS.wrapper}>
+          <>
             <Breadcrumbs
               className={CS.py4}
               crumbs={[
@@ -63,7 +66,7 @@ export default class RevisionHistory extends Component {
                 ))}
               </ol>
             </div>
-          </div>
+          </>
         )}
       </LoadingAndErrorWrapper>
     );

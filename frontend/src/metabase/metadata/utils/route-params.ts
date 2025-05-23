@@ -1,6 +1,24 @@
 import * as Urls from "metabase/lib/urls";
+import type {
+  DatabaseId,
+  FieldId,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
 
-import type { ParsedRouteParams, RouteParams } from "./types";
+export type RouteParams = {
+  databaseId?: string;
+  fieldId?: string;
+  schemaId?: string;
+  tableId?: string;
+};
+
+export type ParsedRouteParams = {
+  databaseId: DatabaseId | undefined;
+  fieldId: FieldId | undefined;
+  schemaId: SchemaName | undefined;
+  tableId: TableId | undefined;
+};
 
 export function parseRouteParams(params: RouteParams): ParsedRouteParams {
   return {

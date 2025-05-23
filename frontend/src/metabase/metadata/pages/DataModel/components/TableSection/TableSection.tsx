@@ -12,11 +12,13 @@ import {
   RescanTableFieldsButton,
   SortableFieldList,
 } from "metabase/metadata/components";
+import {
+  type RouteParams,
+  getUrl,
+  parseRouteParams,
+} from "metabase/metadata/utils/route-params";
 import { Card, Flex, Stack, Switch, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
-
-import type { RouteParams } from "../../types";
-import { getUrl, parseRouteParams } from "../../utils";
 
 interface Props {
   params: RouteParams;

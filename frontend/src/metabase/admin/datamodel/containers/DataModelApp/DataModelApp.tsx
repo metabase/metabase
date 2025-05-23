@@ -1,83 +1,64 @@
-import type { Location } from "history";
-import { Fragment, type ReactNode, useMemo } from "react";
-import { push } from "react-router-redux";
+import cx from "classnames";
+import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
-import { useToggle } from "metabase/hooks/use-toggle";
-import { connect } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
+import { RouterTablePicker } from "metabase/metadata/components";
+import {
+  type RouteParams,
+  parseRouteParams,
+} from "metabase/metadata/utils/route-params";
+import { Box, Flex, Icon, Stack } from "metabase/ui";
 
-import { ModelEducationButton, NavBar } from "./DataModelApp.styled";
-import { ModelEducationalModal } from "./ModelEducationalModal";
+import S from "./DataModelApp.module.css";
 
-const mapStateToProps = (state: State) => ({
-  isAdmin: getUserIsAdmin(state),
-});
-
-const mapDispatchToProps = {
-  onChangeTab: (tab: string) => push(`/admin/datamodel/${tab}`),
-};
-
-const TAB = {
-  SEGMENTS: "segments",
-  DATABASE: "database",
-};
-
-interface Props {
-  children: ReactNode;
-  isAdmin?: boolean;
-  location: Location;
-  onChangeTab: (tab: string) => void;
-}
-
-function DataModelAppBase({
+export function DataModelApp({
+  params,
+  location,
   children,
-  isAdmin,
-  location: { pathname },
-  onChangeTab,
-}: Props) {
-  const [
-    isModelEducationalModalShown,
-    { turnOn: showModelEducationalModal, turnOff: hideModelEducationalModal },
-  ] = useToggle(false);
-
-  const currentTab = useMemo(() => {
-    if (/\/segments?/.test(pathname)) {
-      return TAB.SEGMENTS;
-    }
-    return TAB.DATABASE;
-  }, [pathname]);
-
-  const options = [
-    { name: t`Data model`, value: TAB.DATABASE },
-    ...(isAdmin ? [{ name: t`Segments`, value: TAB.SEGMENTS }] : []),
-  ];
-
+}: {
+  params: RouteParams;
+  location?: Location;
+  children: ReactNode;
+}) {
+  const { databaseId, tableId, schemaId } = parseRouteParams(params);
   return (
-    <Fragment>
-      <NavBar>
-        <Radio
-          value={currentTab}
-          options={options}
-          onChange={onChangeTab}
-          variant="underlined"
+    <Flex h="100%">
+      <Stack
+        className={S.sidebar}
+        flex="0 0 25%"
+        gap={0}
+        h="100%"
+        bg="bg-white"
+      >
+        <RouterTablePicker
+          databaseId={databaseId}
+          schemaId={schemaId}
+          tableId={tableId}
         />
-        <ModelEducationButton
-          onClick={showModelEducationalModal}
-        >{t`Simplify your schema with Models`}</ModelEducationButton>
-      </NavBar>
-      <ModelEducationalModal
-        isOpen={isModelEducationalModalShown}
-        onClose={hideModelEducationalModal}
-      />
+        <Box mx="xl" py="sm" className={S.footer}>
+          <SegmentsLink location={location} />
+        </Box>
+      </Stack>
+
       {children}
-    </Fragment>
+    </Flex>
   );
 }
 
-export const DataModelApp = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(DataModelAppBase);
+function SegmentsLink({ location }: { location?: Location }) {
+  const isActive =
+    location?.pathname?.startsWith("/admin/datamodel/segments") ||
+    location?.pathname?.startsWith("/admin/datamodel/segment/");
+
+  return (
+    <Link
+      to="/admin/datamodel/segments"
+      className={cx(S.segmentsLink, { [S.active]: isActive })}
+      onlyActiveOnIndex={false}
+    >
+      <Icon name="pie" className={S.segmentsIcon} />
+      {t`Segments`}
+    </Link>
+  );
+}

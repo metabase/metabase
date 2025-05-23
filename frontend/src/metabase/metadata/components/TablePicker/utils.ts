@@ -8,10 +8,9 @@ import {
   useLazyListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { getUrl as getUrl_ } from "metabase/metadata/utils/route-params";
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaId } from "metabase-types/api";
-
-import { getUrl as getUrl_ } from "../../utils";
 
 import type {
   DatabaseNode,
