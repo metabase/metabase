@@ -142,7 +142,7 @@
   - with a query,
   - with a group_id,
   - with include_deactivated"
-  [{:keys [status query group-ids include-deactivated tenant]}
+  [{:keys [status query group-ids include-deactivated tenant-clause]}
    :- [:map
        [:status {:optional true} [:maybe :string]]
        [:query {:optional true} [:maybe :string]]
@@ -154,7 +154,7 @@
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
-    tenant                                  (sql.helpers/where [:= :tenant_id (:id tenant)])
+    true                                    (sql.helpers/where tenant-clause)
     ;; don't send the internal user
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
@@ -189,25 +189,42 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated tenant_id]}
+   {:keys [status query group_id include_deactivated tenant_id tenancy] :as params}
    :- [:map
        [:status              {:optional true} [:maybe :string]]
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
        [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
-       [:tenant_id           {:default nil} [:maybe ms/PositiveInt]]]]
+       [:tenancy             {:optional true} [:maybe
+                                               [:enum :all :internal :external]]]
+       [:tenant_id           {:optional true} [:maybe ms/PositiveInt]]]]
+  (api/check-400 (not (and (contains? params :tenancy)
+                           (contains? params :tenant_id)))
+                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
   (or
    api/*is-superuser?*
    (if group_id
      (validation/check-manager-of-group group_id)
      (validation/check-group-manager)))
-  (let [clauses             (user-clauses {:status status
-                                           :query query
-                                           :group-ids (when group_id [group_id])
-                                           :include-deactivated include_deactivated
-                                           :tenant {:id (if api/*is-superuser?*
-                                                          tenant_id
-                                                          (:tenant_id @api/*current-user*))}})]
+  (let [clauses (user-clauses {:status              status
+                               :query               query
+                               :group-ids           (when group_id [group_id])
+                               :include-deactivated include_deactivated
+                               :tenant-clause       #p (cond
+                                                         (not api/*is-superuser?*)
+                                                         [:= :tenant_id (:tenant_id @api/*current-user*)]
+
+                                                         (contains? params :tenant_id)
+                                                         [:= :tenant_id tenant_id]
+
+                                                         (= tenancy :all)
+                                                         [:inline [:= 1 1]]
+
+                                                         (= tenancy :external)
+                                                         [:not= :tenant_id nil]
+
+                                                         :else
+                                                         [:= :tenant_id nil])})]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
@@ -255,16 +272,16 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (-> (user-clauses {:tenant (when-not api/*is-superuser?*
-                                                             {:id (:tenant_id @api/*current-user*)})})
+  (letfn [(all [] (let [clauses (-> (user-clauses {:tenant-clause (when-not api/*is-superuser?*
+                                                                    [:= :tenant_id (:tenant_id @api/*current-user*)])})
                                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user-clauses {:tenant (when-not api/*is-superuser?*
-                                                                           {:id (:tenant_id @api/*current-user*)})})
+                                 clauses  (cond-> (user-clauses {:tenant-clause (when-not api/*is-superuser?*
+                                                                                  [:= :tenant_id (:tenant_id @api/*current-user*)])})
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)

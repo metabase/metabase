@@ -1323,10 +1323,22 @@
     (let [get-users (fn [& query-params]
                       (->> (mt/user-http-request :crowberto :get 200 (apply str "user?" query-params))
                            :data
-                           (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))))]
+                           (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
+                           (sort-by :id)))]
       (is (=? [{:id normal-user-id :tenant_id nil}] (get-users)))
       (is (=? [{:id tenant-user-id :tenant_id tenant-id}] (get-users "tenant_id=" tenant-id)))
-      (is (=? [{:id other-tenant-user-id :tenant_id other-tenant-id}] (get-users "tenant_id=" other-tenant-id))))))
+      (is (=? [{:id other-tenant-user-id :tenant_id other-tenant-id}] (get-users "tenant_id=" other-tenant-id)))
+      (is (=? [{:id normal-user-id}] (get-users "tenancy=internal")))
+      (is (=? [{:id tenant-user-id}
+               {:id other-tenant-user-id}
+               {:id normal-user-id}]
+              (get-users "tenancy=all")))
+      (is (=? [{:id tenant-user-id}
+               {:id other-tenant-user-id}]
+              (get-users "tenancy=external")))
+      (is (= "You cannot specify both `tenancy` and `tenant_id`"
+             ;; even though this makes sense as a query (it's just redundant), let's just prohibit specifying both
+             (mt/user-http-request :crowberto :get 400 (str "user?tenancy=external&tenant_id=" tenant-id)))))))
 
 (deftest tenant-users-can-only-list-tenant-recipients
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
