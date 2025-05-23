@@ -76,14 +76,15 @@
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
               alias-for-join           (unique-name-fn (join-alias table-name fk-name))]
-          (-> {:source-table source-table
-               :alias        alias-for-join
-               :ident        (lib/implicit-join-clause-ident fk-ident)
-               :fields       :none
-               :strategy     :left-join
-               :condition    [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
-                              [:field pk-id {:join-alias alias-for-join}]]
-               :fk-field-id  fk-field-id}
+          (-> {:source-table  source-table
+               :alias         alias-for-join
+               :ident         (lib/implicit-join-clause-ident fk-ident)
+               :fields        :none
+               :strategy      :left-join
+               :condition     [:= [:field fk-field-id (when fk-join-alias {:join-alias fk-join-alias})]
+                               [:field pk-id {:join-alias alias-for-join}]]
+               :fk-field-id   fk-field-id
+               :fk-join-alias fk-join-alias}
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))
 
 (mu/defn- implicitly-joined-fields->joins :- [:maybe [:sequential FkFieldInfo]]
@@ -123,12 +124,12 @@
   (into {}
         (map (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
                (when fk-field-id
-                 [fk-field-id join-alias])))
+                 [{:fk-field-id fk-field-id, :fk-join-alias fk-join-alias} join-alias])))
         (visible-joins form)))
 
-(defn- field-opts->fk-field-info
-  [opts]
-  (select-keys opts [:source-field :source-field-join-alias]))
+(mu/defn- field-opts->fk-field-info :- FkFieldInfo
+  [{:keys [source-field source-field-join-alias]}]
+  {:fk-field-id source-field, :fk-join-alias source-field-join-alias})
 
 (defn- add-implicit-joins-aliases-to-metadata
   "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
