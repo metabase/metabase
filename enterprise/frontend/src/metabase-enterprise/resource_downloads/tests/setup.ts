@@ -48,7 +48,8 @@ export const downloadsEnabledTestData: {
   {
     hide_download_button: true,
     downloads: undefined,
-    downloadsEnabled: ALL_DOWNLOADS_DISABLED,
+    // `hide_download_button` is not supported anymore
+    downloadsEnabled: ALL_DOWNLOADS_ENABLED,
   },
   {
     hide_download_button: false,

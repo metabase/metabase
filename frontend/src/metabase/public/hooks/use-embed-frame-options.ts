@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useEffect } from "react";
 
 import { parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -18,6 +19,15 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     downloads = DEFAULT_EMBED_DISPLAY_PARAMS.downloadsEnabled,
     locale,
   } = parseHashOptions(location.hash) as EmbeddingHashOptions;
+
+  useEffect(() => {
+    if (hide_download_button !== null) {
+      console.error(
+        "%c⚠️ The `hide_download_button` option has been removed. Please use the `downloads` option instead.",
+        "font-size: 14px; font-weight: bold; color: red",
+      );
+    }
+  }, [hide_download_button]);
 
   const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
     hide_download_button,
