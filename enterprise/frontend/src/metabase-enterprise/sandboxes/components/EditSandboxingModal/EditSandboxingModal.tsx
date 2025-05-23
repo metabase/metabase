@@ -440,7 +440,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
             return (
               <span>
                 {c(
-                  "{0} is a name of a field being used by row and column security",
+                  "{0} is a name of a field",
                 ).jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
               </span>
             );
