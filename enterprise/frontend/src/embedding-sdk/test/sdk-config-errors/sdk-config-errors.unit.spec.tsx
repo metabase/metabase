@@ -22,27 +22,58 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-const METABASE_INSTANCE_URL = "path:";
-const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
+import {
+  type JwtMockConfig,
+  MOCK_INSTANCE_URL,
+  setupMockJwtEndpoints,
+} from "../mocks/sso";
 
 const defaultAuthConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: METABASE_INSTANCE_URL,
+  metabaseInstanceUrl: MOCK_INSTANCE_URL,
 });
 
 const MOCK_CARD = createMockCard({ id: 1 });
 
-const setup = async (config: MetabaseAuthConfig) => {
+const setup = async (
+  config: MetabaseAuthConfig,
+  jwtProviderResponse?: JwtMockConfig["providerResponse"],
+) => {
+  fetchMock.reset();
+
+  const { jwtProviderMock } = setupMockJwtEndpoints({
+    providerResponse: jwtProviderResponse,
+  });
+
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "token-features": createMockTokenFeatures({
+        embedding_sdk: true,
+      }),
+    }),
+  );
+  setupCurrentUserEndpoint(createMockUser({ id: 1 }));
+
+  setupCardEndpoints(MOCK_CARD);
+  setupCardQueryEndpoints(MOCK_CARD, {} as any);
+
+  consoleErrorSpy = jest
+    .spyOn(console, "error")
+    // Mock the implementation to avoid spamming the terminal as we do expect errors to be logged in these tests
+    // Comment the next line to debug the tests
+    .mockImplementation(() => {});
+
   render(
     <MetabaseProvider authConfig={config}>
       <StaticQuestion questionId={1} />
     </MetabaseProvider>,
   );
-  await waitForLoaderToBeRemoved();
-};
 
-const mockUserJwtBackendResponse = (response: any) =>
-  fetchMock.get(`${METABASE_INSTANCE_URL}/auth/sso`, response);
-const getLastAuthProviderApiCall = () => fetchMock.lastCall(AUTH_PROVIDER_URL);
+  await waitForLoaderToBeRemoved();
+
+  const getLastAuthProviderApiCall = () => jwtProviderMock.lastCall();
+
+  return { getLastAuthProviderApiCall };
+};
 
 let consoleErrorSpy: jest.SpyInstance;
 
@@ -68,58 +99,32 @@ const expectErrorMessage = async (message: string) => {
 };
 
 describe("SDK auth errors", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-
-    setupPropertiesEndpoints(
-      createMockSettings({
-        "token-features": createMockTokenFeatures({
-          embedding_sdk: true,
-        }),
-      }),
-    );
-    setupCurrentUserEndpoint(createMockUser({ id: 1 }));
-
-    setupCardEndpoints(MOCK_CARD);
-    setupCardQueryEndpoints(MOCK_CARD, {} as any);
-
-    consoleErrorSpy = jest
-      .spyOn(console, "error")
-      // Mock the implementation to avoid spamming the terminal as we do expect errors to be logged in these tests
-      // Comment the next line to debug the tests
-      .mockImplementation(() => {});
-  });
-
   afterEach(() => {
     jest.resetAllMocks();
   });
 
   describe("Auth Provider URI authentication", () => {
     it("should show a message when the user's JWT server endpoint didn't return a json object", async () => {
-      mockUserJwtBackendResponse({
+      const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
         body: "not a json object",
       });
-
-      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
       await expectErrorMessage(
-        `The authProviderUri endpoint must return an object with the shape {id:string, exp:number, iat:number, status:string}, got "not a json object" instead`,
+        "Your JWT server endpoint must return an object with the shape {jwt:string}",
       );
     });
 
     it("should show a message when the auth provider returns the id as an object", async () => {
-      mockUserJwtBackendResponse({
+      const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
         body: { id: { id: "123" } },
       });
-
-      await setup(defaultAuthConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
       await expectErrorMessage(
-        `The authProviderUri endpoint must return an object with the shape {id:string, exp:number, iat:number, status:string}, got`,
+        "Your JWT server endpoint must return an object with the shape {jwt:string}",
       );
     });
 
@@ -138,11 +143,9 @@ describe("SDK auth errors", () => {
     });
 
     it("should show a useful message if the authProviderUri returned an error code", async () => {
-      mockUserJwtBackendResponse(
-        JSON.stringify({ status: "error-embedding-sdk-disabled" }),
-      );
-
-      await setup(defaultAuthConfig);
+      const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
+        body: JSON.stringify({ status: "error-embedding-sdk-disabled" }),
+      });
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 

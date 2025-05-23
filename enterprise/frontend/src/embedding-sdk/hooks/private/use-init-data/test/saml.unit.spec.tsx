@@ -1,15 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
+import { setupMockSamlEndpoints } from "embedding-sdk/test/mocks/sso";
 
-import {
-  type MetabaseConfigProps,
-  setup,
-  setupMockAuthSsoEndpoints,
-} from "./setup";
+import { type MetabaseConfigProps, setup } from "./setup";
 
 const setupSaml = (config: MetabaseConfigProps = {}) => {
-  setupMockAuthSsoEndpoints("saml");
+  setupMockSamlEndpoints();
   return setup(config);
 };
 
