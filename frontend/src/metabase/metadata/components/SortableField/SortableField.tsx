@@ -49,6 +49,7 @@ export const SortableField = ({
         px="sm"
         py="xs"
         role="listitem"
+        bg="bg-white"
         // "to" prop should be undefined when Link component is not used.
         // Types do not account for conditional Link usage, hence cast.
         to={href ? href : (undefined as unknown as string)}

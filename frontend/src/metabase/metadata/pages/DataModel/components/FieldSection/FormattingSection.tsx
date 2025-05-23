@@ -36,7 +36,7 @@ export const FormattingSection = ({ field }: Props) => {
   return (
     <Stack gap="md">
       <Box>
-        <SectionPill icon="variable" title={t`Formatting`} />
+        <SectionPill title={t`Formatting`} />
       </Box>
 
       <ColumnSettings
