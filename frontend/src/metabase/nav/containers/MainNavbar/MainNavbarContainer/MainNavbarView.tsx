@@ -36,7 +36,10 @@ import {
 import { SidebarCollectionLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
-import { trackNewCollectionFromNavInitiated } from "../analytics";
+import {
+  trackAddDataModalOpened,
+  trackNewCollectionFromNavInitiated,
+} from "../analytics";
 import type { SelectedItem } from "../types";
 
 import { AddDataModal } from "./AddDataModal";
@@ -178,7 +181,10 @@ export function MainNavbarView({
               <ErrorBoundary>
                 <GettingStartedSection
                   nonEntityItem={nonEntityItem}
-                  onModalOpen={openModal}
+                  onModalOpen={() => {
+                    trackAddDataModalOpened("getting-started");
+                    openModal();
+                  }}
                 >
                   {examplesCollection && (
                     <Tree
