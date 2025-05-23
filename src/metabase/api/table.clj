@@ -709,3 +709,29 @@
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/replace}))
+
+(api.macros/defendpoint :post "/:id/sync_schema"
+  "Trigger a manual update of the schema metadata for this `Table`."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include_editable_data_model]}
+   :- [:map
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+  (let [api-perm-check-fn (if include_editable_data_model api/write-check api/read-check)
+        table (api-perm-check-fn :model/Table id)]
+    (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
+    (let [database (table/database table)]
+      ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+      ;; purposes of creating a new H2 database.
+      (if-let [ex (try
+                    (binding [h2/*allow-testing-h2-connections* true]
+                      (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+                    nil
+                    (catch Throwable e
+                      (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
+                                                (:name database) (:name table)))
+                      e))]
+        (throw (ex-info (ex-message ex) {:status-code 422}))
+        (do
+          (quick-task/submit-task! #(sync/sync-table! table))
+          {:status :ok})))))

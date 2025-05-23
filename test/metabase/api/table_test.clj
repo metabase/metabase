@@ -16,6 +16,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload.impl-test :as upload-test]
@@ -1258,3 +1259,29 @@
                             :table-id (:id table)
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/sync_schema                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel non-admins-cant-trigger-sync-test
+  (testing "Non-admins should not be allowed to trigger sync"
+    (mt/with-temp [:model/Table table {}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
+
+(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
+  (fn [tbl]
+    (when (= (u/the-id tbl) (u/the-id expected-tbl))
+      (deliver promise-to-deliver true))))
+
+(deftest trigger-metadata-sync-for-table-test
+  (testing "Can we trigger a metadata sync for a table?"
+    (let [sync-called? (promise)
+          timeout (* 10 60)]
+      (mt/with-temp [:model/Table table]
+        (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+          (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table)))))
+      (testing "sync called?"
+        (is (true?
+             (deref sync-called? timeout :sync-never-called)))))))

@@ -11,6 +11,7 @@ export function setupTableEndpoints(
   fetchMock.get(`path:/api/table/${table.id}`, table);
   fetchMock.get(`path:/api/table/${table.id}/fks`, foreignKeys);
   fetchMock.post(`path:/api/table/${table.id}/rescan_values`, {});
+  fetchMock.post(`path:/api/table/${table.id}/sync_schema`, {});
   fetchMock.post(`path:/api/table/${table.id}/discard_values`, {});
   setupTableQueryMetadataEndpoint(table);
   table.fields?.forEach((field) => setupFieldEndpoints({ ...field, table }));
