@@ -167,6 +167,12 @@ function ProfileLink({
               return <Menu.Divider key={index} />;
             }
 
+            const component = item.externalLink
+              ? "a"
+              : item.link
+                ? ForwardRefLink
+                : "button";
+
             return (
               <Menu.Item
                 key={item.title}
@@ -176,7 +182,8 @@ function ProfileLink({
                     item.action();
                   }
                 }}
-                component={item.link ? ForwardRefLink : "button"}
+                component={component}
+                href={item.link}
                 to={item.link}
                 target={item.externalLink ? "_blank" : undefined}
                 rel={item.externalLink ? "noopener noreferrer" : undefined}
