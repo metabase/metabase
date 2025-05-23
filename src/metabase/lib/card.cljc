@@ -119,7 +119,7 @@
                    (not= (:semantic-type col) :type/FK)
                    (assoc :fk-target-field-id nil))]
     ;; :effective-type is required, but not always set, see e.g.,
-    ;; metabase.api.table/card-result-metadata->virtual-fields
+    ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
     (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
 (mu/defn ->card-metadata-columns :- [:sequential ::lib.schema.metadata/column]

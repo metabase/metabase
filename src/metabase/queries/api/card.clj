@@ -5,22 +5,24 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.card :as queries.card]
    [metabase.queries.metadata :as queries.metadata]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
@@ -523,7 +525,7 @@
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (validation/check-embedding-enabled)
+    (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
 (defn- check-allowed-to-move [card-before-update card-updates]
@@ -819,7 +821,7 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)]
     {:uuid (or existing-public-uuid
@@ -833,7 +835,7 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (t2/update! :model/Card card-id
               {:public_uuid       nil
@@ -844,7 +846,7 @@
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
 
 (api.macros/defendpoint :get "/embeddable"
@@ -852,7 +854,7 @@
   and a signed JWT."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-embedding-enabled)
+  (embedding.validation/check-embedding-enabled)
   (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"

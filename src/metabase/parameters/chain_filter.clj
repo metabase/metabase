@@ -66,15 +66,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.database :as database]
-   [metabase.models.field :as field]
-   [metabase.models.field-values :as field-values]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
@@ -83,13 +79,16 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
@@ -190,22 +189,22 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb.query/query {:select    [[:fk-field.id :f1]
-                                           [:fk-table.id :t1]
-                                           [:pk-field.id :f2]
-                                           [:pk-field.table_id :t2]]
-                               :from      [[:metabase_field :fk-field]]
-                               :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                           :fk-table.active]
-                                           [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                           [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                           :pk-field.active]]
-                               :where     [:and
-                                           [:= :database.id database-id]
-                                           [:not= :fk-field.fk_target_field_id nil]
-                                           :fk-field.active]
-                               :order-by [[:fk-field.id :desc]
-                                          [:pk-field.id :desc]]})]
+  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
+                                     [:fk-table.id :t1]
+                                     [:pk-field.id :f2]
+                                     [:pk-field.table_id :t2]]
+                         :from      [[:metabase_field :fk-field]]
+                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                     :fk-table.active]
+                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
+                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
+                                                                     :pk-field.active]]
+                         :where     [:and
+                                     [:= :database.id database-id]
+                                     [:not= :fk-field.fk_target_field_id nil]
+                                     :fk-field.active]
+                         :order-by [[:fk-field.id :desc]
+                                    [:pk-field.id :desc]]})]
     (reduce
      (partial merge-with merge)
      {}
@@ -493,8 +492,8 @@
                [:metabase_field :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
-               (mdb.query/isa :source.semantic_type :type/PK)
-               (mdb.query/isa :dest.semantic_type :type/Name)]
+               (mdb/isa :source.semantic_type :type/PK)
+               (mdb/isa :dest.semantic_type :type/Name)]
    :limit     1})
 
 (defn- remapped-field-id-query [field-id]
@@ -512,7 +511,7 @@
                          :from      [:metabase_field]
                          :where     [:and
                                      [:= :id field-id]
-                                     (mdb.query/isa :semantic_type :type/FK)]
+                                     (mdb/isa :semantic_type :type/FK)]
                          :limit     1}
                         "fk->pk->name")
                        ;; Implicit PK Field-> [Name] Field remapping

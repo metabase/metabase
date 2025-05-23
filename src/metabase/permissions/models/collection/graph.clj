@@ -5,9 +5,9 @@
    [clojure.data :as data]
    [com.climate.claypoole :as cp]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
-   [metabase.db.query :as mdb.query]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -73,7 +73,7 @@
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
                                                  [:not [:like :location (h2x/literal (format "/%d/%%" collection-id))]]))}]
-    (set (map :id (mdb.query/query honeysql-form)))))
+    (set (map :id (app-db/query honeysql-form)))))
 
 (defn- calculate-perm-groups [collection-namespace group-id->perms collection-ids]
   (into {}

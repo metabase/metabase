@@ -4,12 +4,12 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
    [metabase.util :as u]
-   [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [metabase.util.quick-task :as quick-task])

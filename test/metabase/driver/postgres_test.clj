@@ -9,9 +9,9 @@
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
-   [metabase.config :as config]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.sql :as driver.sql]
@@ -25,9 +25,9 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
@@ -1356,7 +1356,7 @@
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :postgres
       (drop-if-exists-and-create-db! "composite-pks-test")
-      (with-redefs [metadata-queries/nested-field-sample-limit 4]
+      (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
               spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
           (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]

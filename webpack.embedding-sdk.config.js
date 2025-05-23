@@ -24,7 +24,12 @@ const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
 
 const sdkPackageTemplateJson = fs.readFileSync(
-  path.resolve("./enterprise/frontend/src/embedding-sdk/package.template.json"),
+  path.resolve(
+    path.join(
+      __dirname,
+      "enterprise/frontend/src/embedding-sdk/package.template.json",
+    ),
+  ),
   "utf-8",
 );
 const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
@@ -187,7 +192,7 @@ module.exports = (env) => {
 
   config.resolve.alias = {
     ...mainConfig.resolve.alias,
-    "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
+    "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 
     // Allows importing side effects that applies only to the SDK.

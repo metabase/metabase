@@ -8,8 +8,8 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -990,3 +990,7 @@
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
   (get-in database [:details :user]))
+
+(defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

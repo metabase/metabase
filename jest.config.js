@@ -47,6 +47,7 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
     "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
     /**
      * Imports which are only applicable to the embedding sdk.

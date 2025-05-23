@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.request.core :as request]
    [metabase.server.instance :as server]
@@ -202,11 +202,11 @@
 (defn- logging-disabled-uris
   "The set of URIs that should not be logged."
   []
-  (cond-> #{"/api/util/logs"}
+  (cond-> #{"/api/logger/logs"}
     (not (health-check-logging-enabled)) (conj "/api/health")))
 
 (defn- should-log-request? [{:keys [uri], :as request}]
-  ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
+  ;; don't log calls to /health or /logger/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
   (and (request/api-call? request)
        (not ((logging-disabled-uris) uri))))

@@ -3,15 +3,16 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase.config :as config]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.logger :as logger]
+   [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
@@ -20,7 +21,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.ssh :as ssh]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [crypto.random :as crypto-random]
    [metabase.analytics.core :as analytics]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.embedding.app-origins-sdk :as aos]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]

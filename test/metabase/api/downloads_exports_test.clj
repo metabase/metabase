@@ -18,7 +18,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.impl :as formatter]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.middleware.limit :as limit]
@@ -1670,3 +1670,47 @@
               pivot        (read-xlsx result)
               subtotal-row (first (filter #(str/starts-with? (first %) "Totals for") pivot))]
           (is (= "Totals for 2016" (first subtotal-row))))))))
+
+(deftest ^:parallel pivot-condense-duplicate-totals-csv-test
+  (testing "`pivot.condense_duplicate_totals` affects CSV output as expected"
+    (let [viz-settings (fn [condense?]
+                         {:pivot_table.column_split {:rows ["CATEGORY"]
+                                                     :columns ["CREATED_AT"]
+                                                     :values ["count"]}
+                          :column_settings
+                          {"[\"name\",\"sum\"]" {:number_style "currency"}
+                           "[\"name\",\"avg\"]" {:number_style "decimal"}}
+                          ;; Optionally include the condense setting
+                          :pivot.condense_duplicate_totals condense?})
+          expected-condensed
+          [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+           ["Doohickey" "13" "17" "8" "4" "42"]
+           ["Gadget"    "13" "19" "14" "7" "53"]
+           ["Gizmo"     "9"  "21" ""  ""  "51"]
+           ["Grand totals" "54" "75" "53" "18" "200"]]
+
+          expected-uncondensed
+          [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+           ["Doohickey" "13" "17" "8" "4" "42"]
+           ["Totals for Doohickey" "13" "17" "8" "4" "42"]
+           ["Gadget" "13" "19" "14" "7" "53"]
+           ["Totals for Gadget" "13" "19" "14" "7" "53"]
+           ["Gizmo" "9" "21" "" "" "51"]
+           ["Totals for Gizmo" "9" "21" "" "" "51"]
+           ["Grand totals" "54" "75" "53" "18" "200"]]]
+      (mt/dataset test-data
+        (doseq [[condense? expected]
+                [[true expected-condensed]
+                 [false expected-uncondensed]
+                 [nil expected-condensed]]]
+          (mt/with-temp [:model/Card card
+                         {:display :pivot
+                          :visualization_settings (cond-> (viz-settings condense?)
+                                                    (nil? condense?) (dissoc :pivot.condense_duplicate_totals))
+                          :dataset_query (mt/mbql-query products
+                                           {:aggregation [[:count]]
+                                            :breakout [$category !year.created_at]
+                                            :limit 10})}]
+            (let [result (card-download card {:export-format :csv :format-rows true :pivot true})]
+              (is (= expected (take (count expected) result))
+                  (str "Failed for condense_duplicate_totals=" condense?)))))))))

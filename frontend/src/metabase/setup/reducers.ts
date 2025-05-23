@@ -16,6 +16,7 @@ import {
   updateLocale,
   updateTracking,
 } from "./actions";
+import type { SetupStep } from "./types";
 
 const getUserFromQueryParams = () => {
   const params = new URLSearchParams(window.location.search);
@@ -32,11 +33,21 @@ const getUserFromQueryParams = () => {
   };
 };
 
+const getIsEmbeddingUseCaseFromQueryParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("use_case", "embedding");
+};
+
+const isEmbeddingUseCase = getIsEmbeddingUseCaseFromQueryParams();
+const getInitialStep = (): SetupStep =>
+  isEmbeddingUseCase ? "user_info" : "welcome";
+
 const initialState: SetupState = {
-  step: "welcome",
+  step: getInitialStep(),
   isLocaleLoaded: false,
   isTrackingAllowed: true,
   user: getUserFromQueryParams(),
+  isEmbeddingUseCase,
 };
 
 export const reducer = createReducer(initialState, (builder) => {

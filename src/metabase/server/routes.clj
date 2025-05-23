@@ -2,12 +2,12 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
-   [compojure.core :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
+   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
    [compojure.route :as route]
-   [metabase.api-routes.core :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
@@ -15,6 +15,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.util.response :as response]))
 
 (defn- redirect-including-query-string
@@ -43,25 +44,21 @@
     (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (system/site-url) token export-format)))
   (GET "*" [] index/embed))
 
-#_{:clj-kondo/ignore [:discouraged-var]}
-(defroutes ^{:doc "Top-level ring routes for Metabase.", :arglists '([request respond raise])} routes
-  auth-wrapper/routes
-  ;; ^/$ -> index.html
-  (GET "/" [] index/index)
-  (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
-  ;; ^/api/health -> Health Check Endpoint
-  (GET "/api/health" []
-    (if (init-status/complete?)
-      (try (if (or (mdb/recent-activity?)
-                   (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb/data-source)}))
-             {:status 200, :body {:status "ok"}}
-             {:status 503 :body {:status "Unable to get app-db connection"}})
-           (catch Exception e
-             (log/warn e "Error in api/health database check")
-             {:status 503 :body {:status "Error getting app-db connection"}}))
-      {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
+(defn- health-handler
+  ([]
+   (if (init-status/complete?)
+     (try
+       (if (or (mdb/recent-activity?)
+               (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb/data-source)}))
+         {:status 200, :body {:status "ok"}}
+         {:status 503 :body {:status "Unable to get app-db connection"}})
+       (catch Exception e
+         (log/warn e "Error in api/health database check")
+         {:status 503 :body {:status "Error getting app-db connection"}}))
+     {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
 
-  (OPTIONS "/api/*" [] {:status 200 :body ""})
+  ([_request respond _raise]
+   (respond (health-handler))))
 
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [request respond raise]

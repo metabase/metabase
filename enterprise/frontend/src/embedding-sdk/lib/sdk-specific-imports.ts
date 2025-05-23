@@ -6,7 +6,7 @@
  */
 
 // For the sdk-based iframe embedding, ee-plugins is already imported when initializing the route.
-import "ee-plugins";
+import "sdk-ee-plugins";
 
 // Polyfills useSyncExternalStore for React 17 for backwards compatibility.
 import "./polyfill/use-sync-external-store";

@@ -12,13 +12,13 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
@@ -106,7 +106,7 @@
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                          :table_id      [:in table-ids]
-                                         :semantic_type (mdb.query/isa :type/Name))
+                                         :semantic_type (app-db/isa :type/Name))
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -225,9 +225,9 @@
 
 (def ^:dynamic *field-id-context*
   "Conext for effective computation of field ids for parameters. Bound in
-  the [[metabase.api.dashboard/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
-  re-use values of previous `filterable-columns` computations (during the reduction itself and hydration
-  of `:param_fields` and `:param_values` at the time of writing)."
+  the [[metabase.dashboards.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
+  re-use values of previous `filterable-columns` computations (during the reduction itself and hydration of
+  `:param_fields` and `:param_values` at the time of writing)."
   nil)
 
 (def empty-field-id-context

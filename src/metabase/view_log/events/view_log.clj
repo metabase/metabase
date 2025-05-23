@@ -3,12 +3,12 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.cluster-lock :as cluster-lock]
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -40,6 +40,7 @@
                           cluster-lock/card-statistics-lock ;; need to use a shared lock for all updates to the card table
                           (keyword "metabase.events.view_log"
                                    (str (name (t2/table-name model)) "-view-count")))]
+          (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
           (cluster-lock/with-cluster-lock lock-name
             (t2/query {:update (t2/table-name model)
                        :set    {:view_count [:+ :view_count (into [:case]
@@ -55,7 +56,7 @@
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
-          increment-view-counts!*
+          #'increment-view-counts!*
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
@@ -117,7 +118,7 @@
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
-          update-dashboard-last-viewed-at!*
+          #'update-dashboard-last-viewed-at!*
           :capacity 500
           :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
 

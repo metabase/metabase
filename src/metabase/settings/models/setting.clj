@@ -9,7 +9,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -445,7 +445,7 @@
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
   (let [f (or @db-is-set-up-var
-              (reset! db-is-set-up-var (requiring-resolve 'metabase.db/db-is-set-up?)))]
+              (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
     (if f (f) false)))
 
 (defn- db-or-cache-value

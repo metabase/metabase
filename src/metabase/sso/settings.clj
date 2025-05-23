@@ -1,7 +1,7 @@
 (ns metabase.sso.settings
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
    [metabase.util :as u]

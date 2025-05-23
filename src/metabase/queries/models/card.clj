@@ -9,21 +9,21 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
-   [metabase.db.query :as mdb.query]
+   [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
@@ -40,11 +40,11 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
-   [metabase.util.autoplace :as autoplace]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -426,7 +426,7 @@
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
-      (doseq [{:keys [field-id field-name table-name field-db-id]} (mdb.query/query
+      (doseq [{:keys [field-id field-name table-name field-db-id]} (app-db/query
                                                                     {:select    [[:field.id :field-id]
                                                                                  [:field.name :field-name]
                                                                                  [:table.name :table-name]
@@ -814,7 +814,6 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      serdes/add-entity-id
       ensure-clause-idents
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
@@ -905,12 +904,7 @@
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
-  [:name (serdes/hydrated-hash :collection :collection_id) :created_at])
-
-(defmethod serdes/hash-required-fields :model/Card
-  [_card]
-  {:model :model/Card
-   :required-fields [:name :collection_id :created_at]})
+  [:name (serdes/hydrated-hash :collection) :created_at])
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1375,7 +1369,7 @@
                   :database-id         true
                   :entity-id           true
                   :last-viewed-at      :last_used_at
-                  :native-query        [:case [:= "native" :query_type] :dataset_query]
+                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id

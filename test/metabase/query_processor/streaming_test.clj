@@ -305,7 +305,7 @@
 ;;; and assert on the results. These tests should generally be for ensuring that specific types of queries or
 ;;; behaviors work across all endpoints that generate exports. Tests that are specific to single endpoints
 ;;; (like `/api/dataset/:format`) should go in the corresponding test namespaces for those files
-;;; (like `metabase.api.dataset-test`).
+;;; (like `metabase.query-processor.api-test`).
 ;;; TODO: migrate the test cases above to use these functions, if possible
 
 (defn do-test!

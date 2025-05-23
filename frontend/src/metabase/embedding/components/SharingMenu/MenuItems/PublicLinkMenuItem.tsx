@@ -48,11 +48,9 @@ export function PublicLinkMenuItem({
       onClick={onClick}
       disabled={!hasPublicLink}
     >
-      <Title order={4} c="inherit">
-        {hasPublicLink
-          ? t`Public link`
-          : t`Ask your admin to create a public link`}
-      </Title>
+      {hasPublicLink
+        ? t`Public link`
+        : t`Ask your admin to create a public link`}
     </Menu.Item>
   );
 }

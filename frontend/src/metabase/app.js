@@ -6,7 +6,7 @@ import "regenerator-runtime/runtime";
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
-import "ee-overrides"; // eslint-disable-line import/no-duplicates
+import "ee-overrides";
 
 import "metabase/lib/dayjs";
 
@@ -25,7 +25,7 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins"; // eslint-disable-line import/no-duplicates
+import "ee-plugins";
 
 // Set nonce for mantine v6 deps
 import "metabase/lib/csp";

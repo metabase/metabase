@@ -22,7 +22,6 @@
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.sync.core :as sync]
@@ -33,6 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)

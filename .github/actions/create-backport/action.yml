@@ -46,7 +46,7 @@ runs:
           echo "git reset HEAD~1" > ./backport.sh
           echo "rm ./backport.sh" >> ./backport.sh
           echo "git cherry-pick ${COMMIT}" >> ./backport.sh
-          echo "echo 'Resolve conflicts and force push this branch'" >> ./backport.sh
+          echo "echo 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'" >> ./backport.sh
           chmod +x ./backport.sh
           git add ./backport.sh
           git commit -m "Add backport resolution script"

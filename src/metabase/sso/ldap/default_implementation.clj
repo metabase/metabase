@@ -3,9 +3,9 @@
   (:require
    [clj-ldap.client :as ldap]
    [clojure.string :as str]
-   [metabase.models.user :as user]
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.sso.common :as sso.common]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

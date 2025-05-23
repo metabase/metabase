@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.api-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
@@ -11,13 +13,23 @@
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(deftest column-decode-test
+  (let [base-col {:field_id "fid", :name "fname"}]
+    (doseq [{:keys [test-case type-value]} [{:test-case "known type",   :type-value :boolean}
+                                            {:test-case "unknown type", :type-value nil}]]
+      (testing test-case
+        (let [col (assoc base-col :type type-value)
+              decoded (mc/decode ::metabot-v3.tools.api/column col (mtx/transformer {:name :tool-api-response}))]
+          (is (mr/validate ::metabot-v3.tools.api/column decoded)))))))
 
 (defn- ai-session-token
   ([] (ai-session-token :rasta (str (random-uuid))))
