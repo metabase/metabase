@@ -1,3 +1,4 @@
+const { H } = cy;
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -153,5 +154,65 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     // The question title's header should be updated.
     getSdkRoot().contains("My Orders");
+  });
+
+  it("should respect `entityTypes` prop", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    const MODEL_COUNT = 14;
+    const TABLE_COUNT = 4;
+
+    cy.log('1. `entityTypes` = ["table"]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" entityTypes={["table"]} />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Orders Model" }).should("not.exist");
+      cy.findAllByRole("link").should("have.length", TABLE_COUNT);
+    });
+
+    cy.log('2. `entityTypes` = ["model"]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" entityTypes={["model"]} />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("not.exist");
+      cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      cy.findAllByRole("link").should("have.length", MODEL_COUNT);
+    });
+
+    cy.log('3. `entityTypes` = ["model", "table]');
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["model", "table"]}
+        />
+      </Flex>,
+    );
+
+    // Wait until the entity picker modal is visible
+    getSdkRoot().contains("Pick your starting data");
+
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
   });
 });

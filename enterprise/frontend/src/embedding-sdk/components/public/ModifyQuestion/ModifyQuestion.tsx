@@ -14,7 +14,7 @@ export const ModifyQuestion = ({
   plugins,
   onSave,
   onBeforeSave,
-  entityTypeFilter,
+  entityTypes,
   isSaveEnabled,
   targetCollection,
 }: BaseInteractiveQuestionProps) => (
@@ -23,7 +23,7 @@ export const ModifyQuestion = ({
     plugins={plugins}
     onSave={onSave}
     onBeforeSave={onBeforeSave}
-    entityTypeFilter={entityTypeFilter}
+    entityTypes={entityTypes}
     isSaveEnabled={isSaveEnabled}
     targetCollection={targetCollection}
   />

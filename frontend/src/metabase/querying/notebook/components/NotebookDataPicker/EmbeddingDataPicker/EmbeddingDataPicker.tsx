@@ -1,7 +1,7 @@
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { getEmbedOptions } from "metabase/selectors/embed";
+import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -39,9 +39,7 @@ export function EmbeddingDataPicker({
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
   );
 
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
-  );
+  const entityTypes = useSelector(getEntityTypes);
 
   if (isDataSourceCountLoading) {
     return null;

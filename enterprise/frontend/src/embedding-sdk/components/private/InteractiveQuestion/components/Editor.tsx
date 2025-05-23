@@ -38,13 +38,8 @@ export const Editor = ({
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 
-  const {
-    question,
-    originalQuestion,
-    updateQuestion,
-    queryQuestion,
-    modelsFilterList,
-  } = useInteractiveQuestionContext();
+  const { question, originalQuestion, updateQuestion, queryQuestion } =
+    useInteractiveQuestionContext();
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);
@@ -78,7 +73,6 @@ export const Editor = ({
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}
-          modelsFilterList={modelsFilterList}
         />
       </ScrollArea>
     )
