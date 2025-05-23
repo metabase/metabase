@@ -36,7 +36,8 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     if (hide_download_button !== null) {
       console.error(
         `%c⚠️ The \`hide_download_button\` option has been removed. Please use the \`downloads\` option instead: ${staticEmbedParametersDocsUrl}`,
-        "font-size: 14px; font-weight: bold; color: red",
+        // eslint-disable-next-line no-color-literals
+        "color: #FF2222; font-size: 16px; font-weight: bold;",
       );
     }
   }, [hide_download_button, staticEmbedParametersDocsUrl]);
