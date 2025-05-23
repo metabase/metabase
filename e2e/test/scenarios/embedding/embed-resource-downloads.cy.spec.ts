@@ -319,7 +319,7 @@ H.describeWithSnowplowEE(
                       "case-sensitive": false,
                     },
                     dimension: ["field", PEOPLE.STATE, null],
-                    default: FILTER_VALUES,
+                    default: null,
                     "widget-type": "string/contains",
                   },
                 },
@@ -335,7 +335,7 @@ H.describeWithSnowplowEE(
                   target: ["dimension", ["template-tag", "state"]],
                   name: "State",
                   slug: "state",
-                  default: FILTER_VALUES,
+                  default: null,
                 },
               ],
               enable_embedding: true,
@@ -356,7 +356,9 @@ H.describeWithSnowplowEE(
             H.visitEmbeddedPage(
               {
                 resource: { question: Number(questionId) },
-                params: {},
+                params: {
+                  state: FILTER_VALUES,
+                },
               },
               {
                 pageStyle: {
