@@ -193,6 +193,8 @@ module.exports = (env) => {
   config.resolve.alias = {
     ...mainConfig.resolve.alias,
     "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
+    "sdk-iframe-embedding-ee-plugins":
+      ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 
     // Allows importing side effects that applies only to the SDK.
