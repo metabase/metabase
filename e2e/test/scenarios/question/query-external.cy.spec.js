@@ -4,7 +4,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 const supportedDatabases = [
   {
     database: "Mongo",
-    snapshotName: "mongo-5",
+    snapshotName: "mongo-6",
     dbName: "QA Mongo",
   },
   {

@@ -247,7 +247,7 @@ describe("issue 53194", () => {
 
 describe("issue 53299", { tags: ["@mongo"] }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
   });
 

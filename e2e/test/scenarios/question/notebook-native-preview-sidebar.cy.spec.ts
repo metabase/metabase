@@ -326,7 +326,7 @@ describe(
     const MONGO_DB_ID = 2;
 
     beforeEach(() => {
-      H.restore("mongo-5");
+      H.restore("mongo-6");
       cy.signInAsAdmin();
     });
 

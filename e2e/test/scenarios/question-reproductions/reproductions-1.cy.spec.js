@@ -189,7 +189,7 @@ function openEllipsisMenuFor(item) {
 
 describe("issue 13097", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
 
     H.withDatabase(MONGO_DB_ID, ({ PEOPLE_ID }) => {
@@ -686,7 +686,7 @@ describe("issue 17910", () => {
 
 describe("issue 17963", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {

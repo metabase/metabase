@@ -72,7 +72,7 @@ describe(
   { tags: "@mongo" },
   () => {
     beforeEach(() => {
-      H.restore("mongo-5");
+      H.restore("mongo-6");
       cy.signInAsAdmin();
     });
 

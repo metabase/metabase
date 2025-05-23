@@ -213,7 +213,7 @@ describe(
 
 describe("mongo as the default database", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
   });
 
@@ -308,7 +308,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore("mongo-5");
+    H.restore("mongo-6");
     cy.signInAsAdmin();
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
