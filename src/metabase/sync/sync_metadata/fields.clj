@@ -40,7 +40,6 @@
     for logging purposes by higher-level sync logic."
   (:require
    [metabase.driver.util :as driver.u]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
@@ -53,16 +52,6 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
-
-(defsetting auto-cruft-columns
-  "A list of pattern strings that get converted into additional regexes that match Fields that should automatically be
-  marked as visibility-type = `:hidden`. Not to be set directly, this setting lives in the metabase_database.settings json blob."
-  :type :json
-  :database-local :only
-  :visibility :internal
-  :default []
-  :export? true
-  :encryption :no)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |

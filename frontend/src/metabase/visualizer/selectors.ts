@@ -214,6 +214,9 @@ export const getVisualizerComputedSettings = createSelector(
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
 );
 
+// When computing viz settings for a multi-series chart,
+// the final object only references columns from the first series
+// Which can cause issues in certain cases
 export const getVisualizerComputedSettingsForFlatSeries = createSelector(
   [getVisualizerFlatRawSeries],
   (series): ComputedVisualizationSettings =>

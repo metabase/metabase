@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -16,21 +17,26 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.settings.core :as setting]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as table]
+   [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
-   (com.fasterxml.jackson.core JsonFactory JsonParser JsonToken JsonParser$NumberType)
+   (com.fasterxml.jackson.core JsonFactory JsonParser JsonParser$NumberType JsonToken)
    (java.sql Connection DatabaseMetaData ResultSet)))
 
 (set! *warn-on-reflection* true)
+
+;;; these are provided as conveniences because these settings used to live here; prefer getting them from
+;;; `driver.settings` instead going forward.
+(p/import-vars
+ [driver.settings
+  nested-field-columns-value-length-limit])
 
 (defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc
   [_driver _database-type _column-name]
@@ -638,14 +644,6 @@
                                         (false? (:json_unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
-(setting/defsetting nested-field-columns-value-length-limit
-  (deferred-tru (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
-                     "too high it could lead to slow syncs or out of memory errors."))
-  :visibility :internal
-  :export?    true
-  :type       :integer
-  :default    50000)
-
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
 
@@ -659,7 +657,7 @@
                                    [field]
                                    [[:case
                                      [:<
-                                      [:inline (nested-field-columns-value-length-limit)]
+                                      [:inline (driver.settings/nested-field-columns-value-length-limit)]
                                       (driver.sql/json-field-length driver field)]
                                      nil
                                      :else

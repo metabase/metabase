@@ -248,6 +248,84 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
+  it("should handle implicit viz settings (VIZ-947)", () => {
+    function assertDataSourceColumnSelected(
+      columnName: string,
+      isSelected = true,
+    ) {
+      H.assertDataSourceColumnSelected(
+        PIVOT_TABLE_CARD.name,
+        columnName,
+        isSelected,
+      );
+    }
+
+    H.createQuestion(PIVOT_TABLE_CARD);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(PIVOT_TABLE_CARD.name);
+
+    H.modal().within(() => {
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity", false);
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.chartPathWithFillColor("#88BF4D").should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+
+      // Add Category column
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Product → Category").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity", false);
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category");
+      H.chartLegendItems().should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Add Average of Quantity column
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Average of Quantity").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category");
+      H.chartLegendItems().should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Remove dimensions
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Created At: Year",
+      );
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Product → Category",
+      );
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year", false);
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.echartsContainer().should("not.exist");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 0);
+
+      // Add a dimension back
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Created At: Year").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.echartsContainer().should("exist");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.chartLegendItems().should("have.length", 2);
+    });
+  });
+
   describe("timeseries breakout", () => {
     it("should automatically use new columns whenever possible", () => {
       const Q1_NAME = ORDERS_COUNT_BY_CREATED_AT.name;

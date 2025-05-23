@@ -485,28 +485,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
   });
 
-  it("should allow changing the viz when no dataset is selected (VIZ-929)", () => {
-    createDashboardWithVisualizerDashcards();
-    H.editDashboard();
-
-    H.showDashcardVisualizerModal(3);
-
-    H.removeDataSource(PRODUCTS_COUNT_BY_CREATED_AT.name);
-
-    H.modal().within(() => {
-      cy.findByText("Scatterplot").click();
-    });
-
-    H.switchToAddMoreData();
-
-    H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
-
-    // For now let's just check we're not crashing
-    // and as a follow up we should check that columns are actually assigned properly
-    // but for now that's require too big a change
-    cy.findAllByText("Something’s gone wrong").should("not.exist");
-  });
-
   it("should not store all computed settings in visualizer settings (VIZ-905)", () => {
     H.createDashboard().then(({ body: { id: dashboardId } }) => {
       H.visitDashboard(dashboardId);

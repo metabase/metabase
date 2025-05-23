@@ -1,8 +1,7 @@
-(ns metabase-enterprise.enhancements.integrations.ldap-test
+(ns metabase-enterprise.sso.integrations.ldap-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
@@ -112,7 +111,7 @@
 
       (testing "ignored attributes should not be returned"
         (mt/with-temporary-setting-values [ldap-sync-user-attributes-blacklist
-                                           (cons "title" (ldap-ee/ldap-sync-user-attributes-blacklist))]
+                                           (cons "title" (sso-settings/ldap-sync-user-attributes-blacklist))]
           (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                   :first-name "Lucky"
                   :last-name  "Pigeon"
