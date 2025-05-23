@@ -11,8 +11,9 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
-   [metabase-enterprise.metabot-v3.reactions]
-   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
+    :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
@@ -24,38 +25,17 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.request.core :as request]
-   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(defsetting site-uuid-for-metabot-tools
-  "UUID that we use for encrypting JWT tokens given to the AI service to make callbacks with."
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :sensitive? true
-  :feature    :metabot-v3
-  :doc        false
-  :export?    false
-  :base       setting/uuid-nonce-base)
-
-(defsetting metabot-ai-service-token-ttl
-  (deferred-tru "The number of seconds the tokens passed to AI service should be valid.")
-  :type       :integer
-  :visibility :settings-manager
-  :default    180
-  :feature    :metabot-v3
-  :doc        false
-  :export?    true
-  :audit      :never)
-
 (defn- get-ai-service-token
   [user-id metabot-id]
-  (let [secret (buddy-hash/sha256 (site-uuid-for-metabot-tools))
+  (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
         claims {:user user-id
-                :exp (time/plus (time/now) (time/seconds (metabot-ai-service-token-ttl)))
+                :exp (time/plus (time/now) (time/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
                 :metabot-id metabot-id}]
     (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256})))
 
@@ -63,7 +43,7 @@
   [token]
   (try
     (when (string? token)
-      (jwt/decrypt token (buddy-hash/sha256 (site-uuid-for-metabot-tools))))
+      (jwt/decrypt token (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))))
     (catch Exception e
       (log/error e "Bad AI service token")
       nil)))
