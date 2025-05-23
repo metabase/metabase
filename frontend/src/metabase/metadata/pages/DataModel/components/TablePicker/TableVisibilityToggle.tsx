@@ -19,7 +19,7 @@ export function TableVisibilityToggle({
     return null;
   }
 
-  const isHidden = table?.visibility_type === "hidden";
+  const isHidden = table?.visibility_type !== null;
 
   return (
     <Icon
