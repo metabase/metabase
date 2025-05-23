@@ -21,7 +21,7 @@ export function TablePicker({
   const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack mih={200} h="100%">
+    <Stack mih={200}>
       <Box p="xl" pb={0}>
         <Input
           value={query}

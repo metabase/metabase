@@ -5,9 +5,10 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import Link from "metabase/core/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Box, Flex, Icon, Stack } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
@@ -61,6 +62,18 @@ export const DataModel = ({ params }: Props) => {
           schemaId={schemaId}
           tableId={tableId}
         />
+        <Box mx="xl" py="sm" className={S.footer}>
+          <Flex
+            component={Link}
+            to="/admin/datamodel/segments"
+            className={S.segmentsLink}
+            gap="sm"
+            p="sm"
+          >
+            <Icon name="pie" className={S.segmentsIcon} />
+            {t`Segments`}
+          </Flex>
+        </Box>
       </Stack>
 
       {tableId && (
