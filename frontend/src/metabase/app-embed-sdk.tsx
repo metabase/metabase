@@ -1,10 +1,7 @@
 import { createRoot } from "react-dom/client";
 
-// required by ee-plugins
-import "metabase/lib/dayjs";
-
 // load the embedding_iframe_sdk EE plugin
-import "ee-plugins";
+import "sdk-iframe-embedding-ee-plugins";
 
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "./plugins";
 

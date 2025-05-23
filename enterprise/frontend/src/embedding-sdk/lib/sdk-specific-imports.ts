@@ -5,7 +5,7 @@
  * This is aliased as `sdk-specific-imports` in the SDK's webpack config.
  */
 
-// For the sdk-based iframe embedding, ee-plugins is already imported when initializing the route.
+// Import the EE plugins required by the embedding sdk.
 import "sdk-ee-plugins";
 
 // Polyfills useSyncExternalStore for React 17 for backwards compatibility.

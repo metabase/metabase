@@ -1,8 +1,5 @@
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
-import "html2canvas-pro";
-import "jspdf";
-
 // SETTINGS OVERRIDES:
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
@@ -41,4 +38,3 @@ import "./user_provisioning";
 import "./clean_up";
 import "./troubleshooting";
 import "./metabot";
-import "./embedding_iframe_sdk"; // must be imported after Metabot due to dependency issues
