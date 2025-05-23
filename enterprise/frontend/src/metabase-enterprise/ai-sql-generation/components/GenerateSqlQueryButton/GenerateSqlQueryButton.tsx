@@ -53,22 +53,22 @@ function getRequest(
     return;
   }
 
-  const selectedText = selectedQueryText?.trim();
-  if (selectedText != null && selectedText.length > 0) {
+  const promptFromSelection = selectedQueryText?.trim();
+  if (promptFromSelection != null && promptFromSelection.length > 0) {
     return {
-      prompt: selectedText,
+      prompt: promptFromSelection,
       database_id: databaseId,
     };
   }
 
-  const commentText = Lib.rawNativeQuery(query)
+  const promptFromComment = Lib.rawNativeQuery(query)
     .split("\n")
     .find((line) => line.startsWith(COMMENT_PREFIX))
     ?.substring(COMMENT_PREFIX.length)
     ?.trim();
-  if (commentText != null && commentText.length > 0) {
+  if (promptFromComment != null && promptFromComment.length > 0) {
     return {
-      prompt: commentText,
+      prompt: promptFromComment,
       database_id: databaseId,
     };
   }
