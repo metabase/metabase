@@ -922,7 +922,8 @@
   ;; SQL Server supports impersonation via EXECUTE AS USER
   ;; So the default role is the default user
   ;; But we can't execute as sa, so skip setting the role in that case
-  (if (= "sa" (-> database :details :user)) nil (-> database :details :user)))
+  (when-not (= "sa" (-> database :details :user))
+    (-> database :details :user)))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]

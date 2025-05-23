@@ -242,8 +242,8 @@
 (defn grant-table-perms-to-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)
-        wh-name (tx/db-test-env-var :snowflake :warehouse)
-        db-name (sql.tx/qualify-and-quote :snowflake "test-data")
+        wh-name (tx/db-test-env-var driver :warehouse)
+        db-name (sql.tx/qualify-and-quote driver "test-data")
         schema-name (format "%s.\"PUBLIC\"" db-name)]
     (doseq [[role-name table-perms] roles]
       (doseq [statement [(format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" wh-name role-name)

@@ -69,16 +69,16 @@
 
 (defn grant-roles-to-user!
   [driver details roles user-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        user-name (sql.tx/qualify-and-quote driver user-name)]
     (doseq [[role-name _table-perms] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)
-            user-name (sql.tx/qualify-and-quote driver user-name)]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (jdbc/execute! spec
                        [(format "GRANT %s TO %s" role-name user-name)]
                        {:transaction? false})))))
 
 (defmethod tx/create-and-grant-roles! :sql-jdbc/test-extensions
-  [driver details roles user-name]
+  [driver details roles user-name _default-role]
   (drop-if-exists-and-create-roles! driver details roles)
   (grant-table-perms-to-roles! driver details roles)
   (grant-roles-to-user! driver details roles user-name))

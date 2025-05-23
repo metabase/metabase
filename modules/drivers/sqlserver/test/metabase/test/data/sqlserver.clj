@@ -46,8 +46,8 @@
 
 (defn grant-roles-to-user!
   [driver details roles db-user]
-  (let [db-user (sql.tx/qualify-and-quote driver db-user)
-        spec (sql-jdbc.conn/connection-details->spec driver details)]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        db-user (sql.tx/qualify-and-quote driver db-user)]
     (doseq [[user-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver (str user-name "_role"))
             user-name (sql.tx/qualify-and-quote driver user-name)]
