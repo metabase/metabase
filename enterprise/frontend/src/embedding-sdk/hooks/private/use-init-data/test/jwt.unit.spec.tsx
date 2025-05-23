@@ -3,16 +3,12 @@ import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
+import { setupMockJwtEndpoints } from "embedding-sdk/test/mocks/sso";
 
-import {
-  type MetabaseConfigProps,
-  TestComponent,
-  setup,
-  setupMockAuthSsoEndpoints,
-} from "./setup";
+import { type MetabaseConfigProps, TestComponent, setup } from "./setup";
 
 const setupJwt = (config: MetabaseConfigProps = {}) => {
-  setupMockAuthSsoEndpoints("jwt");
+  setupMockJwtEndpoints();
   return setup(config);
 };
 

@@ -1,15 +1,19 @@
 import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
-
 import {
-  type MetabaseConfigProps,
-  setup,
-  setupMockAuthSsoEndpoints,
-} from "./setup";
+  setupMockJwtEndpoints,
+  setupMockSamlEndpoints,
+} from "embedding-sdk/test/mocks/sso";
+
+import { type MetabaseConfigProps, setup } from "./setup";
 
 const setupCommon = (method: "jwt" | "saml", config?: MetabaseConfigProps) => {
-  setupMockAuthSsoEndpoints(method);
+  if (method === "jwt") {
+    setupMockJwtEndpoints();
+  } else if (method === "saml") {
+    setupMockSamlEndpoints();
+  }
   setup(config);
 };
 
@@ -55,7 +59,7 @@ describe.each(["jwt", "saml"] as const)(
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Unable to connect to instance at http://oisin-is-really-cool",
+        "Unable to connect to instance at http://oisin-is-really-cool (status: 500)",
       );
     });
   },
