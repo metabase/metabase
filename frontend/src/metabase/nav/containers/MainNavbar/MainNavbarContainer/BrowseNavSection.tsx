@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
-import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
+import { Collapse, Flex, Group, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
@@ -40,19 +40,30 @@ export const BrowseNavSection = ({
 
   return (
     <div aria-selected={opened} role="tab">
-      <Group
-        align="center"
-        gap="sm"
-        onClick={handleToggle}
-        component={UnstyledButton}
-        c="text-medium"
-        mb="sm"
-        className={CS.cursorPointer}
-      >
-        <SidebarHeading>{c("A verb, shown in the sidebar")
-          .t`Browse`}</SidebarHeading>
-        <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
-      </Group>
+      <Flex align="center" justify="space-between" mb="sm">
+        <Group
+          align="center"
+          gap="sm"
+          onClick={handleToggle}
+          component={UnstyledButton}
+          c="text-medium"
+          className={CS.cursorPointer}
+        >
+          <SidebarHeading>{c("A verb, shown in the sidebar")
+            .t`Browse`}</SidebarHeading>
+          <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
+        </Group>
+        <Group
+          align="center"
+          gap="sm"
+          component={UnstyledButton}
+          c="brand"
+          className={CS.cursorPointer}
+        >
+          <Icon name="add_data" />
+          <Text fw={700} c="inherit">{t`Add`}</Text>
+        </Group>
+      </Flex>
 
       <Collapse in={opened} transitionDuration={0} role="tabpanel">
         {(!isEmbeddingIframe || entityTypes.includes("model")) && (
