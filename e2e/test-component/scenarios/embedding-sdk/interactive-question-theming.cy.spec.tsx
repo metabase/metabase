@@ -24,7 +24,7 @@ const lighten = (color: string | undefined, amount: number) =>
 
 describe(
   "scenarios > embedding-sdk > interactive-question > theming",
-  // color checks can be flaky 10% of the time so a retry is added
+  // realHover color check is flaky 10% of the time so a retry is added
   { retries: { runMode: 2, openMode: 2 } },
   () => {
     beforeEach(() => {
@@ -47,7 +47,7 @@ describe(
       mockAuthProviderAndJwtSignIn();
     });
 
-    it.skip("derives dynamic css variables for dark theme", () => {
+    it("derives dynamic css variables for dark theme", () => {
       const BACKGROUND_COLOR = "rgb(22, 26, 29)";
 
       setupInteractiveQuestionWithTheme({
@@ -65,6 +65,18 @@ describe(
         const buttonHoverBg = lighten(BACKGROUND_COLOR, 0.5);
 
         const customColumn = "[aria-label='Custom column']";
+
+        // Should be the lightened version of the background color
+        cy.findByTestId("notebook-button")
+          .should("be.visible")
+          .realHover()
+          .should(($el) => assertBackgroundColorEqual($el, buttonHoverBg));
+
+        // Should be the lightened version of the background color
+        cy.findByTestId("chart-type-selector-button")
+          .should("be.visible")
+          .realHover()
+          .should(($el) => assertBackgroundColorEqual($el, buttonHoverBg));
 
         cy.findByTestId("notebook-button").click();
 
