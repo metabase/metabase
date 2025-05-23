@@ -718,7 +718,7 @@ Syntax: `datetime((column)`
 
 Example: `datetime("2025-03-20 12:45:04)`
 
-`datetime` supports two formats:
+`datetime` supports the following datetime string formats:
 
 ```txt
 2025-05-15T22:20:01
