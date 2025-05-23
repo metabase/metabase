@@ -155,7 +155,6 @@ describe("SdkUsageProblemDisplay", () => {
 
   it("shows an error when neither an Auth Provider URI or API keys are provided", async () => {
     setup({
-      // @ts-expect-error - we're intentionally passing neither to simulate bad usage
       authConfig: { metabaseInstanceUrl: "http://localhost" },
     });
 
@@ -181,7 +180,6 @@ describe("SdkUsageProblemDisplay", () => {
 
   it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
     setup({
-      // @ts-expect-error - we're intentionally passing both to simulate bad usage
       authConfig: {
         apiKey: "TEST_API_KEY",
         metabaseInstanceUrl: "http://localhost",
