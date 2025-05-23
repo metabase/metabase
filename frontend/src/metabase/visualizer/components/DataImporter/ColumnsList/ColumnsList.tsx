@@ -12,6 +12,7 @@ import {
   getReferencedColumns,
   getVisualizationType,
   getVisualizerComputedSettings,
+  getVisualizerComputedSettingsForFlatSeries,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
 import { isReferenceToColumn } from "metabase/visualizer/utils";
@@ -38,6 +39,7 @@ export const ColumnsList = (props: ColumnListProps) => {
   const display = useSelector(getVisualizationType) ?? null;
   const columns = useSelector(getVisualizerDatasetColumns);
   const settings = useSelector(getVisualizerComputedSettings);
+  const flatSettings = useSelector(getVisualizerComputedSettingsForFlatSeries);
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const loadingDatasets = useSelector(getLoadingDatasets);
@@ -116,6 +118,7 @@ export const ColumnsList = (props: ColumnListProps) => {
 
                   const isUsable = !!findSlotForColumn(
                     { display, columns, settings },
+                    flatSettings,
                     datasets,
                     dataset.data.cols,
                     column,

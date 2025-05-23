@@ -80,6 +80,7 @@ describe("funnel", () => {
         addColumnToFunnel(
           state,
           {},
+          {},
           { ...metricColumn, name: "COLUMN_1" },
           metricColumnRef,
           dataset,
@@ -96,10 +97,11 @@ describe("funnel", () => {
       });
 
       it("should not change the metric column if it's already set", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: { "funnel.metric": "COLUMN_1" },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               {
@@ -113,6 +115,7 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
+          settings,
           {},
           { ...metricColumn2, name: "COLUMN_2" },
           createVisualizerColumnReference(dataSource, metricColumn2, [
@@ -129,10 +132,11 @@ describe("funnel", () => {
       });
 
       it("should add a dimension column", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: { "funnel.metric": "COLUMN_1" },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -142,6 +146,7 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
+          settings,
           {},
           { ...dimensionColumn, name: "COLUMN_2" },
           dimensionColumnRef,
@@ -168,10 +173,11 @@ describe("funnel", () => {
       });
 
       it("should not change the dimension column if it's already set", () => {
+        const settings = { "funnel.dimension": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-          settings: { "funnel.dimension": "COLUMN_1" },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               {
@@ -185,6 +191,7 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
+          settings,
           {},
           { ...dimensionColumn2, name: "COLUMN_2" },
           createVisualizerColumnReference(dataSource, dimensionColumn2, [
@@ -212,6 +219,7 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
+          {},
           {
             [dataSource.id]: scalarDataset1,
           },
@@ -234,16 +242,17 @@ describe("funnel", () => {
       });
 
       it("should add a new column to an existing scalar funnel", () => {
+        const settings = {
+          "funnel.metric": "METRIC",
+          "funnel.dimension": "DIMENSION",
+        };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [
             createMockNumericColumn({ name: "METRIC" }),
             createMockCategoryColumn({ name: "DIMENSION" }),
           ],
-          settings: {
-            "funnel.metric": "METRIC",
-            "funnel.dimension": "DIMENSION",
-          },
+          settings,
           columnValuesMapping: {
             METRIC: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -254,6 +263,7 @@ describe("funnel", () => {
 
         addColumnToFunnel(
           state,
+          settings,
           {
             [dataSource.id]: scalarDataset1,
             [dataSource2.id]: scalarDataset2,
@@ -292,12 +302,11 @@ describe("funnel", () => {
   describe("removeColumnFromFunnel", () => {
     describe("regular funnel", () => {
       it("should remove a metric column", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.metric": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -305,7 +314,7 @@ describe("funnel", () => {
           },
         };
 
-        removeColumnFromFunnel(state, "COLUMN_1");
+        removeColumnFromFunnel(state, settings, "COLUMN_1");
 
         expect(state.columns.map((c) => c.name)).toEqual([]);
         expect(state.columnValuesMapping).toEqual({});
@@ -313,12 +322,11 @@ describe("funnel", () => {
       });
 
       it("should remove a dimension column", () => {
+        const settings = { "funnel.dimension": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.dimension": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -326,7 +334,7 @@ describe("funnel", () => {
           },
         };
 
-        removeColumnFromFunnel(state, "COLUMN_1");
+        removeColumnFromFunnel(state, settings, "COLUMN_1");
 
         expect(state.columns.map((c) => c.name)).toEqual([]);
         expect(state.columnValuesMapping).toEqual({});
@@ -334,12 +342,11 @@ describe("funnel", () => {
       });
 
       it("should do nothing if a column isn't used", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.metric": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -347,7 +354,7 @@ describe("funnel", () => {
           },
         };
 
-        removeColumnFromFunnel(state, "COLUMN_2");
+        removeColumnFromFunnel(state, settings, "COLUMN_2");
 
         expect(state.columns.map((c) => c.name)).toEqual(["COLUMN_1"]);
         expect(state.columnValuesMapping).toEqual({
@@ -385,8 +392,9 @@ describe("funnel", () => {
 
       it("should reset state when removing a metric column", () => {
         const state = _.clone(initialState);
+        const settings = _.clone(initialState.settings);
 
-        removeColumnFromFunnel(state, "METRIC");
+        removeColumnFromFunnel(state, settings, "METRIC");
 
         expect(state.columns.map((c) => c.name)).toEqual([]);
         expect(state.columnValuesMapping).toEqual({});
@@ -395,8 +403,9 @@ describe("funnel", () => {
 
       it("should reset state when removing a dimension column", () => {
         const state = _.clone(initialState);
+        const settings = _.clone(initialState.settings);
 
-        removeColumnFromFunnel(state, "DIMENSION");
+        removeColumnFromFunnel(state, settings, "DIMENSION");
 
         expect(state.columns.map((c) => c.name)).toEqual([]);
         expect(state.columnValuesMapping).toEqual({});
@@ -405,8 +414,9 @@ describe("funnel", () => {
 
       it("should remove a funnel step", () => {
         const state = _.clone(initialState);
+        const settings = _.clone(initialState.settings);
 
-        removeColumnFromFunnel(state, "COLUMN_2");
+        removeColumnFromFunnel(state, settings, "COLUMN_2");
 
         expect(state.columns.map((c) => c.name)).toEqual([
           "METRIC",
@@ -430,12 +440,11 @@ describe("funnel", () => {
   describe("combineWithFunnel", () => {
     describe("regular funnel", () => {
       it("should set funnel.metric if it's undefined and there's one metric column", () => {
+        const settings = { "funnel.dimension": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.dimension": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               {
@@ -449,6 +458,7 @@ describe("funnel", () => {
 
         combineWithFunnel(
           state,
+          settings,
           createMockDataset({
             data: {
               cols: [metricColumn2, dimensionColumn2],
@@ -476,12 +486,11 @@ describe("funnel", () => {
       });
 
       it("should not change funnel.metric if it's already set", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.metric": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -491,6 +500,7 @@ describe("funnel", () => {
 
         combineWithFunnel(
           state,
+          settings,
           createMockDataset({
             data: { cols: [metricColumn2] },
           }),
@@ -503,12 +513,11 @@ describe("funnel", () => {
       });
 
       it("shouldn't set funnel.metric if it's undefined and there are multiple metric columns", () => {
+        const settings = { "funnel.dimension": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.dimension": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -518,6 +527,7 @@ describe("funnel", () => {
 
         combineWithFunnel(
           state,
+          settings,
           createMockDataset({
             data: { cols: [metricColumn, metricColumn2] },
           }),
@@ -530,12 +540,11 @@ describe("funnel", () => {
       });
 
       it("should set funnel.dimension if it's undefined and there's one dimension column", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.metric": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               {
@@ -549,6 +558,7 @@ describe("funnel", () => {
 
         combineWithFunnel(
           state,
+          settings,
           createMockDataset({
             data: { cols: [dimensionColumn2] },
           }),
@@ -574,12 +584,11 @@ describe("funnel", () => {
       });
 
       it("should not set funnel.dimension if it's undefined and there are multiple dimension columns", () => {
+        const settings = { "funnel.metric": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...metricColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.metric": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -589,6 +598,7 @@ describe("funnel", () => {
 
         combineWithFunnel(
           state,
+          settings,
           createMockDataset({
             data: { cols: [dimensionColumn, dimensionColumn2] },
           }),
@@ -603,12 +613,11 @@ describe("funnel", () => {
       });
 
       it("should not change funnel.dimension if it's already set", () => {
+        const settings = { "funnel.dimension": "COLUMN_1" };
         const state: VisualizerVizDefinitionWithColumns = {
           display: "funnel",
           columns: [{ ...dimensionColumn, name: "COLUMN_1" }],
-          settings: {
-            "funnel.dimension": "COLUMN_1",
-          },
+          settings,
           columnValuesMapping: {
             COLUMN_1: [
               {
@@ -622,6 +631,7 @@ describe("funnel", () => {
 
         combineWithFunnel(
           state,
+          settings,
           createMockDataset({
             data: { cols: [dimensionColumn2] },
           }),
@@ -635,17 +645,18 @@ describe("funnel", () => {
     });
 
     describe("scalar funnel", () => {
+      const initialSettings = {
+        "card.title": "My funnel",
+        "funnel.metric": "METRIC",
+        "funnel.dimension": "DIMENSION",
+      };
       const initialState: VisualizerVizDefinitionWithColumns = {
         display: "funnel",
         columns: [
           createMockNumericColumn({ name: "METRIC" }),
           createMockCategoryColumn({ name: "DIMENSION" }),
         ],
-        settings: {
-          "card.title": "My funnel",
-          "funnel.metric": "METRIC",
-          "funnel.dimension": "DIMENSION",
-        },
+        settings: initialSettings,
         columnValuesMapping: {
           METRIC: [
             { sourceId: "card:1", name: "COLUMN_1", originalName: "count" },
@@ -666,7 +677,7 @@ describe("funnel", () => {
           columnValuesMapping: {},
         };
 
-        combineWithFunnel(state, scalarDataset1, dataSource);
+        combineWithFunnel(state, {}, scalarDataset1, dataSource);
 
         expect(state.columns.map((c) => c.name)).toEqual([
           "METRIC",
@@ -683,7 +694,7 @@ describe("funnel", () => {
       it("should add a scalar dataset to an existing scalar funnel", () => {
         const state = _.clone(initialState);
 
-        combineWithFunnel(state, scalarDataset2, dataSource2);
+        combineWithFunnel(state, initialSettings, scalarDataset2, dataSource2);
 
         expect(state.columns.map((c) => c.name)).toEqual([
           "METRIC",
@@ -709,7 +720,12 @@ describe("funnel", () => {
       it("should do nothing if the dataset isn't compatible", () => {
         const state = _.clone(initialState);
 
-        combineWithFunnel(state, createMockDataset(), dataSource);
+        combineWithFunnel(
+          state,
+          initialSettings,
+          createMockDataset(),
+          dataSource,
+        );
 
         expect(state).toStrictEqual(initialState);
       });
