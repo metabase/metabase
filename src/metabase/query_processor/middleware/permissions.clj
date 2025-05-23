@@ -116,14 +116,15 @@
       (check-audit-db-permissions outer-query))
     (check-query-does-not-access-inactive-tables outer-query)
     (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
-          required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+          required-perms  (query-perms/required-perms-for-already-preprocessed-query (qp.store/metadata-provider) outer-query)
           source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
       ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
       ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
       (check-block-permissions outer-query)
       (cond
         card-id
-        (query-perms/check-card-read-perms database-id card-id)
+        (qp.store/with-metadata-provider database-id
+          (query-perms/check-card-read-perms (qp.store/metadata-provider) card-id))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -168,10 +169,11 @@
                                                 [:type [:enum :query :native]]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
-    (query-perms/check-card-read-perms database-id *card-id*))
+    (qp.store/with-metadata-provider database-id
+      (query-perms/check-card-read-perms (qp.store/metadata-provider) *card-id*)))
   (when-not (query-perms/check-data-perms
              outer-query
-             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+             (query-perms/required-perms-for-already-preprocessed-query (qp.store/metadata-provider) outer-query)
              :throw-exceptions? false)
     (check-block-permissions outer-query)))
 

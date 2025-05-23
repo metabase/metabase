@@ -6,6 +6,8 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.queries.core :as queries]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -66,11 +68,18 @@
 
 ;; ----------------------------------------- API Endpoints for viewing a transient dashboard ----------------
 
-(defn- adhoc-query-read-check
-  [query]
+(mu/defn- adhoc-query-read-check
+  [query :- [:map
+             [:dataset_query [:map
+                              [:database pos-int?]]]]]
   (api/check-403
    (query-perms/check-data-perms (:dataset_query query)
-                                 (query-perms/required-perms-for-query (:dataset_query query))
+                                 (let [database-id (get-in query [:dataset_query :database])]
+                                   (qp.store/with-metadata-provider database-id
+                                     (query-perms/required-perms-for-query
+                                      (qp.store/metadata-provider)
+                                      qp.preprocess/preprocess-fn-for-permissions-check
+                                      (:dataset_query query))))
                                  :throw-exceptions? false))
   query)
 

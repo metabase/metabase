@@ -695,7 +695,6 @@
            lib
            models
            premium-features
-           query-processor
            request
            settings
            util}}

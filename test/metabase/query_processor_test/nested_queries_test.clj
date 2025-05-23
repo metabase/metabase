@@ -753,20 +753,26 @@
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
     (testing "reading should require that you have read permissions for the Card's Collection"
-      (qp.store/with-metadata-provider (-> meta/metadata-provider
-                                           (lib.tu/metadata-provider-with-cards-for-queries [{}])
-                                           (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
+      (let [metadata-provider (-> meta/metadata-provider
+                                  (lib.tu/metadata-provider-with-cards-for-queries [{}])
+                                  (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))]
         (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
-               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query
+                metadata-provider
+                qp.preprocess/preprocess-fn-for-permissions-check
+                (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
     (testing "reading should require that you have read permissions for the Card's Collection")
     (testing "should be able to save even if you don't have SQL write perms (#6845)"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/native-query {:query "SELECT * FROM VENUES"})])
+      (let [metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                               [(mt/native-query {:query "SELECT * FROM VENUES"})])]
         (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
-               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query
+                metadata-provider
+                qp.preprocess/preprocess-fn-for-permissions-check
+                (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"

@@ -267,8 +267,10 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-      (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                                            :throw-exceptions? true))
+      (query-perms/required-perms-for-query
+       (qp.store/metadata-provider)
+       (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+       :throw-exceptions? true))
 
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))

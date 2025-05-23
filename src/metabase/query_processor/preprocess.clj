@@ -4,6 +4,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
@@ -44,6 +45,7 @@
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -206,3 +208,13 @@
            (mapv (fn [col]
                    (m/remove-keys #(= "lib" (namespace %)) col)))
            not-empty))))
+
+(mu/defn preprocess-fn-for-permissions-check :- :map
+  "Function that satisfies `:metabase.permissions.models.query.permissions/preprocess-fn`, for use with functions
+  in [[metabase.permissions.models.query.permissions]]."
+  [metadata-provider :- ::lib.schema.metadata/metadata-provider
+   query             :- :map]
+  (request/do-as-admin
+   (^:once fn* []
+     (qp.store/with-metadata-provider metadata-provider
+       (preprocess query)))))
