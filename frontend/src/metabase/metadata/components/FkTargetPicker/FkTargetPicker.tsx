@@ -44,11 +44,11 @@ export const FkTargetPicker = ({
       return { comparableIdFields, hasIdFields, data, optionsByFieldId };
     }, [field, idFields]);
 
-  const getField = (fieldId: FieldId | string | null) => {
+  const getField = (fieldId: string | null) => {
     if (fieldId == null) {
       return null;
     }
-    const option = optionsByFieldId[String(fieldId)];
+    const option = optionsByFieldId[fieldId];
     return option?.field;
   };
 
@@ -96,7 +96,7 @@ export const FkTargetPicker = ({
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={(item) => {
-        const field = getField(parseValue(item.option.value));
+        const field = getField(item.option.value);
         const selected = parseValue(item.option.value) === value;
 
         return (
