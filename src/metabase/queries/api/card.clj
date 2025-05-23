@@ -12,6 +12,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -25,7 +26,9 @@
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
@@ -472,7 +475,8 @@
     :as           body} :- [:map
                             [:name                   ms/NonBlankString]
                             [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-                            [:dataset_query          ms/Map]
+                            [:dataset_query          [:map
+                                                      [:database ::lib.schema.id/database]]]
                             ;; TODO: Make entity_id a NanoID regex schema?
                             [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
                             [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
@@ -488,7 +492,11 @@
                             [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (perms/check-run-permissions-for-query query)
+  (qp.store/with-metadata-provider (:database query)
+    (perms/check-run-permissions-for-query
+     (qp.store/metadata-provider)
+     qp.preprocess/preprocess-fn-for-permissions-check
+     query))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (collection/check-write-perms-for-collection
@@ -517,7 +525,11 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (perms/check-run-permissions-for-query (:dataset_query card-updates)))))
+      (qp.store/with-metadata-provider (:database (merge card-before-updates card-updates))
+        (perms/check-run-permissions-for-query
+         (qp.store/metadata-provider)
+         qp.preprocess/preprocess-fn-for-permissions-check
+         (:dataset_query card-updates))))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be

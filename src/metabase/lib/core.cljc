@@ -385,4 +385,5 @@
   with-temporal-bucket]
  [lib.util
   normalized-query-type
+  source-card-id
   source-table-id])

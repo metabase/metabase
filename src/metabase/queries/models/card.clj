@@ -37,6 +37,8 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-analysis.core :as query-analysis]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -249,8 +251,14 @@
        (fn []
          (into {}
                (map
-                (fn [{card-id :id :keys [dataset_query]}]
-                  [card-id (query-perms/can-run-query? dataset_query)]))
+                (fn [{card-id :id, database-id :database_id, query :dataset_query, :as _card}]
+                  {:pre [(pos-int? card-id)
+                         (pos-int? database-id)]}
+                  [card-id (qp.store/with-metadata-provider database-id
+                             (query-perms/can-run-query?
+                              (qp.store/metadata-provider)
+                              qp.preprocess/preprocess-fn-for-permissions-check
+                              query))]))
                dataset-cards))
        :id
        {:default false}))))
