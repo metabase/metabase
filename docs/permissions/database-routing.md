@@ -6,11 +6,11 @@ title: Database routing
 
 Database routing is designed for organizations that have one database per customer, with each customer database having identical schemas.
 
-With database routing, an admin can build a question once, and the question will run its query against a different database depending on who is viewing the question.
+With database routing, an admin can build a question once using a router dabatabase, and the question will run its query against a different destination database depending on who is viewing the question.
 
 ## How database routing works
 
-You connect Metabase to a database as normal. When you turn on database routing for that database, it becomes a **router database** - the main database that will handle routing queries to **destination databases**. You'll add destination databases to this router database, with each destination database associated with a value for the user attribute you assign to the router database.
+You connect Metabase to a database as normal. When you turn on database routing for that database, it becomes a **router database** - the main database that will handle routing queries to **destination databases**. You'll add these destination databases to this router database, with each destination database associated with a value for the user attribute you assign to the router database.
 
 An admin will create questions that query the router database. When other people log in and view these questions, the router database will route the query to a destination database specified by the person's user attribute.
 
