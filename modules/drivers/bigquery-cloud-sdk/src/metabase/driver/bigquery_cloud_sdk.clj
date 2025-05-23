@@ -29,10 +29,12 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
+   (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableOption BigQueryException BigQueryOptions Dataset
                               Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
                               Table TableDefinition$Type TableId TableResult)
+   (com.google.common.collect ImmutableMap)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -55,12 +57,11 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
+        header-provider (FixedHeaderProvider/create
+                         (ImmutableMap/of "user-agent" "Metabase"))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes))
-                  (.setHeaderProvider
-                   (reify com.google.api.gax.rpc.HeaderProvider
-                     (getHeaders [_]
-                       {"user-agent" "Metabase"}))))]
+                  (.setHeaderProvider header-provider))]
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
