@@ -70,4 +70,27 @@ describe("GenerateSqlQueryButton", () => {
       expect(screen.getByRole("button")).toBeDisabled();
     },
   );
+
+  it.each([
+    {
+      query: "SELECT 1; -- show orders and show products",
+      selectedQueryText: " show products",
+      prompt: "show products",
+    },
+  ])(
+    'should generate SQL based on the selected query text "selectedQueryText"',
+    async ({ query, selectedQueryText, prompt }) => {
+      const { onGenerateQuery } = setup({
+        query: getNativeQuery(query),
+        selectedQueryText,
+        generateQueryResponse: createMockGenerateSqlQueryResponse({
+          generated_sql: SQL,
+        }),
+      });
+      await userEvent.click(screen.getByRole("button"));
+      await waitFor(() =>
+        expect(onGenerateQuery).toHaveBeenCalledWith(`-- ${prompt}\n${SQL}`),
+      );
+    },
+  );
 });
