@@ -29,3 +29,7 @@
     display: flex;
   }
 }
+
+.queryErrorContainer {
+  border-radius: 6px;
+}
