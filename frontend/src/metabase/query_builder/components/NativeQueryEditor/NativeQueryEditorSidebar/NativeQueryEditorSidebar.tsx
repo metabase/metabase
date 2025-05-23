@@ -30,7 +30,7 @@ export type Features = {
 
 interface NativeQueryEditorSidebarProps {
   question: Question;
-  nativeEditorSelectedText: string | null;
+  nativeEditorSelectedText?: string;
   features: Features;
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];

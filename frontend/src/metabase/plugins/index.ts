@@ -656,7 +656,7 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
 export type GenerateSqlQueryButtonProps = {
   className?: string;
   query: Lib.Query;
-  selectedQueryText: string | null;
+  selectedQueryText?: string;
   onGenerateQuery: (queryText: string) => void;
 };
 
