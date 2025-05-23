@@ -59,18 +59,6 @@ export const BrowseNavSection = ({
       </Group>
 
       <Collapse in={opened} transitionDuration={0} role="tabpanel">
-        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-          <PaddedSidebarLink
-            icon="model"
-            url={BROWSE_MODELS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse models`}
-          >
-            {t`Models`}
-          </PaddedSidebarLink>
-        )}
-
         {hasDataAccess &&
           (!isEmbeddingIframe || entityTypes.includes("table")) && (
             <PaddedSidebarLink
@@ -83,6 +71,18 @@ export const BrowseNavSection = ({
               {t`Databases`}
             </PaddedSidebarLink>
           )}
+
+        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
+          <PaddedSidebarLink
+            icon="model"
+            url={BROWSE_MODELS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse models`}
+          >
+            {t`Models`}
+          </PaddedSidebarLink>
+        )}
 
         {!isEmbeddingIframe && (
           <PaddedSidebarLink
