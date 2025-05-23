@@ -225,6 +225,14 @@ const config = {
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
+      "sdk-iframe-embedding-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins"
+          : SRC_PATH + "/lib/noop",
+      "sdk-ee-plugins":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
+          : SRC_PATH + "/lib/noop",
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
   },
