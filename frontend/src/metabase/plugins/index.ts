@@ -38,6 +38,7 @@ import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -75,6 +76,7 @@ import type {
   Revision,
   TableId,
   Timeline,
+  TimelineEvent,
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
@@ -662,10 +664,14 @@ export type GenerateSqlQueryButtonProps = {
 
 export type PluginAiSqlGeneration = {
   GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
+  isEnabled: () => boolean;
+  getPlaceholderText: () => string;
 };
 
 export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
   GenerateSqlQueryButton: PluginPlaceholder,
+  isEnabled: () => false,
+  getPlaceholderText: () => "",
 };
 
 export interface AIDashboardAnalysisSidebarProps {
@@ -679,6 +685,7 @@ export interface AIQuestionAnalysisSidebarProps {
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
+  visibleTimelineEvents?: TimelineEvent[];
 }
 
 export type PluginAIEntityAnalysis = {
@@ -700,7 +707,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
-  Metabot: () => null as React.ReactElement | null,
+  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -713,6 +720,8 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  getMetabotVisible: (_state: State) => false,
+  SearchButton: SearchButton,
 };
 
 type DashCardMenuItemGetter = (

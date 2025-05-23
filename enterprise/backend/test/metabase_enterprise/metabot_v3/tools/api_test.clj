@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot-v3.tools.api-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
@@ -11,13 +13,23 @@
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(deftest column-decode-test
+  (let [base-col {:field_id "fid", :name "fname"}]
+    (doseq [{:keys [test-case type-value]} [{:test-case "known type",   :type-value :boolean}
+                                            {:test-case "unknown type", :type-value nil}]]
+      (testing test-case
+        (let [col (assoc base-col :type type-value)
+              decoded (mc/decode ::metabot-v3.tools.api/column col (mtx/transformer {:name :tool-api-response}))]
+          (is (mr/validate ::metabot-v3.tools.api/column decoded)))))))
 
 (defn- ai-session-token
   ([] (ai-session-token :rasta (str (random-uuid))))
@@ -380,7 +392,7 @@
                                    :type :metric}]
             (mt/with-temp [:model/Card {model-metric-id :id} (assoc model-metric-data :collection_id collection-id)]
               (ensure-field-values! :products)
-              (testing "Calling with Wrong metabot-id"
+              (testing "Calling with wrong metabot-id"
                 (let [conversation-id (str (random-uuid))
                       ai-token (ai-session-token (str metabot-id "-"))]
                   (mt/user-http-request :rasta :post 400 "ee/metabot-tools/answer-sources"
@@ -395,10 +407,10 @@
                                                       :conversation_id conversation-id})
                       expected-fields
                       [{:name "ID", :type "number", :semantic_type "pk"}
-                       {:name "Ean", :type "string", :field_values string-sequence?}
-                       {:name "Title", :type "string", :semantic_type "title", :field_values string-sequence?}
-                       {:name "Category", :type "string", :semantic_type "category", :field_values string-sequence?}
-                       {:name "Vendor", :type "string", :semantic_type "company", :field_values string-sequence?}
+                       {:name "Ean", :type "string"}
+                       {:name "Title", :type "string", :semantic_type "title"}
+                       {:name "Category", :type "string", :semantic_type "category"}
+                       {:name "Vendor", :type "string", :semantic_type "company"}
                        {:name "Price", :type "number"}
                        {:name "Rating", :type "number", :semantic_type "score"}
                        {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]

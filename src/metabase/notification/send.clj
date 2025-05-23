@@ -3,10 +3,10 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.settings.core :as setting]
+   [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -14,7 +14,7 @@
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable Executors ThreadPoolExecutor)
+   (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
 
@@ -26,15 +26,7 @@
     (str (u/qualified-name channel_type) " " channel_id)
     (u/qualified-name channel_type)))
 
-(setting/defsetting notification-thread-pool-size
-  "The size of the thread pool used to send notifications."
-  :default    3
-  :export?    false
-  :type       :integer
-  :visibility :internal
-  :doc "If Metabase stops sending notifications like alerts, it may be because long-running
-  queries are clogging the notification queue. You may be able to unclog the queue by
-  increasing the size of the thread pool dedicated to notifications.")
+(def ^:private default-blocking-queue-size 1000)
 
 (def ^:private default-retry-config
   {:max-attempts            (if config/is-dev? 2 7)
@@ -277,7 +269,8 @@
   (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
   (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
 
-(deftype ^:private NotificationQueue
+;; A priority queue that deduplicates notifications by id
+(deftype ^:private DedupPriorityQueue
          [^java.util.PriorityQueue                  items-list
           ^java.util.concurrent.ConcurrentHashMap   id->notification
           ^java.util.concurrent.locks.ReentrantLock queue-lock
@@ -308,7 +301,7 @@
       (finally
         (.unlock queue-lock)))))
 
-(defn- create-notification-queue
+(defn- create-dedup-priority-queue
   "A thread-safe, prioritized notification queue with the following properties:
   - Notifications are identified by unique IDs
   - Prioritized by deadline
@@ -318,10 +311,23 @@
   []
   (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
         not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.PriorityQueue. ^java.util.Comparator deadline-comparator)
-                         (java.util.concurrent.ConcurrentHashMap.)
-                         queue-lock
-                         not-empty-cond)))
+    (->DedupPriorityQueue (java.util.PriorityQueue. ^java.util.Comparator deadline-comparator)
+                          (java.util.concurrent.ConcurrentHashMap.)
+                          queue-lock
+                          not-empty-cond)))
+
+;; A simple array blocking queue for notification
+(deftype BlockingQueue [^java.util.concurrent.ArrayBlockingQueue items-list]
+  NotificationQueueProtocol
+  (put-notification! [_ notification]
+    (.put items-list notification))
+  (take-notification! [_]
+    (.take items-list)))
+
+(defn- create-blocking-queue
+  "Create a blocking queue for notifications."
+  []
+  (BlockingQueue. (ArrayBlockingQueue. default-blocking-queue-size)))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
@@ -370,17 +376,25 @@
       (ensure-enough-workers!)
       (put-notification! queue notification))))
 
-(defonce ^{:private true
-           :doc "Do not use this queue directly, use the dispatcher instead."}
-  notification-queue (delay (create-notification-queue)))
+(defonce ^:private dedup-priority-dispatcher
+  (delay (create-notification-dispatcher (notification.settings/notification-thread-pool-size) (create-dedup-priority-queue))))
 
-(defonce ^:private dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
+(defonce ^:private simple-blocking-dispatcher
+  (delay (create-notification-dispatcher (notification.settings/notification-system-event-thread-pool-size) (create-blocking-queue))))
+
+(defn- dispatch!
+  [notification]
+  (let [the-dispatcher (case (:payload_type notification)
+                         :notification/system-event
+                         @simple-blocking-dispatcher
+                         ;; notification/card, notification/dashboard
+                         @dedup-priority-dispatcher)]
+    (the-dispatcher notification)))
 
 (mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
   [notification :- ::notification.payload/Notification]
-  (@dispatcher notification)
+  (dispatch! notification)
   nil)
 
 (def ^:private Options

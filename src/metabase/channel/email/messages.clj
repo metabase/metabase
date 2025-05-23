@@ -8,13 +8,14 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
+   [metabase.channel.urls :as urls]
    [metabase.collections.models.collection :as collection]
-   [metabase.db.query :as mdb.query]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -27,7 +28,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -141,20 +141,21 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
-  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  (let [user-info    (or (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
+        username     (or (:first_name user-info) (:last_name user-info) (:email user-info))
         context      (merge (common-context)
-                            {:first-name (:first-name user-info)
+                            {:first-name username
                              :device     (:device_description login-history)
                              :location   (:location login-history)
                              :timestamp  timestamp})
         message-body (channel.template/render "metabase/channel/email/login_from_new_device.hbs"
                                               context)]
     (email/send-message!
-     {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+     {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) username)
       :recipients   [(:email user-info)]
       :message-type :html
       :message      message-body})))
@@ -176,7 +177,7 @@
                                                                       [:= :p.group_id :pg.id]
                                                                       [:= :p.object monitoring]]}]]
                                          :group-by [:pgm.user_id]}
-                                        mdb.query/query
+                                        app-db/query
                                         (mapv :user_id)))
         user-ids (filter
                   #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
@@ -326,9 +327,10 @@
 
 (defn- username
   [user]
-  (->> [(:first_name user) (:last_name user)]
-       (remove nil?)
-       (str/join " ")))
+  (or (:common_name user)
+      (->> [(:first_name user) (:last_name user)]
+           (remove nil?)
+           (str/join " "))))
 
 (defn send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"

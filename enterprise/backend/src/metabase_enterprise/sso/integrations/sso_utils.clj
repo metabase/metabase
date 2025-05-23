@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
@@ -55,7 +55,7 @@
   (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
 
 (mu/defn create-new-sso-user!
-  "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.models.user`. We need
+  "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.users.models.user`. We need
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it."
   [user :- UserAttributes]
@@ -64,7 +64,7 @@
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       ;; skip sending user invited emails for sso users
-      (binding [notification/*skip-sending-notification?* true]
+      (notification/with-skip-sending-notification true
         (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))}))
       ;; send an email to everyone including the site admin if that's set
       (when (sso/send-new-sso-user-admin-email?)

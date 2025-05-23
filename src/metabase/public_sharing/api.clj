@@ -5,18 +5,18 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
-   [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.dataset :as api.dataset]
    [metabase.api.macros :as api.macros]
+   [metabase.dashboards.api :as api.dashboard]
    [metabase.events.core :as events]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
-   [metabase.models.params :as params]
+   [metabase.parameters.dashboard :as parameters.dashboard]
+   [metabase.parameters.params :as params]
+   [metabase.public-sharing.validation :as public-sharing.validation]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -67,7 +68,7 @@
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
@@ -89,7 +90,7 @@
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (card-with-uuid uuid)
     (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
 
@@ -129,11 +130,11 @@
           (qp (update query :info merge info) rff))))))
 
 (mu/defn- export-format->context :- ::lib.schema.info/context
-  [export-format]
-  (case export-format
-    "csv"  :public-csv-download
-    "xlsx" :public-xlsx-download
-    "json" :public-json-download
+  [export-format :- [:maybe :keyword]]
+  (case (keyword export-format)
+    :csv  :public-csv-download
+    :xlsx :public-xlsx-download
+    :json :public-json-download
     :public-question))
 
 (mu/defn process-query-for-card-with-id
@@ -162,7 +163,7 @@
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
     (apply process-query-for-card-with-id card-id export-format parameters options)))
 
@@ -180,7 +181,7 @@
   credentials. Public sharing must be enabled."
   [{:keys [uuid export-format]} :- [:map
                                     [:uuid          ms/UUIDString]
-                                    [:export-format api.dataset/ExportFormat]]
+                                    [:export-format ::qp.schema/export-format]]
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
@@ -248,7 +249,7 @@
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (validation/check-public-sharing-enabled)
+    (public-sharing.validation/check-public-sharing-enabled)
     (u/prog1 (dashboard-with-uuid uuid)
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
@@ -290,7 +291,7 @@
                                           [:card-id     ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
@@ -302,14 +303,14 @@
       (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
-                               :export-format api.dataset/export-format-regex]
+                               :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map
                                                         [:uuid          ms/UUIDString]
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
-                                                        [:export-format (into [:enum] api.dataset/export-formats)]]
+                                                        [:export-format ::qp.schema/export-format]]
    _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
                                                       [:parameters    {:optional true} [:maybe
@@ -320,7 +321,7 @@
                                                                                         [:sequential :map]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
@@ -341,7 +342,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters ms/JSONString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))
   (actions/fetch-values
    (api/check-404 (actions/dashcard->action dashcard-id))
@@ -371,7 +372,7 @@
                :body throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        (validation/check-public-sharing-enabled)
+        (public-sharing.validation/check-public-sharing-enabled)
         (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
@@ -414,7 +415,7 @@
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
     (public-action action)))
@@ -430,10 +431,10 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-values card param-key))))
+      (queries/card-param-values card param-key))))
 
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
@@ -441,10 +442,10 @@
                                       [:uuid      ms/UUIDString]
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-values card param-key query))))
+      (queries/card-param-values card param-key query))))
 
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
@@ -454,7 +455,7 @@
    {:keys [value]}          :- [:map [:value :any]]]
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
-      (api.card/param-remapped-value card param-key (codec/url-decode value)))))
+      (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
@@ -466,7 +467,7 @@
     (let [dashboard (dashboard-with-uuid uuid)]
       (request/as-admin
         (binding [qp.perms/*param-values-query* true]
-          (api.dashboard/param-values dashboard param-key constraint-param-key->value))))))
+          (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -478,7 +479,7 @@
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
+        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
@@ -489,7 +490,7 @@
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
+        (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
@@ -513,7 +514,7 @@
                                           [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
     (u/prog1 (process-query-for-dashcard
@@ -556,7 +557,7 @@
                :body   throttle-message}
         throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
-        (validation/check-public-sharing-enabled)
+        (public-sharing.validation/check-public-sharing-enabled)
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
@@ -583,7 +584,7 @@
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [card-id    (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))
         parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw lat-field)
@@ -604,7 +605,7 @@
    {:keys [parameters]}
    :- [:map
        [:parameters {:optional true} ms/JSONString]]]
-  (validation/check-public-sharing-enabled)
+  (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))
         parameters   (json/decode+kw parameters)
         lat-field    (json/decode+kw lat-field)
@@ -615,7 +616,7 @@
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - why don't we just make these routes have a bit of middleware that includes the
-;; `validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
+;; `public-sharing.validation/check-public-sharing-enabled` check in each of them? That way we don't need to remember to include the line in
 ;; every single endpoint definition here? Wouldn't that be 100x better?!
 ;;
 ;; TODO - also a smart person would probably just parse the UUIDs automatically in middleware as appropriate for

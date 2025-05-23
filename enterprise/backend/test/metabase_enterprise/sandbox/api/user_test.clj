@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sandbox.api.user-test
-  "Tests that would logically be included in `metabase.api.user-test` but are separate as they are enterprise only."
+  "Tests that would logically be included in [[metabase.users.api-test]] but are separate as they are enterprise only."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

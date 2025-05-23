@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver.h2 :as h2]
-   [metabase.http-client :as client]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
@@ -16,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -652,3 +652,21 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+(deftest ^:parallel password-check-test
+  (testing "POST /api/session/password-check"
+    (testing "Test for required params"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {}))))))
+
+(deftest ^:parallel password-check-test-2
+  (testing "POST /api/session/password-check"
+    (testing "Test complexity check"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {:password "blah"}))))))
+
+(deftest ^:parallel password-check-test-3
+  (testing "POST /api/session/password-check"
+    (testing "Should be a valid password"
+      (is (= {:valid true}
+             (mt/client :post 200 "session/password-check" {:password "something123"}))))))

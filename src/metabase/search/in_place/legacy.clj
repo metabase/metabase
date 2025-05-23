@@ -4,9 +4,9 @@
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -107,8 +107,6 @@
    ;; returned for indexed-entity
    :pk_ref              :text
    :model_index_id      :integer
-   ;; returned for Card
-   :entity_id           :text
    ;; returned for Card and Action
    :dataset_query       :text))
 
@@ -357,7 +355,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id :entity_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
@@ -453,7 +451,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- :metabase.models.card/type
+  [model :- ::queries.schema/card-type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
@@ -568,7 +566,7 @@
         query         (when (pos-int? (count model-queries))
                         {:select [:*]
                          :from   [[{:union-all model-queries} :dummy_alias]]})]
-    (into #{} (map :model) (some-> query mdb.query/query))))
+    (into #{} (map :model) (some-> query mdb/query))))
 
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to a trivial case
@@ -600,7 +598,7 @@
   (let [search-query (full-search-query search-ctx)]
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
-                (mdb.query/format-sql (first (mdb.query/compile search-query))))
+                (mdb/format-sql (first (mdb/compile search-query))))
     (t2/reducible-query search-query)))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]

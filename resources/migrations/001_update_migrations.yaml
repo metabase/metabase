@@ -2315,12 +2315,12 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-080
-      validCheckSum: 8:022a846feb10103f2e9fe4b58cb792d6
+      validCheckSum: ANY
       author: noahmoss
       comment: Migrate data permission paths from v1 to v2 (splitting them into separate data and query permissions)
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.SplitDataPermissions"
+            class: "metabase.app_db.custom_migrations.SplitDataPermissions"
 
   - changeSet:
       id: v46.00-084
@@ -2356,12 +2356,12 @@ databaseChangeLog:
 
   - changeSet:
       id: v46.00-086
-      validCheckSum: 8:677e076d8741275d31a02e97531fd930
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.46.0 - Delete the abandonment email task
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+            class: "metabase.app_db.custom_migrations.DeleteAbandonmentEmailTask"
 
   - changeSet:
       id: v46.00-088
@@ -2736,12 +2736,12 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-016
-      validCheckSum: 8:62290f0389eb2a17170a9c0351ac8a85
+      validCheckSum: ANY
       author: calherres
       comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-018
@@ -2952,30 +2952,30 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-027
-      validCheckSum: 8:c720f3de8feed35e592c0ca9b9975a18
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
+            class: "metabase.app_db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
 
   - changeSet:
       id: v47.00-028
-      validCheckSum: 8:f38598170766acaaa8fd3b20ef683372
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.47.0 - Add join-alias to the report_card.visualization_settings.column_settings field refs
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.AddJoinAliasToVisualizationSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.AddJoinAliasToVisualizationSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-029
-      validCheckSum: 8:c7625e5018087e915e547f9318b2b8f5
+      validCheckSum: ANY
       author: qnkhuat
       comment: Added 0.47.0 - Stack cards vertically for dashboard with tabs on downgrade
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DowngradeDashboardTab"
+            class: "metabase.app_db.custom_migrations.DowngradeDashboardTab"
 
   - changeSet:
       id: v47.00-030
@@ -3034,25 +3034,25 @@ databaseChangeLog:
       validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"
+            class: "metabase.app_db.custom_migrations.RevisionDashboardMigrateGridFrom18To24"
 
   - changeSet:
       id: v47.00-033
-      validCheckSum: 8:c4a38673bf2a702e807a2074c0d0b719
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.47.0 - Migrate field refs in visualization_settings.column_settings keys from legacy format
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.RevisionMigrateLegacyColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.RevisionMigrateLegacyColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-034
-      validCheckSum: 8:bb77d686c5c204e480a1da5fcfb518e2
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.47.0 - Add join-alias to the visualization_settings.column_settings field refs in card revisions
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.RevisionAddJoinAliasToColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-035
@@ -3099,39 +3099,39 @@ databaseChangeLog:
 
   - changeSet:
       id: v47.00-043
-      validCheckSum: 8:5e030b73be03e7cd8b19a5a46f9b2a4c
+      validCheckSum: ANY
       author: calherres
       comment: Added 0.47.0 - Migrate report_dashboardcard.visualization_settings.column_settings field refs from legacy format
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyDashboardCardColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.MigrateLegacyDashboardCardColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-044
-      validCheckSum: 8:1828d1bd8e2da6eec14ca61e6c01a56f
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.47.0 - Add join-alias to the report_dashboardcard.visualization_settings.column_settings field refs
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.AddJoinAliasToDashboardCardColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.AddJoinAliasToDashboardCardColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-045
-      validCheckSum: 8:d7f479a389877010f5af9dc7ec859b51
+      validCheckSum: ANY
       author: calherres
       comment: Added 0.47.0 - Migrate dashboard revision dashboard cards' visualization_settings.column_settings field refs from legacy format
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.RevisionMigrateLegacyDashboardCardColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.RevisionMigrateLegacyDashboardCardColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-046
-      validCheckSum: 8:1e43c8712a5b36809a3c3fa9933a523c
+      validCheckSum: ANY
       author: calherries
       comment: Added 0.47.0 - Add join-alias to dashboard revision dashboard cards' visualization_settings.column_settings field refs
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.RevisionAddJoinAliasToDashboardCardColumnSettingsFieldRefs"
+            class: "metabase.app_db.custom_migrations.RevisionAddJoinAliasToDashboardCardColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-050
@@ -3295,12 +3295,12 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-001
-      validCheckSum: 8:c38ceb502af7907aed614f17da6c3f80
+      validCheckSum: ANY
       author: qnkhuat
       comment: Added 0.47.0 - Migrate database.options to database.settings
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateDatabaseOptionsToSettings"
+            class: "metabase.app_db.custom_migrations.MigrateDatabaseOptionsToSettings"
 
   - changeSet:
       id: v48.00-002
@@ -3696,7 +3696,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-022
-      validCheckSum: 8:0f034d06b1ad5336c3c81b0d22cde259
+      validCheckSum: ANY
       author: johnswanson
       comment: Migrate migrate-click-through to a custom migration
       preConditions:
@@ -3706,11 +3706,11 @@ databaseChangeLog:
             sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-click-through';
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateClickThrough"
+            class: "metabase.app_db.custom_migrations.MigrateClickThrough"
 
   - changeSet:
       id: v48.00-023
-      validCheckSum: 8:f18e5e053b508aab0bdd8c4bf1d7de4b
+      validCheckSum: ANY
       author: piranha
       comment: Data migration migrate-remove-admin-from-group-mapping-if-needed
       preConditions:
@@ -3720,7 +3720,7 @@ databaseChangeLog:
             sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-remove-admin-from-group-mapping-if-needed';
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateRemoveAdminFromGroupMappingIfNeeded"
+            class: "metabase.app_db.custom_migrations.MigrateRemoveAdminFromGroupMappingIfNeeded"
 
   - changeSet:
       id: v48.00-024
@@ -5383,9 +5383,10 @@ databaseChangeLog:
       id: v49.00-059
       author: qnkhuat
       comment: Added 0.49.0 - unify type of time columns
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.UnifyTimeColumnsType"
+            class: "metabase.app_db.custom_migrations.UnifyTimeColumnsType"
 
   - changeSet:
       id: v49.00-060
@@ -5464,9 +5465,10 @@ databaseChangeLog:
       id: v49.2024-01-22T11:52:00
       author: qnkhuat
       comment: Backfill `report_card.type`
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.CardRevisionAddType"
+            class: "metabase.app_db.custom_migrations.CardRevisionAddType"
 
   - changeSet:
       id: v49.2024-01-29T19:26:40
@@ -5786,9 +5788,10 @@ databaseChangeLog:
       id: v49.2024-04-09T10:00:03
       author: qnkhuat
       comment: This clears the schedule for caching field values for databases with period scanning disabled.
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
+            class: "metabase.app_db.custom_migrations.DeleteScanFieldValuesTriggerForDBThatTurnItOff"
 
   - changeSet:
       id: v49.2024-05-07T10:00:00
@@ -7667,9 +7670,10 @@ databaseChangeLog:
       id: v50.2024-03-28T16:30:35
       author: calherries
       comment: Create internal user
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.CreateInternalUser"
+            class: "metabase.app_db.custom_migrations.CreateInternalUser"
 
   - changeSet:
       id: v50.2024-03-29T10:00:00
@@ -7731,25 +7735,28 @@ databaseChangeLog:
       id: v50.2024-04-25T01:04:05
       author: qnkhuat
       comment: Delete the old SendPulses job and trigger
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+            class: "metabase.app_db.custom_migrations.DeleteSendPulsesTask"
 
   - changeSet:
       id: v50.2024-04-25T01:04:06
       author: qnkhuat
       comment: Delete SendPulse Job on downgrade
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DeleteSendPulseTaskOnDowngrade"
+            class: "metabase.app_db.custom_migrations.DeleteSendPulseTaskOnDowngrade"
 
   - changeSet:
       id: v50.2024-04-25T01:04:07
       author: qnkhuat
       comment: Delete InitSendPulseTriggers Job on downgrade
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DeleteInitSendPulseTriggersOnDowngrade"
+            class: "metabase.app_db.custom_migrations.DeleteInitSendPulseTriggersOnDowngrade"
 
   - changeSet:
       id: v50.2024-04-25T03:15:01
@@ -8160,9 +8167,10 @@ databaseChangeLog:
       id: v50.2024-05-15T13:13:13
       author: adam-james
       comment: Fix visualization settings for stacked area/bar/combo displays
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+            class: "metabase.app_db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
 
   - changeSet:
       id: v50.2024-05-17T19:54:23
@@ -8210,18 +8218,20 @@ databaseChangeLog:
       id: v50.2024-05-17T19:54:26
       author: calherries
       comment: Update metabase_database.uploads_enabled value
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateUploadsSettings"
+            class: "metabase.app_db.custom_migrations.MigrateUploadsSettings"
 
   # This migration has been moved.
   - changeSet:
       id: v50.2024-05-27T15:55:22
       author: calherries
       comment: Create sample content
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContent"
+            class: "metabase.app_db.custom_migrations.CreateSampleContent"
 
   - changeSet:
       id: v50.2024-05-29T14:04:47
@@ -8356,9 +8366,10 @@ databaseChangeLog:
       id: v50.2024-06-12T12:33:07
       author: piranha
       comment: 'Decrypt some settings so the next migration runs well'
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DecryptCacheSettings"
+            class: "metabase.app_db.custom_migrations.DecryptCacheSettings"
       rollback: # no rollback necessary, they'll be encrypted if you downgrade and touch them
 
   - changeSet:
@@ -8570,9 +8581,10 @@ databaseChangeLog:
       id: v51.2024-05-13T16:00:00
       author: metamben
       comment: Migrate v1 metrics to v2 metrics
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateMetricsToV2"
+            class: "metabase.app_db.custom_migrations.MigrateMetricsToV2"
 
   - changeSet:
       id: v51.2024-06-07T12:37:36
@@ -9247,17 +9259,19 @@ databaseChangeLog:
       id: v51.2024-08-07T10:00:00
       author: ranquild
       comment: Remove field refs from report_card.visualization_settings.column_settings
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardVizSettings"
+            class: "metabase.app_db.custom_migrations.MigrateLegacyColumnKeysInCardVizSettings"
 
   - changeSet:
       id: v51.2024-08-07T11:00:00
       author: ranquild
       comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
+            class: "metabase.app_db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   - changeSet:
       id: v51.2024-08-26T08:53:46
@@ -10056,17 +10070,19 @@ databaseChangeLog:
       id: v52.2024-10-26T18:42:42
       author: metamben
       comment: Add stage-number to dimension targets in parameter_mappings
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.AddStageNumberToParameterMappingTargets"
+            class: "metabase.app_db.custom_migrations.AddStageNumberToParameterMappingTargets"
 
   - changeSet:
       id: v52.2024-11-12T15:13:18
       author: metamben
       comment: Add stage-number to dimension targets in visualization_settings
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
+            class: "metabase.app_db.custom_migrations.AddStageNumberToVizSettingsParameterMappingTargets"
 
   # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
   # sample content is updated, so that it matches when the version that the sample content was updated from. See
@@ -10075,9 +10091,10 @@ databaseChangeLog:
       id: v52.2024-12-03T15:55:22
       author: escherize
       comment: Create New and improved Sample Content
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContentV2"
+            class: "metabase.app_db.custom_migrations.CreateSampleContentV2"
 
   - changeSet:
       id: v52.2024-12-10T10:28:16
@@ -10793,9 +10810,10 @@ databaseChangeLog:
       id: v54.2025-02-14T08:05:00
       author: qnkhuat
       comment: Migrate alert to notification
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+            class: "metabase.app_db.custom_migrations.MigrateAlertToNotification"
 
   - changeSet:
       id: v54.2025-02-14T08:06:00
@@ -11002,6 +11020,57 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/content/v2/h2-content.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v54.2025-05-13T21:46:53
+      author: nvoxland
+      comment: Add language to index metadata
+      preConditions:
+      changes:
+        - addColumn:
+            tableName: search_index_metadata
+            columns:
+              - column:
+                  name: lang_code
+                  type: varchar(10)
+                  remarks: Language code the data in the index is in
+                  defaultValue: en
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v54.2025-05-13T21:46:54
+      author: nvoxland
+      comment: Preparing to replace index
+      preConditions:
+      changes:
+        - dropUniqueConstraint:
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+      rollback:
+        - addUniqueConstraint:
+            remarks: Unique entry for each status, from any given metabase instance's perspective.
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+            columnNames: engine, version, status
+
+  - changeSet:
+      id: v54.2025-05-13T21:46:55
+      author: nvoxland
+      comment: 'Protection against concurrent creation or promotion of indexes.'
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: search_index_metadata
+                indexName: idx_search_index_metadata_unique_status
+      changes:
+        - addUniqueConstraint:
+            remarks: Unique entry for each status, from any given metabase instance's perspective.
+            tableName: search_index_metadata
+            constraintName: idx_search_index_metadata_unique_status
+            columnNames: engine, version, lang_code, status
 
   - changeSet:
       id: v55.2025-03-24T16:28:41
@@ -11254,6 +11323,236 @@ databaseChangeLog:
                 'type/Number'
               )
 
+  # Add a unique constraint on metabase_table(db_id, schema, name). Before, there was no constraint, so we need to
+  # handle potential duplicates.
+  # v55.2025-05-19T01:00:00 - Make metabase_table.name and schema case-sensitive for MySQL
+  # v55.2025-05-19T02:00:00 - Add is_defective_duplicate, FALSE by default
+  # v55.2025-05-19T03:00:00 - Compute is_defective_duplicate based on (db_id, schema, name) uniqueness. Active tables
+  # take priority over inactive ones.
+  # v55.2025-05-19T04:00:00 - Add unique_table_helper to create an index that ignores EXISTING duplicates. We need to
+  # handle 3 cases - H2 doesn't support WHERE in indexes, metabase_table.schema is a nullable field and needs to
+  # be coalesced to an empty string, ignore duplicate tables.
+  # v55.2025-05-19T05:00:00 - Add a unique constraint (db_id, name, unique_table_helper)
+
+  # This is necessary to make unique indexes using metabase_table.name and schema case-sensitive for MySQL.
+  - changeSet:
+      id: v55.2025-05-19T01:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Make metabase_table.name and schema use case-sensitive collation for MySQL
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table MODIFY
+              `name` varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+
+              ALTER TABLE metabase_table MODIFY
+              `schema` varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table MODIFY
+              `name` VARCHAR(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+              ALTER TABLE metabase_table MODIFY
+              `schema` varchar(254)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;
+
+  - changeSet:
+      id: v55.2025-05-19T02:00:00
+      validCheckSum: 9:85e9ad7b60db0cd795254ca52d6dd5a7
+      author: ranquild
+      comment: Add metabase_table.is_defective_duplicate
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: is_defective_duplicate
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_defective_duplicate
+                  type: ${boolean.type}
+                  remarks: "Indicates whether the table is a defective duplicate that should never have been created."
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+
+  # metabase_table.schema is nullable
+  - changeSet:
+      id: v55.2025-05-19T03:00:00
+      validCheckSum: 9:bece48e1dd30c59d4dae56346363f5b4
+      author: ranquild
+      comment: Compute metabase_table.is_defective_duplicate based on (db_id, schema, name) uniqueness
+      changes:
+        - sql:
+            UPDATE metabase_table mt
+            SET is_defective_duplicate = TRUE
+            WHERE mt.id IN (
+                SELECT id
+                FROM (
+                    SELECT
+                        mt.id,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY mt.db_id, COALESCE(mt.schema, ''), mt.name
+                            ORDER BY
+                                CASE WHEN mt.active THEN 0 ELSE 1 END,
+                                mt.created_at
+                        ) AS row_num
+                    FROM metabase_table mt
+                ) x
+                WHERE x.row_num > 1
+            );
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET is_defective_duplicate = FALSE;
+
+  - changeSet:
+      id: v55.2025-05-19T04:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Add metabase_table.unique_table_helper to create an index that ignores EXISTING duplicates
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: unique_table_helper
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper CHARACTER VARYING(254) GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper VARCHAR(254) GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(`schema`, '') END
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_table ADD COLUMN unique_table_helper CHARACTER VARYING(254) GENERATED ALWAYS AS (
+                CASE WHEN is_defective_duplicate = TRUE THEN NULL ELSE COALESCE(schema, '') END
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE metabase_table DROP COLUMN unique_table_helper;
+
+  - changeSet:
+      id: v55.2025-05-19T05:00:00
+      validCheckSum: 9:848d1cb748064b5de423139fbbbc2876
+      author: ranquild
+      comment: Add unique constraint on metabase_table(db_id, name, unique_table_helper)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: metabase_table
+                constraintName: idx_unique_table
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+            columnNames: db_id, name, unique_table_helper
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabase_table
+            constraintName: idx_unique_table
+
+  - changeSet:
+      id: v55.2025-05-20T10:00:00
+      validCheckSum: 9:1ed306a6b2573b7b140275e5319fae2c
+      author: ranquild
+      comment: Drop metabase_database.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T11:00:00
+      validCheckSum: 9:b03020b86a754abc46edca465f91eb6f
+      author: ranquild
+      comment: Drop metabase_table.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_table
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+
+  - changeSet:
+      id: v55.2025-05-20T12:00:00
+      validCheckSum: 9:70285cb34c7e9e4dd25f322a46e21c04
+      author: ranquild
+      comment: Drop metabase_field.entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_field
+            columnName: entity_id
+      changes:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
@@ -11276,7 +11575,7 @@ databaseChangeLog:
 #      - Never use application code: it can change and *will* break your migration.
 #      - Do not use Toucan models - refer table names directly.
 #      - If it's a big change, consider using Quartz, see #42279
-#      - More in `metabase.db.custom_migrations` namespace doc.
+#      - More in `metabase.app_db.custom_migrations` namespace doc.
 #    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
 #    - Migration id (`vXX.<date>`) must match its earliest released version:
 #      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.

@@ -501,8 +501,24 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
-      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       H.setupSMTP();
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    });
+
+    it("should include branding", () => {
+      assignRecipient();
+      H.sendEmailAndVisitIt();
+      cy.findAllByRole("link")
+        .filter(":contains(Orders in a dashboard)")
+        .should("be.visible");
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("contain", "Metabase")
+        .and(
+          "have.attr",
+          "href",
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=dashboard_subscription",
+        );
     });
 
     describe("with parameters", () => {
@@ -569,6 +585,17 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setTokenFeatures("all");
       H.setupSMTP();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    });
+
+    it("should not include branding", () => {
+      assignRecipient();
+      H.sendEmailAndVisitIt();
+      cy.findAllByRole("link")
+        .filter(":contains(Orders in a dashboard)")
+        .should("be.visible");
+      cy.findAllByRole("link")
+        .filter(":contains(Made with)")
+        .should("not.exist");
     });
 
     it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {

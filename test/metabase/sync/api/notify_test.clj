@@ -3,17 +3,17 @@
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.api.routes.common :as api.routes.common]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.http-client :as client]
-   [metabase.models.database :as database]
    [metabase.request.core :as request]
-   [metabase.server.middleware.auth :as mw.auth]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
@@ -22,7 +22,7 @@
   (testing "POST /api/notify/db/:id"
     (testing "endpoint requires MB_API_KEY set"
       (mt/with-temporary-setting-values [api-key nil]
-        (is (= (-> mw.auth/key-not-set-response :body str)
+        (is (= (-> @#'api.routes.common/key-not-set-response :body str)
                (client/client :post 403 "notify/db/100")))))
     (testing "endpoint requires authentication"
       (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev

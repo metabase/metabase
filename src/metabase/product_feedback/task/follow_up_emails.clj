@@ -6,9 +6,9 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
-   [metabase.settings.core :as setting]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.product-feedback.settings :as product-feedback.settings]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -16,27 +16,15 @@
 
 (set! *warn-on-reflection* true)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             send follow-up emails                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(setting/defsetting ^:private follow-up-email-sent
-  ;; No need to i18n this as it's not user facing
-  "Have we sent a follow up email to the instance admin?"
-  :type       :boolean
-  :default    false
-  :visibility :internal
-  :audit      :never)
-
 (defn- send-follow-up-email!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
   []
   ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure
   ;; email hasn't been sent yet
-  (when (and (email/email-configured?)
+  (when (and (channel.settings/email-configured?)
              (analytics/anon-tracking-enabled)
-             (email/surveys-enabled)
-             (not (follow-up-email-sent)))
+             (channel.settings/surveys-enabled)
+             (not (product-feedback.settings/follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(system/admin-email)`?
     (when-let [admin (t2/select-one :model/User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
@@ -45,7 +33,7 @@
         (catch Throwable e
           (log/error e "Problem sending follow-up email:"))
         (finally
-          (follow-up-email-sent! true))))))
+          (product-feedback.settings/follow-up-email-sent! true))))))
 
 (defn- instance-creation-timestamp
   "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
@@ -54,7 +42,7 @@
 
 (task/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done
-  (when-not (follow-up-email-sent)
+  (when-not (product-feedback.settings/follow-up-email-sent)
     ;; figure out when we consider the instance created
     (when-let [instance-created (instance-creation-timestamp)]
       ;; we need to be 2+ weeks from creation to send the follow up

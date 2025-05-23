@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -359,9 +360,9 @@ describe("applyParameter", () => {
       ],
     });
     const stageIndex = 0;
-    const columns = Lib.breakouts(query, stageIndex).map((breakout) =>
-      Lib.breakoutColumn(query, stageIndex, breakout),
-    );
+    const columns = Lib.breakouts(query, stageIndex)
+      .map((breakout) => Lib.breakoutColumn(query, stageIndex, breakout))
+      .filter(isNotNull);
     const findColumn = columnFinder(query, columns);
     const column = findColumn("ORDERS", "CREATED_AT");
     const columnRef = Lib.legacyRef(query, stageIndex, column);

@@ -195,9 +195,9 @@ function ProfileLink({
               )}
             >
               <span className={CS.block}>
-                {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
+                {/* eslint-disable-next-line i18next/no-literal-string, no-literal-metabase-strings -- This only shows on OSS instance */}
                 <span className={CS.textBold}>Metabase</span>{" "}
-                {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
+                {/* eslint-disable-next-line i18next/no-literal-string, no-literal-metabase-strings -- This only shows on OSS instance */}
                 {t`is a Trademark of`} Metabase, Inc
               </span>
               <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>

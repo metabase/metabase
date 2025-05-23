@@ -82,14 +82,14 @@ describe("getInitialStateForCardDataSource", () => {
         {
           name: "COLUMN_1",
           originalName: "CREATED_AT",
-          sourceId: `card:${dashCard.card.entity_id}`,
+          sourceId: "card:1",
         },
       ],
       COLUMN_2: [
         {
           name: "COLUMN_2",
           originalName: "SOME_METRIC",
-          sourceId: `card:${dashCard.card.entity_id}`,
+          sourceId: "card:1",
         },
       ],
     });
@@ -103,8 +103,10 @@ describe("getInitialStateForCardDataSource", () => {
   });
 
   it("should return scalar funnel initial state if the original card is a scalar", () => {
-    const card = createMockCard({ display: "scalar" });
-    const initialState = getInitialStateForCardDataSource(card, dataset);
+    const initialState = getInitialStateForCardDataSource(
+      createMockCard({ display: "scalar" }),
+      dataset,
+    );
 
     expect(initialState).toEqual({
       display: "funnel",
@@ -131,10 +133,10 @@ describe("getInitialStateForCardDataSource", () => {
           {
             name: "COLUMN_1",
             originalName: "Foo",
-            sourceId: `card:${card.entity_id}`,
+            sourceId: "card:1",
           },
         ],
-        DIMENSION: [`$_card:${card.entity_id}_name`],
+        DIMENSION: ["$_card:1_name"],
       },
       settings: {
         "funnel.metric": "METRIC",

@@ -1,6 +1,6 @@
 import fs from "fs";
-
 import path from "path";
+
 import prettier from "prettier";
 import { match } from "ts-pattern";
 
