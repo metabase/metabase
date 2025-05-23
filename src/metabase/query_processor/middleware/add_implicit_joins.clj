@@ -125,7 +125,9 @@
   (into {}
         (map (fn [{:keys [fk-field-id fk-join-alias], join-alias :alias}]
                (when fk-field-id
-                 [{:fk-field-id fk-field-id, :fk-join-alias fk-join-alias} join-alias])))
+                 [(merge {:fk-field-id fk-field-id}
+                         (when fk-join-alias
+                           {:fk-join-alias fk-join-alias})) join-alias])))
         (visible-joins form)))
 
 (mu/defn- field-opts->fk-field-info :- FkFieldInfo
