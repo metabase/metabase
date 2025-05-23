@@ -2,7 +2,7 @@ import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
-import { Value } from "../Value";
+import Value from "../Value";
 import { normalizeValue } from "../normalizeValue";
 
 type ParameterFieldWidgetValueProps = {
