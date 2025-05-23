@@ -16,6 +16,7 @@ export const VerifiedToggle = ({
     <Tooltip label={buttonLabel} position="bottom">
       <ActionIcon
         aria-label={buttonLabel}
+        aria-selected={verified}
         size={32}
         role="switch"
         variant="viewHeader"
