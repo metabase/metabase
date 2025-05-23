@@ -19,7 +19,6 @@ import _ from "underscore";
 
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Modal from "metabase/components/Modal";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
@@ -45,10 +44,10 @@ import { TABLE_ACTIONS_SETTING } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
-import { useTableActions } from "metabase/visualizations/components/TableInteractive/hooks/use-table-actions";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -59,7 +58,6 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { TableActionExecuteModal } from "metabase-enterprise/data_editing/tables/edit/actions/TableActionExecuteModal";
 import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
@@ -78,6 +76,9 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+
+const { useTableActionsExecute, TableActionExecuteModal } =
+  PLUGIN_TABLE_ACTIONS;
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -255,12 +256,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     selectedTableActionState,
     handleTableActionRun,
     handleExecuteActionModalClose,
-  } = useTableActions({
+  } = useTableActionsExecute({
     actionsVizSettings: settings[TABLE_ACTIONS_SETTING],
     datasetData: data,
   });
-
-  const isTableActionExecuteModalOpen = !!selectedTableActionState;
 
   const handleBodyCellClick = useCallback(
     (
@@ -785,19 +784,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
       />
-      <Modal
-        isOpen={isTableActionExecuteModalOpen}
-        onClose={handleExecuteActionModalClose}
-      >
-        {selectedTableActionState && (
-          <TableActionExecuteModal
-            actionId={selectedTableActionState.actionId}
-            initialValues={selectedTableActionState.rowData}
-            actionOverrides={selectedTableActionState.actionOverrides}
-            onClose={handleExecuteActionModalClose}
-          />
-        )}
-      </Modal>
+      {
+        <TableActionExecuteModal
+          selectedTableActionState={selectedTableActionState}
+          onClose={handleExecuteActionModalClose}
+        />
+      }
     </div>
   );
 });

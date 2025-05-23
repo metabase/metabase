@@ -246,5 +246,3 @@ export type RowActionFieldSourceType = RowActionFieldSettings["sourceType"];
 
 export type PartialRowActionFieldSettings = RowActionFieldSettingsBase &
   Partial<RowActionFieldSettings>;
-
-export type TableActionId = WritebackActionId | "row/create" | "row/delete";

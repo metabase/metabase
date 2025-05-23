@@ -7,14 +7,13 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
+  EditableTableActionsDisplaySettings,
   Field,
   Parameter,
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
-  RowActionFieldSettings,
   Table,
-  TableActionId,
   TableColumnOrderSetting,
   UserId,
   VirtualCardDisplay,
@@ -122,13 +121,6 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
-export type EditableTableRowActionDisplaySettings = {
-  id: TableActionId;
-  enabled: boolean;
-  name?: string;
-  parameterMappings?: RowActionFieldSettings[];
-};
-
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
@@ -137,7 +129,7 @@ export type DashCardVisualizationSettings = {
   // "table-editable" specific settings
   "table.columns"?: TableColumnOrderSetting[];
   "table.editableColumns"?: string[]; // list of column names
-  "editableTable.enabledActions"?: EditableTableRowActionDisplaySettings[];
+  "editableTable.enabledActions"?: EditableTableActionsDisplaySettings[];
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {

@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 
 import type { WritebackAction } from "metabase-types/api";
 
-export const useTableActionEditingModal = () => {
+export const useTableActionsEditingModal = () => {
   const [isOpen, { close, open }] = useDisclosure(false);
   const [editingAction, setEditingAction] = useState<WritebackAction | null>(
     null,

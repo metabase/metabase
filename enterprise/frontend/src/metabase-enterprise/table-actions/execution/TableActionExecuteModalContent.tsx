@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapp
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import type { TableActionsExecuteFormVizOverride } from "metabase-enterprise/data_editing/tables/types";
+import type { TableActionsExecuteFormVizOverride } from "metabase/visualizations/types/table-actions";
 import type {
   ParametersForActionExecution,
   WritebackActionId,
@@ -22,7 +22,7 @@ export interface TableActionExecuteModalProps {
   onSuccess?: () => void;
 }
 
-export const TableActionExecuteModal = ({
+export const TableActionExecuteModalContent = ({
   actionId,
   initialValues,
   actionOverrides,

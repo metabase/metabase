@@ -2,30 +2,30 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
 import { skipToken, useListActionsQuery } from "metabase/api";
-import { remapRowActionMappingsToActionOverride } from "metabase-enterprise/data_editing/tables/edit/actions/utils";
-import type { TableActionsExecuteFormVizOverride } from "metabase-enterprise/data_editing/tables/types";
+import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
 import type {
   ActionFormInitialValues,
   DatasetData,
   RowValues,
   TableActionDisplaySettings,
-  TableActionId,
+  TableRowActionDisplaySettings,
   WritebackAction,
-  WritebackActionId,
 } from "metabase-types/api";
 
-export const useTableActions = ({
+import {
+  isBuiltInEditableTableAction,
+  remapRowActionMappingsToActionOverride,
+} from "../utils";
+
+export const useTableActionsExecute = ({
   actionsVizSettings,
   datasetData,
 }: {
   actionsVizSettings: TableActionDisplaySettings[] | undefined;
   datasetData: DatasetData | null | undefined;
 }) => {
-  const [selectedTableActionState, setSelectedTableActionState] = useState<{
-    actionId: WritebackActionId;
-    rowData: ActionFormInitialValues;
-    actionOverrides?: TableActionsExecuteFormVizOverride;
-  } | null>(null);
+  const [selectedTableActionState, setSelectedTableActionState] =
+    useState<SelectedTableActionState | null>(null);
 
   const hasAddedActions = actionsVizSettings && actionsVizSettings.length > 0;
 
@@ -35,12 +35,14 @@ export const useTableActions = ({
 
   const { tableActions, tableActionsVizSettingsSet } = useMemo(() => {
     const tableActionsVizSettingsSet = new Map<
-      TableActionId,
-      TableActionDisplaySettings
+      TableRowActionDisplaySettings["id"],
+      TableRowActionDisplaySettings
     >();
 
     actionsVizSettings?.forEach((action) => {
-      tableActionsVizSettingsSet.set(action.id, action);
+      if (!isBuiltInEditableTableAction(action)) {
+        tableActionsVizSettingsSet.set(action.id, action);
+      }
     });
 
     const tableActions =
@@ -72,12 +74,12 @@ export const useTableActions = ({
       const rowIndex = row.index;
       const rowData = datasetData.rows[rowIndex];
 
-      const vizSettings = tableActionsVizSettingsSet.get(action.id);
+      const actionVizSettings = tableActionsVizSettingsSet.get(action.id);
 
       const remappedInitialActionValues = action.parameters?.reduce(
         (result, parameter) => {
           if (parameter.id) {
-            const mappingSettings = vizSettings?.parameterMappings?.find(
+            const mappingSettings = actionVizSettings?.parameterMappings?.find(
               ({ parameterId }) => parameterId === parameter.id,
             );
 
@@ -103,8 +105,8 @@ export const useTableActions = ({
         {} as ActionFormInitialValues,
       );
 
-      const actionOverrides = vizSettings
-        ? remapRowActionMappingsToActionOverride(vizSettings)
+      const actionOverrides = actionVizSettings
+        ? remapRowActionMappingsToActionOverride(actionVizSettings)
         : undefined;
 
       setSelectedTableActionState({

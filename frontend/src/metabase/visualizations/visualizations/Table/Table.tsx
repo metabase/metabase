@@ -8,8 +8,8 @@ import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import { ChartSettingsTableActions } from "metabase/visualizations/components/settings/ChartSettingsTableActions";
 import {
   ChartSettingsTableFormatting,
   isFormattable,
@@ -55,6 +55,8 @@ import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../../types";
+
+const { ConfigureTableActions } = PLUGIN_TABLE_ACTIONS;
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -223,7 +225,7 @@ class Table extends Component<TableProps, TableState> {
       get section() {
         return t`Actions`;
       },
-      widget: ChartSettingsTableActions,
+      widget: ConfigureTableActions,
       default: [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols,
@@ -234,7 +236,7 @@ class Table extends Component<TableProps, TableState> {
         {
           data: { cols },
         },
-      ]: Series) => cols.length === 0,
+      ]: Series) => !PLUGIN_TABLE_ACTIONS.isEnabled() || cols.length === 0,
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {

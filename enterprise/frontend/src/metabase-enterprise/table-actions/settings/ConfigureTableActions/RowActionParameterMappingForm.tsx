@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,7 +13,6 @@ import {
 } from "metabase/forms";
 import { Box, Group, Radio, Stack, Text } from "metabase/ui";
 import type {
-  DatasetColumn,
   RowActionFieldSettings,
   WritebackAction,
   WritebackParameter,
@@ -22,14 +20,35 @@ import type {
 
 import S from "./RowActionSettingsModalContent.module.css";
 import { TableColumnsSelect } from "./TableColumnsSelect";
-import { getDefaultSourceTypeOptions, getFieldFlagsCaption } from "./utils";
+import { getFieldFlagsCaption } from "./utils";
 
 interface ActionParameterMappingProps {
   action: WritebackAction;
   parameters: WritebackParameter[];
   values: { parameters: RowActionFieldSettings[] };
-  tableColumns: DatasetColumn[];
+  tableColumns: { id: number; name: string }[];
 }
+
+const SOURCE_TYPE_OPTIONS = [
+  {
+    get label() {
+      return t`Ask the user`;
+    },
+    value: "ask-user",
+  },
+  {
+    get label() {
+      return t`Get data from a row`;
+    },
+    value: "row-data",
+  },
+  {
+    get label() {
+      return t`Use constant value`;
+    },
+    value: "constant",
+  },
+];
 
 export const RowActionParameterMappingForm = ({
   action,
@@ -37,10 +56,8 @@ export const RowActionParameterMappingForm = ({
   values,
   tableColumns,
 }: ActionParameterMappingProps) => {
-  const typeFieldOptions = useMemo(() => getDefaultSourceTypeOptions(), []);
-
   return (
-    <Form role="form" data-testid="row-actions-parameters-mapping-form">
+    <Form role="form" data-testid="table-action-parameters-mapping-form">
       <Stack gap="lg" mt="md">
         {parameters.map((actionParameter: WritebackParameter, index) => {
           const isRequired = isParameterRequired(action, actionParameter);
@@ -58,7 +75,7 @@ export const RowActionParameterMappingForm = ({
               </Text>
               <FormSelect
                 name={`parameters.${index}.sourceType`}
-                data={typeFieldOptions}
+                data={SOURCE_TYPE_OPTIONS}
               />
               {values.parameters[index]?.sourceType === "row-data" && (
                 <Box mt="1rem">

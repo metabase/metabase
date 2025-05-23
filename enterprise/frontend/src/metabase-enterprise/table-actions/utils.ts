@@ -1,14 +1,16 @@
-import type { TableActionsExecuteFormVizOverride } from "metabase-enterprise/data_editing/tables/types";
+import type { TableActionsExecuteFormVizOverride } from "metabase/visualizations/types/table-actions";
 import type {
+  EditableTableBuiltInActionDisplaySettings,
   FieldSettings,
   ParameterId,
   TableActionDisplaySettings,
+  TableRowActionDisplaySettings,
 } from "metabase-types/api";
 
 export const remapRowActionMappingsToActionOverride = ({
   name,
   parameterMappings,
-}: TableActionDisplaySettings): TableActionsExecuteFormVizOverride => {
+}: TableRowActionDisplaySettings): TableActionsExecuteFormVizOverride => {
   const result: TableActionsExecuteFormVizOverride = {};
 
   if (name) {
@@ -37,4 +39,14 @@ export const remapRowActionMappingsToActionOverride = ({
   }
 
   return result;
+};
+
+export const isBuiltInEditableTableAction = (
+  action:
+    | TableActionDisplaySettings
+    | EditableTableBuiltInActionDisplaySettings,
+): action is EditableTableBuiltInActionDisplaySettings => {
+  return ["data-grid.row/create", "data-grid.row/delete"].includes(
+    (action as EditableTableBuiltInActionDisplaySettings).id,
+  );
 };

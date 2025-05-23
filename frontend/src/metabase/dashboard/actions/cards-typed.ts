@@ -226,12 +226,14 @@ export const addEditableTableDashCardToDashboard =
             table_id: tableId,
             "editableTable.enabledActions": [
               {
-                id: "row/create",
+                id: "data-grid.row/create",
                 enabled: true,
+                actionType: "data-grid/built-in",
               },
               {
-                id: "row/delete",
+                id: "data-grid.row/delete",
                 enabled: true,
+                actionType: "data-grid/built-in",
               },
             ],
           },

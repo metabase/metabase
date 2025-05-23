@@ -10,7 +10,6 @@ import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import { Box, Button, Title } from "metabase/ui";
 import type {
-  DatasetColumn,
   RowActionFieldSettings,
   TableActionDisplaySettings,
   WritebackAction,
@@ -23,7 +22,7 @@ import { isValidMapping } from "./utils";
 interface Props {
   action: WritebackAction | null | undefined;
   rowActionSettings: TableActionDisplaySettings | undefined;
-  tableColumns: DatasetColumn[];
+  tableColumns: { id: number; name: string }[];
   onClose: () => void;
   onSubmit: (actionParams: {
     action: WritebackAction;

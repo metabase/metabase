@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useListActionsQuery } from "metabase/api";
 import { Button, Modal, Stack } from "metabase/ui";
 import type {
-  DatasetColumn,
   RowActionFieldSettings,
   TableActionDisplaySettings,
   TableActionId,
@@ -13,11 +12,11 @@ import type {
 
 import { RowActionItem } from "./RowActionItem";
 import { RowActionSettingsModalContent } from "./RowActionSettingsModalContent";
-import { useTableActionEditingModal } from "./use-table-action-editing-modal";
+import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 
 type ConfigureTableActionsProps = {
   tableActions: TableActionDisplaySettings[] | undefined;
-  columns: DatasetColumn[];
+  columns: { id: number; name: string }[];
   onChange: (newValue: TableActionDisplaySettings[]) => void;
 };
 
@@ -32,7 +31,7 @@ export const ConfigureTableActions = ({
     openEditingModal,
     setEditingAction,
     cancelEditAction,
-  } = useTableActionEditingModal();
+  } = useTableActionsEditingModal();
 
   const { tableActions, tableActionsMap } = useMemo(() => {
     const tableActions = inputTableActions || [];

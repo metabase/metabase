@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
 import { FormSelect } from "metabase/forms";
-import type { DatasetColumn } from "metabase-types/api";
 
 type TableColumnsSelectProps = {
   name: string;
-  columns: DatasetColumn[];
+  columns: { id: number; name: string }[];
 };
 
 export const TableColumnsSelect = ({

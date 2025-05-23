@@ -1,3 +1,4 @@
+import type { Row } from "@tanstack/react-table";
 import type { Location } from "history";
 import React, {
   type ComponentType,
@@ -44,6 +45,7 @@ import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -69,6 +71,7 @@ import type {
   DatasetData,
   DatasetError,
   DatasetErrorType,
+  EditableTableActionsDisplaySettings,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -76,11 +79,14 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  RowValues,
+  TableActionDisplaySettings,
   TableId,
   Timeline,
   TimelineEvent,
   User,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
 
@@ -777,6 +783,40 @@ export const PLUGIN_DATA_EDITING = {
     className?: string;
     visualizationSettings?: VisualizationSettings;
     question: Question;
+  }>,
+};
+
+export const PLUGIN_TABLE_ACTIONS = {
+  isEnabled: () => false,
+  isBuiltInEditableTableAction: (
+    _action: EditableTableActionsDisplaySettings,
+  ) => false,
+  useTableActionsExecute: (_params: {
+    actionsVizSettings: TableActionDisplaySettings[] | undefined;
+    datasetData: DatasetData | null | undefined;
+  }) =>
+    ({
+      tableActions: [],
+      selectedTableActionState: null,
+      handleTableActionRun: _.noop,
+      handleExecuteActionModalClose: _.noop,
+    }) as {
+      tableActions: WritebackAction[];
+      selectedTableActionState: SelectedTableActionState | null;
+      handleTableActionRun: (
+        action: WritebackAction,
+        row: Row<RowValues>,
+      ) => void;
+      handleExecuteActionModalClose: () => void;
+    },
+  TableActionExecuteModal: PluginPlaceholder as ComponentType<{
+    selectedTableActionState: SelectedTableActionState | null;
+    onClose: () => void;
+  }>,
+  ConfigureTableActions: PluginPlaceholder as ComponentType<{
+    tableActions: TableActionDisplaySettings[] | undefined;
+    columns: { id: number; name: string }[];
+    onChange: (newValue: TableActionDisplaySettings[]) => void;
   }>,
 };
 

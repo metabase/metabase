@@ -20,20 +20,22 @@ import {
   rem,
 } from "metabase/ui";
 import { ShortMessage } from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.styled";
+import { useBuiltInActions } from "metabase-enterprise/data_editing/actions/use-built-in-actions";
+import { TableActionExecuteModalContent } from "metabase-enterprise/table-actions/execution/TableActionExecuteModalContent";
+import { useTableActionsExecute } from "metabase-enterprise/table-actions/execution/use-table-actions-execute";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
 import type {
   ConcreteTableId,
+  DashCardVisualizationSettings,
   DatasetData,
-  VisualizationSettings,
+  TableActionDisplaySettings,
 } from "metabase-types/api";
 
 import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
-import { TableActionExecuteModal } from "./actions/TableActionExecuteModal";
-import { useTableActions } from "./actions/use-table-actions";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
@@ -53,7 +55,7 @@ type EditTableDashcardVisualizationProps = {
   tableId: ConcreteTableId;
   data: DatasetData;
   className?: string;
-  visualizationSettings?: VisualizationSettings;
+  visualizationSettings?: DashCardVisualizationSettings; // TODO: move editable table viz settings type to Card Visualization
   question: Question;
   withLeaveUnsavedConfirmation?: boolean;
 };
@@ -157,15 +159,19 @@ export const EditTableDashcardVisualization = ({
     visualizationSettings,
   );
 
+  const { hasCreateAction, hasDeleteAction } = useBuiltInActions(
+    visualizationSettings?.["editableTable.enabledActions"],
+  );
+
   const {
-    hasCreateAction,
-    hasDeleteAction,
-    enabledRowActions,
-    handleRowActionRun,
-    activeActionState,
-    handleExecuteModalClose,
-  } = useTableActions({
-    visualizationSettings,
+    tableActions,
+    handleTableActionRun,
+    selectedTableActionState,
+    handleExecuteActionModalClose,
+  } = useTableActionsExecute({
+    actionsVizSettings: visualizationSettings?.[
+      "editableTable.enabledActions"
+    ] as TableActionDisplaySettings[] | undefined,
     datasetData: data,
   });
 
@@ -183,7 +189,7 @@ export const EditTableDashcardVisualization = ({
     setRowSelection,
   });
 
-  const isActionExecuteModalOpen = !!activeActionState;
+  const isActionExecuteModalOpen = !!selectedTableActionState;
 
   const { getColumnSortDirection } = useTableSorting({
     question,
@@ -287,8 +293,8 @@ export const EditTableDashcardVisualization = ({
               onRowExpandClick={openEditRowModal}
               columnsConfig={columnsConfig}
               getColumnSortDirection={getColumnSortDirection}
-              rowActions={enabledRowActions}
-              onActionRun={handleRowActionRun}
+              rowActions={tableActions}
+              onActionRun={handleTableActionRun}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
             />
@@ -326,14 +332,14 @@ export const EditTableDashcardVisualization = ({
       />
       <Modal
         isOpen={isActionExecuteModalOpen}
-        onClose={handleExecuteModalClose}
+        onClose={handleExecuteActionModalClose}
       >
-        {activeActionState && (
-          <TableActionExecuteModal
-            actionId={activeActionState.actionId}
-            initialValues={activeActionState.rowData}
-            actionOverrides={activeActionState.actionOverrides}
-            onClose={handleExecuteModalClose}
+        {selectedTableActionState && (
+          <TableActionExecuteModalContent
+            actionId={selectedTableActionState.actionId}
+            initialValues={selectedTableActionState.rowData}
+            actionOverrides={selectedTableActionState.actionOverrides}
+            onClose={handleExecuteActionModalClose}
           />
         )}
       </Modal>
