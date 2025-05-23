@@ -13,9 +13,11 @@ import type { SelectedItem } from "../types";
 
 export const GettingStartedSection = ({
   nonEntityItem,
+  onModalOpen,
   children,
 }: PropsWithChildren<{
   nonEntityItem: SelectedItem;
+  onModalOpen: () => void;
 }>) => {
   const [opened, { toggle }] = useDisclosure(true);
 
@@ -46,6 +48,9 @@ export const GettingStartedSection = ({
       </Group>
 
       <Collapse in={opened} transitionDuration={0} role="tabpanel">
+        <PaddedSidebarLink icon="add_data" onClick={onModalOpen}>
+          {t`Add data`}
+        </PaddedSidebarLink>
         {canAccessOnboarding && (
           <PaddedSidebarLink
             icon="learn"
