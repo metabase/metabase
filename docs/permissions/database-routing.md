@@ -6,27 +6,43 @@ title: Database routing
 
 Database routing is designed for organizations that have one database per customer, with each customer database having identical schemas.
 
-With database routing, an admin can build a question once using a router dabatabase, and the question will run its query against a different destination database depending on who is viewing the question.
+With database routing, an admin can build a question once using a router database, and the question will run its query against a different destination database depending on who is viewing the question.
 
 ## How database routing works
 
 You connect Metabase to a database as normal. When you turn on database routing for that database, it becomes a **router database** - the main database that will handle routing queries to **destination databases**. You'll add these destination databases to this router database, with each destination database associated with a value for the user attribute you assign to the router database.
 
-An admin will create questions that query the router database. When other people log in and view these questions, the router database will route the query to a destination database specified by the person's user attribute.
+With the router database set up with its destination databases, an admin can then create questions that query the router database. When other people log in and view these questions, the router database will route the query to the destination database specified by the person's user attribute.
 
 ## Setting up database routing
 
-1. [Connect to one of the databases](../databases/connecting.md) you want to use. The database can be any one of the databases, as long as it has the same schema that all the destination databases have. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to.
+![Database routing](./images/database-routing.png)
+
+1. [Connect to a database](../databases/connecting.md) that has _the same schema as all of your customer's databases_. This database should be a mock/dev database, ideally with some fake data. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to. (You can change the display name at any time).
 2. Once connected to this initial database (the "Router database"), go to its Database routing section and toggle on **Enable database routing**.
 3. Enter the user attribute you want to use to determine which database a user should be routed to.
-4. With the router database set up, you can add destination databases that have the same schema as the router database. In the **Destination databases** section, click **Add**, then fill out the connection details. For each destination database, you'll need to specify a **slug** - this slug is the value that Metabase will use to match against the user attribute you assigned to the router database. At run time, this value will determine which database Metabase will query when a user views a question built on the router database.
-5. Add a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people's Metabase accounts. Metabase will use this attribute to determine which database the person should query when viewing a question built on the router database. You can add user attributes manually, or via Single Sign-On (SSO) via [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md).
+4. In the **Destination databases** section, click **Add**, then fill out the connection details. For each destination database, you'll need to specify a **slug** - this slug is the value that Metabase will use to match against the user attribute you assigned to the router database. At run time, when a user views a question built on the router database, Metabase will check the person's user attribute. If the value matches this slug, the question will query this destination database instead.
 
-![Database routing](./images/database-routing.png)
+## User attributes and database routing
+
+For database routing to work, your users must have a user attribute that Metabase can use to route them to the right destination database.
+
+You can add user attributes manually, or via Single Sign-On (SSO) via [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md).
 
 If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins to `__METABASE_PRIMARY_DB__`.
 
-If a non-admin user account lacks a valid value for the user attribute, they won't be able to view the question.
+If a non-admin user account lacks a valid value for the user attribute, they won't be able to view the question at all.
+
+See our docs on [user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
+
+## Testing database routing
+
+To see if database routing is working:
+
+1. Log in as an admin.
+2. Create a question that queries the router database.
+3. Create a user account and add the user attribute you associated with your router database. Set the value as the slug of one of your destination databases.
+4. In a private/incognito tab, log in as the user and view the question you created. You should see data from the destination database associated with person's user attribute, not the data in the router database.
 
 ## Adding destination databases with the API
 
