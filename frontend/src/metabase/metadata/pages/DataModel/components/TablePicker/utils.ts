@@ -79,6 +79,7 @@ export function useTableLoader(path: TreePath) {
           type: "database",
           label: database.name,
           value: { databaseId: database.id },
+          data: database,
         }),
       ) ?? []
     );
@@ -92,13 +93,17 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined || schemaId === undefined) {
         return [];
       }
-      const res = await fetchTables({ id: databaseId, schema: schemaId }, true);
+      const res = await fetchTables(
+        { id: databaseId, schema: schemaId, include_hidden: true },
+        true,
+      );
       return (
         res?.data?.map((table) =>
           node<TableNode>({
             type: "table",
             label: table.display_name,
             value: { databaseId, schemaId, tableId: table.id },
+            data: table,
           }),
         ) ?? []
       );
@@ -111,13 +116,17 @@ export function useTableLoader(path: TreePath) {
       if (databaseId === undefined) {
         return [];
       }
-      const res = await fetchSchemas({ id: databaseId }, true);
+      const res = await fetchSchemas(
+        { id: databaseId, include_hidden: true },
+        true,
+      );
       return Promise.all(
         res.data?.map(async (schema, _, schemas) => {
           const res = node<SchemaNode>({
             type: "schema",
             label: schema,
             value: { databaseId, schemaId: schema },
+            data: schema,
           });
 
           // If the schema is unnamed, or if it's the only schema in the database,
