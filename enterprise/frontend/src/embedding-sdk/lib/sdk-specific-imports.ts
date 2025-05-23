@@ -5,9 +5,6 @@
  * This is aliased as `sdk-specific-imports` in the SDK's webpack config.
  */
 
-// Import the EE plugins required by the embedding sdk.
-import "sdk-ee-plugins";
-
 // Polyfills useSyncExternalStore for React 17 for backwards compatibility.
 import "./polyfill/use-sync-external-store";
 
