@@ -120,6 +120,32 @@
                 {:source-table $$venues
                  :fields       [$name $category-id->categories.name]}}))))))
 
+(deftest ^:parallel source-field-join-alias-test
+  (testing "make sure an implicit join can be done via an explicit join"
+    (is (=? (lib.tu.macros/mbql-query orders
+              {:source-table $$orders
+               :joins       [{:source-table $$orders
+                              :alias        "Orders"
+                              :condition    [:= $product-id  [:field %product-id {:join-alias "Orders"}]]
+                              :strategy     :left-join
+                              :fields       :none}
+                             {:source-table  $$products
+                              :alias         "PRODUCTS__via__PRODUCT_ID"
+                              :condition     [:= [:field %orders.product-id {:join-alias "Orders"}]
+                                              &PRODUCTS__via__PRODUCT_ID.products.id]
+                              :fk-field-id   %product-id
+                              :fk-join-alias "Orders"}]})
+            (add-implicit-joins
+             (lib.tu.macros/mbql-query orders
+               {:source-table $$orders
+                :joins        [{:source-table $$orders
+                                :alias        "Orders"
+                                :condition    [:= $product-id  [:field %product-id {:join-alias "Orders"}]]
+                                :strategy     :left-join
+                                :fields       :none}]
+                :fields       [[:field %products.category {:source-field %product-id
+                                                           :source-field-join-alias "Orders"}]]}))))))
+
 (deftest ^:parallel already-has-join?-test
   (is (#'qp.add-implicit-joins/already-has-join?
        {:joins [{:alias "x"}]}
