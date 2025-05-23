@@ -181,6 +181,8 @@ Metabase's reference documentation.
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [Data sandbox examples](./permissions/data-sandbox-examples.md)
+- [Connection impersonation](./permissions/impersonation.md)
+- [Database routing](./permissions/database-routing.md)
 - [Snippets folder permissions](./permissions/snippets.md)
 - [Notification permissions](./permissions/notifications.md)
 

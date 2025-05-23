@@ -93,6 +93,10 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 To connect to Azure SQL, you'll need to set the port to 1433.
 
+## Database routing
+
+See [Database routing](../../permissions/database-routing.md).
+
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

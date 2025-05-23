@@ -45,6 +45,10 @@ The process for adding plugins when running via Docker is similar, but you'll ne
 
 There aren't (yet) any model features for Vertica.
 
+## Database routing
+
+See [Database routing](../../permissions/database-routing.md).
+
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).
