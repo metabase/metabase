@@ -1,6 +1,6 @@
-import { MetabaseEmbed } from "./embed.v1";
+import { MetabaseEmbed } from "./embed";
 
-describe("embed.v1.js script tag for sdk iframe embedding", () => {
+describe("embed.js script tag for sdk iframe embedding", () => {
   const defaultSettings = {
     apiKey: "test-api-key",
     instanceUrl: "http://localhost:3000",

@@ -4,7 +4,7 @@ import { createApiKey } from "./api";
 import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { restore } from "./e2e-setup-helpers";
 
-const EMBED_JS_PATH = "http://localhost:4000/app/embed.v1.js";
+const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
 /**
  * Base interface for SDK iframe embedding test page options

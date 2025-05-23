@@ -14,8 +14,8 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.signOut();
   });
 
-  it("can find the embed.v1.js file", () => {
-    cy.request("http://localhost:4000/app/embed.v1.js").then((response) => {
+  it("can find the embed.js file", () => {
+    cy.request("http://localhost:4000/app/embed.js").then((response) => {
       expect(response.status).to.eq(200);
       expect(response.body).to.be.a("string").and.not.be.empty;
     });

@@ -10,12 +10,12 @@ const ENTERPRISE_SRC_PATH =
 
 const SCRIPT_TAG_PATH = path.resolve(
   ENTERPRISE_SRC_PATH,
-  "embedding_iframe_sdk/embed.v1.ts",
+  "embedding_iframe_sdk/embed.ts",
 );
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
-const OUT_FILE_NAME = "embed.v1.js";
+const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
 
 module.exports = {
@@ -64,7 +64,7 @@ module.exports = {
           const tempPath = path.join(OUT_TEMP_PATH, OUT_FILE_NAME);
           const appPath = path.join(BUILD_PATH, "app/", OUT_FILE_NAME);
 
-          // copy embed.v1.js from the temp directory to the resources directory
+          // copy embed.js from the temp directory to the resources directory
           fs.mkdirSync(path.dirname(appPath), { recursive: true });
           fs.copyFileSync(tempPath, appPath);
 

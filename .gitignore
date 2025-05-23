@@ -58,7 +58,7 @@
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
-/resources/frontend_client/app/embed.v1.js
+/resources/frontend_client/app/embed.js
 /resources/frontend_client/tmp-embed-js/
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
