@@ -11,12 +11,10 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled = ({
     downloads,
   }: {
-    hide_download_button?: boolean | null;
     downloads?: string | boolean | null;
   }): EmbedResourceDownloadOptions => {
     return (
       match({ downloads })
-        // `downloads` has priority over `hide_download_button`
         .with({ downloads: true }, () => ({ pdf: true, results: true }))
         .with({ downloads: false }, () => ({ pdf: false, results: false }))
         // supports `downloads=pdf`, `downloads=results` and `downloads=pdf,results`
