@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -28,15 +29,26 @@ export const FkTargetPicker = ({
   onChange,
   ...props
 }: Props) => {
-  const comparableIdFields = idFields.filter((idField) => {
-    return idField.isComparableWith(field);
-  });
-  const hasIdFields = comparableIdFields.length > 0;
-  const includeSchema = hasMultipleSchemas(comparableIdFields);
-  const data = getData(comparableIdFields, includeSchema);
+  const { comparableIdFields, hasIdFields, data, optionsByFieldId } =
+    useMemo(() => {
+      const comparableIdFields = idFields.filter((idField) => {
+        return idField.isComparableWith(field);
+      });
+      const hasIdFields = comparableIdFields.length > 0;
+      const includeSchema = hasMultipleSchemas(comparableIdFields);
+      const data = getData(comparableIdFields, includeSchema);
+      const optionsByFieldId = Object.fromEntries(
+        data.map((option) => [option.value, option]),
+      );
 
-  const getField = (fieldId: FieldId | null) => {
-    const option = data.find((option) => parseValue(option.value) === fieldId);
+      return { comparableIdFields, hasIdFields, data, optionsByFieldId };
+    }, [field, idFields]);
+
+  const getField = (fieldId: FieldId | string | null) => {
+    if (fieldId == null) {
+      return null;
+    }
+    const option = optionsByFieldId[String(fieldId)];
     return option?.field;
   };
 
@@ -69,8 +81,7 @@ export const FkTargetPicker = ({
             return false;
           }
 
-          const field = getField(parseValue(option.value));
-
+          const field = getField(option.value);
           if (!field) {
             return false;
           }
