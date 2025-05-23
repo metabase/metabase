@@ -967,7 +967,7 @@
     dashcard
     (let [action-id (:action_id dashcard)
           dashcard  (-> dashcard
-                        ;; Reserve this key to work as an FK pointing to real saved actions.
+                        ;; This field corresponds to an FK, so we can only keep values corresponding to saved actions.
                         (u/update-some :action_id #(when (pos-int? %) %))
                         ;; Delete any unpacked data, it may be stale, and will be recreated if necessary.
                         (u/update-if-exists :visualization_settings dissoc :table_action :unsupported_action))]
@@ -979,18 +979,14 @@
         (assoc-in dashcard [:visualization_settings :primitive_action] action-id)
         ;; Unpack encoded actions
         (neg-int? action-id)
-        (let [[op param] (actions/unpack-table-primitive-action-id action-id)]
-          (case op
-            ;; Handle specific operations here.
-            ;; ...
-            ;; Handle (remaining) cases by namespace.
-            (case (namespace op)
-              "table.row"
-              (assoc-in dashcard [:visualization_settings :table_action] {:kind (u/qualified-name op), :table_id param})
-              ;; We should have matched exhaustively by now. At least make a noise and leave some debuggable data.
-              (let [info {:action-id action-id, :op op, :param param}]
-                (log/warn "Unsupported packed action-id on dashcard: " (pr-str info))
-                (assoc-in dashcard [:visualization_settings :unsupported_action] info)))))))))
+        (let [[op param] (actions/unpack-encoded-action-id action-id)]
+          ;; This would be much better handled as multimethod, but hopefully the hacks don't live much longer.
+          (if (isa? op :table.row/common)
+            (assoc-in dashcard [:visualization_settings :table_action] {:kind (u/qualified-name op), :table_id param})
+            ;; We should have matched exhaustively by now. At least make a noise and leave some debuggable data.
+            (let [info {:packed-id action-id, :op op, :param param}]
+              (log/warn "Unsupported packed action-id on dashcard: " (pr-str (assoc info :dashcard-id (:id dashcard))))
+              (assoc-in dashcard [:visualization_settings :unsupported_action] info))))))))
 
 (defn- update-dashboard
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"

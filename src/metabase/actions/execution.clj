@@ -203,7 +203,7 @@
       (execute-implicit-action! action request-parameters)
       (:query :http)
       (execute-custom-action! action request-parameters)
-      (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
+      (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
 
 (defn- execute-table-action! [action-kw table-id request-parameters]
   (actions/perform-action-with-single-input-and-output action-kw {:table-id table-id :arg request-parameters}))
@@ -222,7 +222,7 @@
       (let [{:keys [kind table_id]} table-action]
         ;; avoiding snowplow for now, to avoid adding new actions into their schema
         (execute-table-action! (keyword kind) table_id request-parameters))
-      (let [action (api/check-404 (action/select-action :id action-id))]
+      (let [action (api/check-404 (action/select-action :id action-id :archived false))]
         (analytics/track-event! :snowplow/action
                                 {:event     :action-executed
                                  :source    :dashboard
