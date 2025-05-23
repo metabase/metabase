@@ -128,6 +128,7 @@ export function Header({
         {saveLabel ?? t`Add to dashboard`}
       </Button>
       <ActionIcon
+        data-testid="visualizer-close-button"
         onClick={() => {
           trackSimpleEvent({
             event: "visualizer_close_clicked",

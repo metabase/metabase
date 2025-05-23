@@ -40,6 +40,7 @@ export function Footer({ className }: { className?: string }) {
       {hasDatasets && (
         <Button
           ml="auto"
+          data-testid="visualizer-settings-button"
           onClick={() => {
             trackSimpleEvent({
               event: "visualizer_settings_clicked",

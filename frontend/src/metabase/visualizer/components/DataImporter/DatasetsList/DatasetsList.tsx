@@ -91,6 +91,13 @@ export function DatasetsList({
 
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
+      trackSimpleEvent({
+        event: "visualizer_data_changed",
+        event_detail: "visualizer_datasource_replaced",
+        triggered_from: "visualizer-modal",
+        event_data: item.id,
+      });
+
       dataSources.forEach((dataSource) => {
         handleRemoveDataSource(dataSource);
       });
