@@ -38,6 +38,7 @@ import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { TranslateDisplayNamesFunction } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
@@ -755,12 +756,9 @@ export const PLUGIN_CONTENT_TRANSLATION = {
       [],
     );
   },
-  translateDisplayNames: <T extends object>(
-    obj: T,
-    _tc: ContentTranslationFunction,
-  ) => ({
+  translateDisplayNames: ((obj, _tc, _fieldsToTranslate) => ({
     ...obj,
-  }),
+  })) satisfies TranslateDisplayNamesFunction,
 };
 
 export const PLUGIN_DB_ROUTING = {
