@@ -14,10 +14,12 @@ import type { SelectedItem } from "../types";
 export const BrowseNavSection = ({
   nonEntityItem,
   onItemSelect,
+  onModalOpen,
   hasDataAccess,
 }: {
   nonEntityItem: SelectedItem;
   onItemSelect: () => void;
+  onModalOpen: () => void;
   hasDataAccess: boolean;
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
@@ -60,6 +62,7 @@ export const BrowseNavSection = ({
           component={UnstyledButton}
           c="brand"
           className={CS.cursorPointer}
+          onClick={onModalOpen}
         >
           <Icon name="add_data" />
           <Text fw={700} c="inherit">{t`Add`}</Text>
