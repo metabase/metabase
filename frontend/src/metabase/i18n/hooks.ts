@@ -1,11 +1,16 @@
+// To keep the components that require content translation tidier, they can
+// invoke these facades, which delegate to the plugin implementation
+//
+import { useCallback } from "react";
+
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 import type { ContentTranslationFunction } from "./types";
 
-// To keep the components that require content translation tidier, they can
-// invoke this facade, which delegates to the plugin implementation
-export const useTranslateContent = (): ContentTranslationFunction => {
-  return PLUGIN_CONTENT_TRANSLATION.useTranslateContent();
+export const useTranslateContent = <
+  T = string | null | undefined,
+>(): ContentTranslationFunction => {
+  return PLUGIN_CONTENT_TRANSLATION.useTranslateContent<T>();
 };
 
 export type TranslateDisplayNamesFunction = <T extends object>(
@@ -25,5 +30,18 @@ export const maybeTranslateDisplayNames: TranslateDisplayNamesFunction = (
     obj,
     tc,
     fieldsToTranslate,
+  );
+};
+
+/** Returns a function that can be used to sort user-generated strings in an
+ * array by their translations. */
+export const useSortByContentTranslation = () => {
+  const tc = PLUGIN_CONTENT_TRANSLATION.useTranslateContent();
+  // What makes this sort translation-aware is the use of the tc function.
+  // 'localeCompare' is just a standard way of comparing two strings
+  // alphabetically.
+  return useCallback(
+    (a: string, b: string) => tc(a).localeCompare(tc(b)),
+    [tc],
   );
 };
