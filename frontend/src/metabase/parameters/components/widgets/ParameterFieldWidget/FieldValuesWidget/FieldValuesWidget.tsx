@@ -52,7 +52,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { Value as ValueComponent } from "../Value";
+import ValueComponent from "../Value";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import { ListField } from "./ListField";

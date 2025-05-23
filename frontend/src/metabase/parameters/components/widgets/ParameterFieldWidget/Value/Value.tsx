@@ -7,7 +7,7 @@ import type { OptionsType } from "metabase/lib/formatting/types";
 
 import RemappedValue from "./RemappedValue";
 
-export const Value = ({
+const Value = ({
   value: rawValue,
   ...rawOptions
 }: {
@@ -35,9 +35,13 @@ export const Value = ({
     ...options,
     jsx: true,
   });
+
   if (isValidElement(formatted)) {
     return formatted;
   } else {
     return <span>{formatted}</span>;
   }
 };
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Value;
