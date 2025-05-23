@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
@@ -57,8 +58,11 @@
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
+        mb-version (:tag config/mb-version-info)
+        run-mode   (name config/run-mode)
+        user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
-                         (ImmutableMap/of "user-agent" "Metabase"))
+                         (ImmutableMap/of "user-agent" user-agent))
         bq-bldr (doto (BigQueryOptions/newBuilder)
                   (.setCredentials (.createScoped creds bigquery-scopes))
                   (.setHeaderProvider header-provider))]

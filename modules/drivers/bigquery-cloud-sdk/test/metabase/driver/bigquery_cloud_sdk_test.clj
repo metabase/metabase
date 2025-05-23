@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -1241,8 +1242,11 @@
 (deftest user-agent-is-set-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "User agent is set for bigquery requests"
-      (let [client (#'bigquery/database-details->client (:details (mt/db)))]
-        (is (= "Metabase"
+      (let [client (#'bigquery/database-details->client (:details (mt/db)))
+            mb-version (:tag config/mb-version-info)
+            run-mode   (name config/run-mode)
+            user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
+        (is (= user-agent
                (-> client .getOptions .getUserAgent)))))))
 
 (deftest timestamp-precision-test
