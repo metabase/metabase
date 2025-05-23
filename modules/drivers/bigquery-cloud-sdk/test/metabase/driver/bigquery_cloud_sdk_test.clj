@@ -1238,6 +1238,13 @@
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
 
+(deftest user-agent-is-set-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "User agent is set for bigquery requests"
+      (let [client (#'bigquery/database-details->client (:details (mt/db)))]
+        (is (= "Metabase"
+               (-> client .getOptions .getUserAgent)))))))
+
 (deftest timestamp-precision-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [sql (str "select"
