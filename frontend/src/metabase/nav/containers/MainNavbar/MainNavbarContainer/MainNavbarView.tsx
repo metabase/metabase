@@ -8,6 +8,7 @@ import {
   isExamplesCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { STANDARD_USER_LIST_PAGE_SIZE, useListUsersQuery } from "metabase/api";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
@@ -153,6 +154,14 @@ export function MainNavbarView({
   const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
   const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
 
+  const { data: userData } = useListUsersQuery({
+    // To minimize requests, we use the same parameters that UserCollectionList
+    // uses when invoking useListUsersQuery
+    limit: STANDARD_USER_LIST_PAGE_SIZE,
+    offset: 0,
+  });
+  const areThereOtherUsers = (userData?.total ?? 0) > 1;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -218,7 +227,7 @@ export function MainNavbarView({
                 role="tree"
                 aria-label="collection-tree"
               />
-              {isAdmin && (
+              {isAdmin && areThereOtherUsers && (
                 <PaddedSidebarLink
                   icon="group"
                   url={OTHER_USERS_COLLECTIONS_URL}
