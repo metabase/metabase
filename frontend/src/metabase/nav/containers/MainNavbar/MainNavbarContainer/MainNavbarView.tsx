@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -35,9 +36,13 @@ import {
 import { SidebarCollectionLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
-import { trackNewCollectionFromNavInitiated } from "../analytics";
+import {
+  trackAddDataModalOpened,
+  trackNewCollectionFromNavInitiated,
+} from "../analytics";
 import type { SelectedItem } from "../types";
 
+import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
@@ -83,6 +88,9 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
+
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   const {
     card: cardItem,
@@ -171,7 +179,13 @@ export function MainNavbarView({
           {isNewInstance && (
             <SidebarSection>
               <ErrorBoundary>
-                <GettingStartedSection nonEntityItem={nonEntityItem}>
+                <GettingStartedSection
+                  nonEntityItem={nonEntityItem}
+                  onModalOpen={() => {
+                    trackAddDataModalOpened("getting-started");
+                    openModal();
+                  }}
+                >
                   {examplesCollection && (
                     <Tree
                       data={[examplesCollection]}
@@ -233,6 +247,7 @@ export function MainNavbarView({
                 nonEntityItem={nonEntityItem}
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
+                onModalOpen={openModal}
               />
             </ErrorBoundary>
           </SidebarSection>
@@ -260,6 +275,8 @@ export function MainNavbarView({
         </div>
         <WhatsNewNotification />
       </SidebarContentRoot>
+
+      <AddDataModal opened={modalOpened} onClose={closeModal} />
     </ErrorBoundary>
   );
 }
