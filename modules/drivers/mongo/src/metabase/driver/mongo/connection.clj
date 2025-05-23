@@ -5,6 +5,7 @@
    [metabase.config.core :as config]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -33,8 +34,8 @@
      host
      (when (and (not use-srv) (some? port)) (str ":" port))
      "/"
-     "?connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
-     "&serverSelectionTimeoutMS=" (driver.u/db-connection-timeout-ms)
+     "?connectTimeoutMS=" (driver.settings/db-connection-timeout-ms)
+     "&serverSelectionTimeoutMS=" (driver.settings/db-connection-timeout-ms)
      (when ssl "&ssl=true")
      (when (seq additional-options) (str "&" additional-options)))))
 

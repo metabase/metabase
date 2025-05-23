@@ -2,25 +2,17 @@
   "Functions for sending Snowplow analytics events"
   (:require
    [clojure.string :as str]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.version.core :as version]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
-   (com.snowplowanalytics.snowplow.tracker.configuration
-    EmitterConfiguration
-    NetworkConfiguration
-    SubjectConfiguration
-    TrackerConfiguration)
+   (com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration NetworkConfiguration SubjectConfiguration TrackerConfiguration)
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing SelfDescribing$Builder2)
    (com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter)
    (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
@@ -65,43 +57,6 @@
 (def ^:private SnowplowSchema
   "Malli enum for valid Snowplow schemas"
   (into [:enum] (keys schema->version)))
-
-;; We need to declare `track-event!` up front so that we can use it in the custom getter of `instance-creation`.
-;; We can't move `instance-creation` below `track-event!` because it has to be defined before `context`, which is called
-;; by `track-event!`.
-(declare track-event!)
-
-(defn- first-user-creation
-  "Returns the earliest user creation timestamp in the database"
-  []
-  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
-
-;; [[instance-creation]] should live in analytics.settings, but it would cause a circular dep with [[track-event!]]
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :setter     :none
-  :getter     (fn []
-                (when-not (t2/exists? :model/Setting :key "instance-creation")
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (let [value (or (first-user-creation) (t/offset-date-time))]
-                    (setting/set-value-of-type! :timestamp :instance-creation value)
-                    (track-event! :snowplow/account {:event :new_instance_created} nil)))
-                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
-  :doc false)
-
-(defsetting non-table-chart-generated
-  (deferred-tru "Whether a non-table chart has already been generated. Required for analytics to track instance activation journey.")
-  :visibility :authenticated
-  :default    false
-  :type       :boolean
-  :export?    true
-  :setter     (fn [new-value]
-                ;; Only allow toggling from false -> true one time
-                (when (true? new-value)
-                  (setting/set-value-of-type! :boolean :non-table-chart-generated true))))
 
 (defn- tracker-config
   []
@@ -162,7 +117,7 @@
        {"id"                           (analytics.settings/analytics-uuid)
         "version"                      {"tag" (:tag (version/version))}
         "token_features"               (m/map-keys name (premium-features/token-features))
-        "created_at"                   (instance-creation)
+        "created_at"                   (analytics.settings/instance-creation)
         "application_database"         (app-db-type)
         "application_database_version" (app-db-version)}))
 

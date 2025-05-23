@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isCartesianChart } from "metabase/visualizations";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
@@ -20,6 +21,7 @@ type CompatFn = (
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
+  settings: ComputedVisualizationSettings,
   datasets: Record<VisualizerDataSourceId, Dataset>,
   dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
@@ -36,6 +38,7 @@ export function findSlotForColumn(
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
+  settings: ComputedVisualizationSettings,
   datasets: Record<string, Dataset>,
   dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
@@ -49,7 +52,7 @@ export function findSlotForColumn(
     vizMappingFn[isCartesianChart(display) ? "cartesian" : display];
 
   if (compatFn) {
-    return compatFn(state, datasets, dataSourceColumns, column);
+    return compatFn(state, settings, datasets, dataSourceColumns, column);
   } else {
     return undefined;
   }
@@ -60,6 +63,7 @@ export function groupColumnsBySuitableVizSettings(
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
   >,
+  settings: ComputedVisualizationSettings,
   datasets: Record<string, Dataset>,
   columns: DatasetColumn[] | Field[],
 ) {
@@ -86,6 +90,7 @@ export function groupColumnsBySuitableVizSettings(
         // TODO Fix type casting
         slot: compatFn(
           state,
+          settings,
           datasets,
           columns as DatasetColumn[],
           column as DatasetColumn,

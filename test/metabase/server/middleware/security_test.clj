@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.embedding.app-origins-sdk :as aos]
    [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
@@ -190,14 +189,14 @@
         (is (= "http://localhost:8080" (-> "http://localhost:8080"
                                            (mw.security/access-control-headers
                                             (embed.settings/enable-embedding-sdk)
-                                            (aos/embedding-app-origins-sdk))
+                                            (embed.settings/embedding-app-origins-sdk))
                                            (get "Access-Control-Allow-Origin"))))))
     (testing "Should disable CORS when enable-embedding-sdk is disabled"
       (mt/with-temporary-setting-values [enable-embedding-sdk false]
         (is (= nil (get (mw.security/access-control-headers
                          "http://localhost:8080"
                          (embed.settings/enable-embedding-sdk)
-                         (aos/embedding-app-origins-sdk))
+                         (embed.settings/embedding-app-origins-sdk))
                         "Access-Control-Allow-Origin"))
             "Localhost is only permitted when `enable-embedding-sdk` is `true`."))
       (is (= nil (get (mw.security/access-control-headers
@@ -212,7 +211,7 @@
           (is (= "https://example.com"
                  (get (mw.security/access-control-headers "https://example.com"
                                                           (embed.settings/enable-embedding-sdk)
-                                                          (aos/embedding-app-origins-sdk))
+                                                          (embed.settings/embedding-app-origins-sdk))
                       "Access-Control-Allow-Origin"))))))
     (testing "Should set Access-Control-Max-Age to 60"
       (mt/with-temporary-setting-values [enable-embedding-sdk true
@@ -220,7 +219,7 @@
         (let [headers (mw.security/access-control-headers
                        "https://example.com"
                        (embed.settings/enable-embedding-sdk)
-                       (aos/embedding-app-origins-sdk))]
+                       (embed.settings/embedding-app-origins-sdk))]
           (is (= "60" (get headers "Access-Control-Max-Age"))
               "Expected Access-Control-Max-Age header to be set to 60"))))))
 
